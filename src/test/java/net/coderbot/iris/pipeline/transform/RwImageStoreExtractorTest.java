@@ -50,6 +50,27 @@ class RwImageStoreExtractorTest {
         "void main() { gl_Position = iris_Vertex; }",
         "");
 
+    private static final String ATOMIC_RESULT_VSH = String.join("\n",
+        "#version 460 core",
+        "layout(r32i) uniform iimage2D counter_img;",
+        "void main() {",
+        "    int previous = imageAtomicCompSwap(counter_img, ivec2(0), 0, -1);",
+        "    if (previous == 0) {",
+        "        imageAtomicAdd(counter_img, ivec2(1), 1);",
+        "    }",
+        "    gl_Position = vec4(0.0);",
+        "}",
+        "");
+
+    @Test void raster_keepsVariablesInitializedFromAtomics() {
+        final var result = RwImageStoreExtractor.tryExtract(ATOMIC_RESULT_VSH, PatchShaderType.VERTEX, "prepare");
+        assertNotNull(result);
+        final String stripped = norm(result.strippedSource());
+        assertTrue(stripped.contains("int previous = 0;"), stripped);
+        assertTrue(stripped.contains("if (previous == 0)"), stripped);
+        assertFalse(stripped.contains("imageAtomic"), stripped);
+    }
+
     @Test void detection_returnsNullWhenNoImageStore() {
         assertNull(RwImageStoreExtractor.tryExtract(NO_IMAGESTORE_VSH, PatchShaderType.VERTEX, "shadow"));
     }
