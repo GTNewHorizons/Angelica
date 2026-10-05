@@ -6,6 +6,8 @@ plugins {
     id("com.gtnewhorizons.gtnhconvention")
 }
 
+apply(from = "gradle/mod-version.gradle.kts")
+
 val lwjglDebug = false
 val gpuHud = false
 val renderdoc = false
