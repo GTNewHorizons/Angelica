@@ -1,16 +1,15 @@
 package com.gtnewhorizons.angelica.sdlgpu.shader;
 
+import com.gtnewhorizons.angelica.glsm.GlslTransformUtils;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess.Edit;
-import org.antlr.v4.runtime.CharStreams;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderIndex;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
-import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.jetbrains.annotations.Nullable;
 import org.taumc.glsl.grammar.GLSLLexer;
 import org.taumc.glsl.grammar.GLSLParser;
-import org.taumc.glsl.grammar.GLSLParserBaseListener;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -47,51 +46,23 @@ public final class DerivativeHoisting {
         "umulExtended", Set.of(2, 3),
         "imulExtended", Set.of(2, 3));
 
+    private static final String UNKNOWN = "*";
+
     private DerivativeHoisting() {}
 
     private record Declared(String type, boolean global) {}
 
     private record Operand(String name, @Nullable String swizzle) {}
 
-    private record Functions(Map<String, Set<Integer>> outParams, Map<String, Set<String>> globalWrites) {}
-
-    private static final String UNKNOWN = "*";
-
-    public static void collectEdits(GLSLParser.Translation_unitContext root, String source, List<Edit> edits) {
+    public static void collectEdits(ShaderIndex index, String source, List<Edit> edits) {
         final List<GLSLParser.Postfix_expressionContext> calls = new ArrayList<>();
-        final List<GLSLParser.Function_definitionContext> definitions = new ArrayList<>();
-        final Map<String, Set<Integer>> outParams = new HashMap<>();
-        final Map<String, Set<String>> globalWrites = new HashMap<>();
-
-        ParseTreeWalker.DEFAULT.walk(new GLSLParserBaseListener() {
-            @Override
-            public void enterFunction_prototype(GLSLParser.Function_prototypeContext ctx) {
-                if (ctx.IDENTIFIER() == null) return;
-                final String name = ctx.IDENTIFIER().getText();
-                globalWrites.computeIfAbsent(name, k -> new HashSet<>());
-                if (ctx.function_parameters() == null) return;
-                final List<GLSLParser.Parameter_declarationContext> params = ctx.function_parameters().parameter_declaration();
-                for (int i = 0; i < params.size(); i++) {
-                    if (writesParameter(params.get(i))) outParams.computeIfAbsent(name, k -> new HashSet<>()).add(i);
-                }
-            }
-
-            @Override
-            public void enterFunction_definition(GLSLParser.Function_definitionContext ctx) {
-                if (ctx.function_prototype().IDENTIFIER() != null) definitions.add(ctx);
-            }
-
-            @Override
-            public void enterPostfix_expression(GLSLParser.Postfix_expressionContext ctx) {
-                if (ctx.LEFT_PAREN() != null && DERIVATIVES.contains(calleeName(ctx))) calls.add(ctx);
-            }
-        }, root);
-
+        for (GLSLParser.Postfix_expressionContext call : index.calls()) {
+            if (DERIVATIVES.contains(ShaderIndex.calleeName(call))) calls.add(call);
+        }
         if (calls.isEmpty()) return;
 
-        final Functions functions = new Functions(outParams, globalWrites);
-        summarizeGlobalWrites(definitions, functions);
-
+        final GLSLParser.Translation_unitContext root = index.root();
+        final Functions functions = new Functions(root);
         final List<Edit> earlierEdits = List.copyOf(edits);
         final Map<GLSLParser.Selection_statementContext, StringBuilder> declarations = new LinkedHashMap<>();
         final Map<String, String> hoisted = new HashMap<>();
@@ -112,11 +83,11 @@ public final class DerivativeHoisting {
             final GLSLParser.Selection_statementContext target = outermostSafeIf(call, operand.name(), declared.global(), functions);
             if (target == null) continue;
             if (!checkedDirectives) {
-                if (hasCodeHiddenByDirectives(source)) return;
+                if (GlslTransformUtils.hasConditionalOrMacroDirectives(source)) return;
                 checkedDirectives = true;
             }
 
-            final String callee = calleeName(call);
+            final String callee = ShaderIndex.calleeName(call);
             final String argText = sliceWithEdits(source, startIdx(arg), stopIdx(arg), earlierEdits);
             final String key = startIdx(target) + "|" + callee + "|" + argText;
             String variable = hoisted.get(key);
@@ -136,32 +107,73 @@ public final class DerivativeHoisting {
         }
     }
 
-    private static boolean hasCodeHiddenByDirectives(String source) {
-        final GLSLLexer lexer = new GLSLLexer(CharStreams.fromString(source));
-        lexer.removeErrorListeners();
-        for (Token t = lexer.nextToken(); t.getType() != Token.EOF; t = lexer.nextToken()) {
-            switch (t.getType()) {
-                case GLSLLexer.IF_DIRECTIVE, GLSLLexer.IFDEF_DIRECTIVE, GLSLLexer.IFNDEF_DIRECTIVE, GLSLLexer.DEFINE_DIRECTIVE -> {
-                    return true;
+    private static final class Functions {
+        final Map<String, Set<Integer>> outParams = new HashMap<>();
+        final Set<String> names = new HashSet<>();
+        private final List<GLSLParser.Function_definitionContext> definitions = new ArrayList<>();
+        private @Nullable Map<String, Set<String>> globalWrites;
+
+        Functions(GLSLParser.Translation_unitContext root) {
+            for (GLSLParser.External_declarationContext external : root.external_declaration()) {
+                final GLSLParser.Function_prototypeContext prototype;
+                if (external.function_definition() != null) {
+                    definitions.add(external.function_definition());
+                    prototype = external.function_definition().function_prototype();
+                } else if (external.declaration() != null) {
+                    prototype = external.declaration().function_prototype();
+                } else {
+                    prototype = null;
                 }
-                default -> { }
+                if (prototype == null || prototype.IDENTIFIER() == null) continue;
+                final String name = prototype.IDENTIFIER().getText();
+                names.add(name);
+                if (prototype.function_parameters() == null) continue;
+                final List<GLSLParser.Parameter_declarationContext> params = prototype.function_parameters().parameter_declaration();
+                for (int i = 0; i < params.size(); i++) {
+                    final GLSLParser.Type_qualifierContext q = params.get(i).type_qualifier();
+                    if (ShaderIndex.hasStorageQualifier(q, "out") || ShaderIndex.hasStorageQualifier(q, "inout")) {
+                        outParams.computeIfAbsent(name, k -> new HashSet<>()).add(i);
+                    }
+                }
             }
         }
-        return false;
-    }
 
-    private static String calleeName(GLSLParser.Postfix_expressionContext call) {
-        final ParseTree callee = call.getChild(0);
-        return callee instanceof ParserRuleContext ? callee.getText() : "";
-    }
-
-    private static boolean writesParameter(GLSLParser.Parameter_declarationContext param) {
-        if (param.type_qualifier() == null) return false;
-        for (GLSLParser.Single_type_qualifierContext q : param.type_qualifier().single_type_qualifier()) {
-            final GLSLParser.Storage_qualifierContext s = q.storage_qualifier();
-            if (s != null && (s.OUT() != null || s.INOUT() != null)) return true;
+        Set<String> globalWrites(String function) {
+            if (globalWrites == null) globalWrites = summarize();
+            return globalWrites.getOrDefault(function, Set.of());
         }
-        return false;
+
+        private Map<String, Set<String>> summarize() {
+            final Map<String, Set<String>> writes = new HashMap<>();
+            final Map<String, Set<String>> callees = new HashMap<>();
+            for (GLSLParser.Function_definitionContext definition : definitions) {
+                final String name = definition.function_prototype().IDENTIFIER().getText();
+                final Set<String> written = new HashSet<>();
+                final Set<String> called = new HashSet<>();
+                collectEffects(definition.compound_statement_no_new_scope(), this, written, called);
+                final GLSLParser.Function_parametersContext params = definition.function_prototype().function_parameters();
+                if (params != null) {
+                    for (GLSLParser.Parameter_declarationContext param : params.parameter_declaration()) {
+                        final GLSLParser.Parameter_declaratorContext d = param.parameter_declarator();
+                        if (d != null && d.IDENTIFIER() != null) written.remove(d.IDENTIFIER().getText());
+                    }
+                }
+                writes.computeIfAbsent(name, k -> new HashSet<>()).addAll(written);
+                callees.computeIfAbsent(name, k -> new HashSet<>()).addAll(called);
+            }
+            boolean changed = true;
+            while (changed) {
+                changed = false;
+                for (Map.Entry<String, Set<String>> e : callees.entrySet()) {
+                    final Set<String> into = writes.get(e.getKey());
+                    for (String callee : e.getValue()) {
+                        final Set<String> from = writes.get(callee);
+                        if (from != null) changed |= into.addAll(from);
+                    }
+                }
+            }
+            return writes;
+        }
     }
 
     private static @Nullable Operand operand(GLSLParser.Assignment_expressionContext arg) {
@@ -241,14 +253,10 @@ public final class DerivativeHoisting {
     private static @Nullable String typeOf(ParseTree node, String name) {
         final GLSLParser.Init_declarator_listContext list = firstDeclaratorList(node);
         if (list == null || list.single_declaration() == null) return null;
-        final GLSLParser.Single_declarationContext single = list.single_declaration();
-        final List<GLSLParser.Typeless_declarationContext> declarators = new ArrayList<>();
-        if (single.typeless_declaration() != null) declarators.add(single.typeless_declaration());
-        declarators.addAll(list.typeless_declaration());
-        for (GLSLParser.Typeless_declarationContext d : declarators) {
+        for (GLSLParser.Typeless_declarationContext d : ShaderIndex.declarators(list)) {
             if (d.IDENTIFIER() == null || !name.equals(d.IDENTIFIER().getText())) continue;
             if (d.array_specifier() != null) return "";
-            return baseType(single.fully_specified_type().type_specifier());
+            return baseType(list.single_declaration().fully_specified_type().type_specifier());
         }
         return null;
     }
@@ -318,39 +326,10 @@ public final class DerivativeHoisting {
         if (written.contains(name) || written.contains(UNKNOWN)) return true;
         if (!global) return false;
         for (String callee : called) {
-            final Set<String> w = functions.globalWrites().get(callee);
+            final Set<String> w = functions.globalWrites(callee);
             if (w.contains(name) || w.contains(UNKNOWN)) return true;
         }
         return false;
-    }
-
-    private static void summarizeGlobalWrites(List<GLSLParser.Function_definitionContext> definitions, Functions functions) {
-        final Map<String, Set<String>> callees = new HashMap<>();
-        for (GLSLParser.Function_definitionContext definition : definitions) {
-            final String name = definition.function_prototype().IDENTIFIER().getText();
-            final Set<String> written = new HashSet<>();
-            final Set<String> called = new HashSet<>();
-            collectEffects(definition.compound_statement_no_new_scope(), functions, written, called);
-            final GLSLParser.Function_parametersContext params = definition.function_prototype().function_parameters();
-            if (params != null) {
-                for (GLSLParser.Parameter_declarationContext param : params.parameter_declaration()) {
-                    final GLSLParser.Parameter_declaratorContext d = param.parameter_declarator();
-                    if (d != null && d.IDENTIFIER() != null) written.remove(d.IDENTIFIER().getText());
-                }
-            }
-            functions.globalWrites().get(name).addAll(written);
-            callees.computeIfAbsent(name, k -> new HashSet<>()).addAll(called);
-        }
-        boolean changed = true;
-        while (changed) {
-            changed = false;
-            for (Map.Entry<String, Set<String>> e : callees.entrySet()) {
-                final Set<String> into = functions.globalWrites().get(e.getKey());
-                for (String callee : e.getValue()) {
-                    changed |= into.addAll(functions.globalWrites().get(callee));
-                }
-            }
-        }
     }
 
     private static void collectEffects(ParseTree node, Functions functions, Set<String> written, Set<String> called) {
@@ -361,11 +340,11 @@ public final class DerivativeHoisting {
         } else if (node instanceof GLSLParser.Postfix_expressionContext p) {
             if (p.INC_OP() != null || p.DEC_OP() != null) written.add(lvalueName(p.postfix_expression()));
             if (p.LEFT_PAREN() != null) {
-                final String callee = calleeName(p);
-                if (functions.globalWrites().containsKey(callee)) called.add(callee);
+                final String callee = ShaderIndex.calleeName(p);
+                if (functions.names.contains(callee)) called.add(callee);
                 if (p.function_call_parameters() != null) {
                     final List<GLSLParser.Assignment_expressionContext> args = p.function_call_parameters().assignment_expression();
-                    Set<Integer> positions = functions.outParams().get(callee);
+                    Set<Integer> positions = functions.outParams.get(callee);
                     if (positions == null) positions = BUILTIN_OUT_PARAMS.get(callee);
                     for (int i = 0; i < args.size(); i++) {
                         if (positions != null && positions.contains(i)) written.add(lvalueName(args.get(i)));
@@ -379,14 +358,9 @@ public final class DerivativeHoisting {
     }
 
     private static String lvalueName(@Nullable ParserRuleContext lvalue) {
-        final String root = rootName(lvalue);
-        return root != null ? root : UNKNOWN;
-    }
-
-    private static @Nullable String rootName(@Nullable ParserRuleContext expression) {
-        if (expression == null) return null;
-        final Token start = expression.getStart();
-        return start != null && start.getType() == GLSLLexer.IDENTIFIER ? start.getText() : null;
+        if (lvalue == null) return UNKNOWN;
+        final Token start = lvalue.getStart();
+        return start != null && start.getType() == GLSLLexer.IDENTIFIER ? start.getText() : UNKNOWN;
     }
 
     private static String indentBefore(String source, int at) {

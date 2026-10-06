@@ -108,7 +108,7 @@ public final class RwImageStoreExtractor {
     }
 
     public static Result tryExtract(String source, PatchShaderType stage, String programName, RwExtractMode vertexMode) {
-        if (source == null) return null;
+        if (source == null || !mayWriteImages(source)) return null;
         if (stage != PatchShaderType.VERTEX && stage != PatchShaderType.FRAGMENT) return null;
 
         final ShaderParser.ParsedShader parsed = ShaderParser.parseShader(source);
@@ -146,8 +146,12 @@ public final class RwImageStoreExtractor {
         return new Result(stripped, compute, writtenImages, mode, atomicImages(root, writtenImages));
     }
 
+    private static boolean mayWriteImages(String source) {
+        return source.contains("imageStore") || source.contains("imageAtomic");
+    }
+
     public static Result tryExtractVertexReplay(String source) {
-        if (source == null) return null;
+        if (source == null || !mayWriteImages(source)) return null;
 
         final ShaderParser.ParsedShader parsed = ShaderParser.parseShader(source);
         final GLSLParser.Translation_unitContext root = parsed.full();

@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.sdlgpu.shader;
 import com.gtnewhorizons.angelica.glsm.GlslTransformUtils;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess.Edit;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderIndex;
 import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.util.shaderc.Shaderc;
@@ -20,7 +21,7 @@ class DerivativeHoistingTest {
 
     private static String hoist(String source) {
         final List<Edit> edits = new ArrayList<>();
-        DerivativeHoisting.collectEdits(GlslTransformUtils.parseFullQuiet(source), source, edits);
+        DerivativeHoisting.collectEdits(new ShaderIndex(GlslTransformUtils.parseFullQuiet(source)), source, edits);
         return GlslVulkanPreprocess.applyEdits(source, edits);
     }
 

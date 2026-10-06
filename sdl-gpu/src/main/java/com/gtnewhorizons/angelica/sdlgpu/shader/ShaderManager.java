@@ -9,6 +9,7 @@ import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess.Edit;
 import com.gtnewhorizons.angelica.glsm.shader.ShaderCacheIO;
 import com.gtnewhorizons.angelica.glsm.shader.ShaderDiskCache;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderIndex;
 import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
 import com.gtnewhorizons.angelica.glsm.threading.AngelicaWorkers;
 import com.gtnewhorizons.angelica.sdlgpu.compute.VertexWriteReplayer;
@@ -316,44 +317,36 @@ public final class ShaderManager {
             LOG.warn("glsl-transformation-lib parse failed for '{}': {}", debugName, e.getMessage());
             return null;
         }
-        final List<Edit> edits = new ArrayList<>();
-        if (isGraphics(glShaderType)) {
-            PerFrameBlockInjector.collectEdits(root, perFrame, perPass, edits);
-        }
-        final GlslVulkanPreprocess.Metadata meta = GlslVulkanPreprocess.collectEdits(transformedSource, root, glShaderType, debugName, true, edits);
-        if (glShaderType == GL20.GL_VERTEX_SHADER) {
-            ClipZRemap.collectEdits(root, edits);
-        }
-        SamplerStripper.collectEdits(root, transformedSource, edits);
-        if (glShaderType == GL20.GL_FRAGMENT_SHADER) {
-            DerivativeHoisting.collectEdits(root, transformedSource, edits);
-        }
-        final String s = edits.isEmpty() ? transformedSource : GlslVulkanPreprocess.applyEdits(transformedSource, edits);
-        return new PrewarmTransformResult(s, meta.boolUniforms());
+        return transform("", transformedSource, root, glShaderType, debugName, perFrame, perPass);
     }
 
     public static PrewarmTransformResult applyPrewarmTransformsFull(String finalSource, GLSLParser.Translation_unitContext bodyTree, int headerLen, int glShaderType, PerFrameUniformBlock perFrame, PerFrameUniformBlock perPass) {
-        final String header = finalSource.substring(0, headerLen);
-        final String body = finalSource.substring(headerLen);
+        return transform(finalSource.substring(0, headerLen), finalSource.substring(headerLen), bodyTree, glShaderType, "prewarm", perFrame, perPass);
+    }
+
+    private static PrewarmTransformResult transform(String header, String body, GLSLParser.Translation_unitContext tree, int glShaderType, String debugName, PerFrameUniformBlock perFrame, PerFrameUniformBlock perPass) {
+        final ShaderIndex index = new ShaderIndex(tree);
         final List<Edit> edits = new ArrayList<>();
         if (isGraphics(glShaderType)) {
-            PerFrameBlockInjector.collectEdits(bodyTree, perFrame, perPass, edits);
+            PerFrameBlockInjector.collectEdits(index, perFrame, perPass, edits);
         }
-        final GlslVulkanPreprocess.Metadata meta = GlslVulkanPreprocess.collectEdits(null, bodyTree, glShaderType, "prewarm", true, edits);
+        final GlslVulkanPreprocess.Metadata meta = GlslVulkanPreprocess.collectEdits(index, glShaderType, debugName, true, edits);
         if (glShaderType == GL20.GL_VERTEX_SHADER) {
-            ClipZRemap.collectEdits(bodyTree, edits);
+            ClipZRemap.collectEdits(tree, edits);
         }
-        SamplerStripper.collectEdits(bodyTree, body, edits);
+        SamplerStripper.collectEdits(index, body, edits);
         if (glShaderType == GL20.GL_FRAGMENT_SHADER) {
-            DerivativeHoisting.collectEdits(bodyTree, body, edits);
+            DerivativeHoisting.collectEdits(index, body, edits);
         }
         String outHeader = header;
         if (meta.needsSamplerless()) {
-            final int nl = header.indexOf('\n');
-            outHeader = header.substring(0, nl) + "\n" + GlslVulkanPreprocess.SAMPLERLESS_EXTENSION + header.substring(nl);
-        }
-        if (edits.isEmpty() && outHeader == header) {
-            return new PrewarmTransformResult(finalSource, meta.boolUniforms());
+            if (header.isEmpty()) {
+                final Edit extension = GlslVulkanPreprocess.samplerlessExtensionEdit(body);
+                if (extension != null) edits.add(extension);
+            } else {
+                final int nl = header.indexOf('\n');
+                outHeader = header.substring(0, nl) + "\n" + GlslVulkanPreprocess.SAMPLERLESS_EXTENSION + header.substring(nl);
+            }
         }
         return new PrewarmTransformResult(outHeader + GlslVulkanPreprocess.applyEdits(body, edits), meta.boolUniforms());
     }

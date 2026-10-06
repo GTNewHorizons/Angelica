@@ -1,11 +1,15 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import org.antlr.v4.runtime.BailErrorStrategy;
 import org.antlr.v4.runtime.BufferedTokenStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonToken;
 import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.Parser;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.WritableToken;
+import org.antlr.v4.runtime.atn.PredictionMode;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.taumc.glsl.grammar.GLSLLexer;
@@ -16,6 +20,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -131,51 +136,59 @@ public class GlslTransformUtils {
     public record QuietParse(GLSLParser.Translation_unitContext full, GLSLPreParser.Translation_unitContext pre) {}
 
     public static GLSLParser.Translation_unitContext parseFullQuiet(String source) {
-        final GLSLLexer lexer = new GLSLLexer(CharStreams.fromString(source));
-        lexer.removeErrorListeners();
-        final GLSLParser parser = new GLSLParser(new CommonTokenStream(lexer));
-        parser.removeErrorListeners();
-        parser.setBuildParseTree(true);
-        return parser.translation_unit();
-    }
-
-    public static GLSLPreParser.Translation_unitContext parsePreQuiet(String source) {
-        final GLSLLexer lexer = new GLSLLexer(CharStreams.fromString(source));
-        lexer.removeErrorListeners();
-        final GLSLPreParser preParser = new GLSLPreParser(new CommonTokenStream(lexer, GLSLLexer.DIRECTIVES));
-        preParser.removeErrorListeners();
-        preParser.setBuildParseTree(true);
-        return preParser.translation_unit();
+        return parseQuiet(source, lexer -> new GLSLParser(new CommonTokenStream(lexer)), GLSLParser::translation_unit);
     }
 
     public static QuietParse parseBothQuiet(String source) {
+        final GLSLPreParser.Translation_unitContext pre = parseQuiet(source, lexer -> new GLSLPreParser(new BufferedTokenStream(lexer)), GLSLPreParser::translation_unit);
+        return new QuietParse(parseFullQuiet(source), pre);
+    }
+
+    private static <P extends Parser, T> T parseQuiet(String source, Function<GLSLLexer, P> newParser, Function<P, T> rule) {
+        final P fast = newParser.apply(quietLexer(source));
+        fast.removeErrorListeners();
+        fast.setErrorHandler(new BailErrorStrategy());
+        fast.getInterpreter().setPredictionMode(PredictionMode.SLL);
+        try {
+            return rule.apply(fast);
+        } catch (ParseCancellationException e) {
+            final P full = newParser.apply(quietLexer(source));
+            full.removeErrorListeners();
+            return rule.apply(full);
+        }
+    }
+
+    public static GLSLLexer quietLexer(String source) {
         final GLSLLexer lexer = new GLSLLexer(CharStreams.fromString(source));
         lexer.removeErrorListeners();
-        final GLSLPreParser preParser = new GLSLPreParser(new BufferedTokenStream(lexer));
-        preParser.removeErrorListeners();
-        preParser.setBuildParseTree(true);
-        final GLSLPreParser.Translation_unitContext pre = preParser.translation_unit();
-        lexer.reset();
-        final GLSLParser parser = new GLSLParser(new CommonTokenStream(lexer));
-        parser.removeErrorListeners();
-        parser.setBuildParseTree(true);
-        return new QuietParse(parser.translation_unit(), pre);
+        return lexer;
     }
 
     public static Set<String> identifiersInDirectiveText(String source) {
-        final GLSLLexer lexer = new GLSLLexer(CharStreams.fromString(source));
-        lexer.removeErrorListeners();
-        final BufferedTokenStream tokens = new BufferedTokenStream(lexer);
-        tokens.fill();
-
+        if (source.indexOf('#') < 0) return Set.of();
+        final GLSLLexer lexer = quietLexer(source);
         final Set<String> names = new HashSet<>();
-        for (Token token : tokens.getTokens()) {
+        for (Token token = lexer.nextToken(); token.getType() != Token.EOF; token = lexer.nextToken()) {
             switch (token.getType()) {
                 case GLSLLexer.PROGRAM_TEXT, GLSLLexer.MACRO_TEXT, GLSLLexer.CONSTANT_EXPRESSION -> collectIdentifiers(token.getText(), names);
                 default -> { }
             }
         }
         return names;
+    }
+
+    public static boolean hasConditionalOrMacroDirectives(String source) {
+        if (source.indexOf('#') < 0) return false;
+        final GLSLLexer lexer = quietLexer(source);
+        for (Token token = lexer.nextToken(); token.getType() != Token.EOF; token = lexer.nextToken()) {
+            switch (token.getType()) {
+                case GLSLLexer.IF_DIRECTIVE, GLSLLexer.IFDEF_DIRECTIVE, GLSLLexer.IFNDEF_DIRECTIVE, GLSLLexer.DEFINE_DIRECTIVE -> {
+                    return true;
+                }
+                default -> { }
+            }
+        }
+        return false;
     }
 
     private static void collectIdentifiers(String text, Set<String> out) {
