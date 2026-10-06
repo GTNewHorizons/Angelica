@@ -10,6 +10,8 @@
 #   length - Units: blocks (straight), blocks per leg (circuit), degrees (pan), ticks (static).
 #   extra  - passed through to gradle; -Dangelica.* reaches the client (e.g. -Dangelica.flyby.timeOfDay=1500).
 #            -Dangelica.flyby.camera=FIRST_PERSON|THIRD_PERSON_BACK|THIRD_PERSON_FRONT (default FIRST_PERSON).
+#            -Dangelica.flyby.dimension=<id> moves the player there first (1 = End), after world saving is off.
+#            -PclientJvmVendor=adoptium (macOS) picks the JVM vendor for runClient17/21/25.
 #
 #   FLYBY_SPEED     - blocks per tick. (0.5 ~= creative flight).
 #   FLYBY_PACING    - UNCAPPED | CONFIGURED. Passed through when set.

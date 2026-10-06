@@ -237,7 +237,7 @@ class VertexReplayExtractionTest {
     void atomicReplayIsDroppedWithoutBackendSupport() {
         final EnumMap<PatchShaderType, String> atomic = new EnumMap<>(PatchShaderType.class);
         atomic.put(PatchShaderType.VERTEX, TransformPatcher.patchAttributes(CRYSTAL_VERTEX, null, FRAGMENT, TEX_LM).get(PatchShaderType.VERTEX));
-        ShaderTransformer.extractRwImageStores(atomic, Patch.ATTRIBUTES, null, false);
+        ShaderTransformer.extractRwImageStores(atomic, Patch.ATTRIBUTES, null, image -> false);
         assertFalse(atomic.containsKey(PatchShaderType.COMPUTE));
         assertFalse(atomic.get(PatchShaderType.VERTEX).contains("imageAtomic"), atomic.get(PatchShaderType.VERTEX));
 
@@ -251,8 +251,23 @@ class VertexReplayExtractionTest {
                 gl_Position = iris_Vertex;
             }
             """);
-        ShaderTransformer.extractRwImageStores(plain, Patch.ATTRIBUTES, null, false);
+        ShaderTransformer.extractRwImageStores(plain, Patch.ATTRIBUTES, null, image -> false);
         assertTrue(plain.containsKey(PatchShaderType.COMPUTE), "plain stores need no atomics, so the replay stays");
+    }
+
+    @Test
+    void atomicReplayFollowsTheImageItWrites() {
+        final String vertex = TransformPatcher.patchAttributes(CRYSTAL_VERTEX, null, FRAGMENT, TEX_LM).get(PatchShaderType.VERTEX);
+
+        final EnumMap<PatchShaderType, String> supported = new EnumMap<>(PatchShaderType.class);
+        supported.put(PatchShaderType.VERTEX, vertex);
+        ShaderTransformer.extractRwImageStores(supported, Patch.ATTRIBUTES, null, "endcrystal_img"::equals);
+        assertTrue(supported.containsKey(PatchShaderType.COMPUTE));
+
+        final EnumMap<PatchShaderType, String> unsupported = new EnumMap<>(PatchShaderType.class);
+        unsupported.put(PatchShaderType.VERTEX, vertex);
+        ShaderTransformer.extractRwImageStores(unsupported, Patch.ATTRIBUTES, null, "voxel_img"::equals);
+        assertFalse(unsupported.containsKey(PatchShaderType.COMPUTE));
     }
 
     @Test
@@ -293,7 +308,7 @@ class VertexReplayExtractionTest {
             }
             """);
 
-        ShaderTransformer.extractRwImageStores(result, Patch.ATTRIBUTES, null, true);
+        ShaderTransformer.extractRwImageStores(result, Patch.ATTRIBUTES, null, image -> true);
 
         assertNotNull(result.get(PatchShaderType.COMPUTE));
         assertFalse(result.get(PatchShaderType.VERTEX).contains("imageStore"));

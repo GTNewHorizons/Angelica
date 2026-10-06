@@ -1,5 +1,6 @@
 package net.coderbot.iris.pipeline.transform;
 
+import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.GlslTransformUtils;
 import net.coderbot.iris.gl.image.ImageInformation;
 import com.gtnewhorizons.angelica.glsm.texture.InternalTextureFormat;
@@ -23,6 +24,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.TreeSet;
 
 public final class RwImageStoreExtractor {
 
@@ -45,7 +47,7 @@ public final class RwImageStoreExtractor {
         }
     }
 
-    public record Result(String strippedSource, String computeSource, Set<String> writtenImages, RwExtractMode mode, boolean keepsImageAtomics) {}
+    public record Result(String strippedSource, String computeSource, Set<String> writtenImages, RwExtractMode mode, Set<String> atomicImages) {}
 
     public record ImageDecl(String name, String glslType, String layoutFormat) {}
 
@@ -69,8 +71,30 @@ public final class RwImageStoreExtractor {
         return activeCustomImages;
     }
 
+    private static volatile Set<String> atomicCustomImages = Set.of();
+
     public static void setActiveCustomImages(Map<String, ImageInformation> images) {
         activeCustomImages = (images == null) ? Map.of() : Map.copyOf(images);
+        final TreeSet<String> atomic = new TreeSet<>();
+        if (!activeCustomImages.isEmpty() && !BackendManager.RENDER_BACKEND.supportsComputeImageAtomics()) {
+            for (ImageInformation image : activeCustomImages.values()) {
+                if (image.isRelative()) continue;
+                if (BackendManager.RENDER_BACKEND.supportsComputeImageAtomics(image.width(), image.height(), image.depth())) atomic.add(image.name());
+            }
+        }
+        if (!atomic.equals(atomicCustomImages)) {
+            atomicCustomImages = atomic;
+            TransformPatcher.clearCache();
+            ShaderTransformer.clearCache();
+        }
+    }
+
+    public static boolean supportsAtomics(String image) {
+        return atomicCustomImages.contains(image) || BackendManager.RENDER_BACKEND.supportsComputeImageAtomics();
+    }
+
+    static String atomicCustomImagesKey() {
+        return String.join(",", atomicCustomImages);
     }
 
     private static final Set<String> RW_CALLS = Set.of(
@@ -119,7 +143,7 @@ public final class RwImageStoreExtractor {
         applyComputeMutations(tc, writtenImages, declared, mode == RwExtractMode.COMPOSITE_VSH ? quadInputs : chunkAttrsUsed, mode, nonWriteonlyImages);
         final String compute = buildComputeOutput(root, mode, writtenImages, nonWriteonlyImages, declared, attrs, quadInputs, definesFtransform, null);
 
-        return new Result(stripped, compute, writtenImages, mode, keepsImageAtomics(root, writtenImages));
+        return new Result(stripped, compute, writtenImages, mode, atomicImages(root, writtenImages));
     }
 
     public static Result tryExtractVertexReplay(String source) {
@@ -142,7 +166,7 @@ public final class RwImageStoreExtractor {
 
         final String stripped = buildRasterOutputViaSourceSlicing(source, decls, exprs, writtenImages, declared, RwExtractMode.VERTEX_REPLAY);
         final List<VertexInput> inputs = collectVertexInputs(decls);
-        if (inputs == null) return new Result(stripped, null, writtenImages, RwExtractMode.VERTEX_REPLAY, false);
+        if (inputs == null) return new Result(stripped, null, writtenImages, RwExtractMode.VERTEX_REPLAY, Set.of());
 
         final List<String> readImages = readOnlyImages(exprs, declared, writtenImages);
         final Set<String> inputNames = new LinkedHashSet<>();
@@ -153,7 +177,7 @@ public final class RwImageStoreExtractor {
         final ReplayLayout layout = new ReplayLayout(inputs, readImages, replayHeader(inputs, writtenImages, readImages, collectSamplerNames(decls)));
         final String compute = buildComputeOutput(root, RwExtractMode.VERTEX_REPLAY, writtenImages, nonWriteonlyImages, declared, List.of(), Set.of(), false, layout);
 
-        return new Result(stripped, compute, writtenImages, RwExtractMode.VERTEX_REPLAY, keepsImageAtomics(root, writtenImages));
+        return new Result(stripped, compute, writtenImages, RwExtractMode.VERTEX_REPLAY, atomicImages(root, writtenImages));
     }
 
     private record ReplayLayout(List<VertexInput> inputs, List<String> readImages, String header) {}
@@ -498,12 +522,15 @@ public final class RwImageStoreExtractor {
         });
     }
 
-    private static boolean keepsImageAtomics(GLSLParser.Translation_unitContext computeRoot, Set<String> writtenImages) {
+    private static Set<String> atomicImages(GLSLParser.Translation_unitContext computeRoot, Set<String> writtenImages) {
+        final Set<String> out = new LinkedHashSet<>();
         for (var expr : GlslAstHelpers.collectAll(computeRoot, GLSLParser.Postfix_expressionContext.class)) {
             final String fname = GlslAstHelpers.extractCallName(expr);
-            if (fname != null && ATOMIC_CALLS.contains(fname) && writtenImages.contains(GlslAstHelpers.firstArgIdentifier(expr))) return true;
+            if (fname == null || !ATOMIC_CALLS.contains(fname)) continue;
+            final String image = GlslAstHelpers.firstArgIdentifier(expr);
+            if (writtenImages.contains(image)) out.add(image);
         }
-        return false;
+        return out;
     }
 
     private static boolean isCallTopLevelStatement(GLSLParser.Postfix_expressionContext expr) {

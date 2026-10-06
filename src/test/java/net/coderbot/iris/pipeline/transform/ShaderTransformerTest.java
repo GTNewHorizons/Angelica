@@ -246,7 +246,7 @@ class ShaderTransformerTest {
 
         final EnumMap<PatchShaderType, String> result = new EnumMap<>(out);
         final String fragmentBefore = result.get(PatchShaderType.FRAGMENT);
-        ShaderTransformer.extractRwImageStores(result, Patch.COMPOSITE, artifacts, true);
+        ShaderTransformer.extractRwImageStores(result, Patch.COMPOSITE, artifacts, image -> true);
 
         assertNotNull(result.get(PatchShaderType.COMPUTE), "fixture must actually exercise the extraction");
         assertFalse(fragmentBefore.equals(result.get(PatchShaderType.FRAGMENT)), "fixture must actually rewrite the fragment stage");
@@ -263,7 +263,7 @@ class ShaderTransformerTest {
         assertNotNull(out);
 
         final EnumMap<PatchShaderType, String> result = new EnumMap<>(out);
-        ShaderTransformer.extractRwImageStores(result, Patch.COMPOSITE, artifacts, true);
+        ShaderTransformer.extractRwImageStores(result, Patch.COMPOSITE, artifacts, image -> true);
 
         assertFalse(artifacts.isEmpty(), "fixture must leave at least one artifact to check");
         for (Map.Entry<PatchShaderType, ShaderTransformer.StageArtifact> e : artifacts.entrySet()) {

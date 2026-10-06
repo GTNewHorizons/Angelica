@@ -280,6 +280,8 @@ public abstract class RenderBackend {
 
     public boolean supportsComputeImageAtomics() { return true; }
 
+    public boolean supportsComputeImageAtomics(int width, int height, int depth) { return supportsComputeImageAtomics(); }
+
     public abstract void enable(int cap);
     public abstract void enablei(int cap, int index);
     public abstract void disable(int cap);

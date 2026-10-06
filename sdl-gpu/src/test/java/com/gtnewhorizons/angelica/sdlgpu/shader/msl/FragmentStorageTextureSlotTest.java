@@ -57,7 +57,7 @@ class FragmentStorageTextureSlotTest {
         final ByteBuffer spirv = r.spirv();
         try {
             ShaderManager.remapSpirvForSDLGPU(spirv, GL20.GL_FRAGMENT_SHADER);
-            final CrossCompileCache.Output out = MslCrossCompile.compile(spirv, GL20.GL_FRAGMENT_SHADER);
+            final CrossCompileCache.Output out = MslCrossCompile.compile(spirv, GL20.GL_FRAGMENT_SHADER, false);
             try {
                 final String msl = StandardCharsets.UTF_8.decode(out.code().duplicate()).toString();
                 final boolean[] seen = new boolean[samplerCount];
@@ -136,7 +136,7 @@ class FragmentStorageTextureSlotTest {
         final ByteBuffer spirv = Reflect.get(obj, "spirv");
         final ShaderManager.StageReflection refl = Reflect.get(obj, "reflection");
 
-        final CrossCompileCache.Output out = MslCrossCompile.compile(spirv, GL20.GL_FRAGMENT_SHADER);
+        final CrossCompileCache.Output out = MslCrossCompile.compile(spirv, GL20.GL_FRAGMENT_SHADER, false);
         try {
             final String msl = StandardCharsets.UTF_8.decode(out.code().duplicate()).toString();
             final int samplerCount = refl.counts().numSamplers();

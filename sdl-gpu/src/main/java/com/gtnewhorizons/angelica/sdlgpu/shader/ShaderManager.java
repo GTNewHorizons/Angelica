@@ -1162,7 +1162,7 @@ public final class ShaderManager {
             return new CrossCompiled(SDL_GPU_SHADERFORMAT_SPIRV, spirv, "main", false);
         }
         if (device.supportsMsl()) {
-            final CrossCompileCache.Output out = MslCrossCompile.compile(spirv, glShaderType);
+            final CrossCompileCache.Output out = MslCrossCompile.compile(spirv, glShaderType, device.metalTextureAtomics());
             return new CrossCompiled(SDL_GPU_SHADERFORMAT_MSL, out.code(), out.entrypoint(), true);
         }
         if (device.supportsDxbc()) {
