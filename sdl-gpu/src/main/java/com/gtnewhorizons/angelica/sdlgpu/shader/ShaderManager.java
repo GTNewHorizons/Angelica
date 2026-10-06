@@ -325,6 +325,9 @@ public final class ShaderManager {
             ClipZRemap.collectEdits(root, edits);
         }
         SamplerStripper.collectEdits(root, transformedSource, edits);
+        if (glShaderType == GL20.GL_FRAGMENT_SHADER) {
+            DerivativeHoisting.collectEdits(root, transformedSource, edits);
+        }
         final String s = edits.isEmpty() ? transformedSource : GlslVulkanPreprocess.applyEdits(transformedSource, edits);
         return new PrewarmTransformResult(s, meta.boolUniforms());
     }
@@ -341,6 +344,9 @@ public final class ShaderManager {
             ClipZRemap.collectEdits(bodyTree, edits);
         }
         SamplerStripper.collectEdits(bodyTree, body, edits);
+        if (glShaderType == GL20.GL_FRAGMENT_SHADER) {
+            DerivativeHoisting.collectEdits(bodyTree, body, edits);
+        }
         String outHeader = header;
         if (meta.needsSamplerless()) {
             final int nl = header.indexOf('\n');
