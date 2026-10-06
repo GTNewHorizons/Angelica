@@ -170,9 +170,10 @@ public abstract class MixinEntity implements IDynamicLightSource {
                     DynamicLights.updateTrackedChunks(chunkPos, this.angelica$trackedLitChunkPos, newPos);
                 }
             }
-
             // Schedules the rebuild of removed chunks.
-            this.angelica$scheduleTrackedChunksRebuild(renderer);
+            if (!this.angelica$trackedLitChunkPos.isEmpty()) {
+                this.angelica$scheduleTrackedChunksRebuild(renderer);
+            }
             // Swap tracked sets
             this.angelica$prevTrackedLitChunkPos = this.angelica$trackedLitChunkPos;
             this.angelica$trackedLitChunkPos = newPos;

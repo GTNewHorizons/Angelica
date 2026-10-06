@@ -36,7 +36,7 @@ public class ChunkRebuildManager {
         lock.writeLock().lock();
         try {
             // Reset wait counter if already pending, otherwise add new entry
-            pendingRebuilds.put(packed, 0);
+            pendingRebuilds.putIfAbsent(packed, 0);
         } finally {
             lock.writeLock().unlock();
         }
@@ -125,11 +125,8 @@ public class ChunkRebuildManager {
         int blockY = chunkY << 4;
         int blockZ = chunkZ << 4;
 
-        // Check if the 16x16x16 chunk section box is visible
-        return viewport.isBoxVisible(
-            blockX, blockY, blockZ,
-            blockX + 16, blockY + 16, blockZ + 16
-        );
+        // The integer-origin overload takes a center and half-size, not min/max corners.
+        return viewport.isBoxVisible(blockX + 8, blockY + 8, blockZ + 8, 8.0f);
     }
 
     public void clear() {

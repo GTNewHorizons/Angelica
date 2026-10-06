@@ -286,15 +286,6 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
             blockBrightness = min;
         }
 
-        if (chunkLightSources != null && !chunkLightSources.isEmpty() && !getBlock(x, y, z).isOpaqueCube()) {
-            final int lightmap = skyBrightness << 20 | blockBrightness << 4;
-            final double dynamicLevel = dynamicLightsInstance.getDynamicLightLevelFromSources(x + 0.5, y + 0.5, z + 0.5, chunkLightSources);
-            if (dynamicLevel > 0) {
-                return dynamicLightsInstance.getLightmapWithDynamicLight(dynamicLevel, lightmap);
-            }
-            return lightmap;
-        }
-
         return skyBrightness << 20 | blockBrightness << 4;
     }
 
