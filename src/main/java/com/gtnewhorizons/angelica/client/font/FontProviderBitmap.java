@@ -35,7 +35,7 @@ public final class FontProviderBitmap implements FontProvider {
 
     private static volatile FontProviderBitmap[] loaded;
 
-    static {
+    public static void registerReloadListener() {
         ((IReloadableResourceManager) Minecraft.getMinecraft().getResourceManager()).registerReloadListener(manager -> loaded = null);
     }
 
@@ -63,10 +63,14 @@ public final class FontProviderBitmap implements FontProvider {
     private static FontProviderBitmap[] providers() {
         FontProviderBitmap[] local = loaded;
         if (local == null) {
+            final IResourceManager resources = Minecraft.getMinecraft().getResourceManager();
+            if (!resources.getResourceDomains().contains(DEFINITION.getResourceDomain())) {
+                return NONE;
+            }
             synchronized (FontProviderBitmap.class) {
                 local = loaded;
                 if (local == null) {
-                    local = load(Minecraft.getMinecraft().getResourceManager());
+                    local = load(resources);
                     loaded = local;
                 }
             }
