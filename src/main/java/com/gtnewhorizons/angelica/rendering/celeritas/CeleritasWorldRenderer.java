@@ -6,6 +6,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import com.gtnewhorizons.angelica.compat.bop.FogBiomeCache;
+import com.gtnewhorizons.angelica.render.CloudRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
@@ -175,6 +176,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
         GpuCulling.onWorldUnload();
         FfpExtendedAttribs.reset();
         FogBiomeCache.invalidate();
+        CloudRenderer.getCloudRenderer().invalidateWorld();
         super.unloadWorld();
     }
 

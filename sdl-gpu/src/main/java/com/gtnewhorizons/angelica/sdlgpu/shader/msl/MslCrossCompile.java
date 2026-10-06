@@ -26,7 +26,11 @@ public final class MslCrossCompile {
     private static final Logger LOG = LogManager.getLogger("Angelica-SDLGPU");
     private static final String BACKEND = "MSL";
 
-    private static final CrossCompileCache CACHE = new CrossCompileCache("msl", CrossCompileUtil::spvcId, MslCrossCompile::crossCompileUncached);
+    private static final int SPVC_MSL_2_2 = mslVersion(2, 2, 0);
+    public static final int SPVC_MSL_3_1 = mslVersion(3, 1, 0);
+
+    private static final CrossCompileCache CACHE = new CrossCompileCache("msl", CrossCompileUtil::spvcId, (spirv, glShaderType) -> compileAtVersion(spirv, glShaderType, SPVC_MSL_2_2));
+    private static final CrossCompileCache CACHE_3_1 = new CrossCompileCache("msl31", CrossCompileUtil::spvcId, (spirv, glShaderType) -> compileAtVersion(spirv, glShaderType, SPVC_MSL_3_1));
 
     @FunctionalInterface
     private interface BufferSlotFn { public int slot(int set, int binding); }
@@ -36,8 +40,9 @@ public final class MslCrossCompile {
 
     private MslCrossCompile() {}
 
-    public static Output compile(ByteBuffer spirv, int glShaderType) {
-        return CACHE.compile(spirv, glShaderType);
+    public static Output compile(ByteBuffer spirv, int glShaderType, boolean textureAtomics) {
+        final boolean atomics = textureAtomics && glShaderType == GL43.GL_COMPUTE_SHADER && CrossCompileUtil.usesImageAtomics(spirv);
+        return (atomics ? CACHE_3_1 : CACHE).compile(spirv, glShaderType);
     }
 
     private static int executionModelFor(int glShaderType) {
@@ -47,7 +52,7 @@ public final class MslCrossCompile {
         throw new UnsupportedOperationException("Unsupported shader type for MSL cross-compile: 0x" + Integer.toHexString(glShaderType));
     }
 
-    private static Output crossCompileUncached(ByteBuffer spirv, int glShaderType) {
+    public static Output compileAtVersion(ByteBuffer spirv, int glShaderType, int version) {
         final int executionModel = executionModelFor(glShaderType);
         final int dumpId = SystemProperties.dumpShaders() ? CrossCompileUtil.SHADER_DUMP_COUNTER.getAndIncrement() : -1;
         if (dumpId >= 0) CrossCompileUtil.dumpSpirv(spirv, dumpId, glShaderType);
@@ -77,7 +82,7 @@ public final class MslCrossCompile {
                     throw CrossCompileUtil.spvcError(ctx, BACKEND, "create_compiler_options");
                 }
                 final long opts = pOpts.get(0);
-                Spvc.spvc_compiler_options_set_uint(opts, Spvc.SPVC_COMPILER_OPTION_MSL_VERSION, mslVersion(2, 2, 0));
+                Spvc.spvc_compiler_options_set_uint(opts, Spvc.SPVC_COMPILER_OPTION_MSL_VERSION, version);
                 Spvc.spvc_compiler_options_set_uint(opts, Spvc.SPVC_COMPILER_OPTION_MSL_PLATFORM, Spvc.SPVC_MSL_PLATFORM_MACOS);
                 if (Spvc.spvc_compiler_install_compiler_options(compiler, opts) != Spvc.SPVC_SUCCESS) {
                     throw CrossCompileUtil.spvcError(ctx, BACKEND, "install_compiler_options");

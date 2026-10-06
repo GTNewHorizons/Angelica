@@ -62,6 +62,7 @@ public final class SystemProperties {
     public static final long FLYBY_TIME_OF_DAY = Math.floorMod(Long.getLong("angelica.flyby.timeOfDay", 6000L), 24000L);
     public static final String FLYBY_COMMANDS = System.getProperty("angelica.flyby.commands", "");
     public static final String FLYBY_ORIGIN = System.getProperty("angelica.flyby.origin", "");
+    public static final Integer FLYBY_DIMENSION = Integer.getInteger("angelica.flyby.dimension");
     public static final FlybyPacing FLYBY_PACING = parseEnum("angelica.flyby.pacing", FlybyPacing.UNCAPPED, FlybyPacing.UNCAPPED, FlybyPacing.class);
     public static final FlybyWeather FLYBY_WEATHER = parseEnum("angelica.flyby.weather", FlybyWeather.CLEAR, FlybyWeather.CLEAR, FlybyWeather.class);
     public static final FlybyCamera FLYBY_CAMERA = parseEnum("angelica.flyby.camera", FlybyCamera.FIRST_PERSON, FlybyCamera.FIRST_PERSON, FlybyCamera.class);

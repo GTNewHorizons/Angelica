@@ -1,0 +1,4 @@
+# End crystals next to the arrival platform. Use with -Dangelica.flyby.dimension=1, route pan.
+summon EnderCrystal ~ ~2 ~12 {ForgeData:{flyby:1b}}
+summon EnderCrystal ~8 ~2 ~8 {ForgeData:{flyby:1b}}
+summon EnderCrystal ~-8 ~4 ~10 {ForgeData:{flyby:1b}}

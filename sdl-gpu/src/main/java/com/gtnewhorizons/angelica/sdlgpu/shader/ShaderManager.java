@@ -11,6 +11,7 @@ import com.gtnewhorizons.angelica.glsm.shader.ShaderCacheIO;
 import com.gtnewhorizons.angelica.glsm.shader.ShaderDiskCache;
 import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
 import com.gtnewhorizons.angelica.glsm.threading.AngelicaWorkers;
+import com.gtnewhorizons.angelica.sdlgpu.compute.VertexWriteReplayer;
 import com.gtnewhorizons.angelica.sdlgpu.device.Device;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import com.gtnewhorizons.angelica.sdlgpu.shader.cross.CrossCompileCache;
@@ -1161,7 +1162,7 @@ public final class ShaderManager {
             return new CrossCompiled(SDL_GPU_SHADERFORMAT_SPIRV, spirv, "main", false);
         }
         if (device.supportsMsl()) {
-            final CrossCompileCache.Output out = MslCrossCompile.compile(spirv, glShaderType);
+            final CrossCompileCache.Output out = MslCrossCompile.compile(spirv, glShaderType, device.metalTextureAtomics());
             return new CrossCompiled(SDL_GPU_SHADERFORMAT_MSL, out.code(), out.entrypoint(), true);
         }
         if (device.supportsDxbc()) {
@@ -2078,6 +2079,7 @@ public final class ShaderManager {
         public int vertexShader;
         public int vertexUboSize;
         public long sdlComputePipeline;
+        public VertexWriteReplayer.Replay vertexWriteReplay;
         public long sdlFragmentShader;
         public long sdlVertexShader;
         public long lastComputeCb;
