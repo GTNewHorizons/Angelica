@@ -14,7 +14,7 @@ public final class ThreadedBlockData {
     private static Thread SERVER_THREAD;
     private static final AtomicInteger CURRENT_SERVER_THREAD_ID = new AtomicInteger();
 
-    public final int serverThreadId = Thread.currentThread() == SERVER_THREAD ? CURRENT_SERVER_THREAD_ID.get() : -1;
+    private final int serverThreadId = Thread.currentThread() == SERVER_THREAD ? CURRENT_SERVER_THREAD_ID.get() : -1;
     public double minX, minY, minZ, maxX, maxY, maxZ;
 
     public ThreadedBlockData() {}
