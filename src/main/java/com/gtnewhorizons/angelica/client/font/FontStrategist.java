@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.client.font;
 
 import com.google.common.collect.HashMultiset;
+import com.gtnewhorizon.gtnhlib.util.font.GlyphReplacements;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
@@ -178,6 +179,17 @@ public class FontStrategist {
                 return FontProviderUnicode.get();
             }
         }
+    }
+
+    public static char replaceCustomGlyph(BatchingFontRenderer me, char chr, boolean forceUnicode) {
+        if (!FontConfig.enableGlyphReplacements || !(FontConfig.enableCustomFont || FontConfig.enableModernFont)) { return chr; }
+        final char original = GlyphReplacements.getReplacementGlyph(chr);
+        if (original == 0) { return chr; }
+        if (FontConfig.enableCustomFont
+            && (FontProviderCustom.getPrimary().isGlyphAvailable(original) || FontProviderCustom.getFallback().isGlyphAvailable(original))) {
+            return original;
+        }
+        return findModernGlyph(me, original, forceUnicode) != null ? original : chr;
     }
 
     // The splash font renderer can only bind its own ascii texture.
