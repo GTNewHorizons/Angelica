@@ -1,5 +1,6 @@
 package net.coderbot.iris.pipeline;
 
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.backend.VertexWriteReplaySetup;
 import com.gtnewhorizons.angelica.glsm.texture.InternalTextureFormat;
@@ -39,24 +40,29 @@ final class VertexWriteReplays {
         final String source = transformed.get(PatchShaderType.COMPUTE);
         if (RwImageStoreExtractor.parseSentinel(source) != RwImageStoreExtractor.RwExtractMode.VERTEX_REPLAY) return;
 
-        final List<String> writtenImages = RwImageStoreExtractor.parseVertexReplayImages(source);
-        final List<String> images = new ArrayList<>(writtenImages);
-        images.addAll(RwImageStoreExtractor.parseVertexReplayReadImages(source));
-        final ResourceCollector resources = new ResourceCollector(images, RwImageStoreExtractor.parseVertexReplaySamplers(source));
-        wireResources.accept(resources, resources);
-        for (int i = 0; i < resources.images.length; i++) {
-            if (resources.images[i] == null) {
-                Iris.logger.warn("Vertex image writes of {} use image {}, which the pipeline does not provide; they are dropped", name, resources.imageNames.get(i));
-                return;
-            }
-        }
-
         final ComputeProgram twin;
         try {
             twin = ProgramBuilder.beginCompute(name + "_vertex_replay", source, IrisSamplers.WORLD_RESERVED_TEXTURE_UNITS).buildCompute();
         } catch (RuntimeException e) {
             Iris.logger.error("Vertex image write replay for {} failed to build; its image writes are dropped", name, e);
             return;
+        }
+
+        final List<String> writtenImages = RwImageStoreExtractor.parseVertexReplayImages(source);
+        final List<String> images = new ArrayList<>(writtenImages);
+        images.addAll(RwImageStoreExtractor.parseVertexReplayReadImages(source));
+        final List<String> samplers = new ArrayList<>();
+        for (String sampler : RwImageStoreExtractor.parseVertexReplaySamplers(source)) {
+            if (RenderSystem.getUniformLocation(twin.getProgramId(), sampler) != -1) samplers.add(sampler);
+        }
+        final ResourceCollector resources = new ResourceCollector(images, samplers);
+        wireResources.accept(resources, resources);
+        for (int i = 0; i < resources.images.length; i++) {
+            if (resources.images[i] == null) {
+                Iris.logger.warn("Vertex image writes of {} use image {}, which the pipeline does not provide; they are dropped", name, resources.imageNames.get(i));
+                twin.destroy();
+                return;
+            }
         }
 
         final List<VertexInput> inputs = RwImageStoreExtractor.parseVertexReplayInputs(source);
@@ -68,7 +74,8 @@ final class VertexWriteReplays {
         }
         BackendManager.RENDER_BACKEND.setVertexWriteReplay(program.getProgramId(), new VertexWriteReplaySetup(twin.getProgramId(),
             inputNames, inputLocations, resources.images, writtenImages.size(),
-            resources.samplerNames.toArray(new String[0]), resources.samplerUnits, resources.samplerTextures, resources.samplerObjects));
+            resources.samplerNames.toArray(new String[0]), resources.samplerUnits, resources.samplerTextures, resources.samplerObjects,
+            RwImageStoreExtractor.VG_REPLAY_VERTEX_BUFFER_BINDING, RwImageStoreExtractor.VG_REPLAY_VERTEX_BUFFER_COUNT, RwImageStoreExtractor.VG_REPLAY_INDEX_BUFFER_BINDING));
         attachedPrograms.add(program.getProgramId());
         twins.add(twin);
     }

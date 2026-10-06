@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.sdlgpu.compute;
 
 import com.gtnewhorizons.angelica.glsm.backend.VertexWriteReplaySetup;
+import com.gtnewhorizons.angelica.sdlgpu.SDLGPURenderBackend;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import com.gtnewhorizons.angelica.sdlgpu.pipeline.PipelineApplier;
 import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
@@ -26,9 +27,6 @@ import java.util.Set;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
-import static org.lwjgl.sdl.SDLGPU.SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_READ;
-import static org.lwjgl.sdl.SDLGPU.SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE;
-
 /**
  * Performs the image writes of a vertex shader that SDL-GPU strips (graphics stages may only read storage images).
  * Every draw made with a program that has a {@link Replay} is captured: its vertex and index buffers, attribute layout,
@@ -38,11 +36,7 @@ import static org.lwjgl.sdl.SDLGPU.SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE;
 public final class VertexWriteReplayer {
     private static final Logger LOG = LogManager.getLogger("Angelica-SDLGPU");
 
-    private static final int WORKGROUP_SIZE = 64;
     private static final int MAX_CAPTURES = 1 << 16;
-    private static final int VERTEX_BUFFER_BINDING = 9;
-    private static final int VERTEX_BUFFER_COUNT = 4;
-    private static final int INDEX_BUFFER_BINDING = VERTEX_BUFFER_BINDING + VERTEX_BUFFER_COUNT;
     private static final int[] COMPONENT_SIZE = { 4, 2, 1, 1, 2, 2, 4, 4, 4, 4, 4, 4 };
     private static final int FIRST_PACKED_TYPE = 9;
     private static final int PACKED_10F_11F_11F = 11;
@@ -120,7 +114,8 @@ public final class VertexWriteReplayer {
 
             final IntArrayList storage = new IntArrayList();
             for (int slot : replay.computeBindingMap.roSsboGlSlots()) {
-                if (slot < VERTEX_BUFFER_BINDING || slot > INDEX_BUFFER_BINDING) storage.add(slot);
+                final boolean vertexBuffer = slot >= setup.vertexBufferBinding() && slot < setup.vertexBufferBinding() + setup.vertexBufferCount();
+                if (!vertexBuffer && slot != setup.indexBufferBinding()) storage.add(slot);
             }
             packStorageSlots = storage.toIntArray();
             packRwStorageSlots = replay.computeBindingMap.rwSsboGlSlots().clone();
@@ -190,7 +185,7 @@ public final class VertexWriteReplayer {
 
     private static final class Capture {
         Replay replay;
-        final long[] buffers = new long[VERTEX_BUFFER_COUNT];
+        long[] buffers = new long[0];
         int bufferCount;
         long indexBuffer;
         float[] attr = new float[0];
@@ -222,6 +217,13 @@ public final class VertexWriteReplayer {
     private final long[] handlesByGlSlot = new long[ContextState.MAX_INDEXED_BUFFERS];
     private final long[] rwHandlesByGlSlot = new long[ContextState.MAX_INDEXED_BUFFERS];
     private final long[] samplerOverrides = new long[TEXTURE_UNITS];
+    private final int[] savedImages = new int[ContextState.MAX_IMAGE_UNITS];
+    private final int[] savedLevels = new int[ContextState.MAX_IMAGE_UNITS];
+    private final int[] savedAccess = new int[ContextState.MAX_IMAGE_UNITS];
+    private final int[] savedTextures = new int[TEXTURE_UNITS];
+    private int uniformCursor;
+    private int valueCursor;
+    private final InvocationDispatch.IntUniformWriter invocationBaseWriter = (st, location, value) -> putIntVector(st, location, 1, value, 0, 0, 0);
     private final Set<String> warned = new HashSet<>();
 
     public VertexWriteReplayer(ShaderManager shaderManager, ResourceManager resourceManager, PipelineApplier pipelineApplier, ComputeBinder computeBinder, Supplier<ContextState> state) {
@@ -252,7 +254,7 @@ public final class VertexWriteReplayer {
         final int written = replay.setup.writtenImageCount();
         for (int i = 0; i < images.length; i++) {
             final int texture = images[i].getAsInt();
-            if (texture != 0) resourceManager.ensureTextureUsage(texture, i < written ? SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE : SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_READ);
+            if (texture != 0) resourceManager.ensureTextureUsage(texture, SDLGPURenderBackend.imageUsageForAccess(imageAccess(i, written)));
         }
     }
 
@@ -271,6 +273,7 @@ public final class VertexWriteReplayer {
         final IntSupplier[] images = replay.images();
         final Capture c = acquire();
         c.replay = replay;
+        if (c.buffers.length != replay.setup.vertexBufferCount()) c.buffers = new long[replay.setup.vertexBufferCount()];
         c.bufferCount = 0;
         if (!captureInputs(st, replay, c)) return;
 
@@ -343,7 +346,7 @@ public final class VertexWriteReplayer {
                     if (handle != 0) {
                         final int slot = bufferSlot(c, handle);
                         if (slot < 0) {
-                            warnOnce("buffers", "A draw reads more than " + VERTEX_BUFFER_COUNT + " vertex buffers; its vertex image writes are dropped");
+                            warnOnce("buffers", "A draw reads more than " + c.buffers.length + " vertex buffers; its vertex image writes are dropped");
                             return false;
                         }
                         final boolean bgra = vao.attribSize[loc] == GL12.GL_BGRA;
@@ -386,7 +389,7 @@ public final class VertexWriteReplayer {
         for (int i = 0; i < c.bufferCount; i++) {
             if (c.buffers[i] == handle) return i;
         }
-        if (c.bufferCount == VERTEX_BUFFER_COUNT) return -1;
+        if (c.bufferCount == c.buffers.length) return -1;
         c.buffers[c.bufferCount] = handle;
         return c.bufferCount++;
     }
@@ -468,8 +471,8 @@ public final class VertexWriteReplayer {
         final int savedProgram = st.boundProgram;
         final ShaderManager.ProgramObject savedProgramObj = st.boundProgramObj;
         try {
-            int uniformCursor = 0;
-            int valueCursor = 0;
+            uniformCursor = 0;
+            valueCursor = 0;
             int start = 0;
             while (start < pending) {
                 final Capture first = captures.get(start);
@@ -477,10 +480,7 @@ public final class VertexWriteReplayer {
                 int end = start;
                 while (end < pending && captures.get(end).replay == replay && Arrays.equals(captures.get(end).imageTextures, first.imageTextures)
                     && Arrays.equals(captures.get(end).packRwStorage, first.packRwStorage)) end++;
-                final int[] cursors = { uniformCursor, valueCursor };
-                replayRun(st, replay, start, end, cursors);
-                uniformCursor = cursors[0];
-                valueCursor = cursors[1];
+                replayRun(st, replay, start, end);
                 start = end;
             }
         } finally {
@@ -494,10 +494,10 @@ public final class VertexWriteReplayer {
         }
     }
 
-    private void replayRun(ContextState st, Replay replay, int start, int end, int[] cursors) {
+    private void replayRun(ContextState st, Replay replay, int start, int end) {
         final ShaderManager.ProgramObject twin = shaderManager.getProgram(replay.replayProgram);
         if (twin == null || !twin.linked || twin.sdlComputePipeline == 0) {
-            skipUniforms(replay, start, end, cursors);
+            skipUniforms(replay, start, end);
             return;
         }
 
@@ -505,10 +505,9 @@ public final class VertexWriteReplayer {
         final int[] imageTextures = first.imageTextures;
         final int imageCount = imageTextures.length;
         final int written = replay.setup.writtenImageCount();
-        final int[] savedImages = Arrays.copyOf(st.boundStorageTextureByUnit, imageCount);
-        final int[] savedLevels = Arrays.copyOf(st.boundStorageTextureLevel, imageCount);
-        final int[] savedAccess = Arrays.copyOf(st.boundStorageTextureAccess, imageCount);
-        final int[] savedTextures = new int[replay.samplerUnits.length];
+        System.arraycopy(st.boundStorageTextureByUnit, 0, savedImages, 0, imageCount);
+        System.arraycopy(st.boundStorageTextureLevel, 0, savedLevels, 0, imageCount);
+        System.arraycopy(st.boundStorageTextureAccess, 0, savedAccess, 0, imageCount);
         for (int i = 0; i < replay.samplerUnits.length; i++) savedTextures[i] = st.boundTextures[replay.samplerUnits[i]];
         computeBinder.setSamplerOverrides(samplerOverrides);
         Arrays.fill(rwHandlesByGlSlot, 0L);
@@ -519,7 +518,7 @@ public final class VertexWriteReplayer {
             for (int i = 0; i < imageCount; i++) {
                 st.boundStorageTextureByUnit[i] = imageTextures[i];
                 st.boundStorageTextureLevel[i] = 0;
-                st.boundStorageTextureAccess[i] = i < written ? GL15.GL_READ_WRITE : GL15.GL_READ_ONLY;
+                st.boundStorageTextureAccess[i] = imageAccess(i, written);
             }
             applySamplerTextures(st, replay, captures.get(start));
 
@@ -527,14 +526,14 @@ public final class VertexWriteReplayer {
             st.boundProgramObj = twin;
             final long pass = computeBinder.beginComputePassWithoutStorageBuffers(st);
             if (pass == 0) {
-                skipUniforms(replay, start, end, cursors);
+                for (int i = start; i < end; i++) applyUniforms(st, replay);
                 return;
             }
             try {
                 for (int i = start; i < end; i++) {
                     final Capture c = captures.get(i);
                     if (i > start && applySamplerTextures(st, replay, c)) computeBinder.rebindSamplers(pass, st);
-                    dispatch(st, pass, replay, c, cursors);
+                    dispatch(st, pass, replay, c);
                 }
             } finally {
                 computeBinder.endBatchedComputeDispatch(pass);
@@ -566,47 +565,32 @@ public final class VertexWriteReplayer {
         return changed;
     }
 
-    private void skipUniforms(Replay replay, int start, int end, int[] cursors) {
+    private void skipUniforms(Replay replay, int start, int end) {
         replay.lastHashesApplied = false;
         for (int i = start; i < end; i++) {
-            for (int u = 0; u < replay.uniformSources.length; u++) cursors[1] += Math.max(0, uniformLengths[cursors[0]++]);
+            for (int u = 0; u < replay.uniformSources.length; u++) valueCursor += Math.max(0, uniformLengths[uniformCursor++]);
         }
     }
 
-    private void dispatch(ContextState st, long pass, Replay replay, Capture c, int[] cursors) {
+    private void dispatch(ContextState st, long pass, Replay replay, Capture c) {
         Arrays.fill(handlesByGlSlot, 0L);
         for (int i = 0; i < replay.packStorageSlots.length; i++) handlesByGlSlot[replay.packStorageSlots[i]] = c.packStorage[i];
-        System.arraycopy(c.buffers, 0, handlesByGlSlot, VERTEX_BUFFER_BINDING, c.bufferCount);
-        handlesByGlSlot[INDEX_BUFFER_BINDING] = c.indexBuffer;
+        System.arraycopy(c.buffers, 0, handlesByGlSlot, replay.setup.vertexBufferBinding(), c.bufferCount);
+        handlesByGlSlot[replay.setup.indexBufferBinding()] = c.indexBuffer;
         final boolean bound = computeBinder.bindRoStorageBufferHandles(pass, st, handlesByGlSlot);
 
-        for (int u = 0; u < replay.uniformSources.length; u++) {
-            final int len = uniformLengths[cursors[0]++];
-            if (len <= 0) continue;
-            final float[] value = pipelineApplier.reuseOrAlloc(st, replay.uniformTargets[u], len);
-            if (value != null) {
-                System.arraycopy(uniformValues, cursors[1], value, 0, len);
-                pipelineApplier.putUniform(st, replay.uniformTargets[u], value);
-            }
-            cursors[1] += len;
-        }
+        applyUniforms(st, replay);
         if (!bound) return;
 
         final int inputs = replay.inputLocations.length;
         putFloats(st, replay.locAttr, c.attr, inputs * 4);
         putFloats(st, replay.locAttrDefault, c.attrDefault, inputs * 4);
-        putInts(st, replay.locDraw, c.first, c.count, c.instances, c.baseVertex);
-        putInts(st, replay.locIndex, c.indexSize, c.indexOffset, c.indexCount);
-        putInts(st, replay.locRestart, c.restart ? 1 : 0, c.restartIndex);
+        putIntVector(st, replay.locDraw, 4, c.first, c.count, c.instances, c.baseVertex);
+        putIntVector(st, replay.locIndex, 3, c.indexSize, c.indexOffset, c.indexCount, 0);
+        putIntVector(st, replay.locRestart, 2, c.restart ? 1 : 0, c.restartIndex, 0, 0);
         computeBinder.setUniformBlockOverrides(c.uniformBlocks);
 
-        final long invocations = (long) c.count * c.instances;
-        final long groups = (invocations + WORKGROUP_SIZE - 1) / WORKGROUP_SIZE;
-        for (long g0 = 0; g0 < groups; g0 += VoxelizationDispatcher.MAX_GROUPS_PER_DISPATCH) {
-            putInts(st, replay.locInvocationBase, (int) (g0 * WORKGROUP_SIZE));
-            computeBinder.pushPendingComputeUniforms(st);
-            computeBinder.dispatchInBatch(pass, (int) Math.min(VoxelizationDispatcher.MAX_GROUPS_PER_DISPATCH, groups - g0), 1, 1);
-        }
+        InvocationDispatch.dispatch(computeBinder, st, pass, (long) c.count * c.instances, replay.locInvocationBase, invocationBaseWriter);
     }
 
     private void putFloats(ContextState st, int location, float[] source, int len) {
@@ -617,11 +601,31 @@ public final class VertexWriteReplayer {
         pipelineApplier.putUniform(st, location, value);
     }
 
-    private void putInts(ContextState st, int location, int... ints) {
+    private void applyUniforms(ContextState st, Replay replay) {
+        for (int u = 0; u < replay.uniformSources.length; u++) {
+            final int len = uniformLengths[uniformCursor++];
+            if (len <= 0) continue;
+            final float[] value = pipelineApplier.reuseOrAlloc(st, replay.uniformTargets[u], len);
+            if (value != null) {
+                System.arraycopy(uniformValues, valueCursor, value, 0, len);
+                pipelineApplier.putUniform(st, replay.uniformTargets[u], value);
+            }
+            valueCursor += len;
+        }
+    }
+
+    private static int imageAccess(int index, int writtenImageCount) {
+        return index < writtenImageCount ? GL15.GL_READ_WRITE : GL15.GL_READ_ONLY;
+    }
+
+    private void putIntVector(ContextState st, int location, int count, int x, int y, int z, int w) {
         if (location < 0) return;
-        final float[] value = pipelineApplier.reuseOrAlloc(st, location, ints.length);
+        final float[] value = pipelineApplier.reuseOrAlloc(st, location, count);
         if (value == null) return;
-        for (int i = 0; i < ints.length; i++) value[i] = Float.intBitsToFloat(ints[i]);
+        value[0] = Float.intBitsToFloat(x);
+        if (count > 1) value[1] = Float.intBitsToFloat(y);
+        if (count > 2) value[2] = Float.intBitsToFloat(z);
+        if (count > 3) value[3] = Float.intBitsToFloat(w);
         pipelineApplier.putUniform(st, location, value);
     }
 

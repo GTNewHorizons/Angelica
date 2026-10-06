@@ -12,8 +12,12 @@ import java.util.function.IntSupplier;
  * @param samplerUnits      per sampler name, the texture unit it reads at each draw, or -1 to use samplerTextures
  * @param samplerTextures   per sampler name, its texture when samplerUnits is -1
  * @param samplerObjects    per sampler name, the GL sampler object to sample it with when samplerUnits is -1, or 0
+ * @param vertexBufferBinding storage buffer binding of the first vertex buffer the replay program declares
+ * @param vertexBufferCount   how many vertex buffers it declares, at consecutive bindings
+ * @param indexBufferBinding  storage buffer binding of its index buffer
  */
 public record VertexWriteReplaySetup(int replayProgram, String[] inputNames, int[] inputLocations,
                                      IntSupplier[] images, int writtenImageCount,
-                                     String[] samplerNames, int[] samplerUnits, IntSupplier[] samplerTextures, int[] samplerObjects) {
+                                     String[] samplerNames, int[] samplerUnits, IntSupplier[] samplerTextures, int[] samplerObjects,
+                                     int vertexBufferBinding, int vertexBufferCount, int indexBufferBinding) {
 }
