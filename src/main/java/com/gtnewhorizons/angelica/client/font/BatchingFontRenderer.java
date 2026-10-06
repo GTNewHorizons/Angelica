@@ -1471,7 +1471,8 @@ public class BatchingFontRenderer {
 
                 final float uStart = fontProvider.getUStart(chr);
                 final float vStart = fontProvider.getVStart(chr);
-                final float xAdvance = fontProvider.getXAdvance(chr) * glyphScaleX;
+                float xAdvance = fontProvider.getXAdvance(chr) * glyphScaleX;
+                if (fontProvider instanceof FontProviderUnicode) { xAdvance = (int) xAdvance; }
                 final float glyphW = fontProvider.getGlyphW(chr) * glyphScaleX;
                 final float uSz = fontProvider.getUSize(chr);
                 final float vSz = fontProvider.getVSize(chr);
