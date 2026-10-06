@@ -4,8 +4,7 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 
 public final class VoxelizationDispatcher {
-    static final int MAX_GROUPS_PER_DISPATCH = 65535;
-    private static final int WORKGROUP_SIZE = 64;
+    private static final InvocationDispatch.IntUniformWriter UNIFORM_1I = (st, location, value) -> GLStateManager.glUniform1i(location, value);
 
     private final ComputeDispatchSink computeBinder;
 
@@ -25,12 +24,7 @@ public final class VoxelizationDispatcher {
         if (locBase >= 0) GLStateManager.glUniform1i(locBase, rangeBase);
         if (locCount >= 0) GLStateManager.glUniform1i(locCount, rangeCount);
         if (locTotal >= 0) GLStateManager.glUniform1i(locTotal, vertexTotal);
-        final int groups = (vertexTotal + WORKGROUP_SIZE - 1) / WORKGROUP_SIZE;
-        for (int g0 = 0; g0 < groups; g0 += MAX_GROUPS_PER_DISPATCH) {
-            if (locInvBase >= 0) GLStateManager.glUniform1i(locInvBase, g0 * WORKGROUP_SIZE);
-            computeBinder.pushPendingComputeUniforms(st);
-            computeBinder.dispatchInBatch(pass, Math.min(MAX_GROUPS_PER_DISPATCH, groups - g0), 1, 1);
-        }
+        InvocationDispatch.dispatch(computeBinder, st, pass, vertexTotal, locInvBase, UNIFORM_1I);
     }
 
     public void endBatch(long pass) {

@@ -45,6 +45,27 @@ public final class ComputeBinder implements ComputeDispatchSink {
     private final ShaderManager shaderManager;
     private final SamplerBinder samplerBinder;
     private boolean droppedDispatchWarned;
+    private ShaderManager.ProgramObject lastUniformProgram;
+    private long lastUniformCb;
+    private long[] samplerOverrides;
+    private long[] rwBufferOverrides;
+    private ByteBuffer[] uniformBlockOverrides;
+
+    public void setSamplerOverrides(long[] byUnit) {
+        samplerOverrides = byUnit;
+    }
+
+    public void setReadWriteStorageBufferOverrides(long[] byGlSlot) {
+        rwBufferOverrides = byGlSlot;
+    }
+
+    public void setUniformBlockOverrides(ByteBuffer[] byIndex) {
+        uniformBlockOverrides = byIndex;
+    }
+
+    public long samplerHandle(int samplerObject, int glTexId) {
+        return samplerBinder.getSampler(samplerObject, glTexId);
+    }
 
     public ComputeBinder(FrameManager frameManager, ResourceManager resourceManager, ShaderManager shaderManager, SamplerBinder samplerBinder) {
         this.frameManager = frameManager;
@@ -153,6 +174,43 @@ public final class ComputeBinder implements ComputeDispatchSink {
 
     @Override
     public long beginBatchedComputeDispatch(ContextState st, boolean cycleRwBuffers) {
+        return beginComputePass(st, cycleRwBuffers, true);
+    }
+
+    public long beginComputePassWithoutStorageBuffers(ContextState st) {
+        return beginComputePass(st, false, false);
+    }
+
+    public boolean bindRoStorageBufferHandles(long pass, ContextState st, long[] handlesByGlSlot) {
+        if (pass == 0) return false;
+        final ShaderManager.ProgramObject prog = shaderManager.getProgram(st.boundProgram);
+        if (prog == null || !prog.linked) return false;
+        final int[] slots = prog.computeBindingMap.roSsboGlSlots();
+        if (slots.length == 0) return true;
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            final PointerBuffer ptrs = stack.mallocPointer(slots.length);
+            for (int i = 0; i < slots.length; i++) {
+                long handle = slots[i] < handlesByGlSlot.length ? handlesByGlSlot[slots[i]] : 0;
+                if (handle == 0) handle = resourceManager.getOrCreateFallbackStorageBuffer();
+                if (handle == 0) return false;
+                ptrs.put(i, handle);
+            }
+            SDL_BindGPUComputeStorageBuffers(pass, 0, ptrs);
+        }
+        return true;
+    }
+
+    public boolean rebindSamplers(long pass, ContextState st) {
+        if (pass == 0) return false;
+        final ShaderManager.ProgramObject prog = shaderManager.getProgram(st.boundProgram);
+        if (prog == null || !prog.linked) return false;
+        final ShaderManager.ComputeBindingMap map = prog.computeBindingMap;
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            return bindComputeSamplers(st, prog, pass, map.samplerGlSlots(), map.samplerNames(), stack);
+        }
+    }
+
+    private long beginComputePass(ContextState st, boolean cycleRwBuffers, boolean bindRoBuffers) {
         final int programId = st.boundProgram;
         if (programId == 0) return 0;
         final ShaderManager.ProgramObject prog = shaderManager.getProgram(programId);
@@ -196,7 +254,7 @@ public final class ComputeBinder implements ComputeDispatchSink {
 
             final boolean ok = bindComputeSamplers(st, prog, pass, samplerSlots, map.samplerNames(), stack)
                 && bindRoStorageTextures(st, prog, pass, map, stack)
-                && bindRoStorageBuffers(st, pass, roBufSlots, stack);
+                && (!bindRoBuffers || bindRoStorageBuffers(st, pass, roBufSlots, stack));
             if (!ok) {
                 SDL_EndGPUComputePass(pass);
                 frameManager.noteComputePassEnded();
@@ -298,7 +356,7 @@ public final class ComputeBinder implements ComputeDispatchSink {
     private SDL_GPUStorageBufferReadWriteBinding.Buffer buildRwBufferBindings(ContextState st, int[] slots, MemoryStack stack, boolean cycle) {
         final SDL_GPUStorageBufferReadWriteBinding.Buffer buf = SDL_GPUStorageBufferReadWriteBinding.calloc(slots.length, stack);
         for (int i = 0; i < slots.length; i++) {
-            final long handle = resolveStorageBufHandle(st, slots[i]);
+            final long handle = rwBufferOverrides != null && slots[i] < rwBufferOverrides.length ? rwBufferOverrides[slots[i]] : resolveStorageBufHandle(st, slots[i]);
 
             if (handle == 0) { warnMissingBinding(st, 1, "RW storage buffer slot", slots[i], true); return null; }
             buf.get(i).buffer(handle).cycle(cycle);
@@ -319,7 +377,8 @@ public final class ComputeBinder implements ComputeDispatchSink {
                 if (texHandle == 0) { warnMissingBinding(st, 2, "sampler texture unit", unit, true); return false; }
                 warnMissingBinding(st, 2, "sampler texture unit", unit, false);
             }
-            long sampHandle = samplerBinder.getSamplerForUnit(st, unit, texGlId);
+            final long override = samplerOverrides != null && unit >= 0 && unit < samplerOverrides.length ? samplerOverrides[unit] : 0;
+            long sampHandle = override != 0 ? override : samplerBinder.getSamplerForUnit(st, unit, texGlId);
             if (sampHandle == 0) {
                 sampHandle = resourceManager.getOrCreateDefaultSampler();
                 if (sampHandle == 0) { warnMissingBinding(st, 3, "sampler unit", unit, true); return false; }
@@ -374,6 +433,28 @@ public final class ComputeBinder implements ComputeDispatchSink {
         return true;
     }
 
+    public ByteBuffer uniformBlockView(ContextState st, ShaderManager.ProgramObject prog, int i) {
+        final ShaderManager.ComputeBindingMap map = prog.computeBindingMap;
+        final int[] uboSlots = map.uboGlSlots();
+        final int[] declaredSizes = map.uboSizes();
+        if (i >= uboSlots.length) return null;
+        final int slot = uboSlots[i];
+        final int bufGlId = st.boundUboByIndex[slot];
+        if (bufGlId == 0) return null;
+        final ByteBuffer shadow = resourceManager.getUboShadow(bufGlId);
+        if (shadow == null) return null;
+        final int offset = st.uboRangeOffset[slot];
+        if (offset < 0 || offset >= shadow.capacity()) return null;
+        int size = (i < declaredSizes.length && declaredSizes[i] > 0) ? declaredSizes[i] : shadow.capacity() - offset;
+        final int rangeSize = st.uboRangeSize[slot];
+        if (rangeSize > 0) size = Math.min(size, rangeSize);
+        size = Math.min(size, shadow.capacity() - offset);
+        if (size <= 0) return null;
+        final ByteBuffer view = frameManager.getUboPushView(bufGlId, shadow);
+        view.position(offset).limit(offset + size);
+        return view;
+    }
+
     private void pushComputeUboData(ContextState st, long cb, ShaderManager.ProgramObject prog, int[] uboSlots) {
         if (prog.lastComputeUboHash == null || prog.lastComputeUboHash.length != uboSlots.length) {
             prog.lastComputeUboHash = new long[uboSlots.length];
@@ -381,16 +462,18 @@ public final class ComputeBinder implements ComputeDispatchSink {
             prog.lastComputeFrame = 0;
         }
         final long curFrame = frameManager.getFrameNumber();
-        final boolean cacheValid = cb == prog.lastComputeCb && curFrame == prog.lastComputeFrame;
+        final boolean cacheValid = cb == prog.lastComputeCb && curFrame == prog.lastComputeFrame
+            && lastUniformProgram == prog && lastUniformCb == cb;
         final long[] cache = prog.lastComputeUboHash;
         if (!cacheValid) {
             for (int i = 0; i < cache.length; i++) cache[i] = 0L;
             prog.lastComputeCb = cb;
             prog.lastComputeFrame = curFrame;
         }
+        lastUniformProgram = prog;
+        lastUniformCb = cb;
         final ShaderManager.ComputeBindingMap map = prog.computeBindingMap;
         final boolean[] isDefault = map.uboIsDefaultBlock();
-        final int[] declaredSizes = map.uboSizes();
         final UniformStaging us = st.uniformStaging(prog);
         for (int i = 0; i < uboSlots.length; i++) {
             final ByteBuffer view;
@@ -398,21 +481,13 @@ public final class ComputeBinder implements ComputeDispatchSink {
                 if (us.fsUniformBuf == null || prog.fragmentUboSize <= 0) continue;
                 view = us.fsUniformBuf;
                 view.position(0).limit(prog.fragmentUboSize);
+            } else if (uniformBlockOverrides != null && i < uniformBlockOverrides.length && uniformBlockOverrides[i] != null) {
+                view = uniformBlockOverrides[i];
+                view.position(0);
+                if (!view.hasRemaining()) continue;
             } else {
-                final int slot = uboSlots[i];
-                final int bufGlId = st.boundUboByIndex[slot];
-                if (bufGlId == 0) continue;
-                final ByteBuffer shadow = resourceManager.getUboShadow(bufGlId);
-                if (shadow == null) continue;
-                final int offset = st.uboRangeOffset[slot];
-                if (offset < 0 || offset >= shadow.capacity()) continue;
-                int size = (i < declaredSizes.length && declaredSizes[i] > 0) ? declaredSizes[i] : shadow.capacity() - offset;
-                final int rangeSize = st.uboRangeSize[slot];
-                if (rangeSize > 0) size = Math.min(size, rangeSize);
-                size = Math.min(size, shadow.capacity() - offset);
-                if (size <= 0) continue;
-                view = frameManager.getUboPushView(bufGlId, shadow);
-                view.position(offset).limit(offset + size);
+                view = uniformBlockView(st, prog, i);
+                if (view == null) continue;
             }
             final int pos = view.position();
             final int len = view.remaining();
