@@ -90,6 +90,42 @@ class DerivativeHoistingTest {
     }
 
     @Test
+    void writesHiddenInsideDirectivesBlockTheMove() {
+        final String source = """
+            #version 420 core
+            in vec2 uv;
+            out vec4 color;
+            void main() {
+                vec2 p = uv;
+                if (true) {
+            #if 1
+                    p *= 2.0;
+            #endif
+                    color = vec4(dFdx(p), 0.0, 1.0);
+                }
+            }
+            """;
+        assertEquals(source, hoist(source));
+    }
+
+    @Test
+    void parenthesizedBuiltinOutArgumentCountsAsAWrite() {
+        final String source = """
+            #version 420 core
+            in vec2 uv;
+            out vec4 color;
+            void main() {
+                vec2 p = uv;
+                if (true) {
+                    modf(uv * 2.0, (p));
+                    color = vec4(dFdx(p), 0.0, 1.0);
+                }
+            }
+            """;
+        assertEquals(source, hoist(source));
+    }
+
+    @Test
     void globalsStayOnlyWhenACalleeWritesThem() {
         final String out = hoist("""
             #version 420 core

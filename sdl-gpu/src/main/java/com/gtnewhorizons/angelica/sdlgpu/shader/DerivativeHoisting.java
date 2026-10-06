@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.sdlgpu.shader;
 
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess.Edit;
+import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -38,8 +39,13 @@ public final class DerivativeHoisting {
         "dFdxFine", "dFdyFine", "fwidthFine",
         "dFdxCoarse", "dFdyCoarse", "fwidthCoarse");
 
-    private static final Set<String> BUILTINS_WITH_OUT_PARAMS = Set.of(
-        "modf", "frexp", "uaddCarry", "usubBorrow", "umulExtended", "imulExtended");
+    private static final Map<String, Set<Integer>> BUILTIN_OUT_PARAMS = Map.of(
+        "modf", Set.of(1),
+        "frexp", Set.of(1),
+        "uaddCarry", Set.of(2),
+        "usubBorrow", Set.of(2),
+        "umulExtended", Set.of(2, 3),
+        "imulExtended", Set.of(2, 3));
 
     private DerivativeHoisting() {}
 
@@ -89,6 +95,7 @@ public final class DerivativeHoisting {
         final List<Edit> earlierEdits = List.copyOf(edits);
         final Map<GLSLParser.Selection_statementContext, StringBuilder> declarations = new LinkedHashMap<>();
         final Map<String, String> hoisted = new HashMap<>();
+        boolean checkedDirectives = false;
 
         for (GLSLParser.Postfix_expressionContext call : calls) {
             final GLSLParser.Function_call_parametersContext params = call.function_call_parameters();
@@ -104,6 +111,10 @@ public final class DerivativeHoisting {
 
             final GLSLParser.Selection_statementContext target = outermostSafeIf(call, operand.name(), declared.global(), functions);
             if (target == null) continue;
+            if (!checkedDirectives) {
+                if (hasCodeHiddenByDirectives(source)) return;
+                checkedDirectives = true;
+            }
 
             final String callee = calleeName(call);
             final String argText = sliceWithEdits(source, startIdx(arg), stopIdx(arg), earlierEdits);
@@ -123,6 +134,20 @@ public final class DerivativeHoisting {
             final int at = startIdx(e.getKey());
             edits.add(new Edit(at, at - 1, e.getValue().toString()));
         }
+    }
+
+    private static boolean hasCodeHiddenByDirectives(String source) {
+        final GLSLLexer lexer = new GLSLLexer(CharStreams.fromString(source));
+        lexer.removeErrorListeners();
+        for (Token t = lexer.nextToken(); t.getType() != Token.EOF; t = lexer.nextToken()) {
+            switch (t.getType()) {
+                case GLSLLexer.IF_DIRECTIVE, GLSLLexer.IFDEF_DIRECTIVE, GLSLLexer.IFNDEF_DIRECTIVE, GLSLLexer.DEFINE_DIRECTIVE -> {
+                    return true;
+                }
+                default -> { }
+            }
+        }
+        return false;
     }
 
     private static String calleeName(GLSLParser.Postfix_expressionContext call) {
@@ -340,15 +365,10 @@ public final class DerivativeHoisting {
                 if (functions.globalWrites().containsKey(callee)) called.add(callee);
                 if (p.function_call_parameters() != null) {
                     final List<GLSLParser.Assignment_expressionContext> args = p.function_call_parameters().assignment_expression();
-                    final Set<Integer> positions = functions.outParams().get(callee);
-                    final boolean builtin = BUILTINS_WITH_OUT_PARAMS.contains(callee);
+                    Set<Integer> positions = functions.outParams().get(callee);
+                    if (positions == null) positions = BUILTIN_OUT_PARAMS.get(callee);
                     for (int i = 0; i < args.size(); i++) {
-                        if (builtin) {
-                            final String root = rootName(args.get(i));
-                            if (root != null) written.add(root);
-                        } else if (positions != null && positions.contains(i)) {
-                            written.add(lvalueName(args.get(i)));
-                        }
+                        if (positions != null && positions.contains(i)) written.add(lvalueName(args.get(i)));
                     }
                 }
             }
