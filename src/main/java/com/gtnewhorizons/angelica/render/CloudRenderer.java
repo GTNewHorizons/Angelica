@@ -98,6 +98,10 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         return GalaxySpaceClouds.supports(world, handler);
     }
 
+    public void invalidateWorld() {
+        this.world = null;
+    }
+
     public void checkSettings() {
         if (world != mc.theWorld) {
             clearLayers();
