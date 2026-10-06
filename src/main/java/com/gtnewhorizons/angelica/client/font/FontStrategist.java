@@ -166,14 +166,24 @@ public class FontStrategist {
             if (fp.isGlyphAvailable(chr)) { return fp; }
             fp = FontProviderCustom.getFallback();
             if (fp.isGlyphAvailable(chr)) { return fp; }
+            fp = findModernGlyph(me, chr, forceUnicode);
+            if (fp != null) { return fp; }
             return FontProviderUnicode.get();
         } else {
+            final FontProvider modern = findModernGlyph(me, chr, forceUnicode);
+            if (modern != null) { return modern; }
             if (!forceUnicode && FontProviderMC.get(false).isGlyphAvailable(chr)) {
                 return FontProviderMC.get(false);
             } else {
                 return FontProviderUnicode.get();
             }
         }
+    }
+
+    // The splash font renderer can only bind its own ascii texture.
+    private static FontProvider findModernGlyph(BatchingFontRenderer me, char chr, boolean forceUnicode) {
+        if (!FontConfig.enableModernFont || forceUnicode || me.isSplash) { return null; }
+        return FontProviderBitmap.find(chr);
     }
 
     public static void reloadCustomFontProviders() {

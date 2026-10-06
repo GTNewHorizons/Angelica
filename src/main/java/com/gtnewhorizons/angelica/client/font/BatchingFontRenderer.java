@@ -1451,7 +1451,8 @@ public class BatchingFontRenderer {
                     chr = fontProvider.getRandomReplacement(chr);
                 }
 
-                heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - glyphScaleY * fontProvider.getYScaleMultiplier() / 2);
+                heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - glyphScaleY * fontProvider.getYScaleMultiplier() / 2)
+                    + fontProvider.getBaselineShift() * glyphScaleY;
                 float heightSouth = (underlying.FONT_HEIGHT - 1.0f) * glyphScaleY * fontProvider.getYScaleMultiplier();
 
                 visibleCharIndex++;

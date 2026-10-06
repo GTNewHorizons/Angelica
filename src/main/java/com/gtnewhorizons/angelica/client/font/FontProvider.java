@@ -20,4 +20,7 @@ public interface FontProvider {
     float getShadowOffset();
     int getTexture(char chr);
     float getYScaleMultiplier();
+
+    /** Vertical offset in font pixels, applied after the glyph is centered on the line. */
+    default float getBaselineShift() { return 0.0f; }
 }
