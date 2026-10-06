@@ -60,7 +60,7 @@ class CompositeVertexWriteExtractionTest {
         final EnumMap<PatchShaderType, String> result = new EnumMap<>(transformed);
         result.remove(PatchShaderType.COMPUTE);
 
-        ShaderTransformer.extractRwImageStores(result, Patch.COMPOSITE, null, true);
+        ShaderTransformer.extractRwImageStores(result, Patch.COMPOSITE, null, image -> true);
 
         final String compute = result.get(PatchShaderType.COMPUTE);
         assertEquals(RwImageStoreExtractor.RwExtractMode.COMPOSITE_VSH, RwImageStoreExtractor.parseSentinel(compute));
@@ -77,7 +77,7 @@ class CompositeVertexWriteExtractionTest {
         result.remove(PatchShaderType.COMPUTE);
 
         // The CompSwap's result is used, so it stays a real atomic, which native Metal cannot bind
-        ShaderTransformer.extractRwImageStores(result, Patch.COMPOSITE, null, false);
+        ShaderTransformer.extractRwImageStores(result, Patch.COMPOSITE, null, image -> false);
 
         assertFalse(result.containsKey(PatchShaderType.COMPUTE));
         assertFalse(result.get(PatchShaderType.VERTEX).contains("imageAtomic"), result.get(PatchShaderType.VERTEX));

@@ -4448,6 +4448,10 @@ public class SDLGPURenderBackend extends RenderBackend {
         return device.supportsSpirv() || !device.supportsMsl();
     }
 
+    @Override public boolean supportsComputeImageAtomics(int width, int height, int depth) {
+        return supportsComputeImageAtomics() || device.supportsImageAtomics(width, height, depth);
+    }
+
     private void prepareVertexWrites(ContextState st) {
         final ShaderManager.ProgramObject prog = st.boundProgramObj;
         if (prog != null && prog.vertexWriteReplay != null) vertexWriteReplayer.ensureImageUsage(prog.vertexWriteReplay);

@@ -32,6 +32,7 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.IChunkProvider;
+import net.minecraftforge.common.DimensionManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.Display;
@@ -75,6 +76,9 @@ public final class FlybyRunner {
     private boolean jfr;
     private long recordingId;
     private final AtomicReference<FlybyRequest> pendingRequest = new AtomicReference<>();
+    private final AtomicReference<String> pendingDimensionPlayer = new AtomicReference<>();
+    private boolean dimensionRequested;
+    private volatile boolean dimensionAbandoned;
     private FlybyRequest activeRequest;
     private String[] sceneCommands = NO_COMMANDS;
     private volatile boolean sceneClearRequested;
@@ -197,6 +201,8 @@ public final class FlybyRunner {
         this.waitForTracy = false;
         this.waitForFocus = false;
         this.exitWhenDone = false;
+        this.dimensionRequested = false;
+        this.dimensionAbandoned = false;
         this.jfr = false;
         this.armed = false;
         this.fixedOrigin = null;
@@ -263,6 +269,7 @@ public final class FlybyRunner {
                     if (this.waitTicks++ % 100 == 0) LOGGER.info("Flyby waiting for window focus");
                     return;
                 }
+                if (this.awaitingDimension(mc, player)) return;
                 this.begin(mc, player);
             }
             case PREPARING -> {
@@ -329,6 +336,22 @@ public final class FlybyRunner {
             this.shot++;
             this.nextShot += this.shotEvery;
         }
+    }
+
+    private boolean awaitingDimension(Minecraft mc, EntityClientPlayerMP player) {
+        final Integer dimension = SystemProperties.FLYBY_DIMENSION;
+        if (!this.startedFromProperties || dimension == null || player.dimension == dimension || this.dimensionAbandoned) return false;
+        if (mc.getIntegratedServer() == null || !DimensionManager.isDimensionRegistered(dimension)) {
+            LOGGER.warn("Flyby: {}, staying in dimension {}", mc.getIntegratedServer() == null ? "not singleplayer" : "dimension " + dimension + " is not registered", player.dimension);
+            this.dimensionAbandoned = true;
+            return false;
+        }
+        if (!this.dimensionRequested) {
+            this.dimensionRequested = true;
+            LOGGER.info("Flyby: moving from dimension {} to {}", player.dimension, dimension);
+            this.pendingDimensionPlayer.set(player.getCommandSenderName());
+        }
+        return true;
     }
 
     private void overridePauseOnLostFocus(Minecraft mc) {
@@ -600,10 +623,22 @@ public final class FlybyRunner {
     public void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         final boolean clear = this.sceneClearRequested;
-        if (!clear && this.pendingRequest.get() == null) return;
+        if (!clear && this.pendingRequest.get() == null && this.pendingDimensionPlayer.get() == null) return;
 
         final MinecraftServer server = MinecraftServer.getServer();
         if (server == null) return;
+
+        final String traveller = this.pendingDimensionPlayer.getAndSet(null);
+        if (traveller != null) {
+            this.discardWorldChanges(server);
+            final EntityPlayerMP player = server.getConfigurationManager().func_152612_a(traveller);
+            if (player == null) {
+                LOGGER.warn("Flyby: no server player named '{}', staying in the current dimension", traveller);
+                this.dimensionAbandoned = true;
+            } else {
+                server.getConfigurationManager().transferPlayerToDimension(player, SystemProperties.FLYBY_DIMENSION);
+            }
+        }
 
         if (clear) {
             this.sceneClearRequested = false;
