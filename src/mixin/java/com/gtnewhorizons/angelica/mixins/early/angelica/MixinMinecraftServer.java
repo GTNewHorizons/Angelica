@@ -19,11 +19,11 @@ public class MixinMinecraftServer {
 
     @Surround(method = "run", remap = false)
     private void angelica$setServerThread() {
-        ThreadedBlockData.serverThread = Thread.currentThread();
+        ThreadedBlockData.setServerThread(Thread.currentThread());
     }
 
     @Surround.Finally
     private void angelica$clearServerThread() {
-        ThreadedBlockData.serverThread = null;
+        ThreadedBlockData.setServerThread(null);
     }
 }
