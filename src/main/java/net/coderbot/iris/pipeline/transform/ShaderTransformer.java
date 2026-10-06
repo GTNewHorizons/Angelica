@@ -237,7 +237,8 @@ public class ShaderTransformer {
         final ShaderDiskCache.Key k = ShaderDiskCache.key("iris-transform").str(patch.name());
         parameters.appendDiskKey(k);
         k.i(RenderSystem.getMaxGlslVersion()).b(RenderSystem.supportsSSBO()).b(RenderSystem.supportsImageLoadStore())
-            .b(RenderSystem.isGLES()).b(BackendManager.RENDER_BACKEND.isSDLGPU()).i(maxSupportedHoistVersion);
+            .b(RenderSystem.isGLES()).b(BackendManager.RENDER_BACKEND.isSDLGPU()).b(BackendManager.RENDER_BACKEND.supportsComputeImageAtomics())
+            .i(maxSupportedHoistVersion);
         if (enabledRequirements == null) {
             k.i(-1);
         } else {
@@ -559,18 +560,23 @@ public class ShaderTransformer {
                 artifactsOut.put(shaderType, new StageArtifact(treeHolder[0], formattedShader.length() - printedBody.length()));
             }
         }
-        if (BackendManager.RENDER_BACKEND.isSDLGPU()) extractRwImageStores(result, patchType, artifactsOut);
+        if (BackendManager.RENDER_BACKEND.isSDLGPU()) extractRwImageStores(result, patchType, artifactsOut, BackendManager.RENDER_BACKEND.supportsComputeImageAtomics());
         watch.stop();
         Iris.logger.info("[Load #{}] Transformed shader for {} in {}", Iris.getShaderPackLoadId(), patchType.name(), watch);
         return result;
     }
 
-    static void extractRwImageStores(EnumMap<PatchShaderType, String> result, Patch patchType, EnumMap<PatchShaderType, StageArtifact> artifactsOut) {
+    static void extractRwImageStores(EnumMap<PatchShaderType, String> result, Patch patchType, EnumMap<PatchShaderType, StageArtifact> artifactsOut, boolean computeImageAtomics) {
         if (result.containsKey(PatchShaderType.COMPUTE)) return;
+        if (patchType == Patch.ATTRIBUTES) {
+            extractVertexReplay(result, artifactsOut, computeImageAtomics);
+            return;
+        }
 
         final String vsh = result.get(PatchShaderType.VERTEX);
         final String fsh = result.get(PatchShaderType.FRAGMENT);
-        final RwImageStoreExtractor.Result vshResult = (vsh != null) ? RwImageStoreExtractor.tryExtract(vsh, PatchShaderType.VERTEX, patchType.name()) : null;
+        final RwImageStoreExtractor.RwExtractMode vertexMode = patchType == Patch.COMPOSITE ? RwImageStoreExtractor.RwExtractMode.COMPOSITE_VSH : null;
+        final RwImageStoreExtractor.Result vshResult = (vsh != null) ? RwImageStoreExtractor.tryExtract(vsh, PatchShaderType.VERTEX, patchType.name(), vertexMode) : null;
         final RwImageStoreExtractor.Result fshResult = (fsh != null) ? RwImageStoreExtractor.tryExtract(fsh, PatchShaderType.FRAGMENT, patchType.name()) : null;
 
         if (vshResult != null && fshResult != null) {
@@ -581,12 +587,40 @@ public class ShaderTransformer {
         final PatchShaderType stage = vshResult != null ? PatchShaderType.VERTEX : PatchShaderType.FRAGMENT;
         result.put(stage, extracted.strippedSource());
         if (artifactsOut != null) artifactsOut.remove(stage);
-        if (patchType == Patch.COMPOSITE || patchType == Patch.CELERITAS_TERRAIN) {
+        if (patchType != Patch.COMPOSITE && patchType != Patch.CELERITAS_TERRAIN) {
+            Iris.logger.info("[RwImageStoreExtractor] Dropped image writes from {} (written={})", patchType.name(), extracted.writtenImages());
+        } else if (extracted.keepsImageAtomics() && !computeImageAtomics) {
+            Iris.logger.info("[RwImageStoreExtractor] Dropped image writes from {}, they need image atomics this backend cannot run (written={})", patchType.name(), extracted.writtenImages());
+        } else {
             result.put(PatchShaderType.COMPUTE, extracted.computeSource());
             Iris.logger.info("[RwImageStoreExtractor] Extracted compute pre-pass for {} (mode={}, written={})", patchType.name(), extracted.mode(), extracted.writtenImages());
-        } else {
-            Iris.logger.info("[RwImageStoreExtractor] Dropped image writes from {} (written={})", patchType.name(), extracted.writtenImages());
         }
+    }
+
+    private static void extractVertexReplay(EnumMap<PatchShaderType, String> result, EnumMap<PatchShaderType, StageArtifact> artifactsOut, boolean computeImageAtomics) {
+        final String fsh = result.get(PatchShaderType.FRAGMENT);
+        final RwImageStoreExtractor.Result fshResult = (fsh != null) ? RwImageStoreExtractor.tryExtract(fsh, PatchShaderType.FRAGMENT, Patch.ATTRIBUTES.name()) : null;
+        if (fshResult != null) {
+            result.put(PatchShaderType.FRAGMENT, fshResult.strippedSource());
+            if (artifactsOut != null) artifactsOut.remove(PatchShaderType.FRAGMENT);
+            Iris.logger.info("[RwImageStoreExtractor] Dropped fragment image writes from ATTRIBUTES (written={})", fshResult.writtenImages());
+        }
+
+        final String vsh = result.get(PatchShaderType.VERTEX);
+        final RwImageStoreExtractor.Result vshResult = (vsh != null) ? RwImageStoreExtractor.tryExtractVertexReplay(vsh) : null;
+        if (vshResult == null) return;
+        result.put(PatchShaderType.VERTEX, vshResult.strippedSource());
+        if (artifactsOut != null) artifactsOut.remove(PatchShaderType.VERTEX);
+        if (vshResult.computeSource() == null) {
+            Iris.logger.info("[RwImageStoreExtractor] Dropped vertex image writes from ATTRIBUTES, an input cannot be replayed (written={})", vshResult.writtenImages());
+            return;
+        }
+        if (vshResult.keepsImageAtomics() && !computeImageAtomics) {
+            Iris.logger.info("[RwImageStoreExtractor] Dropped vertex image writes from ATTRIBUTES, they need image atomics this backend cannot run (written={})", vshResult.writtenImages());
+            return;
+        }
+        result.put(PatchShaderType.COMPUTE, vshResult.computeSource());
+        Iris.logger.info("[RwImageStoreExtractor] Extracted vertex replay for ATTRIBUTES (written={})", vshResult.writtenImages());
     }
 
     private static void doTransform(Transformer transformer, Patch patchType, Parameters parameters, int versionInt) {

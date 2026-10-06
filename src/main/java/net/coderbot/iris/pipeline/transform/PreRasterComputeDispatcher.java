@@ -3,6 +3,7 @@ package net.coderbot.iris.pipeline.transform;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import net.coderbot.iris.gl.program.ComputeProgram;
+import net.coderbot.iris.postprocess.FullScreenQuadRenderer;
 import net.coderbot.iris.uniforms.custom.CustomUniforms;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL42;
@@ -16,6 +17,7 @@ public final class PreRasterComputeDispatcher {
         final int prevProgram = GLStateManager.glGetInteger(GL20.GL_CURRENT_PROGRAM);
         compute.use();
         uniforms.push(compute);
+        if (mode == RwImageStoreExtractor.RwExtractMode.COMPOSITE_VSH) FullScreenQuadRenderer.uploadCompositeMatrices();
         int targetSizeLoc = cachedTargetSizeLoc;
         if (mode == RwImageStoreExtractor.RwExtractMode.COMPOSITE_FSH) {
             if (targetSizeLoc == LOC_UNRESOLVED) {
