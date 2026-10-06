@@ -276,6 +276,12 @@ public abstract class RenderBackend {
     public void voxelizeRegion(long pass, boolean rebindVertexBuffer, float x, float y, float z, int rangeBase, int rangeCount, int vertexTotal) {}
     public void endVoxelizationBatch(long pass) {}
 
+    public void setVertexWriteReplay(int graphicsProgram, VertexWriteReplaySetup setup) {}
+
+    public boolean supportsComputeImageAtomics() { return true; }
+
+    public boolean supportsComputeImageAtomics(int width, int height, int depth) { return supportsComputeImageAtomics(); }
+
     public abstract void enable(int cap);
     public abstract void enablei(int cap, int index);
     public abstract void disable(int cap);

@@ -77,9 +77,9 @@ class VoxelizationDispatcherTest {
     void dispatchRegion_splitsAboveMaxGroups() {
         final RecordingSink sink = new RecordingSink();
         final VoxelizationDispatcher d = new VoxelizationDispatcher(sink);
-        region(d, 1, VoxelizationDispatcher.MAX_GROUPS_PER_DISPATCH * 64 + 1, new ContextState());
+        region(d, 1, InvocationDispatch.MAX_GROUPS_PER_DISPATCH * 64 + 1, new ContextState());
         assertEquals(2, sink.dispatches.size());
-        assertEquals(VoxelizationDispatcher.MAX_GROUPS_PER_DISPATCH, sink.dispatches.get(0)[0]);
+        assertEquals(InvocationDispatch.MAX_GROUPS_PER_DISPATCH, sink.dispatches.get(0)[0]);
         assertEquals(1, sink.dispatches.get(1)[0]);
         assertEquals(2, sink.uniformPushCount);
     }
