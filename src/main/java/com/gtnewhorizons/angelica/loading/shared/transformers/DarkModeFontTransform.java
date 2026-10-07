@@ -166,10 +166,18 @@ public class DarkModeFontTransform {
             new MethodInfo("micdoodle8.mods.galacticraft.core.client.gui.element.GuiElementCheckbox func_146112_a(Lnet/minecraft/client/Minecraft;II)V # drawButton"),
             new MethodInfo("net.minecraft.client.gui.FontRenderer func_85187_a(Ljava/lang/String;IIIZ)I # drawString")
         ),
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("micdoodle8.mods.galacticraft.core.client.gui.container.GuiAirLockController func_73863_a(IIF)V # drawScreen"),
+            new MethodInfo("net.minecraft.client.gui.FontRenderer func_78276_b(Ljava/lang/String;III)I # drawString")
+        ),
             // Steve's Factory Manager
         RecolorTarget.includeMethodCall(
             new MethodInfo("vswe.stevesfactory.interfaces.GuiBase drawString(Ljava/lang/String;IIFI)V"),
             new MethodInfo("net.minecraft.client.gui.FontRenderer func_78276_b(Ljava/lang/String;III)I # drawString")
+        ),
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("vswe.stevesfactory.interfaces.GuiBase drawSplitString(Ljava/lang/String;IIIFI)V"),
+            new MethodInfo("net.minecraft.client.gui.FontRenderer func_78279_b(Ljava/lang/String;IIII)V # drawSplitString")
         ),
             // Steve's Carts 2
         RecolorTarget.includeMethodCall(
@@ -251,6 +259,11 @@ public class DarkModeFontTransform {
         RecolorTarget.includeMethodCall(
             new MethodInfo("com.cleanroommc.modularui.widgets.RichTextWidget draw(Lcom/cleanroommc/modularui/screen/viewport/ModularGuiContext;Lcom/cleanroommc/modularui/theme/WidgetThemeEntry;)V"),
             new MethodInfo("com.cleanroommc.modularui.drawable.text.RichText drawAtZeroPadded(Lcom/cleanroommc/modularui/screen/viewport/GuiContext;Lcom/cleanroommc/modularui/widget/sizer/Area;Lcom/cleanroommc/modularui/theme/WidgetTheme;)V")
+        ),
+            // Hardcore Ender Expansion
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("chylex.hee.gui.GuiTransportBeacon func_73863_a(IIF)V # drawScreen"),
+            new MethodInfo("net.minecraft.client.gui.FontRenderer func_78276_b(Ljava/lang/String;III)I # drawString")
         ),
     //endregion
     //region Exclude Methods
