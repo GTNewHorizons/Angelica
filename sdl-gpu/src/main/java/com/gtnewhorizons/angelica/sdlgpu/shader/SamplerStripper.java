@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.sdlgpu.shader;
 
-import com.gtnewhorizons.angelica.glsm.GlslTransformUtils;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess.Edit;
 import com.gtnewhorizons.angelica.glsm.shader.ShaderIndex;
 import org.antlr.v4.runtime.Token;
@@ -22,7 +21,7 @@ public final class SamplerStripper {
 
     private record SamplerDecl(List<String> names, int start, int stop) {}
 
-    public static void collectEdits(ShaderIndex index, String source, List<Edit> edits) {
+    public static void collectEdits(ShaderIndex index, List<Edit> edits) {
         final List<SamplerDecl> samplers = new ArrayList<>();
         for (GLSLParser.DeclarationContext ctx : index.globalDeclarations()) {
             final SamplerDecl decl = samplerDeclaration(ctx);
@@ -33,7 +32,7 @@ public final class SamplerStripper {
         Set<String> directiveRefs = null;
         for (SamplerDecl s : samplers) {
             if (!allUnreferenced(s, samplers, index)) continue;
-            if (directiveRefs == null) directiveRefs = GlslTransformUtils.identifiersInDirectiveText(source);
+            if (directiveRefs == null) directiveRefs = index.directives().identifiers();
             if (anyIn(s, directiveRefs)) {
                 LOGGER.debug("Keeping sampler {}: referenced only inside a preprocessor block", s.names());
                 continue;

@@ -8,7 +8,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL20;
-import org.taumc.glsl.grammar.GLSLLexer;
 import org.taumc.glsl.grammar.GLSLParser;
 
 import java.util.ArrayList;
@@ -94,11 +93,7 @@ public final class GlslVulkanPreprocess {
         }
 
         final List<Edit> edits = new ArrayList<>();
-        final Metadata meta = collectEdits(new ShaderIndex(root), glShaderType, debugName, separateReadOnlyImages, edits);
-        if (meta.needsSamplerless()) {
-            final Edit extension = samplerlessExtensionEdit(source);
-            if (extension != null) edits.add(extension);
-        }
+        final Metadata meta = collectEdits(new ShaderIndex(root, source), glShaderType, debugName, separateReadOnlyImages, edits);
 
         final Result out = new Result(applyEdits(source, edits), meta.boolUniforms(), meta.explicitVsInputs());
         synchronized (CACHE) {
@@ -189,9 +184,12 @@ public final class GlslVulkanPreprocess {
         }
 
         if (!readOnlyImages.isEmpty()) {
-            for (GLSLParser.Postfix_expressionContext call : index.calls()) {
-                rewriteReadOnlyImageCall(call, readOnlyImages, edits);
-            }
+            rewriteReadOnlyImageCalls(index.callsTo("imageLoad"), "texelFetch", readOnlyImages, edits);
+            rewriteReadOnlyImageCalls(index.callsTo("imageSize"), "textureSize", readOnlyImages, edits);
+        }
+        if (needsSamplerless) {
+            final int versionEnd = index.directives().versionEnd();
+            if (versionEnd >= 0) edits.add(new Edit(versionEnd, versionEnd - 1, "\n" + SAMPLERLESS_EXTENSION));
         }
 
         rename(index, "sampler", SAMPLER_RENAMED, edits);
@@ -219,41 +217,18 @@ public final class GlslVulkanPreprocess {
         for (Token tok : index.occurrences(name)) edits.add(new Edit(tok.getStartIndex(), tok.getStopIndex(), replacement));
     }
 
-    private static void rewriteReadOnlyImageCall(GLSLParser.Postfix_expressionContext call, Set<String> readOnlyImages, List<Edit> edits) {
-        if (call.RIGHT_PAREN() == null) return;
-        final GLSLParser.Function_call_parametersContext params = call.function_call_parameters();
-        if (params == null || params.assignment_expression().isEmpty()) return;
-        if (!readOnlyImages.contains(params.assignment_expression(0).getText())) return;
+    private static void rewriteReadOnlyImageCalls(List<GLSLParser.Postfix_expressionContext> calls, String replacement, Set<String> readOnlyImages, List<Edit> edits) {
+        for (GLSLParser.Postfix_expressionContext call : calls) {
+            if (call.RIGHT_PAREN() == null) continue;
+            final GLSLParser.Function_call_parametersContext params = call.function_call_parameters();
+            if (params == null || params.assignment_expression().isEmpty()) continue;
+            if (!readOnlyImages.contains(params.assignment_expression(0).getText())) continue;
 
-        final String replacement = switch (ShaderIndex.calleeName(call)) {
-            case "imageLoad" -> "texelFetch";
-            case "imageSize" -> "textureSize";
-            default -> null;
-        };
-        if (replacement == null) return;
-
-        final ParserRuleContext callee = (ParserRuleContext) call.getChild(0);
-        edits.add(new Edit(startIdx(callee), stopIdx(callee), replacement));
-        final int rparen = call.RIGHT_PAREN().getSymbol().getStartIndex();
-        edits.add(new Edit(rparen, rparen - 1, ", 0"));
-    }
-
-    public static @Nullable Edit samplerlessExtensionEdit(String source) {
-        final GLSLLexer lexer = GlslTransformUtils.quietLexer(source);
-        int end = -1;
-        boolean inVersion = false;
-        for (Token token = lexer.nextToken(); token.getType() != Token.EOF; token = lexer.nextToken()) {
-            final int type = token.getType();
-            if (type == GLSLLexer.VERSION_DIRECTIVE) {
-                inVersion = true;
-                end = token.getStopIndex() + 1;
-            } else if (inVersion && (type == GLSLLexer.NUMBER || type == GLSLLexer.PROFILE)) {
-                end = token.getStopIndex() + 1;
-            } else if (inVersion) {
-                break;
-            }
+            final ParserRuleContext callee = (ParserRuleContext) call.getChild(0);
+            edits.add(new Edit(startIdx(callee), stopIdx(callee), replacement));
+            final int rparen = call.RIGHT_PAREN().getSymbol().getStartIndex();
+            edits.add(new Edit(rparen, rparen - 1, ", 0"));
         }
-        return end < 0 ? null : new Edit(end, end - 1, "\n" + SAMPLERLESS_EXTENSION);
     }
 
     public static void clearCache() {

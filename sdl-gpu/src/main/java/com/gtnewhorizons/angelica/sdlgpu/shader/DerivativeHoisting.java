@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.sdlgpu.shader;
 
-import com.gtnewhorizons.angelica.glsm.GlslTransformUtils;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess.Edit;
 import com.gtnewhorizons.angelica.glsm.shader.ShaderIndex;
@@ -12,6 +11,7 @@ import org.taumc.glsl.grammar.GLSLLexer;
 import org.taumc.glsl.grammar.GLSLParser;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -54,21 +54,33 @@ public final class DerivativeHoisting {
 
     private record Operand(String name, @Nullable String swizzle) {}
 
-    public static void collectEdits(ShaderIndex index, String source, List<Edit> edits) {
-        final List<GLSLParser.Postfix_expressionContext> calls = new ArrayList<>();
-        for (GLSLParser.Postfix_expressionContext call : index.calls()) {
-            if (DERIVATIVES.contains(ShaderIndex.calleeName(call))) calls.add(call);
+    private record DerivativeCall(GLSLParser.Postfix_expressionContext call, String callee) {}
+
+    private record Effects(Set<String> declared, Set<String> written, Set<String> called) {
+        Effects() {
+            this(new HashSet<>(), new HashSet<>(), new HashSet<>());
+        }
+    }
+
+    public static void collectEdits(ShaderIndex index, List<Edit> edits) {
+        final List<DerivativeCall> calls = new ArrayList<>();
+        for (String callee : DERIVATIVES) {
+            for (GLSLParser.Postfix_expressionContext call : index.callsTo(callee)) calls.add(new DerivativeCall(call, callee));
         }
         if (calls.isEmpty()) return;
+        calls.sort(Comparator.comparingInt(c -> startIdx(c.call())));
 
+        final String source = index.source();
         final GLSLParser.Translation_unitContext root = index.root();
-        final Functions functions = new Functions(root);
-        final List<Edit> earlierEdits = List.copyOf(edits);
+        final Functions functions = new Functions(index);
+        final int earlierEditCount = edits.size();
+        final Map<GLSLParser.Selection_statementContext, Effects> ifEffects = new HashMap<>();
         final Map<GLSLParser.Selection_statementContext, StringBuilder> declarations = new LinkedHashMap<>();
         final Map<String, String> hoisted = new HashMap<>();
         boolean checkedDirectives = false;
 
-        for (GLSLParser.Postfix_expressionContext call : calls) {
+        for (DerivativeCall derivative : calls) {
+            final GLSLParser.Postfix_expressionContext call = derivative.call();
             final GLSLParser.Function_call_parametersContext params = call.function_call_parameters();
             if (params == null || params.assignment_expression().size() != 1) continue;
             final GLSLParser.Assignment_expressionContext arg = params.assignment_expression(0);
@@ -80,15 +92,15 @@ public final class DerivativeHoisting {
             final String type = resultType(declared.type(), operand.swizzle());
             if (type == null) continue;
 
-            final GLSLParser.Selection_statementContext target = outermostSafeIf(call, operand.name(), declared.global(), functions);
+            final GLSLParser.Selection_statementContext target = outermostSafeIf(call, operand.name(), declared.global(), functions, ifEffects);
             if (target == null) continue;
             if (!checkedDirectives) {
-                if (GlslTransformUtils.hasConditionalOrMacroDirectives(source)) return;
+                if (index.directives().hasConditionalOrMacro()) return;
                 checkedDirectives = true;
             }
 
-            final String callee = ShaderIndex.calleeName(call);
-            final String argText = sliceWithEdits(source, startIdx(arg), stopIdx(arg), earlierEdits);
+            final String callee = derivative.callee();
+            final String argText = sliceWithEdits(source, startIdx(arg), stopIdx(arg), edits.subList(0, earlierEditCount));
             final String key = startIdx(target) + "|" + callee + "|" + argText;
             String variable = hoisted.get(key);
             if (variable == null) {
@@ -110,11 +122,12 @@ public final class DerivativeHoisting {
     private static final class Functions {
         final Map<String, Set<Integer>> outParams = new HashMap<>();
         final Set<String> names = new HashSet<>();
+        final Map<GLSLParser.Postfix_expressionContext, String> calleeNames = new HashMap<>();
         private final List<GLSLParser.Function_definitionContext> definitions = new ArrayList<>();
         private @Nullable Map<String, Set<String>> globalWrites;
 
-        Functions(GLSLParser.Translation_unitContext root) {
-            for (GLSLParser.External_declarationContext external : root.external_declaration()) {
+        Functions(ShaderIndex index) {
+            for (GLSLParser.External_declarationContext external : index.root().external_declaration()) {
                 final GLSLParser.Function_prototypeContext prototype;
                 if (external.function_definition() != null) {
                     definitions.add(external.function_definition());
@@ -127,8 +140,7 @@ public final class DerivativeHoisting {
                 if (prototype == null || prototype.IDENTIFIER() == null) continue;
                 final String name = prototype.IDENTIFIER().getText();
                 names.add(name);
-                if (prototype.function_parameters() == null) continue;
-                final List<GLSLParser.Parameter_declarationContext> params = prototype.function_parameters().parameter_declaration();
+                final List<GLSLParser.Parameter_declarationContext> params = parameters(prototype);
                 for (int i = 0; i < params.size(); i++) {
                     final GLSLParser.Type_qualifierContext q = params.get(i).type_qualifier();
                     if (ShaderIndex.hasStorageQualifier(q, "out") || ShaderIndex.hasStorageQualifier(q, "inout")) {
@@ -136,6 +148,12 @@ public final class DerivativeHoisting {
                     }
                 }
             }
+            for (String name : names) addCalls(index, name);
+            for (String name : BUILTIN_OUT_PARAMS.keySet()) addCalls(index, name);
+        }
+
+        private void addCalls(ShaderIndex index, String name) {
+            for (GLSLParser.Postfix_expressionContext call : index.callsTo(name)) calleeNames.put(call, name);
         }
 
         Set<String> globalWrites(String function) {
@@ -148,18 +166,14 @@ public final class DerivativeHoisting {
             final Map<String, Set<String>> callees = new HashMap<>();
             for (GLSLParser.Function_definitionContext definition : definitions) {
                 final String name = definition.function_prototype().IDENTIFIER().getText();
-                final Set<String> written = new HashSet<>();
-                final Set<String> called = new HashSet<>();
-                collectEffects(definition.compound_statement_no_new_scope(), this, written, called);
-                final GLSLParser.Function_parametersContext params = definition.function_prototype().function_parameters();
-                if (params != null) {
-                    for (GLSLParser.Parameter_declarationContext param : params.parameter_declaration()) {
-                        final GLSLParser.Parameter_declaratorContext d = param.parameter_declarator();
-                        if (d != null && d.IDENTIFIER() != null) written.remove(d.IDENTIFIER().getText());
-                    }
+                final Effects effects = new Effects();
+                collectEffects(definition.compound_statement_no_new_scope(), this, effects);
+                for (GLSLParser.Parameter_declarationContext param : parameters(definition.function_prototype())) {
+                    final String parameter = parameterName(param);
+                    if (parameter != null) effects.written().remove(parameter);
                 }
-                writes.computeIfAbsent(name, k -> new HashSet<>()).addAll(written);
-                callees.computeIfAbsent(name, k -> new HashSet<>()).addAll(called);
+                writes.computeIfAbsent(name, k -> new HashSet<>()).addAll(effects.written());
+                callees.computeIfAbsent(name, k -> new HashSet<>()).addAll(effects.called());
             }
             boolean changed = true;
             while (changed) {
@@ -230,13 +244,10 @@ public final class DerivativeHoisting {
                 final String type = typeOf(loop.for_init_statement(), name);
                 if (type != null) return new Declared(type, false);
             } else if (p instanceof GLSLParser.Function_definitionContext function) {
-                final GLSLParser.Function_parametersContext params = function.function_prototype().function_parameters();
-                if (params != null) {
-                    for (GLSLParser.Parameter_declarationContext param : params.parameter_declaration()) {
+                for (GLSLParser.Parameter_declarationContext param : parameters(function.function_prototype())) {
+                    if (name.equals(parameterName(param))) {
                         final GLSLParser.Parameter_declaratorContext d = param.parameter_declarator();
-                        if (d != null && d.IDENTIFIER() != null && name.equals(d.IDENTIFIER().getText())) {
-                            return new Declared(d.array_specifier() == null ? baseType(d.type_specifier()) : "", false);
-                        }
+                        return new Declared(d.array_specifier() == null ? baseType(d.type_specifier()) : "", false);
                     }
                 }
                 break;
@@ -280,7 +291,18 @@ public final class DerivativeHoisting {
         return type.type_specifier_nonarray().getText();
     }
 
-    private static GLSLParser.@Nullable Selection_statementContext outermostSafeIf(ParserRuleContext call, String name, boolean global, Functions functions) {
+    private static List<GLSLParser.Parameter_declarationContext> parameters(GLSLParser.Function_prototypeContext prototype) {
+        final GLSLParser.Function_parametersContext params = prototype.function_parameters();
+        return params == null ? List.of() : params.parameter_declaration();
+    }
+
+    private static @Nullable String parameterName(GLSLParser.Parameter_declarationContext param) {
+        final GLSLParser.Parameter_declaratorContext d = param.parameter_declarator();
+        return d == null || d.IDENTIFIER() == null ? null : d.IDENTIFIER().getText();
+    }
+
+    private static GLSLParser.@Nullable Selection_statementContext outermostSafeIf(ParserRuleContext call, String name, boolean global, Functions functions,
+                                                                                   Map<GLSLParser.Selection_statementContext, Effects> ifEffects) {
         final List<GLSLParser.Selection_statementContext> enclosing = new ArrayList<>();
         for (ParserRuleContext p = call.getParent(); p != null; p = p.getParent()) {
             if (p instanceof GLSLParser.Selection_rest_statementContext rest) {
@@ -293,7 +315,13 @@ public final class DerivativeHoisting {
         for (int i = enclosing.size() - 1; i >= 0; i--) {
             final GLSLParser.Selection_statementContext candidate = enclosing.get(i);
             if (!inStatementList(candidate)) continue;
-            if (declares(candidate, name) || writes(candidate, name, global, functions)) continue;
+            Effects effects = ifEffects.get(candidate);
+            if (effects == null) {
+                effects = new Effects();
+                collectEffects(candidate, functions, effects);
+                ifEffects.put(candidate, effects);
+            }
+            if (effects.declared().contains(name) || writes(effects, name, global, functions)) continue;
             return candidate;
         }
         return null;
@@ -306,54 +334,43 @@ public final class DerivativeHoisting {
             && !(list.getParent() instanceof GLSLParser.Switch_statementContext);
     }
 
-    private static boolean declares(ParseTree node, String name) {
-        if (node instanceof GLSLParser.Typeless_declarationContext d) {
-            return d.IDENTIFIER() != null && name.equals(d.IDENTIFIER().getText());
-        }
-        if (node instanceof GLSLParser.ConditionContext c && c.IDENTIFIER() != null && name.equals(c.IDENTIFIER().getText())) {
-            return true;
-        }
-        for (int i = 0; i < node.getChildCount(); i++) {
-            if (declares(node.getChild(i), name)) return true;
-        }
-        return false;
-    }
-
-    private static boolean writes(ParseTree node, String name, boolean global, Functions functions) {
-        final Set<String> written = new HashSet<>();
-        final Set<String> called = new HashSet<>();
-        collectEffects(node, functions, written, called);
-        if (written.contains(name) || written.contains(UNKNOWN)) return true;
+    private static boolean writes(Effects effects, String name, boolean global, Functions functions) {
+        if (effects.written().contains(name) || effects.written().contains(UNKNOWN)) return true;
         if (!global) return false;
-        for (String callee : called) {
+        for (String callee : effects.called()) {
             final Set<String> w = functions.globalWrites(callee);
             if (w.contains(name) || w.contains(UNKNOWN)) return true;
         }
         return false;
     }
 
-    private static void collectEffects(ParseTree node, Functions functions, Set<String> written, Set<String> called) {
-        if (node instanceof GLSLParser.Assignment_expressionContext a && a.assignment_operator() != null) {
+    private static void collectEffects(ParseTree node, Functions functions, Effects effects) {
+        final Set<String> written = effects.written();
+        if (node instanceof GLSLParser.Typeless_declarationContext d && d.IDENTIFIER() != null) {
+            effects.declared().add(d.IDENTIFIER().getText());
+        } else if (node instanceof GLSLParser.ConditionContext c && c.IDENTIFIER() != null) {
+            effects.declared().add(c.IDENTIFIER().getText());
+        } else if (node instanceof GLSLParser.Assignment_expressionContext a && a.assignment_operator() != null) {
             written.add(lvalueName(a.unary_expression()));
         } else if (node instanceof GLSLParser.Unary_expressionContext u && (u.INC_OP() != null || u.DEC_OP() != null)) {
             written.add(lvalueName(u.unary_expression()));
         } else if (node instanceof GLSLParser.Postfix_expressionContext p) {
             if (p.INC_OP() != null || p.DEC_OP() != null) written.add(lvalueName(p.postfix_expression()));
-            if (p.LEFT_PAREN() != null) {
-                final String callee = ShaderIndex.calleeName(p);
-                if (functions.names.contains(callee)) called.add(callee);
-                if (p.function_call_parameters() != null) {
+            final String callee = functions.calleeNames.get(p);
+            if (callee != null) {
+                if (functions.names.contains(callee)) effects.called().add(callee);
+                Set<Integer> positions = functions.outParams.get(callee);
+                if (positions == null) positions = BUILTIN_OUT_PARAMS.get(callee);
+                if (positions != null && p.function_call_parameters() != null) {
                     final List<GLSLParser.Assignment_expressionContext> args = p.function_call_parameters().assignment_expression();
-                    Set<Integer> positions = functions.outParams.get(callee);
-                    if (positions == null) positions = BUILTIN_OUT_PARAMS.get(callee);
-                    for (int i = 0; i < args.size(); i++) {
-                        if (positions != null && positions.contains(i)) written.add(lvalueName(args.get(i)));
+                    for (int i : positions) {
+                        if (i < args.size()) written.add(lvalueName(args.get(i)));
                     }
                 }
             }
         }
         for (int i = 0; i < node.getChildCount(); i++) {
-            collectEffects(node.getChild(i), functions, written, called);
+            collectEffects(node.getChild(i), functions, effects);
         }
     }
 

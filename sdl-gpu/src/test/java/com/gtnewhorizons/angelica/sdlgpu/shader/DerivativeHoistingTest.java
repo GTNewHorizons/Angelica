@@ -21,7 +21,7 @@ class DerivativeHoistingTest {
 
     private static String hoist(String source) {
         final List<Edit> edits = new ArrayList<>();
-        DerivativeHoisting.collectEdits(new ShaderIndex(GlslTransformUtils.parseFullQuiet(source)), source, edits);
+        DerivativeHoisting.collectEdits(new ShaderIndex(GlslTransformUtils.parseFullQuiet(source), source), edits);
         return GlslVulkanPreprocess.applyEdits(source, edits);
     }
 

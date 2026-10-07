@@ -36,7 +36,7 @@ final class ShaderTransformChain {
 
     static String stripUnused(String source) {
         if (!source.contains("sampler")) return source;
-        return edit(source, (index, edits) -> SamplerStripper.collectEdits(index, source, edits));
+        return edit(source, SamplerStripper::collectEdits);
     }
 
     static String inject(String source, PerFrameUniformBlock perFrame, PerFrameUniformBlock perPass) {
@@ -51,7 +51,7 @@ final class ShaderTransformChain {
             return source;
         }
         final List<Edit> edits = new ArrayList<>();
-        collect.accept(new ShaderIndex(root), edits);
+        collect.accept(new ShaderIndex(root, source), edits);
         return edits.isEmpty() ? source : GlslVulkanPreprocess.applyEdits(source, edits);
     }
 }

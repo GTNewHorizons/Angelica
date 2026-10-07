@@ -317,15 +317,16 @@ public final class ShaderManager {
             LOG.warn("glsl-transformation-lib parse failed for '{}': {}", debugName, e.getMessage());
             return null;
         }
-        return transform("", transformedSource, root, glShaderType, debugName, perFrame, perPass);
+        return transform(transformedSource, 0, root, glShaderType, debugName, perFrame, perPass);
     }
 
     public static PrewarmTransformResult applyPrewarmTransformsFull(String finalSource, GLSLParser.Translation_unitContext bodyTree, int headerLen, int glShaderType, PerFrameUniformBlock perFrame, PerFrameUniformBlock perPass) {
-        return transform(finalSource.substring(0, headerLen), finalSource.substring(headerLen), bodyTree, glShaderType, "prewarm", perFrame, perPass);
+        return transform(finalSource, headerLen, bodyTree, glShaderType, "prewarm", perFrame, perPass);
     }
 
-    private static PrewarmTransformResult transform(String header, String body, GLSLParser.Translation_unitContext tree, int glShaderType, String debugName, PerFrameUniformBlock perFrame, PerFrameUniformBlock perPass) {
-        final ShaderIndex index = new ShaderIndex(tree);
+    private static PrewarmTransformResult transform(String source, int headerLen, GLSLParser.Translation_unitContext tree, int glShaderType, String debugName, PerFrameUniformBlock perFrame, PerFrameUniformBlock perPass) {
+        final String body = source.substring(headerLen);
+        final ShaderIndex index = new ShaderIndex(tree, body);
         final List<Edit> edits = new ArrayList<>();
         if (isGraphics(glShaderType)) {
             PerFrameBlockInjector.collectEdits(index, perFrame, perPass, edits);
@@ -334,21 +335,22 @@ public final class ShaderManager {
         if (glShaderType == GL20.GL_VERTEX_SHADER) {
             ClipZRemap.collectEdits(tree, edits);
         }
-        SamplerStripper.collectEdits(index, body, edits);
+        SamplerStripper.collectEdits(index, edits);
         if (glShaderType == GL20.GL_FRAGMENT_SHADER) {
-            DerivativeHoisting.collectEdits(index, body, edits);
+            DerivativeHoisting.collectEdits(index, edits);
         }
-        String outHeader = header;
+        if (headerLen == 0) {
+            return new PrewarmTransformResult(GlslVulkanPreprocess.applyEdits(source, edits), meta.boolUniforms());
+        }
+        if (edits.isEmpty() && !meta.needsSamplerless()) {
+            return new PrewarmTransformResult(source, meta.boolUniforms());
+        }
+        String header = source.substring(0, headerLen);
         if (meta.needsSamplerless()) {
-            if (header.isEmpty()) {
-                final Edit extension = GlslVulkanPreprocess.samplerlessExtensionEdit(body);
-                if (extension != null) edits.add(extension);
-            } else {
-                final int nl = header.indexOf('\n');
-                outHeader = header.substring(0, nl) + "\n" + GlslVulkanPreprocess.SAMPLERLESS_EXTENSION + header.substring(nl);
-            }
+            final int nl = header.indexOf('\n');
+            header = header.substring(0, nl) + "\n" + GlslVulkanPreprocess.SAMPLERLESS_EXTENSION + header.substring(nl);
         }
-        return new PrewarmTransformResult(outHeader + GlslVulkanPreprocess.applyEdits(body, edits), meta.boolUniforms());
+        return new PrewarmTransformResult(header + GlslVulkanPreprocess.applyEdits(body, edits), meta.boolUniforms());
     }
 
     public static void prewarmSpirv(String transformedSource, int glShaderType) {
