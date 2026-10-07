@@ -891,11 +891,12 @@ public final class PipelineCache {
         final int numAttributes = numBuffers;
         final SDL_GPUVertexAttribute.Buffer attrs = SDL_GPUVertexAttribute.calloc(numAttributes, stack);
         final SDL_GPUVertexBufferDescription.Buffer bindings = SDL_GPUVertexBufferDescription.calloc(numBuffers, stack);
+        final int constantPitch = store.device() == null || "vulkan".equals(store.device().getDriverName()) ? 0 : 16;
 
         for (int i = 0; i < numBuffers; i++) {
             if ((inputMask & (1 << i)) == 0) {
                 bindings.get(i)
-                    .slot(i).pitch(16)
+                    .slot(i).pitch(constantPitch)
                     .input_rate(SDL_GPU_VERTEXINPUTRATE_INSTANCE).instance_step_rate(0);
                 attrs.get(i)
                     .location(i).buffer_slot(i)
@@ -955,7 +956,7 @@ public final class PipelineCache {
             } else {
                 final int vecSize = i < shaderInputVecSize.length ? shaderInputVecSize[i] : 4;
                 bindings.get(i)
-                    .slot(i).pitch(16) // sizeof(vec4), one element
+                    .slot(i).pitch(constantPitch)
                     .input_rate(SDL_GPU_VERTEXINPUTRATE_INSTANCE).instance_step_rate(0);
                 attrs.get(i)
                     .location(i).buffer_slot(i)
