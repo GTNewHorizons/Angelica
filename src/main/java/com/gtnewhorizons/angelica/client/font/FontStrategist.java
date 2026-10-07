@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.client.font;
 
 import com.google.common.collect.HashMultiset;
+import com.gtnewhorizon.gtnhlib.util.font.GlyphReplacements;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
@@ -166,14 +167,35 @@ public class FontStrategist {
             if (fp.isGlyphAvailable(chr)) { return fp; }
             fp = FontProviderCustom.getFallback();
             if (fp.isGlyphAvailable(chr)) { return fp; }
+            fp = findModernGlyph(me, chr, forceUnicode);
+            if (fp != null) { return fp; }
             return FontProviderUnicode.get();
         } else {
+            final FontProvider modern = findModernGlyph(me, chr, forceUnicode);
+            if (modern != null) { return modern; }
             if (!forceUnicode && FontProviderMC.get(false).isGlyphAvailable(chr)) {
                 return FontProviderMC.get(false);
             } else {
                 return FontProviderUnicode.get();
             }
         }
+    }
+
+    public static char replaceCustomGlyph(BatchingFontRenderer me, char chr, boolean forceUnicode) {
+        if (!FontConfig.enableGlyphReplacements || !(FontConfig.enableCustomFont || FontConfig.enableModernFont)) { return chr; }
+        final char original = GlyphReplacements.getReplacementGlyph(chr);
+        if (original == 0) { return chr; }
+        if (FontConfig.enableCustomFont
+            && (FontProviderCustom.getPrimary().isGlyphAvailable(original) || FontProviderCustom.getFallback().isGlyphAvailable(original))) {
+            return original;
+        }
+        return findModernGlyph(me, original, forceUnicode) != null ? original : chr;
+    }
+
+    // The splash font renderer can only bind its own ascii texture.
+    private static FontProvider findModernGlyph(BatchingFontRenderer me, char chr, boolean forceUnicode) {
+        if (!FontConfig.enableModernFont || forceUnicode || me.isSplash) { return null; }
+        return FontProviderBitmap.find(chr);
     }
 
     public static void reloadCustomFontProviders() {

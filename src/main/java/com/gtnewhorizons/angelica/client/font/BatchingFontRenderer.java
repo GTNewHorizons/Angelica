@@ -3,7 +3,6 @@ package com.gtnewhorizons.angelica.client.font;
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IndexBuffer;
 import com.gtnewhorizon.gtnhlib.util.font.FontRendering;
-import com.gtnewhorizon.gtnhlib.util.font.GlyphReplacements;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLContextState;
@@ -1452,16 +1451,7 @@ public class BatchingFontRenderer {
 
                 if (chr == ColorCodeUtils.ESCAPED_AMPERSAND) { chr = '&'; }
 
-                if (FontConfig.enableCustomFont && FontConfig.enableGlyphReplacements) {
-                    final char replacement = GlyphReplacements.getReplacementGlyph(chr);
-                    if (replacement != 0) {
-                        if (FontProviderCustom.getPrimary().isGlyphAvailable(replacement)
-                            || FontProviderCustom.getFallback().isGlyphAvailable(replacement)
-                        ) {
-                            chr = replacement;
-                        }
-                    }
-                }
+                chr = FontStrategist.replaceCustomGlyph(this, chr, unicodeFlag);
 
                 // ASCII space, NBSP, NNBSP, decided before obfuscation as vanilla does.
                 final boolean whitespace = chr == ' ' || chr == '\u00A0' || chr == '\u202F';
@@ -1474,7 +1464,8 @@ public class BatchingFontRenderer {
                     chr = fontProvider.getRandomReplacement(chr);
                 }
 
-                heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - glyphScaleY * fontProvider.getYScaleMultiplier() / 2);
+                heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - glyphScaleY * fontProvider.getYScaleMultiplier() / 2)
+                    + fontProvider.getBaselineShift() * glyphScaleY;
                 float heightSouth = (underlying.FONT_HEIGHT - 1.0f) * glyphScaleY * fontProvider.getYScaleMultiplier();
 
                 visibleCharIndex++;
@@ -1646,7 +1637,9 @@ public class BatchingFontRenderer {
             return 4 * this.getWhitespaceScale();
         }
 
-        FontProvider fp = FontStrategist.getFontProvider(this, chr, FontConfig.enableCustomFont, underlying.getUnicodeFlag());
+        final boolean unicodeFlag = underlying.getUnicodeFlag();
+        chr = FontStrategist.replaceCustomGlyph(this, chr, unicodeFlag);
+        FontProvider fp = FontStrategist.getFontProvider(this, chr, FontConfig.enableCustomFont, unicodeFlag);
 
         return fp.getXAdvance(chr) * this.getGlyphScaleX();
     }
