@@ -756,12 +756,6 @@ public class ShaderTransformer {
         }
     }
 
-    public static void addIfNotExistsType(Transformer transformer, String name, String type) {
-        if (!transformer.hasVariable(name)) {
-            transformer.injectVariable(type + " " + name + ";");
-        }
-    }
-
     private static final class CeleritasHeader {
         static final String VALUE = computeCeleritasHeader();
     }

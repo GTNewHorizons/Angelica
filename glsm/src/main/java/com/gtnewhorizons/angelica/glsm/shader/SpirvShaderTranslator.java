@@ -47,14 +47,6 @@ public final class SpirvShaderTranslator {
     private SpirvShaderTranslator() {}
 
     public static @Nullable String glslToGlslEs(String source, int glShaderType, String debugName) {
-        return glslToGlslEsImpl(source, glShaderType, debugName, false);
-    }
-
-    static @Nullable String glslToGlslEsRawForTest(String source, int glShaderType, String debugName) {
-        return glslToGlslEsImpl(source, glShaderType, debugName, true);
-    }
-
-    private static @Nullable String glslToGlslEsImpl(String source, int glShaderType, String debugName, boolean rawOutput) {
         final int shaderKind = shaderKindForGlType(glShaderType);
         if (shaderKind < 0) {
             LOGGER.warn("Unknown GL shader type 0x{} for '{}' - skipping SPIR-V translation", Integer.toHexString(glShaderType), debugName);
@@ -74,7 +66,7 @@ public final class SpirvShaderTranslator {
         try {
             final String emitted = emitGlslEs(cr.spirv(), debugName, glShaderType, pre.explicitVsInputs());
             if (emitted == null) return null;
-            return rawOutput ? emitted : postProcessEsOutput(emitted, pre.boolUniforms());
+            return postProcessEsOutput(emitted, pre.boolUniforms());
         } finally {
             memFree(cr.spirv());
         }
@@ -163,16 +155,7 @@ public final class SpirvShaderTranslator {
             final GLSLParser.Single_declarationContext single = ctx.single_declaration();
             if (single == null || single.typeless_declaration() == null) return;
             final GLSLParser.Fully_specified_typeContext fst = single.fully_specified_type();
-            if (fst == null || fst.type_qualifier() == null) return;
-
-            boolean isUniform = false;
-            for (GLSLParser.Single_type_qualifierContext stq : fst.type_qualifier().single_type_qualifier()) {
-                if (stq.storage_qualifier() != null && "uniform".equals(stq.storage_qualifier().getText())) {
-                    isUniform = true;
-                    break;
-                }
-            }
-            if (!isUniform) return;
+            if (fst == null || !ShaderIndex.hasStorageQualifier(fst.type_qualifier(), "uniform")) return;
 
             if (fst.type_specifier() == null || fst.type_specifier().type_specifier_nonarray() == null) return;
             final GLSLParser.Type_specifier_nonarrayContext ts = fst.type_specifier().type_specifier_nonarray();

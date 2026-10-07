@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.sdlgpu.shader;
 
 import com.gtnewhorizons.angelica.glsm.GlslTransformUtils;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess.Edit;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderIndex;
 import org.antlr.v4.runtime.Token;
 import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
 import org.taumc.glsl.grammar.GLSLParser;
@@ -112,11 +113,8 @@ public final class LogicOpLowering {
         final int vecSize = floatVecSize(ts.type_specifier_nonarray().getText());
         final int typeArrayLen = ts.array_specifier() != null ? arrayLen(ts.array_specifier(), program) : 0;
 
-        final List<GLSLParser.Typeless_declarationContext> names = new ArrayList<>();
-        if (single.typeless_declaration() != null) names.add(single.typeless_declaration());
-        names.addAll(idl.typeless_declaration());
         int nextLocation = location;
-        for (GLSLParser.Typeless_declarationContext td : names) {
+        for (GLSLParser.Typeless_declarationContext td : ShaderIndex.declarators(idl)) {
             final int len = td.array_specifier() != null ? arrayLen(td.array_specifier(), program) : typeArrayLen;
             outputs.add(new Output(td.IDENTIFIER().getText(), nextLocation, len, vecSize));
             if (nextLocation >= 0) nextLocation += Math.max(len, 1);
