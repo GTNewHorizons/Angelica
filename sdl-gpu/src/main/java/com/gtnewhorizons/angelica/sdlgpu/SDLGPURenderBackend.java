@@ -866,6 +866,9 @@ public class SDLGPURenderBackend extends RenderBackend {
             case GL11.GL_CULL_FACE -> {
                 if (cs.pipeline.cullEnabled != on) { cs.pipeline.cullEnabled = on; cs.pipeline.markOutputDirty(); }
             }
+            case GL11.GL_POLYGON_OFFSET_FILL -> {
+                if (cs.pipeline.polygonOffsetFillEnabled != on) { cs.pipeline.polygonOffsetFillEnabled = on; cs.pipeline.markOutputDirty(); }
+            }
             case GL11.GL_STENCIL_TEST -> {
                 if (cs.pipeline.stencilTestEnabled != on) { cs.pipeline.stencilTestEnabled = on; cs.pipeline.markOutputDirty(); }
             }
@@ -4118,6 +4121,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             case GL11.GL_DEPTH_TEST -> cs.pipeline.depthTestEnabled;
             case GL11.GL_BLEND -> cs.pipeline.blendEnabledPerDrawBuffer[0];
             case GL11.GL_CULL_FACE -> cs.pipeline.cullEnabled;
+            case GL11.GL_POLYGON_OFFSET_FILL -> cs.pipeline.polygonOffsetFillEnabled;
             case GL11.GL_SCISSOR_TEST -> cs.scissorEnabled;
             case GL11.GL_STENCIL_TEST -> cs.pipeline.stencilTestEnabled;
             case GL11.GL_DEPTH_WRITEMASK -> cs.pipeline.depthWriteEnabled;

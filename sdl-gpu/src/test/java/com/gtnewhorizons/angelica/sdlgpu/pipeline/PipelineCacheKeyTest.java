@@ -211,6 +211,24 @@ class PipelineCacheKeyTest {
     }
 
     @Test
+    void polygonOffsetEnableChangesKeyForFilledTrianglesOnly() {
+        final PipelineCache a = createCache();
+        final PipelineCache b = createCache();
+        b.polygonOffsetFillEnabled = true;
+        for (int primitive : new int[]{SDL_GPU_PRIMITIVETYPE_TRIANGLELIST, SDL_GPU_PRIMITIVETYPE_TRIANGLESTRIP}) {
+            a.primitiveType = b.primitiveType = primitive;
+            assertNotEquals(computeKey(a), computeKey(b), "filled triangle offset needs a distinct pipeline");
+        }
+        for (int primitive : new int[]{SDL_GPU_PRIMITIVETYPE_LINELIST, SDL_GPU_PRIMITIVETYPE_LINESTRIP, SDL_GPU_PRIMITIVETYPE_POINTLIST}) {
+            a.primitiveType = b.primitiveType = primitive;
+            assertEquals(computeKey(a), computeKey(b), "polygon offset fill must not bias lines or points");
+        }
+        a.primitiveType = b.primitiveType = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
+        a.fillMode = b.fillMode = SDL_GPU_FILLMODE_LINE;
+        assertEquals(computeKey(a), computeKey(b), "polygon offset fill must not bias wireframe polygons");
+    }
+
+    @Test
     void testDepthBiasChangeProducesDifferentKey() {
         final PipelineCache a = createCache();
         final PipelineCache b = createCache();
