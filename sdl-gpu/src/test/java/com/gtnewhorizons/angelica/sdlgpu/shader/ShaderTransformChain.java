@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.PerFrameUniformBlock;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess.Edit;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderIndex;
 import org.lwjgl.opengl.GL20;
 import org.taumc.glsl.grammar.GLSLParser;
 
@@ -30,19 +31,19 @@ final class ShaderTransformChain {
     }
 
     static String clipZ(String source) {
-        return edit(source, ClipZRemap::collectEdits);
+        return edit(source, (index, edits) -> ClipZRemap.collectEdits(index.root(), edits));
     }
 
     static String stripUnused(String source) {
         if (!source.contains("sampler")) return source;
-        return edit(source, (root, edits) -> SamplerStripper.collectEdits(root, source, edits));
+        return edit(source, SamplerStripper::collectEdits);
     }
 
     static String inject(String source, PerFrameUniformBlock perFrame, PerFrameUniformBlock perPass) {
-        return edit(source, (root, edits) -> PerFrameBlockInjector.collectEdits(root, perFrame, perPass, edits));
+        return edit(source, (index, edits) -> PerFrameBlockInjector.collectEdits(index, perFrame, perPass, edits));
     }
 
-    private static String edit(String source, BiConsumer<GLSLParser.Translation_unitContext, List<Edit>> collect) {
+    private static String edit(String source, BiConsumer<ShaderIndex, List<Edit>> collect) {
         final GLSLParser.Translation_unitContext root;
         try {
             root = GlslTransformUtils.parseFullQuiet(source);
@@ -50,7 +51,7 @@ final class ShaderTransformChain {
             return source;
         }
         final List<Edit> edits = new ArrayList<>();
-        collect.accept(root, edits);
+        collect.accept(new ShaderIndex(root, source), edits);
         return edits.isEmpty() ? source : GlslVulkanPreprocess.applyEdits(source, edits);
     }
 }

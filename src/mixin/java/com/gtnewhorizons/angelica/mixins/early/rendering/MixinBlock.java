@@ -22,7 +22,7 @@ public class MixinBlock implements ThreadedBlockData.Getter {
     private ThreadedBlockData angelica$serverData;
 
     @Override
-    public ThreadedBlockData angelica$getThreadData() {
+    public final ThreadedBlockData angelica$getThreadData() {
         Thread t = Thread.currentThread();
 
         if (t == ThreadedBlockData.MAIN_THREAD) {
@@ -30,9 +30,9 @@ public class MixinBlock implements ThreadedBlockData.Getter {
             return data != null ? data : (angelica$mainData = createThreadedBlockData());
         }
 
-        if (t == ThreadedBlockData.serverThread) {
+        if (t == ThreadedBlockData.getServerThread()) {
             ThreadedBlockData data = angelica$serverData;
-            return (data == null || data.owner != t) ? (angelica$serverData = createThreadedBlockData()) : data;
+            return (data == null || !data.isCurrent()) ? (angelica$serverData = createThreadedBlockData()) : data;
         }
 
         ThreadedBlockData data = angelica$threadData.get();

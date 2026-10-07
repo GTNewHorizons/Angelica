@@ -9,8 +9,10 @@ import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess.Edit;
 import com.gtnewhorizons.angelica.glsm.shader.ShaderCacheIO;
 import com.gtnewhorizons.angelica.glsm.shader.ShaderDiskCache;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderIndex;
 import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
 import com.gtnewhorizons.angelica.glsm.threading.AngelicaWorkers;
+import com.gtnewhorizons.angelica.sdlgpu.compute.VertexWriteReplayer;
 import com.gtnewhorizons.angelica.sdlgpu.device.Device;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import com.gtnewhorizons.angelica.sdlgpu.shader.cross.CrossCompileCache;
@@ -315,40 +317,40 @@ public final class ShaderManager {
             LOG.warn("glsl-transformation-lib parse failed for '{}': {}", debugName, e.getMessage());
             return null;
         }
-        final List<Edit> edits = new ArrayList<>();
-        if (isGraphics(glShaderType)) {
-            PerFrameBlockInjector.collectEdits(root, perFrame, perPass, edits);
-        }
-        final GlslVulkanPreprocess.Metadata meta = GlslVulkanPreprocess.collectEdits(transformedSource, root, glShaderType, debugName, true, edits);
-        if (glShaderType == GL20.GL_VERTEX_SHADER) {
-            ClipZRemap.collectEdits(root, edits);
-        }
-        SamplerStripper.collectEdits(root, transformedSource, edits);
-        final String s = edits.isEmpty() ? transformedSource : GlslVulkanPreprocess.applyEdits(transformedSource, edits);
-        return new PrewarmTransformResult(s, meta.boolUniforms());
+        return transform(transformedSource, 0, root, glShaderType, debugName, perFrame, perPass);
     }
 
     public static PrewarmTransformResult applyPrewarmTransformsFull(String finalSource, GLSLParser.Translation_unitContext bodyTree, int headerLen, int glShaderType, PerFrameUniformBlock perFrame, PerFrameUniformBlock perPass) {
-        final String header = finalSource.substring(0, headerLen);
-        final String body = finalSource.substring(headerLen);
+        return transform(finalSource, headerLen, bodyTree, glShaderType, "prewarm", perFrame, perPass);
+    }
+
+    private static PrewarmTransformResult transform(String source, int headerLen, GLSLParser.Translation_unitContext tree, int glShaderType, String debugName, PerFrameUniformBlock perFrame, PerFrameUniformBlock perPass) {
+        final String body = source.substring(headerLen);
+        final ShaderIndex index = new ShaderIndex(tree, body);
         final List<Edit> edits = new ArrayList<>();
         if (isGraphics(glShaderType)) {
-            PerFrameBlockInjector.collectEdits(bodyTree, perFrame, perPass, edits);
+            PerFrameBlockInjector.collectEdits(index, perFrame, perPass, edits);
         }
-        final GlslVulkanPreprocess.Metadata meta = GlslVulkanPreprocess.collectEdits(null, bodyTree, glShaderType, "prewarm", true, edits);
+        final GlslVulkanPreprocess.Metadata meta = GlslVulkanPreprocess.collectEdits(index, glShaderType, debugName, true, edits);
         if (glShaderType == GL20.GL_VERTEX_SHADER) {
-            ClipZRemap.collectEdits(bodyTree, edits);
+            ClipZRemap.collectEdits(tree, edits);
         }
-        SamplerStripper.collectEdits(bodyTree, body, edits);
-        String outHeader = header;
+        SamplerStripper.collectEdits(index, edits);
+        if (glShaderType == GL20.GL_FRAGMENT_SHADER) {
+            DerivativeHoisting.collectEdits(index, edits);
+        }
+        if (headerLen == 0) {
+            return new PrewarmTransformResult(GlslVulkanPreprocess.applyEdits(source, edits), meta.boolUniforms());
+        }
+        if (edits.isEmpty() && !meta.needsSamplerless()) {
+            return new PrewarmTransformResult(source, meta.boolUniforms());
+        }
+        String header = source.substring(0, headerLen);
         if (meta.needsSamplerless()) {
             final int nl = header.indexOf('\n');
-            outHeader = header.substring(0, nl) + "\n" + GlslVulkanPreprocess.SAMPLERLESS_EXTENSION + header.substring(nl);
+            header = header.substring(0, nl) + "\n" + GlslVulkanPreprocess.SAMPLERLESS_EXTENSION + header.substring(nl);
         }
-        if (edits.isEmpty() && outHeader == header) {
-            return new PrewarmTransformResult(finalSource, meta.boolUniforms());
-        }
-        return new PrewarmTransformResult(outHeader + GlslVulkanPreprocess.applyEdits(body, edits), meta.boolUniforms());
+        return new PrewarmTransformResult(header + GlslVulkanPreprocess.applyEdits(body, edits), meta.boolUniforms());
     }
 
     public static void prewarmSpirv(String transformedSource, int glShaderType) {
@@ -1161,7 +1163,7 @@ public final class ShaderManager {
             return new CrossCompiled(SDL_GPU_SHADERFORMAT_SPIRV, spirv, "main", false);
         }
         if (device.supportsMsl()) {
-            final CrossCompileCache.Output out = MslCrossCompile.compile(spirv, glShaderType);
+            final CrossCompileCache.Output out = MslCrossCompile.compile(spirv, glShaderType, device.metalTextureAtomics());
             return new CrossCompiled(SDL_GPU_SHADERFORMAT_MSL, out.code(), out.entrypoint(), true);
         }
         if (device.supportsDxbc()) {
@@ -2078,6 +2080,7 @@ public final class ShaderManager {
         public int vertexShader;
         public int vertexUboSize;
         public long sdlComputePipeline;
+        public VertexWriteReplayer.Replay vertexWriteReplay;
         public long sdlFragmentShader;
         public long sdlVertexShader;
         public long lastComputeCb;

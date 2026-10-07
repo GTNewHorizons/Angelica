@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.sdlgpu.shader;
 
 import com.gtnewhorizons.angelica.glsm.GlslTransformUtils;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess.Edit;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderIndex;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
@@ -60,16 +61,7 @@ public final class UscaledRetype {
                 final GLSLParser.Single_declarationContext single = idl.single_declaration();
                 if (single == null || single.fully_specified_type() == null) return;
                 final GLSLParser.Fully_specified_typeContext fst = single.fully_specified_type();
-                if (fst.type_qualifier() == null) return;
-
-                boolean isIn = false;
-                for (GLSLParser.Single_type_qualifierContext stq : fst.type_qualifier().single_type_qualifier()) {
-                    if (stq.storage_qualifier() != null && "in".equals(stq.storage_qualifier().getText())) {
-                        isIn = true;
-                        break;
-                    }
-                }
-                if (!isIn) return;
+                if (!ShaderIndex.hasStorageQualifier(fst.type_qualifier(), "in")) return;
                 if (fst.type_specifier() == null || fst.type_specifier().type_specifier_nonarray() == null) return;
                 if (single.typeless_declaration() == null || single.typeless_declaration().IDENTIFIER() == null) return;
 

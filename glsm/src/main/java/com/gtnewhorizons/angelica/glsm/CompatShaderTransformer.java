@@ -4,6 +4,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement.Usage
 import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import com.gtnewhorizons.angelica.glsm.shader.ShaderDiskCache;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderIndex;
 import com.gtnewhorizons.angelica.glsm.shader.SpirvShaderTranslator;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
@@ -456,12 +457,7 @@ public class CompatShaderTransformer {
                 continue;
             }
 
-            final List<GLSLParser.Typeless_declarationContext> declarators = new ArrayList<>();
-            declarators.add(decl.typeless_declaration());
-            if (decl.getParent() instanceof GLSLParser.Init_declarator_listContext list) {
-                declarators.addAll(list.typeless_declaration());
-            }
-            for (GLSLParser.Typeless_declarationContext d : declarators) {
+            for (GLSLParser.Typeless_declarationContext d : ShaderIndex.declarators((GLSLParser.Init_declarator_listContext) decl.getParent())) {
                 if (d.IDENTIFIER() == null) continue;
                 final int slots = baseSlots(baseType) * typeArraySlots * arraySlots(d.array_specifier());
                 final String arraySuffix = typeArray + arraySuffix(d.array_specifier());

@@ -43,8 +43,13 @@ public final class SamplerBinder {
     }
 
     public long getSamplerForUnit(ContextState st, int glUnit, int glTexId) {
-        if (glUnit >= 0 && glUnit < st.boundSamplerObjects.length && st.boundSamplerObjects[glUnit] != 0) {
-            final TextureSamplerState ss = resourceManager.getSamplerObject(st.boundSamplerObjects[glUnit]);
+        final int samplerObject = glUnit >= 0 && glUnit < st.boundSamplerObjects.length ? st.boundSamplerObjects[glUnit] : 0;
+        return getSampler(samplerObject, glTexId);
+    }
+
+    public long getSampler(int samplerObject, int glTexId) {
+        if (samplerObject != 0) {
+            final TextureSamplerState ss = resourceManager.getSamplerObject(samplerObject);
             if (ss != null) return getOrCreateSdlSampler(ss);
         }
         if (glTexId != 0) return getSamplerForTexture(glTexId);

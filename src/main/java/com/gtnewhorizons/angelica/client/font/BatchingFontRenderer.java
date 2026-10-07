@@ -3,7 +3,6 @@ package com.gtnewhorizons.angelica.client.font;
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IndexBuffer;
 import com.gtnewhorizon.gtnhlib.util.font.FontRendering;
-import com.gtnewhorizon.gtnhlib.util.font.GlyphReplacements;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLContextState;
@@ -393,14 +392,33 @@ public class BatchingFontRenderer {
         pushQuadIdx();
     }
 
+    private static final float[] MAX_AA_REACH = {0f, 6f, 8f};
+
     private void pushTexRect(float x, float y, float w, float h, float itOff, int rgba, float uStart, float vStart, float uSz, float vSz, boolean flipV) {
         ensureCapacity();
+
+        final float tBu0 = uStart;
+        final float tBu1 = uStart + uSz;
+        final float tBv0 = vStart;
+        final float tBv1 = vStart + vSz;
+
+        if (FontConfig.fontAAMode > 0 && w > 0 && h > 0) {
+            final float margin = MAX_AA_REACH[FontConfig.fontAAMode] * preprocessAAStrength() + 0.5f;
+            final float marginU = margin * (uSz / w);
+            final float marginV = margin * (vSz / h);
+            itOff *= (h + 2 * margin) / h;
+            x -= margin; w += 2 * margin;
+            y -= margin; h += 2 * margin;
+            uStart -= marginU; uSz += 2 * marginU;
+            vStart -= marginV; vSz += 2 * marginV;
+        }
+
         float vTop = flipV ? vStart + vSz : vStart;
         float vBot = flipV ? vStart : vStart + vSz;
-        pushVtx(x + itOff, y, rgba, uStart, vTop, uStart, uStart + uSz, vStart, vStart + vSz);
-        pushVtx(x - itOff, y + h, rgba, uStart, vBot, uStart, uStart + uSz, vStart, vStart + vSz);
-        pushVtx(x + itOff + w, y, rgba, uStart + uSz, vTop, uStart, uStart + uSz, vStart, vStart + vSz);
-        pushVtx(x - itOff + w, y + h, rgba, uStart + uSz, vBot, uStart, uStart + uSz, vStart, vStart + vSz);
+        pushVtx(x + itOff, y, rgba, uStart, vTop, tBu0, tBu1, tBv0, tBv1);
+        pushVtx(x - itOff, y + h, rgba, uStart, vBot, tBu0, tBu1, tBv0, tBv1);
+        pushVtx(x + itOff + w, y, rgba, uStart + uSz, vTop, tBu0, tBu1, tBv0, tBv1);
+        pushVtx(x - itOff + w, y + h, rgba, uStart + uSz, vBot, tBu0, tBu1, tBv0, tBv1);
         pushQuadIdx();
     }
 
@@ -859,6 +877,10 @@ public class BatchingFontRenderer {
         truncateBatchToWatermark();
     }
 
+    private static float preprocessAAStrength() {
+        return FontConfig.fontAAStrength / 120.f;
+    }
+
     private void setupFontDrawState() {
         GLStateManager.enableTexture();
         GLStateManager.enableAlphaTest();
@@ -873,7 +895,7 @@ public class BatchingFontRenderer {
         }
         if (FontConfig.fontAAStrength != fontAAStrengthLast) {
             fontAAStrengthLast = FontConfig.fontAAStrength;
-            GLStateManager.glUniform1f(AAStrength, FontConfig.fontAAStrength / 120.f);
+            GLStateManager.glUniform1f(AAStrength, preprocessAAStrength());
         }
         if (FontConfig.fontBrightness != fontBrightnessLast) {
             fontBrightnessLast = FontConfig.fontBrightness;
@@ -1429,16 +1451,7 @@ public class BatchingFontRenderer {
 
                 if (chr == ColorCodeUtils.ESCAPED_AMPERSAND) { chr = '&'; }
 
-                if (FontConfig.enableCustomFont && FontConfig.enableGlyphReplacements) {
-                    final char replacement = GlyphReplacements.getReplacementGlyph(chr);
-                    if (replacement != 0) {
-                        if (FontProviderCustom.getPrimary().isGlyphAvailable(replacement)
-                            || FontProviderCustom.getFallback().isGlyphAvailable(replacement)
-                        ) {
-                            chr = replacement;
-                        }
-                    }
-                }
+                chr = FontStrategist.replaceCustomGlyph(this, chr, unicodeFlag);
 
                 // ASCII space, NBSP, NNBSP, decided before obfuscation as vanilla does.
                 final boolean whitespace = chr == ' ' || chr == '\u00A0' || chr == '\u202F';
@@ -1451,7 +1464,8 @@ public class BatchingFontRenderer {
                     chr = fontProvider.getRandomReplacement(chr);
                 }
 
-                heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - glyphScaleY * fontProvider.getYScaleMultiplier() / 2);
+                heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - glyphScaleY * fontProvider.getYScaleMultiplier() / 2)
+                    + fontProvider.getBaselineShift() * glyphScaleY;
                 float heightSouth = (underlying.FONT_HEIGHT - 1.0f) * glyphScaleY * fontProvider.getYScaleMultiplier();
 
                 visibleCharIndex++;
@@ -1623,7 +1637,9 @@ public class BatchingFontRenderer {
             return 4 * this.getWhitespaceScale();
         }
 
-        FontProvider fp = FontStrategist.getFontProvider(this, chr, FontConfig.enableCustomFont, underlying.getUnicodeFlag());
+        final boolean unicodeFlag = underlying.getUnicodeFlag();
+        chr = FontStrategist.replaceCustomGlyph(this, chr, unicodeFlag);
+        FontProvider fp = FontStrategist.getFontProvider(this, chr, FontConfig.enableCustomFont, unicodeFlag);
 
         return fp.getXAdvance(chr) * this.getGlyphScaleX();
     }

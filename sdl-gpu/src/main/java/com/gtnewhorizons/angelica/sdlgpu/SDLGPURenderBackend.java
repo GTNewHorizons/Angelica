@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.sdlgpu;
 
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
+import com.gtnewhorizons.angelica.sdlgpu.compute.VertexWriteReplayer;
 import com.gtnewhorizons.angelica.sdlgpu.compute.VoxelizationDispatcher;
 import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.CaptureGate;
@@ -10,6 +11,7 @@ import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.backend.BackendOptions;
 import com.gtnewhorizons.angelica.glsm.backend.GLDebugMessageListener;
 import com.gtnewhorizons.angelica.glsm.backend.MainThreadPump;
+import com.gtnewhorizons.angelica.glsm.backend.VertexWriteReplaySetup;
 import me.eigenraven.lwjgl3ify.client.MainThreadExec;
 import org.lwjglx.Lwjgl3ifyEventLoop;
 import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
@@ -164,6 +166,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             @Override public long nextSeq() { return TransferThread.nextSeq(); }
         });
     private final PipelineApplier pipelineApplier = new PipelineApplier(frameManager, resourceManager, shaderManager, pipelineStore, fboClearTracker, persistentSync, samplerBinder, storageTextureBinder, storageBufferBinder);
+    private final VertexWriteReplayer vertexWriteReplayer = new VertexWriteReplayer(shaderManager, resourceManager, pipelineApplier, computeBinder, SDLGPURenderBackend::s);
     private final AttachmentClear attachmentClear = new AttachmentClear(frameManager, pipelineStore, shaderManager);
     private final DepthStencilReadback depthStencilReadback = new DepthStencilReadback(frameManager, resourceManager, pipelineStore, shaderManager, fboClearTracker);
     private final DrawDispatch drawDispatch = new DrawDispatch(device, frameManager, resourceManager, pipelineApplier, this::enqueuePreCopied);
@@ -301,6 +304,8 @@ public class SDLGPURenderBackend extends RenderBackend {
                 }
             });
         pipelineApplier.setDeferredUploadSink(this::enqueuePreCopied);
+        frameManager.setRenderPassEndHook(vertexWriteReplayer::flush);
+        resourceManager.setTextureReplaceHook(this::flushVertexWritesBeforeTextureChange);
         frameManager.setPreRenderPassHook(() -> {
             final ContextState st = s();
             pipelineApplier.flushUniformBlocks(st);
@@ -1210,9 +1215,11 @@ public class SDLGPURenderBackend extends RenderBackend {
         if (st.rasterizerDiscard) return;
         final FrameState f = frameManager.frame();
         if (!f.frameActive) { f.droppedDrawsThisFrame++; return; }
+        prepareVertexWrites(st);
         if (mode == GL11.GL_TRIANGLE_FAN && count >= 3) {
             if (!drawDispatch.drawTriangleFanAsTriangleList(st, first, count)) { f.droppedDrawsThisFrame++; return; }
             if (SystemProperties.FFP_TRACE) ffpTrace.trace(st, "arraysFan", mode, count, 0, first, 0);
+            captureVertexWrites(st, first, count, 1, 0, 0, 0);
             return;
         }
         drawDispatch.setPrimitiveTypeForDraw(st, FormatMap.mapPrimitiveType(mode));
@@ -1221,6 +1228,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         if (!pipelineApplier.applyPipelineAndState(st, f)) { f.droppedDrawsThisFrame++; return; }
         if (SystemProperties.FFP_TRACE) ffpTrace.trace(st, "arrays", mode, count, 0, first, 0);
         SDL_DrawGPUPrimitives(f.renderPass, count, 1, first, 0);
+        captureVertexWrites(st, first, count, 1, 0, 0, 0);
     }
 
     @Override public void drawElements(int mode, int count, int type, long indices) {
@@ -1230,6 +1238,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         final int firstIndex = (int) (indices / FormatMap.indexElementSize(type));
         if (SystemProperties.FFP_TRACE) ffpTrace.trace(st, "elements", mode, count, type, firstIndex, 0);
         drawDispatch.issueIndexedDraw(st, rp, st.currentVao.elementBuffer, type, count, 1, firstIndex, 0);
+        captureVertexWrites(st, 0, count, 1, type, indices, 0);
     }
 
     @Override public void drawElementsInstanced(int mode, int count, int type, long indices, int primcount) {
@@ -1239,6 +1248,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         final int firstIndex = (int) (indices / FormatMap.indexElementSize(type));
         if (SystemProperties.FFP_TRACE) ffpTrace.trace(st, "elementsInstanced", mode, count, type, firstIndex, 0);
         drawDispatch.issueIndexedDraw(st, rp, st.currentVao.elementBuffer, type, count, primcount, firstIndex, 0);
+        captureVertexWrites(st, 0, count, primcount, type, indices, 0);
     }
 
 
@@ -1249,10 +1259,12 @@ public class SDLGPURenderBackend extends RenderBackend {
         final int firstIndex = (int) (indices / FormatMap.indexElementSize(type));
         if (SystemProperties.FFP_TRACE) ffpTrace.trace(st, "elementsBaseVertex", mode, count, type, firstIndex, baseVertex);
         drawDispatch.issueIndexedDraw(st, rp, st.currentVao.elementBuffer, type, count, 1, firstIndex, baseVertex);
+        captureVertexWrites(st, 0, count, 1, type, indices, baseVertex);
     }
 
     private long prepareIndexedDrawBind(ContextState st, int mode, int type, String opName) {
         if (st.rasterizerDiscard) return 0;
+        prepareVertexWrites(st);
         if (!drawDispatch.prepareIndexedDraw(st, mode, type)) return 0;
         final int ebo = st.currentVao.elementBuffer;
         final long eboHandle = resourceManager.getBufferHandle(ebo);
@@ -1281,6 +1293,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             final int baseVertex = MemoryUtil.memGetInt(pBaseVertex + offset);
             if (SystemProperties.FFP_TRACE) ffpTrace.trace(st, "multiElementsBaseVertex", mode, count, type, firstIndex, baseVertex);
             drawDispatch.issueIndexedDraw(st, rp, ebo, type, count, 1, firstIndex, baseVertex);
+            captureVertexWrites(st, 0, count, 1, type, indices, baseVertex);
         }
     }
 
@@ -1307,6 +1320,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             }
             if (SystemProperties.FFP_TRACE) ffpTrace.trace(st, "elementsIndirect", mode, drawcount, type, (int) indirect, 0);
             SDL_DrawGPUIndexedPrimitivesIndirect(rp, indirectHandle, (int) indirect, drawcount);
+            if (st.boundProgramObj != null && st.boundProgramObj.vertexWriteReplay != null) vertexWriteReplayer.noteIndirectDraw();
         } finally {
             Tracy.endZone();
         }
@@ -1419,6 +1433,11 @@ public class SDLGPURenderBackend extends RenderBackend {
     @Override public void deleteTextures(int texture) {
         fboClearTracker.scrubPendingClearsForTexture(s(), texture);
         resourceManager.deleteTexture(texture);
+    }
+
+    /** Captured vertex-write replays name textures by GL id, which a delete or reallocation would make mean something else. */
+    private void flushVertexWritesBeforeTextureChange() {
+        if (vertexWriteReplayer.hasPending()) frameManager.endRenderPassIfActive(FrameManager.PASS_END_COMPUTE);
     }
 
 
@@ -4275,6 +4294,10 @@ public class SDLGPURenderBackend extends RenderBackend {
     @Override public void memoryBarrier(int barriers) {
         // Graphics storage bindings are read-only on SDL_GPU; RW is compute-pass only
         frameManager.endCopyPassIfActive();
+        // Replayed vertex image writes land when the render pass ends, and a barrier promises them to the draws after it
+        if ((barriers & (GL42.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL42.GL_TEXTURE_FETCH_BARRIER_BIT)) != 0 && vertexWriteReplayer.hasPending()) {
+            frameManager.endRenderPassIfActive(FrameManager.PASS_END_COMPUTE);
+        }
     }
 
     @Override public void copyImageSubData(int srcName, int srcTarget, int srcLevel, int srcX, int srcY, int srcZ,
@@ -4421,18 +4444,45 @@ public class SDLGPURenderBackend extends RenderBackend {
         voxelizationDispatcher.endBatch(pass);
     }
 
+    @Override public void setVertexWriteReplay(int graphicsProgram, VertexWriteReplaySetup setup) {
+        vertexWriteReplayer.setReplay(graphicsProgram, setup);
+    }
+
+    @Override public boolean supportsComputeImageAtomics() {
+        return device.supportsSpirv() || !device.supportsMsl();
+    }
+
+    @Override public boolean supportsComputeImageAtomics(int width, int height, int depth) {
+        return supportsComputeImageAtomics() || device.supportsImageAtomics(width, height, depth);
+    }
+
+    private void prepareVertexWrites(ContextState st) {
+        final ShaderManager.ProgramObject prog = st.boundProgramObj;
+        if (prog != null && prog.vertexWriteReplay != null) vertexWriteReplayer.ensureImageUsage(prog.vertexWriteReplay);
+    }
+
+    private void captureVertexWrites(ContextState st, int first, int count, int instances, int indexType, long indexOffset, int baseVertex) {
+        final ShaderManager.ProgramObject prog = st.boundProgramObj;
+        if (prog != null && prog.vertexWriteReplay != null) {
+            vertexWriteReplayer.capture(st, first, count, instances, indexType, indexOffset, baseVertex);
+            if (!frameManager.isRenderPassActive()) vertexWriteReplayer.flush();
+        }
+    }
+
     @Override
     public void drawArraysInstanced(int mode, int first, int count, int primcount) {
         if (count <= 0 || primcount <= 0) return;
         final ContextState st = s();
         if (st.rasterizerDiscard) return;
         if (!frameManager.isFrameActive()) return;
+        prepareVertexWrites(st);
         drawDispatch.setPrimitiveTypeForDraw(st, FormatMap.mapPrimitiveType(mode));
         pipelineApplier.ensureDrawRenderPass(st);
         if (!frameManager.isRenderPassActive()) return;
         if (!pipelineApplier.applyPipelineAndState(st)) return;
         if (SystemProperties.FFP_TRACE) ffpTrace.trace(st, "arraysInstanced", mode, count, 0, first, 0);
         SDL_DrawGPUPrimitives(frameManager.getRenderPass(), count, primcount, first, 0);
+        captureVertexWrites(st, first, count, primcount, 0, 0, 0);
     }
 
     @Override

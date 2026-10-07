@@ -248,6 +248,7 @@ public final class ResourceManager {
     }
 
     private long createTextureCore(int glId, int glTarget, int sdlFormat, int glFormat, int width, int height, int depth, int levels, int usage) {
+        if (getTextureHandle(glId) != 0) beforeTextureReplaced();
         usage = reconcileUsageAndWarn(glId, usage);
         final int sdlType = mapTextureType(glTarget);
         if (!SDL_GPUTextureSupportsFormat(device.getDevice(), sdlFormat, sdlType, usage)) {
@@ -309,7 +310,19 @@ public final class ResourceManager {
         return sdlFormat;
     }
 
+    private Runnable textureReplaceHook;
+
+    public void setTextureReplaceHook(Runnable hook) {
+        textureReplaceHook = hook;
+    }
+
+    private void beforeTextureReplaced() {
+        final Runnable hook = textureReplaceHook;
+        if (hook != null) hook.run();
+    }
+
     public void deleteTexture(int glId) {
+        beforeTextureReplaced();
         final long handle;
         wLock.lock();
         try {
@@ -340,6 +353,7 @@ public final class ResourceManager {
     }
 
     public void releaseTextureHandleForRealloc(int glId) {
+        beforeTextureReplaced();
         final long handle;
         wLock.lock();
         try {

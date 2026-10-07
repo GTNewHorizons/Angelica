@@ -148,6 +148,17 @@ fun Test.configureAngelicaJava8() {
     }
 }
 
+if (isMacOs && providers.gradleProperty("clientJvmVendor").isPresent) {
+    for (javaVersion in listOf(17, 21, 25)) {
+        tasks.named<JavaExec>("runClient$javaVersion") {
+            javaLauncher = javaToolchains.launcherFor {
+                languageVersion = JavaLanguageVersion.of(javaVersion)
+                vendor = JvmVendorSpec.matching(providers.gradleProperty("clientJvmVendor").get())
+            }
+        }
+    }
+}
+
 tasks.test {
     useJUnitPlatform { excludeTags = setOf("gl-core") }
     configureAngelicaJava8()

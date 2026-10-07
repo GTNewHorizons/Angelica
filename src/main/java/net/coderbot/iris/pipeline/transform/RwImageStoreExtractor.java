@@ -1,5 +1,6 @@
 package net.coderbot.iris.pipeline.transform;
 
+import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.GlslTransformUtils;
 import net.coderbot.iris.gl.image.ImageInformation;
 import com.gtnewhorizons.angelica.glsm.texture.InternalTextureFormat;
@@ -7,6 +8,7 @@ import org.antlr.v4.runtime.CommonToken;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
+import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
 import org.taumc.glsl.ShaderParser;
 import org.taumc.glsl.Transformer;
 import org.taumc.glsl.grammar.GLSLLexer;
@@ -22,18 +24,22 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.TreeSet;
 
 public final class RwImageStoreExtractor {
 
-    public enum RwExtractMode { CHUNK, COMPOSITE_VSH, COMPOSITE_FSH }
+    public enum RwExtractMode { CHUNK, COMPOSITE_VSH, COMPOSITE_FSH, VERTEX_REPLAY }
 
     public static RwExtractMode parseSentinel(String computeSource) {
         if (computeSource == null) return null;
         if (computeSource.startsWith("// _vg_mode: chunk")) return RwExtractMode.CHUNK;
         if (computeSource.startsWith("// _vg_mode: composite-vsh")) return RwExtractMode.COMPOSITE_VSH;
         if (computeSource.startsWith("// _vg_mode: composite-fsh")) return RwExtractMode.COMPOSITE_FSH;
+        if (computeSource.startsWith("// _vg_mode: vertex-replay")) return RwExtractMode.VERTEX_REPLAY;
         return null;
     }
+
+    public record VertexInput(String name, String glslType, int location) {}
 
     public record AttributeSlot(String name, String glslType, int byteOffset, String unpackExpr, boolean liveBranch) {
         public AttributeSlot(String name, String glslType, int byteOffset, String unpackExpr) {
@@ -41,7 +47,7 @@ public final class RwImageStoreExtractor {
         }
     }
 
-    public record Result(String strippedSource, String computeSource, Set<String> writtenImages, RwExtractMode mode) {}
+    public record Result(String strippedSource, String computeSource, Set<String> writtenImages, RwExtractMode mode, Set<String> atomicImages) {}
 
     public record ImageDecl(String name, String glslType, String layoutFormat) {}
 
@@ -53,6 +59,9 @@ public final class RwImageStoreExtractor {
 
     public static final int VG_VBUF_SSBO_BINDING = 9;
     public static final int VG_RANGES_SSBO_BINDING = 10;
+    public static final int VG_REPLAY_VERTEX_BUFFER_BINDING = 9;
+    public static final int VG_REPLAY_VERTEX_BUFFER_COUNT = 4;
+    public static final int VG_REPLAY_INDEX_BUFFER_BINDING = VG_REPLAY_VERTEX_BUFFER_BINDING + VG_REPLAY_VERTEX_BUFFER_COUNT;
     private static final int STRIDE_BYTES = 48;
     private static final int STRIDE_UINTS = STRIDE_BYTES / 4;
 
@@ -62,8 +71,30 @@ public final class RwImageStoreExtractor {
         return activeCustomImages;
     }
 
+    private static volatile Set<String> atomicCustomImages = Set.of();
+
     public static void setActiveCustomImages(Map<String, ImageInformation> images) {
         activeCustomImages = (images == null) ? Map.of() : Map.copyOf(images);
+        final TreeSet<String> atomic = new TreeSet<>();
+        if (!activeCustomImages.isEmpty() && !BackendManager.RENDER_BACKEND.supportsComputeImageAtomics()) {
+            for (ImageInformation image : activeCustomImages.values()) {
+                if (image.isRelative()) continue;
+                if (BackendManager.RENDER_BACKEND.supportsComputeImageAtomics(image.width(), image.height(), image.depth())) atomic.add(image.name());
+            }
+        }
+        if (!atomic.equals(atomicCustomImages)) {
+            atomicCustomImages = atomic;
+            TransformPatcher.clearCache();
+            ShaderTransformer.clearCache();
+        }
+    }
+
+    public static boolean supportsAtomics(String image) {
+        return atomicCustomImages.contains(image) || BackendManager.RENDER_BACKEND.supportsComputeImageAtomics();
+    }
+
+    static String atomicCustomImagesKey() {
+        return String.join(",", atomicCustomImages);
     }
 
     private static final Set<String> RW_CALLS = Set.of(
@@ -73,7 +104,11 @@ public final class RwImageStoreExtractor {
     );
 
     public static Result tryExtract(String source, PatchShaderType stage, String programName) {
-        if (source == null) return null;
+        return tryExtract(source, stage, programName, null);
+    }
+
+    public static Result tryExtract(String source, PatchShaderType stage, String programName, RwExtractMode vertexMode) {
+        if (source == null || !mayWriteImages(source)) return null;
         if (stage != PatchShaderType.VERTEX && stage != PatchShaderType.FRAGMENT) return null;
 
         final ShaderParser.ParsedShader parsed = ShaderParser.parseShader(source);
@@ -94,17 +129,188 @@ public final class RwImageStoreExtractor {
         final Map<String, String> chunkAttrAstTypes = (stage == PatchShaderType.VERTEX) ? collectChunkAttrAstTypes(decls) : Map.of();
         final Set<String> chunkAttrsUsed = (stage == PatchShaderType.VERTEX) ? collectChunkAttrsUsed(decls, root, source) : Set.of();
 
-        final RwExtractMode mode = (stage == PatchShaderType.VERTEX) ? (chunkAttrsUsed.isEmpty() ? RwExtractMode.COMPOSITE_VSH : RwExtractMode.CHUNK) : RwExtractMode.COMPOSITE_FSH;
+        final RwExtractMode mode = (stage == PatchShaderType.VERTEX)
+            ? (vertexMode != null ? vertexMode : chunkAttrsUsed.isEmpty() ? RwExtractMode.COMPOSITE_VSH : RwExtractMode.CHUNK)
+            : RwExtractMode.COMPOSITE_FSH;
 
         final List<AttributeSlot> attrs = (mode == RwExtractMode.CHUNK) ? collectVertexAttributes(chunkAttrsUsed, chunkAttrAstTypes) : List.of();
+        final Set<String> quadInputs = (mode == RwExtractMode.COMPOSITE_VSH) ? declaredQuadInputs(decls) : Set.of();
+        final boolean definesFtransform = definesFunction(root, "iris_ftransform");
 
         final String stripped = buildRasterOutputViaSourceSlicing(source, decls, exprs, writtenImages, declared, mode);
 
         final Transformer tc = new Transformer(root);
-        applyComputeMutations(tc, writtenImages, declared, chunkAttrsUsed, mode, nonWriteonlyImages);
-        final String compute = buildComputeOutput(root, mode, writtenImages, nonWriteonlyImages, declared, attrs);
+        applyComputeMutations(tc, writtenImages, declared, mode == RwExtractMode.COMPOSITE_VSH ? quadInputs : chunkAttrsUsed, mode, nonWriteonlyImages);
+        final String compute = buildComputeOutput(root, mode, writtenImages, nonWriteonlyImages, declared, attrs, quadInputs, definesFtransform, null);
 
-        return new Result(stripped, compute, writtenImages, mode);
+        return new Result(stripped, compute, writtenImages, mode, atomicImages(root, writtenImages));
+    }
+
+    private static boolean mayWriteImages(String source) {
+        return source.contains("imageStore") || source.contains("imageAtomic");
+    }
+
+    public static Result tryExtractVertexReplay(String source) {
+        if (source == null || !mayWriteImages(source)) return null;
+
+        final ShaderParser.ParsedShader parsed = ShaderParser.parseShader(source);
+        final GLSLParser.Translation_unitContext root = parsed.full();
+
+        final List<GLSLParser.Single_declarationContext> decls = new ArrayList<>();
+        final List<GLSLParser.Postfix_expressionContext> exprs = new ArrayList<>();
+        GlslAstHelpers.collectInto(root,
+            new List[] { decls, exprs },
+            new Class<?>[] { GLSLParser.Single_declarationContext.class, GLSLParser.Postfix_expressionContext.class });
+
+        final Map<String, ImageDecl> declared = collectImageDecls(decls);
+        final Set<String> writtenImages = new LinkedHashSet<>();
+        final Set<String> nonWriteonlyImages = new LinkedHashSet<>();
+        classifyImageCalls(exprs, declared, writtenImages, nonWriteonlyImages);
+        if (writtenImages.isEmpty()) return null;
+
+        final String stripped = buildRasterOutputViaSourceSlicing(source, decls, exprs, writtenImages, declared, RwExtractMode.VERTEX_REPLAY);
+        final List<VertexInput> inputs = collectVertexInputs(decls);
+        if (inputs == null) return new Result(stripped, null, writtenImages, RwExtractMode.VERTEX_REPLAY, Set.of());
+
+        final List<String> readImages = readOnlyImages(exprs, declared, writtenImages);
+        final Set<String> inputNames = new LinkedHashSet<>();
+        for (VertexInput input : inputs) inputNames.add(input.name());
+        final Transformer tc = new Transformer(root);
+        applyComputeMutations(tc, writtenImages, declared, inputNames, RwExtractMode.VERTEX_REPLAY, nonWriteonlyImages);
+        for (String name : readImages) tc.removeVariable(name);
+        final ReplayLayout layout = new ReplayLayout(inputs, readImages, replayHeader(inputs, writtenImages, readImages, collectSamplerNames(decls)));
+        final String compute = buildComputeOutput(root, RwExtractMode.VERTEX_REPLAY, writtenImages, nonWriteonlyImages, declared, List.of(), Set.of(), false, layout);
+
+        return new Result(stripped, compute, writtenImages, RwExtractMode.VERTEX_REPLAY, atomicImages(root, writtenImages));
+    }
+
+    private record ReplayLayout(List<VertexInput> inputs, List<String> readImages, String header) {}
+
+    private static final String REPLAY_INPUTS_HEADER = "// _vg_inputs:";
+    private static final String REPLAY_IMAGES_HEADER = "// _vg_images:";
+    private static final String REPLAY_READ_IMAGES_HEADER = "// _vg_read_images:";
+    private static final String REPLAY_SAMPLERS_HEADER = "// _vg_samplers:";
+
+    private static String replayHeader(List<VertexInput> inputs, Set<String> writtenImages, List<String> readImages, List<String> samplers) {
+        final StringBuilder out = new StringBuilder(REPLAY_INPUTS_HEADER);
+        for (VertexInput input : inputs) out.append(' ').append(input.name()).append(':').append(input.glslType()).append(':').append(input.location());
+        out.append('\n').append(REPLAY_IMAGES_HEADER);
+        for (String image : sortedImages(writtenImages)) out.append(' ').append(image);
+        out.append('\n').append(REPLAY_READ_IMAGES_HEADER);
+        for (String image : readImages) out.append(' ').append(image);
+        out.append('\n').append(REPLAY_SAMPLERS_HEADER);
+        for (String sampler : samplers) out.append(' ').append(sampler);
+        return out.append('\n').toString();
+    }
+
+    /** Images the shader reads but never writes, sorted; the replay binds them after the written ones. */
+    private static List<String> readOnlyImages(List<GLSLParser.Postfix_expressionContext> exprs, Map<String, ImageDecl> declared, Set<String> writtenImages) {
+        final Set<String> read = new LinkedHashSet<>();
+        for (var expr : exprs) {
+            if (GlslAstHelpers.extractCallName(expr) == null) continue;
+            final String firstArg = GlslAstHelpers.firstArgIdentifier(expr);
+            if (declared.containsKey(firstArg) && !writtenImages.contains(firstArg)) read.add(firstArg);
+        }
+        final List<String> sorted = new ArrayList<>(read);
+        Collections.sort(sorted);
+        return sorted;
+    }
+
+    /** The images a vertex-replay compute source only reads, in the order of their bindings after the written ones. */
+    public static List<String> parseVertexReplayReadImages(String computeSource) {
+        return headerTokens(computeSource, REPLAY_READ_IMAGES_HEADER);
+    }
+
+    /** The samplers a vertex-replay compute source declares. */
+    public static List<String> parseVertexReplaySamplers(String computeSource) {
+        return headerTokens(computeSource, REPLAY_SAMPLERS_HEADER);
+    }
+
+    /** The inputs of a vertex-replay compute source, in the order of its {@code _vg_attr} slots. */
+    public static List<VertexInput> parseVertexReplayInputs(String computeSource) {
+        final List<VertexInput> out = new ArrayList<>();
+        for (String token : headerTokens(computeSource, REPLAY_INPUTS_HEADER)) {
+            final String[] parts = token.split(":");
+            if (parts.length != 3) continue;
+            out.add(new VertexInput(parts[0], parts[1], Integer.parseInt(parts[2])));
+        }
+        return out;
+    }
+
+    /** The images a vertex-replay compute source writes, in the order of their bindings. */
+    public static List<String> parseVertexReplayImages(String computeSource) {
+        return headerTokens(computeSource, REPLAY_IMAGES_HEADER);
+    }
+
+    private static List<String> headerTokens(String computeSource, String header) {
+        if (computeSource == null) return List.of();
+        final int start = computeSource.indexOf(header);
+        if (start < 0) return List.of();
+        final int end = computeSource.indexOf('\n', start);
+        final String line = computeSource.substring(start + header.length(), end < 0 ? computeSource.length() : end).trim();
+        if (line.isEmpty()) return List.of();
+        return List.of(line.split(" "));
+    }
+
+    private static final Set<String> REPLAYABLE_INPUT_TYPES = Set.of(
+        "float", "vec2", "vec3", "vec4", "int", "ivec2", "ivec3", "ivec4", "uint", "uvec2", "uvec3", "uvec4");
+
+    /** Global {@code in}/{@code attribute} declarations, or null if one of them cannot be fetched per component. */
+    private static List<VertexInput> collectVertexInputs(List<GLSLParser.Single_declarationContext> decls) {
+        final List<VertexInput> out = new ArrayList<>();
+        for (var decl : decls) {
+            final var fst = decl.fully_specified_type();
+            if (fst == null || fst.type_qualifier() == null) continue;
+            if (GlslAstHelpers.enclosingOfType(decl, GLSLParser.Function_definitionContext.class) != null) continue;
+            boolean isInput = false;
+            int location = -1;
+            for (var sq : fst.type_qualifier().single_type_qualifier()) {
+                if (sq.storage_qualifier() != null) {
+                    final String storage = sq.storage_qualifier().getText();
+                    if (storage.equals("in") || storage.equals("attribute")) isInput = true;
+                }
+                final var lq = sq.layout_qualifier();
+                if (lq == null || lq.layout_qualifier_id_list() == null) continue;
+                for (var id : lq.layout_qualifier_id_list().layout_qualifier_id()) {
+                    if (id.IDENTIFIER() == null || !"location".equals(id.IDENTIFIER().getText())) continue;
+                    try {
+                        location = Integer.parseInt(id.getText().substring(id.getText().indexOf('=') + 1).trim());
+                    } catch (NumberFormatException e) {
+                        return null;
+                    }
+                }
+            }
+            if (!isInput) continue;
+            final String type = fst.type_specifier().getText();
+            if (!REPLAYABLE_INPUT_TYPES.contains(type)) return null;
+            final List<GLSLParser.Typeless_declarationContext> declarators = new ArrayList<>();
+            declarators.add(decl.typeless_declaration());
+            if (decl.getParent() instanceof GLSLParser.Init_declarator_listContext list) declarators.addAll(list.typeless_declaration());
+            for (var typeless : declarators) {
+                if (typeless == null || typeless.IDENTIFIER() == null || typeless.array_specifier() != null) return null;
+                out.add(new VertexInput(typeless.IDENTIFIER().getText(), type, location));
+            }
+        }
+        return out;
+    }
+
+    /** Global sampler uniforms, which the replay may read even after the graphics program stops reading them. */
+    private static List<String> collectSamplerNames(List<GLSLParser.Single_declarationContext> decls) {
+        final List<String> out = new ArrayList<>();
+        for (var decl : decls) {
+            final var fst = decl.fully_specified_type();
+            if (fst == null || fst.type_specifier() == null) continue;
+            if (GlslAstHelpers.enclosingOfType(decl, GLSLParser.Function_definitionContext.class) != null) continue;
+            final String type = fst.type_specifier().getText();
+            if (!type.startsWith("sampler") && !type.startsWith("isampler") && !type.startsWith("usampler")) continue;
+            final List<GLSLParser.Typeless_declarationContext> declarators = new ArrayList<>();
+            declarators.add(decl.typeless_declaration());
+            if (decl.getParent() instanceof GLSLParser.Init_declarator_listContext list) declarators.addAll(list.typeless_declaration());
+            for (var typeless : declarators) {
+                if (typeless != null && typeless.IDENTIFIER() != null) out.add(typeless.IDENTIFIER().getText());
+            }
+        }
+        return out;
     }
 
     private static Map<String, ImageDecl> collectImageDecls(List<GLSLParser.Single_declarationContext> decls) {
@@ -270,13 +476,22 @@ public final class RwImageStoreExtractor {
     private static void applyComputeMutations(Transformer tc, Set<String> writtenImages, Map<String, ImageDecl> declared, Set<String> chunkAttrsUsed, RwExtractMode mode, Set<String> nonWriteonlyImages) {
         hoistNonConstGlobalInitializers(tc);
         renameMainToVgBody(tc);
-        rewriteImageAtomicsToNonAtomic(tc, declared, writtenImages, nonWriteonlyImages);
+        if (mode != RwExtractMode.VERTEX_REPLAY) rewriteImageAtomicsToNonAtomic(tc, declared, writtenImages, nonWriteonlyImages);
         for (String name : writtenImages) tc.removeVariable(name);
-        if (mode == RwExtractMode.CHUNK) {
+        if (mode == RwExtractMode.CHUNK || mode == RwExtractMode.VERTEX_REPLAY) {
             for (String name : chunkAttrsUsed) tc.removeVariable(name);
+            convertInterfaceBlocks(tc);
+            if (mode == RwExtractMode.VERTEX_REPLAY) {
+                stripInterfaceLayoutQualifiers(tc);
+                removeQualifierOnlyDeclarations(tc);
+            }
             stripStorageQualifiers(tc, Set.of("out", "varying"));
         } else if (mode == RwExtractMode.COMPOSITE_VSH) {
+            for (String name : chunkAttrsUsed) tc.removeVariable(name);
             tc.renameFunctionCall("ftransform", "iris_ftransform");
+            convertInterfaceBlocks(tc);
+            stripInterfaceLayoutQualifiers(tc);
+            removeQualifierOnlyDeclarations(tc);
             stripStorageQualifiers(tc, Set.of("in", "attribute", "out", "varying"));
         } else if (mode == RwExtractMode.COMPOSITE_FSH) {
             stripFragOutputs(tc);
@@ -309,6 +524,17 @@ public final class RwImageStoreExtractor {
                 }
             }
         });
+    }
+
+    private static Set<String> atomicImages(GLSLParser.Translation_unitContext computeRoot, Set<String> writtenImages) {
+        final Set<String> out = new LinkedHashSet<>();
+        for (var expr : GlslAstHelpers.collectAll(computeRoot, GLSLParser.Postfix_expressionContext.class)) {
+            final String fname = GlslAstHelpers.extractCallName(expr);
+            if (fname == null || !ATOMIC_CALLS.contains(fname)) continue;
+            final String image = GlslAstHelpers.firstArgIdentifier(expr);
+            if (writtenImages.contains(image)) out.add(image);
+        }
+        return out;
     }
 
     private static boolean isCallTopLevelStatement(GLSLParser.Postfix_expressionContext expr) {
@@ -409,6 +635,7 @@ public final class RwImageStoreExtractor {
         t.mutateTree(tree -> {
             for (var sq : GlslAstHelpers.collectAll(tree, GLSLParser.Storage_qualifierContext.class)) {
                 if (!kill.contains(sq.getText())) continue;
+                if (GlslAstHelpers.enclosingOfType(sq, GLSLParser.Parameter_declarationContext.class) != null) continue;
                 blankLeadingToken(sq);
             }
         });
@@ -427,6 +654,91 @@ public final class RwImageStoreExtractor {
     }
 
     private static final Set<String> AUXILIARY_STORAGE_QUALIFIERS = Set.of("centroid", "sample", "patch");
+
+    private static final Set<String> INTERFACE_STORAGE_QUALIFIERS = Set.of("in", "out", "attribute", "varying");
+
+    private static void removeQualifierOnlyDeclarations(Transformer t) {
+        t.mutateTree(tree -> {
+            if (tree.children == null) return;
+            tree.children.removeIf(child -> child instanceof GLSLParser.External_declarationContext ed
+                && ed.declaration() != null && isQualifierOnly(ed.declaration()));
+        });
+    }
+
+    private static boolean isQualifierOnly(GLSLParser.DeclarationContext decl) {
+        if (decl.LEFT_BRACE() != null) return false;
+        if (decl.init_declarator_list() == null) return decl.type_qualifier() != null && qualifiesStageInterface(decl.type_qualifier());
+        final var single = decl.init_declarator_list().single_declaration();
+        return single != null && single.typeless_declaration() == null && decl.init_declarator_list().COMMA().isEmpty()
+            && single.fully_specified_type() != null && single.fully_specified_type().type_qualifier() != null
+            && qualifiesStageInterface(single.fully_specified_type().type_qualifier());
+    }
+
+    private static boolean qualifiesStageInterface(GLSLParser.Type_qualifierContext tq) {
+        for (var sq : tq.single_type_qualifier()) {
+            if (sq.invariant_qualifier() != null || sq.precise_qualifier() != null) return true;
+            if (sq.storage_qualifier() != null && INTERFACE_STORAGE_QUALIFIERS.contains(sq.storage_qualifier().getText())) return true;
+        }
+        return false;
+    }
+
+    private static void convertInterfaceBlocks(Transformer t) {
+        t.mutateTree(tree -> {
+            if (tree.children == null) return;
+            tree.children.removeIf(child -> child instanceof GLSLParser.External_declarationContext ed
+                && isInterfaceBlock(ed.declaration()) && "gl_PerVertex".equals(ed.declaration().IDENTIFIER(0).getText()));
+            for (var child : tree.children) {
+                if (!(child instanceof GLSLParser.External_declarationContext ed) || !isInterfaceBlock(ed.declaration())) continue;
+                final GLSLParser.DeclarationContext decl = ed.declaration();
+                final String blockName = decl.IDENTIFIER(0).getText();
+                blankAllTerminals(decl.type_qualifier());
+                if (decl.IDENTIFIER().size() > 1) {
+                    setFirstTerminal(decl.type_qualifier(), "struct");
+                    setText(decl.RIGHT_BRACE(), "}; " + blockName);
+                } else {
+                    setText(decl.IDENTIFIER(0), "");
+                    setText(decl.LEFT_BRACE(), "");
+                    setText(decl.RIGHT_BRACE(), "");
+                    setText(decl.SEMICOLON(), "");
+                }
+            }
+        });
+    }
+
+    private static boolean isInterfaceBlock(GLSLParser.DeclarationContext decl) {
+        return decl != null && decl.LEFT_BRACE() != null && decl.type_qualifier() != null && !decl.IDENTIFIER().isEmpty()
+            && qualifiesStageInterface(decl.type_qualifier());
+    }
+
+    private static void setText(TerminalNode node, String text) {
+        if (node != null && node.getSymbol() instanceof CommonToken ct) ct.setText(text);
+    }
+
+    private static void setFirstTerminal(ParseTree node, String text) {
+        if (node instanceof TerminalNode tn) {
+            setText(tn, text);
+            return;
+        }
+        if (node.getChildCount() > 0) setFirstTerminal(node.getChild(0), text);
+    }
+
+    private static void stripInterfaceLayoutQualifiers(Transformer t) {
+        t.mutateTree(tree -> {
+            for (var tq : GlslAstHelpers.collectAll(tree, GLSLParser.Type_qualifierContext.class)) {
+                boolean isInterface = false;
+                for (var sq : tq.single_type_qualifier()) {
+                    if (sq.storage_qualifier() != null && INTERFACE_STORAGE_QUALIFIERS.contains(sq.storage_qualifier().getText())) {
+                        isInterface = true;
+                        break;
+                    }
+                }
+                if (!isInterface) continue;
+                for (var sq : tq.single_type_qualifier()) {
+                    if (sq.layout_qualifier() != null) blankAllTerminals(sq.layout_qualifier());
+                }
+            }
+        });
+    }
 
     private static void blankLeadingToken(ParserRuleContext ctx) {
         if (ctx.getChildCount() == 0) return;
@@ -537,19 +849,42 @@ public final class RwImageStoreExtractor {
         });
     }
 
-    private static String buildComputeOutput(GLSLParser.Translation_unitContext computeRoot, RwExtractMode mode, Set<String> writtenImages, Set<String> nonWriteonlyImages, Map<String, ImageDecl> declared, List<AttributeSlot> attrs) {
+    private static final Set<String> QUAD_INPUTS = Set.of("iris_Vertex", "iris_MultiTexCoord0");
+
+    private static Set<String> declaredQuadInputs(List<GLSLParser.Single_declarationContext> decls) {
+        final Set<String> out = new LinkedHashSet<>();
+        for (var decl : decls) {
+            if (decl.typeless_declaration() == null || decl.typeless_declaration().IDENTIFIER() == null) continue;
+            if (GlslAstHelpers.enclosingOfType(decl, GLSLParser.Function_definitionContext.class) != null) continue;
+            final String name = decl.typeless_declaration().IDENTIFIER().getText();
+            if (QUAD_INPUTS.contains(name)) out.add(name);
+        }
+        return out;
+    }
+
+    private static boolean definesFunction(GLSLParser.Translation_unitContext root, String name) {
+        for (var fdef : GlslAstHelpers.collectAll(root, GLSLParser.Function_definitionContext.class)) {
+            final var id = fdef.function_prototype().IDENTIFIER();
+            if (id != null && name.equals(id.getText())) return true;
+        }
+        return false;
+    }
+
+    private static String buildComputeOutput(GLSLParser.Translation_unitContext computeRoot, RwExtractMode mode, Set<String> writtenImages, Set<String> nonWriteonlyImages, Map<String, ImageDecl> declared, List<AttributeSlot> attrs, Set<String> quadInputs, boolean definesFtransform, ReplayLayout replay) {
         final StringBuilder out = new StringBuilder(8192);
         out.append("// _vg_mode: ").append(modeTag(mode)).append('\n');
+        if (replay != null) out.append(replay.header());
         out.append("#version 460 core\n");
         switch (mode) {
             case CHUNK -> emitChunkPrelude(out, writtenImages, nonWriteonlyImages, declared, attrs);
-            case COMPOSITE_VSH -> emitCompositeVshPrelude(out, writtenImages, nonWriteonlyImages, declared);
+            case COMPOSITE_VSH -> emitCompositeVshPrelude(out, writtenImages, nonWriteonlyImages, declared, quadInputs, definesFtransform);
             case COMPOSITE_FSH -> emitCompositeFshPrelude(out, writtenImages, nonWriteonlyImages, declared);
+            case VERTEX_REPLAY -> emitVertexReplayPrelude(out, writtenImages, nonWriteonlyImages, declared, replay);
         }
         out.append('\n');
         out.append(GlslTransformUtils.getFormattedShader(computeRoot, ""));
         out.append('\n');
-        emitDispatchMain(out, mode, attrs);
+        emitDispatchMain(out, mode, attrs, replay != null ? replay.inputs() : List.of(), quadInputs);
         return out.toString();
     }
 
@@ -558,19 +893,26 @@ public final class RwImageStoreExtractor {
             case CHUNK -> "chunk";
             case COMPOSITE_VSH -> "composite-vsh";
             case COMPOSITE_FSH -> "composite-fsh";
+            case VERTEX_REPLAY -> "vertex-replay";
         };
     }
 
-    private static void emitImageDecls(StringBuilder out, Set<String> writtenImages, Set<String> nonWriteonlyImages, Map<String, ImageDecl> declared) {
+    private static List<String> sortedImages(Set<String> writtenImages) {
         final List<String> sorted = new ArrayList<>(writtenImages);
         Collections.sort(sorted);
+        return sorted;
+    }
+
+    private static void emitImageDecls(StringBuilder out, Set<String> writtenImages, Set<String> nonWriteonlyImages, Map<String, ImageDecl> declared) {
+        final List<String> sorted = sortedImages(writtenImages);
         final Map<String, ImageInformation> infos = activeCustomImages;
         for (int i = 0; i < sorted.size(); i++) {
             final String name = sorted.get(i);
             final ImageDecl d = declared.get(name);
             if (d == null) continue;
             final InternalTextureFormat fmt = (infos != null && infos.get(name) != null) ? infos.get(name).internalTextureFormat() : null;
-            final String layoutInner = (fmt != null) ? "binding = " + i + ", " + fmt.name().toLowerCase(Locale.ROOT) : "binding = " + i;
+            final String format = fmt != null ? fmt.name().toLowerCase(Locale.ROOT) : d.layoutFormat();
+            final String layoutInner = (format != null) ? "binding = " + i + ", " + format : "binding = " + i;
             final String qualifier = nonWriteonlyImages.contains(name) ? "" : "writeonly ";
             out.append("layout(").append(layoutInner).append(") ").append(qualifier).append("uniform ").append(d.glslType()).append(' ').append(name).append(";\n");
         }
@@ -604,7 +946,7 @@ public final class RwImageStoreExtractor {
         out.append("void _vert_init() {}\n");
     }
 
-    private static void emitCompositeVshPrelude(StringBuilder out, Set<String> writtenImages, Set<String> nonWriteonlyImages, Map<String, ImageDecl> declared) {
+    private static void emitCompositeVshPrelude(StringBuilder out, Set<String> writtenImages, Set<String> nonWriteonlyImages, Map<String, ImageDecl> declared, Set<String> quadInputs, boolean definesFtransform) {
         out.append("layout(local_size_x = 64) in;\n\n");
         emitImageDecls(out, writtenImages, nonWriteonlyImages, declared);
         out.append("\nconst vec4 _vg_quad[4] = vec4[4](\n");
@@ -614,10 +956,67 @@ public final class RwImageStoreExtractor {
         out.append("    vec4(0.0, 0.0, 0.0, 1.0));\n");
         out.append("vec4 _vg_gl_vertex;\n");
         out.append("int _vg_gl_vertex_id;\n");
+        out.append("vec4 _vg_sink_pos;\n");
+        out.append("float _vg_sink_psize;\n");
+        out.append("float _vg_sink_clip[8];\n");
         out.append("#define gl_Vertex _vg_gl_vertex\n");
         out.append("#define gl_VertexID _vg_gl_vertex_id\n");
-        out.append("uniform mat4 gl_ModelViewProjectionMatrix;\n");
-        out.append("vec4 iris_ftransform() { return gl_ModelViewProjectionMatrix * gl_Vertex; }\n");
+        out.append("#define gl_Position _vg_sink_pos\n");
+        out.append("#define gl_PointSize _vg_sink_psize\n");
+        out.append("#define gl_ClipDistance _vg_sink_clip\n");
+        for (String input : quadInputs) out.append("vec4 ").append(input).append(";\n");
+        if (!definesFtransform) {
+            out.append("uniform mat4 gl_ModelViewProjectionMatrix;\n");
+            out.append("vec4 iris_ftransform() { return gl_ModelViewProjectionMatrix * gl_Vertex; }\n");
+        }
+    }
+
+    private static void emitVertexReplayPrelude(StringBuilder out, Set<String> writtenImages, Set<String> nonWriteonlyImages, Map<String, ImageDecl> declared, ReplayLayout replay) {
+        final List<VertexInput> inputs = replay.inputs();
+        out.append("layout(local_size_x = 64) in;\n\n");
+        emitImageDecls(out, writtenImages, nonWriteonlyImages, declared);
+        final Map<String, ImageInformation> infos = activeCustomImages;
+        for (int i = 0; i < replay.readImages().size(); i++) {
+            final ImageDecl d = declared.get(replay.readImages().get(i));
+            final InternalTextureFormat fmt = infos.get(d.name()) != null ? infos.get(d.name()).internalTextureFormat() : null;
+            final String format = fmt != null ? fmt.name().toLowerCase(Locale.ROOT) : d.layoutFormat();
+            out.append("layout(binding = ").append(writtenImages.size() + i).append(format != null ? ", " + format : "").append(") readonly uniform ")
+                .append(d.glslType()).append(' ').append(d.name()).append(";\n");
+        }
+        out.append('\n');
+        for (int i = 0; i < VG_REPLAY_VERTEX_BUFFER_COUNT; i++) {
+            out.append("layout(std430, binding = ").append(VG_REPLAY_VERTEX_BUFFER_BINDING + i)
+                .append(") readonly buffer _VgVertices").append(i).append(" { uint d[]; } _vg_vertices").append(i).append(";\n");
+        }
+        out.append("layout(std430, binding = ").append(VG_REPLAY_INDEX_BUFFER_BINDING).append(") readonly buffer _VgIndices { uint d[]; } _vg_indices;\n\n");
+        final int slots = Math.max(1, inputs.size());
+        out.append("uniform uvec4 _vg_attr[").append(slots).append("];\n");
+        out.append("uniform vec4 _vg_attrDefault[").append(slots).append("];\n");
+        out.append("uniform ivec4 _vg_draw;\n");
+        out.append("uniform ivec3 _vg_index;\n");
+        out.append("uniform uvec2 _vg_restart;\n");
+        out.append("uniform int _vg_invocationBase;\n\n");
+        out.append("vec4 _vg_sink_pos;\n");
+        out.append("float _vg_sink_psize;\n");
+        out.append("float _vg_sink_clip[8];\n");
+        out.append("int _vg_vertex_id;\n");
+        out.append("int _vg_instance_id;\n");
+        out.append("#define gl_Position _vg_sink_pos\n");
+        out.append("#define gl_PointSize _vg_sink_psize\n");
+        out.append("#define gl_ClipDistance _vg_sink_clip\n");
+        out.append("#define gl_VertexID _vg_vertex_id\n");
+        out.append("#define gl_VertexIndex _vg_vertex_id\n");
+        out.append("#define gl_InstanceID _vg_instance_id\n");
+        out.append("#define gl_InstanceIndex _vg_instance_id\n");
+        for (String suffix : new String[] { "", "ARB" }) {
+            out.append("#define gl_BaseVertex").append(suffix).append(" _vg_draw.w\n");
+            out.append("#define gl_BaseInstance").append(suffix).append(" 0\n");
+            out.append("#define gl_DrawID").append(suffix).append(" 0\n");
+        }
+        out.append('\n');
+        for (VertexInput input : inputs) out.append(input.glslType()).append(' ').append(input.name()).append(";\n");
+        out.append('\n');
+        out.append(ShaderLoader.getShaderSource("angelica:include/vertex_replay_fetch.glsl"));
     }
 
     private static void emitCompositeFshPrelude(StringBuilder out, Set<String> writtenImages, Set<String> nonWriteonlyImages, Map<String, ImageDecl> declared) {
@@ -643,7 +1042,7 @@ public final class RwImageStoreExtractor {
         }
     }
 
-    private static void emitDispatchMain(StringBuilder out, RwExtractMode mode, List<AttributeSlot> attrs) {
+    private static void emitDispatchMain(StringBuilder out, RwExtractMode mode, List<AttributeSlot> attrs, List<VertexInput> inputs, Set<String> quadInputs) {
         out.append("void main() {\n");
         switch (mode) {
             case CHUNK -> {
@@ -665,6 +1064,7 @@ public final class RwImageStoreExtractor {
                 out.append("    uint vid = gl_GlobalInvocationID.x;\n");
                 out.append("    if (vid >= 4u) return;\n");
                 out.append("    _vg_gl_vertex = _vg_quad[vid];\n");
+                for (String input : quadInputs) out.append("    ").append(input).append(" = _vg_quad[vid];\n");
                 out.append("    _vg_gl_vertex_id = int(vid);\n");
                 out.append("    _vg_body();\n");
             }
@@ -674,8 +1074,35 @@ public final class RwImageStoreExtractor {
                 out.append("    _vg_gl_fragcoord_raw = vec4(vec2(px) + 0.5, 0.0, 1.0);\n");
                 out.append("    _vg_body();\n");
             }
+            case VERTEX_REPLAY -> {
+                out.append("    uint _vg_g = uint(_vg_invocationBase) + gl_GlobalInvocationID.x;\n");
+                out.append("    uint _vg_count = uint(_vg_draw.y);\n");
+                out.append("    if (_vg_count == 0u || _vg_g >= _vg_count * uint(_vg_draw.z)) return;\n");
+                out.append("    uint _vg_v = _vg_g % _vg_count;\n");
+                out.append("    uint _vg_i = _vg_g / _vg_count;\n");
+                out.append("    uint _vg_vertex = uint(_vg_draw.x) + _vg_v;\n");
+                out.append("    if (_vg_index.x != 0) {\n");
+                out.append("        uint _vg_index_value = _vg_v < uint(_vg_index.z) ? _vg_read(4u, uint(_vg_index.y) + _vg_v * uint(_vg_index.x), uint(_vg_index.x)) : 0u;\n");
+                out.append("        if (_vg_restart.x != 0u && _vg_index_value == _vg_restart.y) return;\n");
+                out.append("        _vg_vertex = _vg_index_value + uint(_vg_draw.w);\n");
+                out.append("    }\n");
+                out.append("    _vg_vertex_id = int(_vg_vertex);\n");
+                out.append("    _vg_instance_id = int(_vg_i);\n");
+                for (int k = 0; k < inputs.size(); k++) {
+                    final VertexInput input = inputs.get(k);
+                    out.append("    ").append(input.name()).append(" = ").append(input.glslType()).append('(')
+                        .append(fetchFunctionFor(input.glslType())).append('(').append(k).append("u, _vg_vertex, _vg_i));\n");
+                }
+                out.append("    _vg_body();\n");
+            }
         }
         out.append("}\n");
+    }
+
+    private static String fetchFunctionFor(String glslType) {
+        if (glslType.startsWith("u")) return "_vg_uint";
+        if (glslType.startsWith("i")) return "_vg_int";
+        return "_vg_float";
     }
 
     private static List<AttributeSlot> collectVertexAttributes(Set<String> chunkAttrsUsed, Map<String, String> chunkAttrAstTypes) {

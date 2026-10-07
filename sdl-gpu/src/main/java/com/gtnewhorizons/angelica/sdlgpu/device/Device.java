@@ -5,7 +5,9 @@ import com.gtnewhorizons.angelica.glsm.backend.BackendOptions;
 import com.gtnewhorizons.angelica.glsm.backend.MoltenVK;
 import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
+import com.gtnewhorizons.angelica.sdlgpu.compute.ImageAtomicsProbe;
 import com.gtnewhorizons.angelica.sdlgpu.util.DebugMessageRelay;
+import it.unimi.dsi.fastutil.longs.Long2BooleanOpenHashMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.sdl.SDLError;
@@ -49,6 +51,9 @@ public final class Device {
     private String driverName;
     private boolean fencePollEnabled;
     private boolean fenceQueryInverted;
+    private int defaultMslVersion;
+    private ImageAtomicsProbe imageAtomicsProbe;
+    private final Long2BooleanOpenHashMap imageAtomicsBySize = new Long2BooleanOpenHashMap();
     private final FenceReleaser fenceReleaser = new FenceReleaser(fence -> device == 0 || FenceWait.isSignaled(this, fence), fence -> { if (device != 0) SDL_ReleaseGPUFence(device, fence); });
     private String deviceName;
     private String driverVersion;
@@ -153,8 +158,34 @@ public final class Device {
         }
 
         probeFences(ver);
+        readMetalLanguageVersion();
 
         return true;
+    }
+
+    private void readMetalLanguageVersion() {
+        if (!isMetal(driverName)) return;
+        defaultMslVersion = ImageAtomicsProbe.defaultMslVersion();
+        if (metalTextureAtomics()) {
+            LOG.info("Metal image atomics: MSL 3.1 available, checked per image size");
+        } else {
+            LOG.info("Metal image atomics: unavailable, this Java runtime compiles Metal shaders as MSL {}.{} and they need 3.1. A runtime built with the macOS 14 SDK or newer enables them.", defaultMslVersion >>> 16, defaultMslVersion & 0xFFFF);
+        }
+    }
+
+    public boolean metalTextureAtomics() {
+        return defaultMslVersion >= ImageAtomicsProbe.MTL_LANGUAGE_VERSION_3_1;
+    }
+
+    public boolean supportsImageAtomics(int width, int height, int depth) {
+        if (!metalTextureAtomics() || width <= 0 || height <= 0 || depth > 1) return false;
+        final long key = (long) width << 32 | height;
+        if (imageAtomicsBySize.containsKey(key)) return imageAtomicsBySize.get(key);
+        if (imageAtomicsProbe == null) imageAtomicsProbe = new ImageAtomicsProbe(device);
+        final boolean ok = imageAtomicsProbe.run(width, height);
+        if (ok) LOG.info("Metal image atomics on {}x{}: ok", width, height);
+        imageAtomicsBySize.put(key, ok);
+        return ok;
     }
 
     private void probeFences(int ver) {
@@ -256,11 +287,15 @@ public final class Device {
             claimed = false;
         }
         fenceReleaser.releaseAll();
+        if (imageAtomicsProbe != null) imageAtomicsProbe.release();
+        imageAtomicsProbe = null;
         SDL_DestroyGPUDevice(device);
         device = 0;
         driverName = null;
         fencePollEnabled = false;
         fenceQueryInverted = false;
+        defaultMslVersion = 0;
+        imageAtomicsBySize.clear();
         deviceName = null;
         driverVersion = null;
         driverInfo = null;

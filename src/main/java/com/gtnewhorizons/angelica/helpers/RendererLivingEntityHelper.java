@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.helpers;
 
 import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.FORMATTING_CHAR;
 
+import com.gtnewhorizons.angelica.api.EyePassRenderer;
 import net.minecraft.client.renderer.entity.RenderDragon;
 import net.minecraft.client.renderer.entity.RenderEnderman;
 import net.minecraft.client.renderer.entity.RenderSpider;
@@ -15,7 +16,8 @@ public final class RendererLivingEntityHelper {
     private RendererLivingEntityHelper() {}
 
     public static boolean hasEyePass(Object renderer) {
-        return renderer instanceof RenderSpider || renderer instanceof RenderEnderman || renderer instanceof RenderDragon;
+        return renderer instanceof RenderSpider || renderer instanceof RenderEnderman || renderer instanceof RenderDragon
+            || renderer instanceof EyePassRenderer;
     }
 
     public static String getUpsideDownName(EntityLivingBase entity) {
