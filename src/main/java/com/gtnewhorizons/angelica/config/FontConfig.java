@@ -8,6 +8,10 @@ public class FontConfig {
     @Config.DefaultBoolean(false)
     public static boolean enableCustomFont;
 
+    @Config.Comment({"Draw text with modern Minecraft's font sheets"})
+    @Config.DefaultBoolean(true)
+    public static boolean enableModernFont;
+
     @Config.Comment("Name of the primary custom font. Best not to set it from here.")
     @Config.DefaultString("(none)")
     public static String customFontNamePrimary;
