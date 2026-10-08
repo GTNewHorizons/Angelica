@@ -229,6 +229,13 @@ public enum Mixins implements IMixins {
         .addClientMixins("client.thaumcraft.MixinItemThaumometerRenderer")
     ),
 
+    THAUMCRAFT_OBELISK_SHADERS(new MixinBuilder("Make Thaumcraft obelisk portal layers work with shaderpacks")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.THAUMCRAFT)
+        .setApplyIf(() -> AngelicaConfig.enableIris)
+        .addClientMixins("client.thaumcraft.MixinTileEldritchObeliskRenderer")
+    ),
+
     THAUMCRAFT_TESR_JAR_CACHE(new MixinBuilder("Batch TC4 jar liquid via the retained TESR mesh cache")
         .setPhase(Phase.LATE)
         .setApplyIf(() -> AngelicaConfig.enableTESRJarCache)
