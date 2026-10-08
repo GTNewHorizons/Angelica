@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.rendering;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.api.ThreadSafeISBRH;
 import com.gtnewhorizons.angelica.api.ThreadSafeISBRHFactory;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -10,6 +11,7 @@ import cpw.mods.fml.client.registry.ISimpleBlockRenderingHandler;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import net.minecraft.block.Block;
 import net.minecraft.client.renderer.RenderBlocks;
+import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.world.IBlockAccess;
 
 public final class IsbrhDispatch {
@@ -60,6 +62,12 @@ public final class IsbrhDispatch {
         final int previousDepth = state.worldRenderDepth;
         state.worldRenderDepth = previousDepth + 1;
         try {
+            final Tessellator tessellator = TessellatorManager.get();
+            // Avoid stale lightmap values for ISBRHs that don't set brightness
+            if (((StateAwareTessellator) tessellator).angelica$isCeleritasMeshing()
+                && !tessellator.hasBrightness) {
+                tessellator.setBrightness(block.getMixedBrightnessForBlock(world, x, y, z));
+            }
             return handler.renderWorldBlock(world, x, y, z, block, modelId, renderer);
         } finally {
             state.worldRenderDepth = previousDepth;
