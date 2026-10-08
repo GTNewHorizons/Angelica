@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.late.client.thaumcraft;
 
-import com.gtnewhorizons.angelica.compat.thaumcraft.ObeliskPortal;
-import com.gtnewhorizons.angelica.compat.thaumcraft.ObeliskPortal.Face;
+import com.gtnewhorizons.angelica.compat.thaumcraft.PortalRenderer;
 import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import net.minecraft.tileentity.TileEntity;
@@ -11,8 +10,16 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import thaumcraft.client.renderers.tile.TileEldritchObeliskRenderer;
 
+import static com.gtnewhorizons.angelica.compat.thaumcraft.PortalRenderer.AXIS_X;
+import static com.gtnewhorizons.angelica.compat.thaumcraft.PortalRenderer.AXIS_Z;
+
 @Mixin(value = TileEldritchObeliskRenderer.class, remap = false)
 public abstract class MixinTileEldritchObeliskRenderer {
+    @Unique
+    private static final float angelica$NEAR = 0.01F;
+    @Unique
+    private static final float angelica$FAR = 0.99F;
+
     @Shadow
     private boolean inrange;
 
@@ -26,7 +33,7 @@ public abstract class MixinTileEldritchObeliskRenderer {
 
     @Surround.Finally("render")
     private void angelica$endRender() {
-        ObeliskPortal.close();
+        PortalRenderer.endTileEntity(false);
     }
 
     @ModifyExpressionValue(method = "renderTileEntityAt(Lnet/minecraft/tileentity/TileEntity;DDDF)V",
@@ -35,28 +42,49 @@ public abstract class MixinTileEldritchObeliskRenderer {
         return this.angelica$maxRenderDistanceSq;
     }
 
-    @Surround(method = "drawPlaneZNeg(DDDFI)V", id = "north", require = 1)
-    private void angelica$captureNorth(double x, double y, double z, float partialTicks, int height) {
-        if (this.inrange) ObeliskPortal.beginFace(Face.NORTH, x, y, z, height);
+    @Surround(method = "drawPlaneZNeg(DDDFI)V", id = "zNeg", require = 1)
+    private void angelica$zNeg(double x, double y, double z, float f, int height) {
+        @Surround.Skip final boolean skip = this.inrange && PortalRenderer.replacesLayers();
     }
 
-    @Surround(method = "drawPlaneZPos(DDDFI)V", id = "south", require = 1)
-    private void angelica$captureSouth(double x, double y, double z, float partialTicks, int height) {
-        if (this.inrange) ObeliskPortal.beginFace(Face.SOUTH, x, y, z, height);
+    @Surround.Skipped("zNeg")
+    private void angelica$zNegFace(double x, double y, double z, float f, int height) {
+        final double plane = z + angelica$NEAR;
+        PortalRenderer.addFace(AXIS_Z, false, plane, x, y, plane, x, y + height, plane, x + 1.0, y, plane);
     }
 
-    @Surround(method = "drawPlaneXNeg(DDDFI)V", id = "west", require = 1)
-    private void angelica$captureWest(double x, double y, double z, float partialTicks, int height) {
-        if (this.inrange) ObeliskPortal.beginFace(Face.WEST, x, y, z, height);
+    @Surround(method = "drawPlaneZPos(DDDFI)V", id = "zPos", require = 1)
+    private void angelica$zPos(double x, double y, double z, float f, int height) {
+        @Surround.Skip final boolean skip = this.inrange && PortalRenderer.replacesLayers();
     }
 
-    @Surround(method = "drawPlaneXPos(DDDFI)V", id = "east", require = 1)
-    private void angelica$captureEast(double x, double y, double z, float partialTicks, int height) {
-        if (this.inrange) ObeliskPortal.beginFace(Face.EAST, x, y, z, height);
+    @Surround.Skipped("zPos")
+    private void angelica$zPosFace(double x, double y, double z, float f, int height) {
+        final double plane = z + angelica$FAR;
+        PortalRenderer.addFace(AXIS_Z, true, plane, x, y + height, plane, x, y, plane, x + 1.0, y + height, plane);
     }
 
-    @Surround.Return("east")
-    private void angelica$compositeFaces() {
-        ObeliskPortal.finish();
+    @Surround(method = "drawPlaneXNeg(DDDFI)V", id = "xNeg", require = 1)
+    private void angelica$xNeg(double x, double y, double z, float f, int height) {
+        @Surround.Skip final boolean skip = this.inrange && PortalRenderer.replacesLayers();
+    }
+
+    @Surround.Skipped("xNeg")
+    private void angelica$xNegFace(double x, double y, double z, float f, int height) {
+        final double plane = x + angelica$NEAR;
+        PortalRenderer.addFace(AXIS_X, false, plane, plane, y, z, plane, y, z + 1.0, plane, y + height, z);
+    }
+
+    @Surround(method = "drawPlaneXPos(DDDFI)V", id = "xPos", require = 1)
+    private void angelica$xPos(double x, double y, double z, float f, int height) {
+        @Surround.Skip final boolean skip = this.inrange && PortalRenderer.replacesLayers();
+    }
+
+    // TC draws this face last and the obelisk sides right after, which must land on top of the portal.
+    @Surround.Skipped("xPos")
+    private void angelica$xPosFace(double x, double y, double z, float f, int height) {
+        final double plane = x + angelica$FAR;
+        PortalRenderer.addFace(AXIS_X, true, plane, plane, y + height, z, plane, y + height, z + 1.0, plane, y, z);
+        PortalRenderer.drawBeforeOverlay();
     }
 }
