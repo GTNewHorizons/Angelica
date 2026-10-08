@@ -57,6 +57,9 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
 
     private boolean applyingCeleritasAO = false;
 
+    @Unique
+    private int lastBrightnessX, lastBrightnessY, lastBrightnessZ;
+
     @Surround(method = "renderBlockByRenderType", id = "byType")
     private void angelica$enterByType() {
         @Surround.Carry final boolean wasByType = this.isRenderingByType;
@@ -122,18 +125,30 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
     @Surround.Skipped("celeritasAo")
     private boolean angelica$celeritasAoSkipped(Block block, int x, int y, int z, float r, float g, float b) {
         this.applyingCeleritasAO = true;
+        final boolean rendered;
         try {
-            return this.renderStandardBlockWithColorMultiplier(block, x, y, z, r, g, b);
+            rendered = this.renderStandardBlockWithColorMultiplier(block, x, y, z, r, g, b);
         } finally {
             this.applyingCeleritasAO = false;
         }
+        // ISBRHs that emit their own vertices after renderStandardBlock inherit its Tessellator brightness.
+        if (rendered) {
+            TessellatorManager.get().setBrightness(block.getMixedBrightnessForBlock(this.blockAccess, this.lastBrightnessX, this.lastBrightnessY, this.lastBrightnessZ));
+        }
+        return rendered;
     }
 
     @Redirect(method = "renderStandardBlockWithColorMultiplier",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/block/Block;getMixedBrightnessForBlock(Lnet/minecraft/world/IBlockAccess;III)I"),
         require = 1)
     private int angelica$skipDiscardedBrightness(Block block, IBlockAccess world, int x, int y, int z, @Local(ordinal = 0) Tessellator tessellator) {
-        return this.applyingCeleritasAO && ((StateAwareTessellator) tessellator).angelica$isCeleritasMeshing() ? 0 : block.getMixedBrightnessForBlock(world, x, y, z);
+        if (this.applyingCeleritasAO && ((StateAwareTessellator) tessellator).angelica$isCeleritasMeshing()) {
+            this.lastBrightnessX = x;
+            this.lastBrightnessY = y;
+            this.lastBrightnessZ = z;
+            return 0;
+        }
+        return block.getMixedBrightnessForBlock(world, x, y, z);
     }
 
     @Override
