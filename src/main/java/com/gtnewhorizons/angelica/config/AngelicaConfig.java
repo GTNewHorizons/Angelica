@@ -120,7 +120,7 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(true)
     public static boolean showSplashMemoryBar;
 
-    @Config.Comment("Renders the HUD elements once per 20 frames (by default) and reuses the pixels to improve performance. [Experimental]")
+    @Config.Comment("Renders the HUD elements once per 20 frames (by default) and reuses the pixels to improve performance. [Semi-stable]")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean enableHudCaching;
@@ -129,7 +129,7 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableHudCachingEventTransformer;
 
-    @Config.Comment("Enable HUD Caching at runtime. Requires enableHudCaching to be on at startup. [Experimental]")
+    @Config.Comment("Enable HUD Caching at runtime. Requires enableHudCaching to be on at startup. [Semi-stable]")
     @Config.DefaultBoolean(false)
     public static boolean hudCachingActive;
 
