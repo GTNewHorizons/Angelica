@@ -76,8 +76,10 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
         super(renderPassConfiguration);
         this.textureAtlas = (TextureMapExtension) Minecraft.getMinecraft().getTextureMapBlocks();
         this.worldSlice = new WorldSlice(world);
-        this.smoothLightPipeline = new SmoothLightPipeline(lightDataCache, VanillaDiffuseProvider.INSTANCE, false);
-        this.flatLightPipeline = new FlatLightPipeline(lightDataCache, VanillaDiffuseProvider.INSTANCE, false);
+        // Shade by the quad normal so sloped quads blend the face shades instead of snapping to the dominant axis;
+        // axis-aligned quads come out the same either way
+        this.smoothLightPipeline = new SmoothLightPipeline(lightDataCache, VanillaDiffuseProvider.INSTANCE, true);
+        this.flatLightPipeline = new FlatLightPipeline(lightDataCache, VanillaDiffuseProvider.INSTANCE, true);
         this.quadView = new VertexArrayQuadView(vertices);
         this.hasColoredLight = quadLightData instanceof ExtQuadLightData;
     }

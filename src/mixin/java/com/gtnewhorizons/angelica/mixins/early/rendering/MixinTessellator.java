@@ -67,6 +67,14 @@ public class MixinTessellator implements StateAwareTessellator, BiomeBlendTessel
     @Inject(method = "addVertex", at = @At("RETURN"))
     private void addElementState(CallbackInfo ci) {
         if (!celeritasMeshing) return;
+
+        // Vanilla only writes the normal slot after setNormal, leaving whatever an earlier vertex put there otherwise.
+        // Zero means "no normal" to the light pipeline, which then falls back to the computed face normal.
+        final Tessellator self = (Tessellator) (Object) this;
+        if (!self.hasNormals) {
+            self.rawBuffer[self.rawBufferIndex - 2] = 0;
+        }
+
         int state = 0;
 
         if (appliedAo) state |= StateAwareTessellator.RENDERED_WITH_VANILLA_AO;
