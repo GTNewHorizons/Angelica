@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.common.BlockError;
 import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
+import com.gtnewhorizons.angelica.rendering.IsbrhDispatch;
 import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.sugar.Local;
@@ -133,7 +134,11 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
         at = @At(value = "INVOKE", target = "Lnet/minecraft/block/Block;getMixedBrightnessForBlock(Lnet/minecraft/world/IBlockAccess;III)I"),
         require = 1)
     private int angelica$skipDiscardedBrightness(Block block, IBlockAccess world, int x, int y, int z, @Local(ordinal = 0) Tessellator tessellator) {
-        return this.applyingCeleritasAO && ((StateAwareTessellator) tessellator).angelica$isCeleritasMeshing() ? 0 : block.getMixedBrightnessForBlock(world, x, y, z);
+        final boolean discard = this.applyingCeleritasAO && this.isRenderingByType
+            && ((Object) this).getClass() == RenderBlocks.class
+            && !IsbrhDispatch.isRenderingWorldBlock()
+            && ((StateAwareTessellator) tessellator).angelica$isCeleritasMeshing();
+        return discard ? 0 : block.getMixedBrightnessForBlock(world, x, y, z);
     }
 
     @Override
