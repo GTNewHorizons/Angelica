@@ -110,6 +110,18 @@ public class VertexArrayQuadView implements ModelQuadView {
     }
 
     /**
+     * Directional shading follows the geometry, never the tessellator normal. In 1.7.10 chunk rendering a normal set
+     * through setNormal has no visible effect (the face shade is baked by RenderBlocks), so no block relies on it for
+     * shading. It does stay set until the next startDrawing though, so a normal from inventory-style code early in a
+     * block would otherwise shade every later face of that block, e.g. a renderStandardBlock cube with all sides lit
+     * like the top.
+     */
+    @Override
+    public int getModFaceNormal() {
+        return trueNormal;
+    }
+
+    /**
      * Gets the cull face of a quad. This is distinct from the light face, as it will not be set for non-axis-aligned
      * and non-block-grid-aligned quads (i.e. quads on the surface of the 1x1x1 cube).
      * @return the cull face if present, or UNASSIGNED
