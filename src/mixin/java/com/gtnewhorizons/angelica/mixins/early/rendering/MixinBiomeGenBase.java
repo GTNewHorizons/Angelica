@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
-@Mixin(BiomeGenBase.class)
+@Mixin(value = BiomeGenBase.class, priority = 1100)
 public class MixinBiomeGenBase implements BiomeCategoryCache {
     @Unique
     private int cachedBiomeCategory = -1;
@@ -21,7 +21,7 @@ public class MixinBiomeGenBase implements BiomeCategoryCache {
     private final ThreadLocal<BiomeEvent.GetGrassColor> grassColorEventLocal = ThreadLocal.withInitial(() -> new BiomeEvent.GetGrassColor((BiomeGenBase)(Object)this, 0));
     private final ThreadLocal<BiomeEvent.GetFoliageColor> foliageColorEventLocal = ThreadLocal.withInitial(() -> new BiomeEvent.GetFoliageColor((BiomeGenBase)(Object)this, 0));
 
-    @Surround(method = "getFloatTemperature", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/gen/NoiseGeneratorPerlin;func_151601_a(DD)D"))
+    @Surround(method = {"getFloatTemperature", "getFloatTemperatureOld"}, at = @At(value = "INVOKE", target = "Lnet/minecraft/world/gen/NoiseGeneratorPerlin;func_151601_a(DD)D"), require = 1)
     private void angelica$cachedTemperatureNoise(NoiseGeneratorPerlin noise, double x, double z) {
         @Surround.Carry
         final SmoothBiomeColorCache cache = SmoothBiomeColorCache.getActiveCache();
