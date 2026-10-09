@@ -189,6 +189,9 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private final Map<Pair<String, InputAvailability>, Map<PatchShaderType, String>> attributeTransforms;
 	private final EnumMap<Instancing, Map<Pair<String, InputAvailability>, Map<PatchShaderType, String>>> instancedAttributeTransforms = new EnumMap<>(Instancing.class);
 	private final boolean[] supportsInstancing = initialInstancingSupport();
+	private final Map<Pair<String, InputAvailability>, Map<PatchShaderType, String>> wideLineTransforms = new HashMap<>();
+	private final Map<SharedProgramKey, WideLineProgram> wideLinePrograms = new HashMap<>();
+	private final boolean packWidensLines;
 	private final ParityFlipState parityState = new ParityFlipState(AngelicaConfig.shaderParityFlip);
 	private final Supplier<ImmutableSet<Integer>> flippedGbuffers;
 	private final Supplier<ImmutableSet<Integer>> flippedShadowGbuffers;
@@ -266,6 +269,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			resolver = new ProgramFallbackResolver(programs);
 			final Map<String, Boolean> mvBuiltinsMemo = new ConcurrentHashMap<>();
 			final Map<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>> attributeTransformFutures = submitAttributeTransforms(resolver, attributeProgramIds(Instancing.NONE), Instancing.NONE, mvBuiltinsMemo);
+			packWidensLines = programs.get(ProgramId.Line).isPresent();
+			final Map<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>> wideLineTransformFutures = submitWideLineTransforms(resolver, packWidensLines);
 			final EnumMap<Instancing, Map<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>>> instancedTransformFutures = new EnumMap<>(Instancing.class);
 			for (Instancing kind : Instancing.VALUES) {
 				if (kind != Instancing.NONE) {
@@ -502,6 +507,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 					// world border uses textured_lit even though it has no lightmap :/
 					null, ProgramId.TexturedLit, ProgramId.TexturedLit,
 					ProgramId.Lightning, ProgramId.Lightning, ProgramId.Lightning,
+					ProgramId.Line, ProgramId.Line, ProgramId.Line,
 					ProgramId.ShadowWater, ProgramId.ShadowWater, ProgramId.ShadowWater,
 					ProgramId.Shadow, ProgramId.Shadow, ProgramId.Shadow
 			};
@@ -521,6 +527,14 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			}
 			Iris.logger.info("[Load #{}] DWRP phase=attribute-join elapsed_ms={}", Iris.getShaderPackLoadId(), String.format("%.1f", (System.nanoTime() - _tLast) / 1_000_000.0));
 			_tLast = System.nanoTime();
+
+			for (Map.Entry<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>> entry : wideLineTransformFutures.entrySet()) {
+				try {
+					this.wideLineTransforms.put(entry.getKey(), entry.getValue().join());
+				} catch (Exception e) {
+					Iris.logger.warn("Wide line transform failed for {}; lines there stay 1 px wide!", entry.getKey().getLeft(), e);
+				}
+			}
 
 			for (Map.Entry<Instancing, Map<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>>> kindEntry : instancedTransformFutures.entrySet()) {
 				final Instancing kind = kindEntry.getKey();
@@ -546,7 +560,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 			final Map<SharedProgramKey, BuiltProgram> builtPrograms = new HashMap<>();
 
-			this.table = new ProgramTable<>((condition, availability) -> {
+			this.table = new ProgramTable<>((condition, requested) -> {
+				final InputAvailability availability = condition == RenderCondition.LINES ? LINE_INPUTS : requested;
 				final ProgramId finalId = gbufferProgramId(ids, condition, availability);
 
 				return cachedPasses.computeIfAbsent(Pair.of(finalId, availability), p -> {
@@ -1046,6 +1061,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	/** Availability used for every shadow pass draw and for the shadow program lookups at load time. */
 	private static final InputAvailability SHADOW_INPUTS = InputAvailability.of(true, true);
 
+	private static final InputAvailability LINE_INPUTS = InputAvailability.NONE;
+
 	@Override
 	public void onEntityRenderBoundary() {
 		GLSMHooks.resolvePendingProgram();
@@ -1399,6 +1416,9 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		private boolean instancingShadow;
 		private final Program[] instancedVariants = new Program[Instancing.VALUES.length];
 		private final boolean[] instancedVariantAttempted = new boolean[Instancing.VALUES.length];
+		@Nullable
+		private WideLineProgram wideLineProgram;
+		private boolean wideLineProgramAttempted;
 
 		private Pass(@Nullable Program program, GlFramebuffer framebufferBeforeTranslucents, GlFramebuffer framebufferAfterTranslucents,
 					 @Nullable AlphaTestOverride alphaTestOverride, @Nullable BlendModeOverride blendModeOverride, @Nullable List<BufferBlendOverride> bufferBlendOverrides, boolean shadowViewport) {
@@ -1494,6 +1514,17 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			return instancedVariants[i];
 		}
 
+		@Nullable
+		WideLineProgram wideLineProgram() {
+			if (!wideLineProgramAttempted) {
+				wideLineProgramAttempted = true;
+				if (instancingSourceName != null) {
+					wideLineProgram = sharedWideLineProgram(instancingSourceName, instancingAvailability, instancingShadow);
+				}
+			}
+			return wideLineProgram;
+		}
+
 		public void destroy() {
 			if (this.program != null) {
 				this.program.destroy();
@@ -1568,6 +1599,98 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		this.customUniforms.push(variant);
 	}
 
+	private record WideLineProgram(Program program, int lineWidthLocation, int screenSizeLocation) {}
+
+	@Nullable
+	private WideLineProgram sharedWideLineProgram(String sourceName, InputAvailability availability, boolean shadow) {
+		final SharedProgramKey key = new SharedProgramKey(sourceName, availability, shadow);
+		if (wideLinePrograms.containsKey(key)) return wideLinePrograms.get(key);
+		final WideLineProgram built = buildWideLineProgram(sourceName, availability, shadow);
+		wideLinePrograms.put(key, built);
+		return built;
+	}
+
+	@Nullable
+	private WideLineProgram buildWideLineProgram(String sourceName, InputAvailability availability, boolean shadow) {
+		final Map<PatchShaderType, String> transformed = wideLineTransforms.get(Pair.of(sourceName, availability));
+		if (transformed == null) {
+			return null;
+		}
+		final String name = sourceName + "_widelines";
+		try {
+			final ProgramBuilder builder = beginBuilder(name, transformed);
+			wireGbufferProgram(builder, availability, shadow);
+			final Program program = builder.build();
+			vertexWriteReplays.attach(name, program, transformed, (samplers, images) -> wireGbufferResources(samplers, images, availability, shadow));
+			this.customUniforms.mapholderToPass(builder, program);
+			final int id = program.getProgramId();
+			return new WideLineProgram(program, GLStateManager.glGetUniformLocation(id, "iris_LineWidth"), GLStateManager.glGetUniformLocation(id, "iris_ScreenSize"));
+		} catch (Exception e) {
+			Iris.logger.warn("Wide line program link failed for {}; lines there stay 1 px wide", sourceName, e);
+			return null;
+		}
+	}
+
+	@Nullable
+	private Pass passBeforeLines;
+
+	public boolean bindLineProgram() {
+		if (!shouldOverrideShaders() || DisplayListManager.isRecording()) {
+			return false;
+		}
+		GLSMHooks.resolvePendingProgram();
+		final Pass pass = current;
+		if (pass == null || pass.getProgram() == null || activeInstancing != Instancing.NONE
+			|| GLStateManager.getActiveProgram() != pass.getProgram().getProgramId()) {
+			return false;
+		}
+
+		final boolean shadow = currentCondition == RenderCondition.SHADOW || currentCondition == RenderCondition.SHADOW_TRANSLUCENT;
+		final Pass linePass = shadow ? pass : table.match(RenderCondition.LINES, LINE_INPUTS);
+		if (linePass.getProgram() == null) {
+			return false;
+		}
+		final boolean needsWidening = shadow || !packWidensLines;
+		final WideLineProgram wide = needsWidening ? linePass.wideLineProgram() : null;
+		if (needsWidening && wide == null) {
+			return false;
+		}
+
+		passBeforeLines = pass;
+		if (linePass != pass) {
+			beginPass(linePass);
+		}
+		if (wide != null) {
+			wide.program().use();
+			this.customUniforms.push(wide.program());
+			final var viewport = GLStateManager.getViewportState();
+			RenderSystem.uniform1f(wide.lineWidthLocation(), GLStateManager.getLineState().getWidth());
+			RenderSystem.uniform2f(wide.screenSizeLocation(), viewport.width, viewport.height);
+		}
+		return true;
+	}
+
+	public void restoreAfterLines() {
+		final Pass previous = passBeforeLines;
+		passBeforeLines = null;
+		if (previous == null) {
+			return;
+		}
+		if (current != previous) {
+			beginPass(previous);
+		} else {
+			previous.use();
+		}
+	}
+
+	public void compileWideLinePrograms() {
+		table.match(RenderCondition.LINES, LINE_INPUTS).wideLineProgram();
+		final Pass shadowPass = table.match(RenderCondition.SHADOW, SHADOW_INPUTS);
+		if (shadowPass != null) shadowPass.wideLineProgram();
+		final Pass shadowWaterPass = table.match(RenderCondition.SHADOW_TRANSLUCENT, SHADOW_INPUTS);
+		if (shadowWaterPass != null) shadowWaterPass.wideLineProgram();
+	}
+
 	@Override
 	public void destroy() {
 		clearPendingSelection();
@@ -1611,6 +1734,9 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 					compute.destroy();
 				}
 			}
+		}
+		for (WideLineProgram wide : wideLinePrograms.values()) {
+			if (wide != null) wide.program().destroy();
 		}
 		vertexWriteReplays.destroy();
 		if (shadowVoxelizationCompute != null) {
@@ -2444,6 +2570,31 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		return futures;
 	}
 
+	private static Map<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>>
+			submitWideLineTransforms(ProgramFallbackResolver resolver, boolean packWidensLines) {
+		final Map<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>> futures = new HashMap<>();
+		if (!packWidensLines) {
+			submitWideLineTransform(futures, resolver.resolveNullable(ProgramId.Line), LINE_INPUTS);
+		}
+		submitWideLineTransform(futures, resolver.resolveNullable(ProgramId.Shadow), SHADOW_INPUTS);
+		submitWideLineTransform(futures, resolver.resolveNullable(ProgramId.ShadowWater), SHADOW_INPUTS);
+		return futures;
+	}
+
+	private static void submitWideLineTransform(Map<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>> futures,
+												@Nullable ProgramSource source, InputAvailability inputs) {
+		if (source == null || futures.containsKey(Pair.of(source.getName(), inputs))) {
+			return;
+		}
+		futures.put(Pair.of(source.getName(), inputs), Iris.ShaderTransformExecutor.submitTracked(() -> TransformPatcher.patchAttributesWideLines(
+			source.getVertexSource().orElse(null),
+			source.getGeometrySource().orElse(null),
+			source.getTessControlSource().orElse(null),
+			source.getTessEvalSource().orElse(null),
+			source.getFragmentSource().orElse(null),
+			inputs)));
+	}
+
 	private static final ProgramId[] INSTANCED_PROGRAM_IDS = {
 		ProgramId.Block, ProgramId.BlockTrans, ProgramId.Entities, ProgramId.EntitiesTrans,
 		ProgramId.Shadow, ProgramId.ShadowWater, ProgramId.ArmorGlint
@@ -2469,7 +2620,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private static final String[] MV_BUILTINS = {
 		"gl_ModelViewMatrix", "gl_ModelViewMatrixInverse",
 		"gl_ModelViewProjectionMatrix", "gl_ModelViewProjectionMatrixInverse",
-		"gl_NormalMatrix", "ftransform"
+		"gl_NormalMatrix", "ftransform",
+		"modelViewMatrix", "modelViewMatrixInverse", "normalMatrix"
 	};
 
 	static boolean referencesMvBuiltins(String source) {

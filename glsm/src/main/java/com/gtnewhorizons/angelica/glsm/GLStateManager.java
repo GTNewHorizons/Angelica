@@ -526,6 +526,8 @@ public class GLStateManager {
     static float lineWidthMax = 1.0f;
     /** True when the driver cannot render wide lines natively (Mesa forward-compat). GS emulation handles widths > 1.0. */
     public static boolean wideLineEmulationEnabled = false;
+    // Without geometry shaders, FFP widens lines from LineQuads in its vertex shader instead
+    public static boolean widenLinesInVertexShader = false;
     public static boolean supportsGeometryShaders() { return RENDER_BACKEND.supportsGeometryShaders(); }
     public static boolean framebufferCompletenessIsMeaningful() { return RENDER_BACKEND.framebufferCompletenessIsMeaningful(); }
     public static void setFfpInstancing(Instancing mode) {
@@ -727,6 +729,7 @@ public class GLStateManager {
             while (RENDER_BACKEND.getError() != GL11.GL_NO_ERROR) {}
         }
         wideLineEmulationEnabled = lineWidthMax <= 1.0f;
+        widenLinesInVertexShader = wideLineEmulationEnabled && !RENDER_BACKEND.supportsGeometryShaders();
         if (wideLineEmulationEnabled) {
             LOGGER.info("GL line width: aliased range [{}, {}], probe at {} rejected, native [{}, {}], GS emulation active for [{}, {}]", lineWidthMin, queriedMax, queriedMax, lineWidthMin, lineWidthMax, lineWidthMax, queriedMax);
         } else {
@@ -6041,10 +6044,27 @@ public class GLStateManager {
         }
     }
 
+    public static boolean ffpWidensLineQuads() {
+        final GLContextState glCtx = ctx();
+        return widenLinesInVertexShader && glCtx.activeProgram == 0 && glCtx.lineState.getWidth() > 1.0f
+            && !DisplayListManager.isRecording();
+    }
+
     private static void prepareLineEmulation(GLContextState glCtx, int drawMode) {
         final boolean isLine = drawMode == GL11.GL_LINES || drawMode == GL11.GL_LINE_STRIP || drawMode == GL11.GL_LINE_LOOP;
         glCtx.wideLineEmulationActive = wideLineEmulationEnabled && RENDER_BACKEND.supportsGeometryShaders() && isLine && glCtx.lineState.getWidth() > 1.0f;
-        setLineStippleActive(glCtx, isLine && glCtx.lineStippleState.isEnabled());
+        setLineStippleActive(glCtx, (isLine || glCtx.lineQuadsActive) && glCtx.lineStippleState.isEnabled());
+        suspendCullForWideLines(glCtx, glCtx.wideLineEmulationActive && glCtx.activeProgram == 0 && glCtx.cullState.isEnabled());
+    }
+
+    private static void suspendCullForWideLines(GLContextState glCtx, boolean suspend) {
+        if (suspend) {
+            RENDER_BACKEND.disable(GL11.GL_CULL_FACE);
+            glCtx.cullSuspendedForWideLines = true;
+        } else if (glCtx.cullSuspendedForWideLines) {
+            glCtx.cullState.applyToBackend();
+            glCtx.cullSuspendedForWideLines = false;
+        }
     }
 
     private static void setLineStippleActive(GLContextState glCtx, boolean active) {

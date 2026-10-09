@@ -1,24 +1,31 @@
 #version 330 core
 
-layout(lines) in;
-layout(triangle_strip, max_vertices = 4) out;
+layout(location = 0) in vec3 a_Position;
+layout(location = 4) in vec3 a_LineOtherEnd;
 
+uniform mat4 u_MVP;
 uniform vec2 u_ViewportSize;
 uniform float u_LineWidth;
 
 void main() {
-    vec4 c0 = gl_in[0].gl_Position;
-    vec4 c1 = gl_in[1].gl_Position;
+    int corner = gl_VertexID % 6;
+    bool start = corner == 0 || corner == 1 || corner == 3;
+    vec4 self = u_MVP * vec4(a_Position, 1.0);
+    vec4 other = u_MVP * vec4(a_LineOtherEnd, 1.0);
+    vec4 c0 = start ? self : other;
+    vec4 c1 = start ? other : self;
 
     float d0 = c0.z + c0.w;
     float d1 = c1.z + c1.w;
-    if (d0 < 0.0 && d1 < 0.0) return;
+    if (d0 < 0.0 && d1 < 0.0) {
+        gl_Position = vec4(0.0, 0.0, 2.0, 1.0);
+        return;
+    }
     vec4 p0 = d0 < 0.0 ? mix(c0, c1, d0 / (d0 - d1)) : c0;
     vec4 p1 = d1 < 0.0 ? mix(c0, c1, d0 / (d0 - d1)) : c1;
 
     vec2 n0 = p0.xy / p0.w;
     vec2 n1 = p1.xy / p1.w;
-
 
     vec2 pixel = 2.0 / u_ViewportSize;
     float halfWidth = 0.5 * u_LineWidth;
@@ -33,13 +40,7 @@ void main() {
         shift = vec2(0.125, n0.y < n1.y ? -0.5 : 0.5) * pixel;
     }
 
-    gl_Position = vec4((n0 + offset + shift) * p0.w, p0.z, p0.w);
-    EmitVertex();
-    gl_Position = vec4((n0 - offset + shift) * p0.w, p0.z, p0.w);
-    EmitVertex();
-    gl_Position = vec4((n1 + offset + shift) * p1.w, p1.z, p1.w);
-    EmitVertex();
-    gl_Position = vec4((n1 - offset + shift) * p1.w, p1.z, p1.w);
-    EmitVertex();
-    EndPrimitive();
+    vec4 p = start ? p0 : p1;
+    vec2 n = start ? n0 : n1;
+    gl_Position = vec4((corner % 2 == 0 ? n + offset + shift : n - offset + shift) * p.w, p.z, p.w);
 }

@@ -3,8 +3,12 @@ package com.gtnewhorizons.angelica.render;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VertexBufferType;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
+import com.gtnewhorizons.angelica.glsm.hooks.LineDrawHandler;
+import com.gtnewhorizons.angelica.glsm.streaming.LineQuads;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
 import com.gtnewhorizons.angelica.client.rendering.GlUniformFloat2v;
 import net.irisshaders.iris.api.v0.IrisApi;
@@ -23,10 +27,15 @@ import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
 
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress0;
+
 public final class SelectionBoxRenderer {
 
     private static GlProgram<SelectionBoxUniforms> program;
     private static IVertexArrayObject vao;
+    private static IVertexArrayObject directionQuadVao;
+    private static IVertexArrayObject otherEndQuadVao;
+    private static boolean drawsLineQuads;
     private static final Matrix4f mvpMatrix = new Matrix4f();
     private static final float[] colorBuf = new float[4];
 
@@ -43,9 +52,12 @@ public final class SelectionBoxRenderer {
     private SelectionBoxRenderer() {}
 
     public static void init() {
-        final boolean needsGS = GLStateManager.wideLineEmulationEnabled && GLStateManager.supportsGeometryShaders();
+        drawsLineQuads = GLStateManager.widenLinesInVertexShader;
+        final boolean needsGS = GLStateManager.wideLineEmulationEnabled && !drawsLineQuads;
+        final boolean widens = needsGS || drawsLineQuads;
 
-        final GlShader vs = ShaderLoader.loadShader(ShaderType.VERTEX, "angelica:selection_box.vert.glsl", ShaderConstants.EMPTY);
+        final String vertexShader = drawsLineQuads ? "angelica:selection_box_quads.vert.glsl" : "angelica:selection_box.vert.glsl";
+        final GlShader vs = ShaderLoader.loadShader(ShaderType.VERTEX, vertexShader, ShaderConstants.EMPTY);
         final GlShader fs = ShaderLoader.loadShader(ShaderType.FRAGMENT, "angelica:selection_box.frag.glsl", ShaderConstants.EMPTY);
         final GlProgram.Builder builder = GlProgram.builder("SelectionBox").attachShader(vs).attachShader(fs);
 
@@ -58,8 +70,8 @@ public final class SelectionBoxRenderer {
         program = builder.link(ctx -> new SelectionBoxUniforms(
                 ctx.bindUniform("u_MVP", GlUniformMatrix4f::new),
                 ctx.bindUniform("u_Color", GlUniformFloat4v::new),
-                needsGS ? ctx.bindUniform("u_ViewportSize", GlUniformFloat2v::new) : null,
-                needsGS ? ctx.bindUniform("u_LineWidth", GlUniformFloat::new) : null));
+                widens ? ctx.bindUniform("u_ViewportSize", GlUniformFloat2v::new) : null,
+                widens ? ctx.bindUniform("u_LineWidth", GlUniformFloat::new) : null));
 
         vs.destroy();
         fs.destroy();
@@ -68,6 +80,15 @@ public final class SelectionBoxRenderer {
         final ByteBuffer buf = BufferUtils.createByteBuffer(UNIT_EDGES.length * Float.BYTES);
         buf.asFloatBuffer().put(UNIT_EDGES);
         vao = VertexBufferType.IMMUTABLE.allocate(DefaultVertexFormat.POSITION, GL11.GL_LINES, buf, VERT_COUNT);
+
+        final VertexFormat quadFormat = LineQuads.quadFormat(DefaultVertexFormat.POSITION);
+        final int quadVertices = LineQuads.segmentCount(GL11.GL_LINES, VERT_COUNT) * LineQuads.VERTICES_PER_SEGMENT;
+        final ByteBuffer directionQuads = BufferUtils.createByteBuffer(quadVertices * quadFormat.getVertexSize());
+        LineQuads.expandWithDirection(memAddress0(buf), DefaultVertexFormat.POSITION, GL11.GL_LINES, VERT_COUNT, memAddress0(directionQuads));
+        directionQuadVao = VertexBufferType.IMMUTABLE.allocate(quadFormat, GL11.GL_TRIANGLES, directionQuads, quadVertices);
+        final ByteBuffer otherEndQuads = BufferUtils.createByteBuffer(quadVertices * quadFormat.getVertexSize());
+        LineQuads.expandWithOtherEnd(memAddress0(buf), DefaultVertexFormat.POSITION, GL11.GL_LINES, VERT_COUNT, memAddress0(otherEndQuads));
+        otherEndQuadVao = VertexBufferType.IMMUTABLE.allocate(quadFormat, GL11.GL_TRIANGLES, otherEndQuads, quadVertices);
     }
 
     public static void draw(AxisAlignedBB aabb, int color) {
@@ -113,7 +134,11 @@ public final class SelectionBoxRenderer {
             uniforms.lineWidth.setFloat(GLStateManager.getLineState().getWidth());
         }
 
-        vao.render();
+        if (drawsLineQuads) {
+            renderLineQuads(otherEndQuadVao);
+        } else {
+            vao.render();
+        }
 
         program.unbind();
     }
@@ -129,12 +154,30 @@ public final class SelectionBoxRenderer {
             GLStateManager.glColor4f(((color >> 16) & 0xFF) / 255.0f, ((color >> 8) & 0xFF) / 255.0f, (color & 0xFF) / 255.0f, 1.0f);
         }
 
-        vao.render();
+        final LineDrawHandler lines = GLSMHooks.lineDrawHandler;
+        if (lines != null && lines.bindLineProgram()) {
+            try {
+                renderLineQuads(directionQuadVao);
+            } finally {
+                lines.restoreProgram();
+            }
+        } else {
+            vao.render();
+        }
 
         if (overrideColor) {
             GLStateManager.glColor4f(prev.getRed(), prev.getGreen(), prev.getBlue(), prev.getAlpha());
         }
         GLStateManager.glPopMatrix();
+    }
+
+    private static void renderLineQuads(IVertexArrayObject quads) {
+        final boolean culled = LineQuads.disableCulling();
+        try {
+            quads.render();
+        } finally {
+            LineQuads.restoreCulling(culled);
+        }
     }
 
     public static void destroy() {
@@ -145,6 +188,14 @@ public final class SelectionBoxRenderer {
         if (vao != null) {
             vao.delete();
             vao = null;
+        }
+        if (directionQuadVao != null) {
+            directionQuadVao.delete();
+            directionQuadVao = null;
+        }
+        if (otherEndQuadVao != null) {
+            otherEndQuadVao.delete();
+            otherEndQuadVao = null;
         }
     }
 

@@ -34,7 +34,7 @@ public final class VertexShaderGenerator {
         }
         emitTexCoordPassthrough(sb, key);
         if (key.lineStipple()) {
-            emitLineStart(sb);
+            emitLineStart(sb, key.lineQuads() ? "lineCenter" : "gl_Position");
         }
         if (key.fogEnabled()) {
             emitFogDistance(sb, key);
@@ -78,6 +78,8 @@ public final class VertexShaderGenerator {
             }
             if (key.hasVertexNormal() || kind == Instancing.CUBE) {
                 sb.append("layout(location = ").append(VertexFormatElement.Usage.NORMAL.getAttributeLocation()).append(") in vec3 a_Normal;\n");
+            } else if (key.lineQuads()) {
+                sb.append("layout(location = ").append(VertexFormatElement.Usage.NORMAL.getAttributeLocation()).append(") in vec3 a_LineOtherEnd;\n");
             }
         }
         for (String d : InstancedGlslHelpers.attributeDecls("a_", kind)) {
@@ -97,8 +99,8 @@ public final class VertexShaderGenerator {
         };
     }
 
-    private static void emitLineStart(StringBuilder sb) {
-        sb.append("  vec2 ndc = gl_Position.xy / gl_Position.w;\n");
+    private static void emitLineStart(StringBuilder sb, String clipPosition) {
+        sb.append("  vec2 ndc = ").append(clipPosition).append(".xy / ").append(clipPosition).append(".w;\n");
         sb.append("  v_LineStart = u_Viewport.xy + (ndc * 0.5 + 0.5) * u_Viewport.zw;\n\n");
     }
 
@@ -151,6 +153,9 @@ public final class VertexShaderGenerator {
             sb.append("  v_Overlay = a_InstOverlay;\n");
         } else {
             sb.append("  gl_Position = u_MVPMatrix * pos4;\n");
+            if (key.lineQuads()) {
+                emitLineQuadWidening(sb);
+            }
 
             // Eye position needed for lighting, fog, EYE_LINEAR texgen, and clip planes
             if (key.lightingEnabled() || key.fogEnabled() || texGenNeedsEyePos(key) || key.clipPlanesEnabled()) {
@@ -158,6 +163,42 @@ public final class VertexShaderGenerator {
             }
         }
         sb.append('\n');
+    }
+
+    private static void emitLineQuadWidening(StringBuilder sb) {
+        sb.append("  int lineCorner = gl_VertexID % 6;\n");
+        sb.append("  bool lineStart = lineCorner == 0 || lineCorner == 1 || lineCorner == 3;\n");
+        sb.append("  vec4 lineOther = u_MVPMatrix * vec4(a_LineOtherEnd, 1.0);\n");
+        sb.append("  vec4 lineC0 = lineStart ? gl_Position : lineOther;\n");
+        sb.append("  vec4 lineC1 = lineStart ? lineOther : gl_Position;\n");
+        sb.append("  vec4 lineCenter = lineC0;\n");
+        sb.append("  float lineD0 = lineC0.z + lineC0.w;\n");
+        sb.append("  float lineD1 = lineC1.z + lineC1.w;\n");
+        sb.append("  if (lineD0 < 0.0 && lineD1 < 0.0) {\n");
+        sb.append("    gl_Position = vec4(0.0, 0.0, 2.0, 1.0);\n");
+        sb.append("  } else {\n");
+        sb.append("    float lineT0 = lineD0 < 0.0 ? lineD0 / (lineD0 - lineD1) : 0.0;\n");
+        sb.append("    float lineT1 = lineD1 < 0.0 ? lineD0 / (lineD0 - lineD1) : 1.0;\n");
+        sb.append("    vec4 lineP0 = mix(lineC0, lineC1, lineT0);\n");
+        sb.append("    vec4 lineP1 = mix(lineC0, lineC1, lineT1);\n");
+        sb.append("    vec2 lineN0 = lineP0.xy / lineP0.w;\n");
+        sb.append("    vec2 lineN1 = lineP1.xy / lineP1.w;\n");
+        sb.append("    vec2 linePixel = 2.0 / u_ViewportSize;\n");
+        sb.append("    float lineHalfWidth = 0.5 * u_LineWidth;\n");
+        sb.append("    vec2 lineOffset;\n");
+        sb.append("    vec2 lineShift;\n");
+        sb.append("    vec2 lineSpan = abs(lineN1 - lineN0) * u_ViewportSize;\n");
+        sb.append("    if (lineSpan.x > lineSpan.y) {\n");
+        sb.append("      lineOffset = vec2(0.0, lineHalfWidth * linePixel.y);\n");
+        sb.append("      lineShift = vec2(lineN0.x < lineN1.x ? -0.5 : 0.5, -0.125) * linePixel;\n");
+        sb.append("    } else {\n");
+        sb.append("      lineOffset = vec2(lineHalfWidth * linePixel.x, 0.0);\n");
+        sb.append("      lineShift = vec2(0.125, lineN0.y < lineN1.y ? -0.5 : 0.5) * linePixel;\n");
+        sb.append("    }\n");
+        sb.append("    vec4 lineP = lineStart ? lineP0 : lineP1;\n");
+        sb.append("    vec2 lineN = lineStart ? lineN0 : lineN1;\n");
+        sb.append("    gl_Position = vec4((lineN + (lineCorner % 2 == 0 ? lineOffset : -lineOffset) + lineShift) * lineP.w, lineP.z, lineP.w);\n");
+        sb.append("  }\n");
     }
 
     private static void emitNormalTransform(StringBuilder sb, VertexKey key) {

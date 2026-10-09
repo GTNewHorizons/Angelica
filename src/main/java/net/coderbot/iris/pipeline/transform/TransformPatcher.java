@@ -146,6 +146,10 @@ public class TransformPatcher {
         return transform(vertex, geometry, tessControl, tessEval, fragment, new AttributeParameters(Patch.ATTRIBUTES, geometry != null, tessControl != null, inputs, scrollGlint, instancing));
     }
 
+    public static Map<PatchShaderType, String> patchAttributesWideLines(String vertex, String geometry, String tessControl, String tessEval, String fragment, InputAvailability inputs) {
+        return transform(vertex, geometry, tessControl, tessEval, fragment, new AttributeParameters(Patch.ATTRIBUTES, geometry != null, tessControl != null, inputs, false, Instancing.NONE, true));
+    }
+
     public static Map<PatchShaderType, String> patchAttributes(String vertex, String geometry, String tessControl, String tessEval, String fragment, InputAvailability inputs) {
         return patchAttributes(vertex, geometry, tessControl, tessEval, fragment, inputs, false);
     }

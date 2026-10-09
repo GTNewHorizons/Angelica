@@ -21,6 +21,7 @@ public enum RenderCondition {
 	RAIN_SNOW,
 	WORLD_BORDER,
 	LIGHTNING,
+	LINES,
 	SHADOW_TRANSLUCENT,
 	// NB: Must be last due to implementation details of DeferredWorldRenderingPipeline
 	SHADOW

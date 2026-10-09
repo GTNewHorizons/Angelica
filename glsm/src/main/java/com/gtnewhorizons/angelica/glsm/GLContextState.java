@@ -263,6 +263,8 @@ public class GLContextState {
     public int savedFilterMag = -1;
     public float savedFilterAniso = -1.0f;
     public boolean wideLineEmulationActive = false;
+    public boolean lineQuadsActive = false;
+    public boolean cullSuspendedForWideLines = false;
     public boolean lineStippleActive = false;
     public Instancing ffpInstancing = Instancing.NONE;
     public float lastBrightnessX;

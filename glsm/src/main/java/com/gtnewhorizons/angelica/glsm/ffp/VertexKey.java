@@ -52,6 +52,7 @@ public final class VertexKey {
     private static final int BIT_LINE_STIPPLE        = BIT_UNIT23_UV_FROM_UNIT0 + 1;
     private static final int BIT_INSTANCING          = BIT_LINE_STIPPLE + 1;
     private static final long INSTANCING_MASK        = 0x7L;
+    private static final int BIT_LINE_QUADS          = BIT_INSTANCING + 3;
 
     static {
         if (Instancing.VALUES.length > INSTANCING_MASK + 1) {
@@ -105,6 +106,7 @@ public final class VertexKey {
     public boolean clipPlanesEnabled()    { return bit(BIT_CLIP_PLANES); }
     public boolean wideLineEmulation()   { return bit(BIT_WIDE_LINE); }
     public boolean lineStipple()          { return bit(BIT_LINE_STIPPLE); }
+    public boolean lineQuads()            { return bit(BIT_LINE_QUADS); }
     public Instancing instancing()         { return Instancing.VALUES[(int) ((packed >> BIT_INSTANCING) & INSTANCING_MASK)]; }
 
     public boolean cmReplacesAmbient()    { final int m = colorMaterialMode(); return m == CM_AMBIENT || m == CM_AMBIENT_AND_DIFFUSE; }
@@ -226,7 +228,7 @@ public final class VertexKey {
 
         // Vertex format flags
         if (hasColor) bits |= (1L << BIT_HAS_VERTEX_COLOR);
-        if (hasNormal) bits |= (1L << BIT_HAS_VERTEX_NORMAL);
+        if (hasNormal && !glCtx.lineQuadsActive) bits |= (1L << BIT_HAS_VERTEX_NORMAL);
         if (hasTexCoord) bits |= (1L << BIT_HAS_VERTEX_TEX);
         if (hasLightmap) bits |= (1L << BIT_HAS_VERTEX_LIGHTMAP);
 
@@ -244,6 +246,10 @@ public final class VertexKey {
 
         if (glCtx.lineStippleActive) {
             bits |= (1L << BIT_LINE_STIPPLE);
+        }
+
+        if (glCtx.lineQuadsActive) {
+            bits |= (1L << BIT_LINE_QUADS);
         }
 
         bits |= (long) glCtx.ffpInstancing.ordinal() << BIT_INSTANCING;
@@ -277,6 +283,6 @@ public final class VertexKey {
 
     @Override
     public String toString() {
-        return String.format("FFPVertexKey[0x%011X: lit=%b l0=%b l1=%b cm=%b fog=%b tex=%d%d%d%d texmat=%d%d%d%d col=%b nrm=%b vtex=%b vlm=%b tg=%d/%d/%d/%d clip=%b wline=%b inst=%s]", packed,lightingEnabled(), lightEnabled(0), lightEnabled(1), colorMaterialEnabled(), fogEnabled(), unitTexCoordEnabled(0)?1:0, unitTexCoordEnabled(1)?1:0, unitTexCoordEnabled(2)?1:0, unitTexCoordEnabled(3)?1:0, unitTexMatEnabled(0)?1:0, unitTexMatEnabled(1)?1:0, unitTexMatEnabled(2)?1:0, unitTexMatEnabled(3)?1:0, hasVertexColor(), hasVertexNormal(), hasVertexTexCoord(), hasVertexLightmap(), texGenModeS(), texGenModeT(), texGenModeR(), texGenModeQ(), clipPlanesEnabled(), wideLineEmulation(), instancing());
+        return String.format("FFPVertexKey[0x%012X: lit=%b l0=%b l1=%b cm=%b fog=%b tex=%d%d%d%d texmat=%d%d%d%d col=%b nrm=%b vtex=%b vlm=%b tg=%d/%d/%d/%d clip=%b wline=%b lquads=%b inst=%s]", packed,lightingEnabled(), lightEnabled(0), lightEnabled(1), colorMaterialEnabled(), fogEnabled(), unitTexCoordEnabled(0)?1:0, unitTexCoordEnabled(1)?1:0, unitTexCoordEnabled(2)?1:0, unitTexCoordEnabled(3)?1:0, unitTexMatEnabled(0)?1:0, unitTexMatEnabled(1)?1:0, unitTexMatEnabled(2)?1:0, unitTexMatEnabled(3)?1:0, hasVertexColor(), hasVertexNormal(), hasVertexTexCoord(), hasVertexLightmap(), texGenModeS(), texGenModeT(), texGenModeR(), texGenModeQ(), clipPlanesEnabled(), wideLineEmulation(), lineQuads(), instancing());
     }
 }

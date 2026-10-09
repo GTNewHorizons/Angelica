@@ -15,6 +15,7 @@ import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
+import com.gtnewhorizons.angelica.glsm.hooks.LineDrawHandler;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import net.minecraft.client.renderer.Tessellator;
 import org.apache.logging.log4j.LogManager;
@@ -55,6 +56,10 @@ public class TessellatorStreamingDrawer {
     private static ByteBuffer repackBuffer;
     private static long repackAddress;
     private static int repackCapacity;
+
+    private static ByteBuffer lineQuadBuffer;
+    private static long lineQuadAddress;
+    private static int lineQuadCapacity;
 
     private static boolean initialized = false;
 
@@ -315,12 +320,18 @@ public class TessellatorStreamingDrawer {
      * Tries the persistent ring buffer first, falls back to orphan buffer on overflow.
      */
     private static void uploadAndDraw(ByteBuffer packed, int flags, VertexFormat format, int vertexSize, int drawMode, int vertexCount) {
+        if (LineQuads.isLineMode(drawMode) && drawLinesAsQuads(packed, format, drawMode, vertexCount)) {
+            return;
+        }
         Tracy.beginZone(Z_SDL_STREAM_DRAW);
         final boolean locked = GLStateManager.acquireDrawLock();
         try {
             final GLContextState glCtx = GLStateManager.ctx();
             final StreamingVaos vaos = glCtx.streamingVaos;
-            ensureVAO(vaos, flags, format);
+            final boolean lineQuads = LineQuads.isQuadFormat(format);
+            final int[] persistentVAOs = lineQuads ? vaos.lineQuadPersistentVAOs : vaos.persistentVAOs;
+            final int[] orphanVAOs = lineQuads ? vaos.lineQuadOrphanVAOs : vaos.orphanVAOs;
+            ensureVAO(persistentVAOs, orphanVAOs, flags, format);
 
             if (Tracy.ENABLED) {
                 streamedBytes += packed.remaining();
@@ -330,15 +341,16 @@ public class TessellatorStreamingDrawer {
             int firstVertex = -1;
 
             if (persistentBuffer != null) {
-                firstVertex = persistentBuffer.upload(packed, vertexSize, drawMode == GL11.GL_QUADS ? 4 : 1);
+                final int alignment = drawMode == GL11.GL_QUADS ? 4 : lineQuads ? LineQuads.VERTICES_PER_SEGMENT : 1;
+                firstVertex = persistentBuffer.upload(packed, vertexSize, alignment);
             }
 
             final boolean fromRing = firstVertex >= 0;
             if (fromRing) {
-                GLStateManager.glBindVertexArray(vaos.persistentVAOs[flags]);
+                GLStateManager.glBindVertexArray(persistentVAOs[flags]);
             } else {
                 if (Tracy.ENABLED && persistentBuffer != null) orphanFallbacks++;
-                GLStateManager.glBindVertexArray(vaos.orphanVAOs[flags]);
+                GLStateManager.glBindVertexArray(orphanVAOs[flags]);
                 orphanBuffers[flags].upload(packed);
                 firstVertex = 0;
             }
@@ -355,6 +367,72 @@ public class TessellatorStreamingDrawer {
             if (locked) GLStateManager.releaseDrawLock();
             Tracy.endZone();
         }
+    }
+
+    private static boolean drawLinesAsQuads(ByteBuffer packed, VertexFormat format, int drawMode, int vertexCount) {
+        final int segments = LineQuads.segmentCount(drawMode, vertexCount);
+        if (segments == 0) {
+            return false;
+        }
+        final LineDrawHandler handler = GLSMHooks.lineDrawHandler;
+        if (handler != null && handler.bindLineProgram()) {
+            try {
+                drawLineQuads(packed, format, drawMode, vertexCount, segments, false);
+            } finally {
+                handler.restoreProgram();
+            }
+            return true;
+        }
+        if (GLStateManager.ffpWidensLineQuads()) {
+            final GLContextState glCtx = GLStateManager.ctx();
+            glCtx.lineQuadsActive = true;
+            try {
+                drawLineQuads(packed, format, drawMode, vertexCount, segments, true);
+            } finally {
+                glCtx.lineQuadsActive = false;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private static void drawLineQuads(ByteBuffer packed, VertexFormat format, int drawMode, int vertexCount, int segments, boolean otherEnd) {
+        final VertexFormat quadFormat = LineQuads.quadFormat(format);
+        final int quadVertices = segments * LineQuads.VERTICES_PER_SEGMENT;
+        final int quadBytes = quadVertices * quadFormat.getVertexSize();
+        ensureLineQuadCapacity(quadBytes);
+        final long src = memAddress0(packed) + packed.position();
+        if (otherEnd) {
+            LineQuads.expandWithOtherEnd(src, format, drawMode, vertexCount, lineQuadAddress);
+        } else {
+            LineQuads.expandWithDirection(src, format, drawMode, vertexCount, lineQuadAddress);
+        }
+        lineQuadBuffer.position(0);
+        lineQuadBuffer.limit(quadBytes);
+        final boolean culled = LineQuads.disableCulling();
+        try {
+            uploadAndDraw(lineQuadBuffer, quadFormat.getVertexFlags(), quadFormat, quadFormat.getVertexSize(), GL11.GL_TRIANGLES, quadVertices);
+        } finally {
+            LineQuads.restoreCulling(culled);
+        }
+        if (lineQuadCapacity > 0x20000 && quadBytes < (lineQuadCapacity >> 3)) {
+            memFree(lineQuadBuffer);
+            lineQuadBuffer = null;
+            lineQuadCapacity = 0;
+        }
+    }
+
+    private static void ensureLineQuadCapacity(int requiredBytes) {
+        if (lineQuadBuffer != null && requiredBytes <= lineQuadCapacity) return;
+
+        int newCapacity = Math.max(0x4000, lineQuadCapacity);
+        while (newCapacity < requiredBytes) {
+            newCapacity *= 2;
+        }
+        if (lineQuadBuffer != null) memFree(lineQuadBuffer);
+        lineQuadBuffer = memAlloc(newCapacity);
+        lineQuadAddress = memAddress0(lineQuadBuffer);
+        lineQuadCapacity = newCapacity;
     }
 
     public static long ringWraps() {
@@ -377,7 +455,7 @@ public class TessellatorStreamingDrawer {
     private static void uploadAndDrawExtended(ByteBuffer combined, int flags, VertexFormat format, int combinedStride, int drawMode, int vertexCount) {
         final GLContextState glCtx = GLStateManager.ctx();
         final StreamingVaos vaos = glCtx.streamingVaos;
-        ensureVAO(vaos, flags, format);
+        ensureVAO(vaos.persistentVAOs, vaos.orphanVAOs, flags, format);
         ensureExtendedVAOs(vaos, flags, format);
 
         int firstVertex = -1;
@@ -480,11 +558,9 @@ public class TessellatorStreamingDrawer {
         return repackBuffer;
     }
 
-    private static void ensureVAO(StreamingVaos vaos, int flags, VertexFormat format) {
+    private static void ensureVAO(int[] persistentVAOs, int[] orphanVAOs, int flags, VertexFormat format) {
         init();
         if (orphanBuffers[flags] == null) orphanBuffers[flags] = new OrphanStreamingBuffer();
-        final int[] orphanVAOs = vaos.orphanVAOs;
-        final int[] persistentVAOs = vaos.persistentVAOs;
 
         if (orphanVAOs[flags] == 0) {
             orphanVAOs[flags] = GLStateManager.glGenVertexArrays();

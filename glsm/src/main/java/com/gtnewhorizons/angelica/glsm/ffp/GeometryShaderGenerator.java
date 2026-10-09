@@ -66,14 +66,23 @@ public final class GeometryShaderGenerator {
         sb.append("    vec2 n0 = p0.xy / p0.w;\n");
         sb.append("    vec2 n1 = p1.xy / p1.w;\n\n");
 
-        sb.append("    // Screen-space direction and perpendicular\n");
-        sb.append("    vec2 dir = normalize((n1 - n0) * u_ViewportSize);\n");
-        sb.append("    vec2 offset = vec2(-dir.y, dir.x) * u_LineWidth / u_ViewportSize;\n\n");
+        sb.append("    vec2 pixel = 2.0 / u_ViewportSize;\n");
+        sb.append("    float halfWidth = 0.5 * u_LineWidth;\n");
+        sb.append("    vec2 offset;\n");
+        sb.append("    vec2 shift;\n");
+        sb.append("    vec2 span = abs(n1 - n0) * u_ViewportSize;\n");
+        sb.append("    if (span.x > span.y) {\n");
+        sb.append("        offset = vec2(0.0, halfWidth * pixel.y);\n");
+        sb.append("        shift = vec2(n0.x < n1.x ? -0.5 : 0.5, -0.125) * pixel;\n");
+        sb.append("    } else {\n");
+        sb.append("        offset = vec2(halfWidth * pixel.x, 0.0);\n");
+        sb.append("        shift = vec2(0.125, n0.y < n1.y ? -0.5 : 0.5) * pixel;\n");
+        sb.append("    }\n\n");
 
-        emitVertex(sb, key, 0, "+offset");
-        emitVertex(sb, key, 0, "-offset");
-        emitVertex(sb, key, 1, "+offset");
-        emitVertex(sb, key, 1, "-offset");
+        emitVertex(sb, key, 0, "+offset + shift");
+        emitVertex(sb, key, 0, "-offset + shift");
+        emitVertex(sb, key, 1, "+offset + shift");
+        emitVertex(sb, key, 1, "-offset + shift");
 
         sb.append("    EndPrimitive();\n");
         sb.append("}\n");
