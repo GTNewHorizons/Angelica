@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.compat.thaumcraft;
 
 import com.gtnewhorizons.angelica.client.rendering.GlUniformFloat2v;
+import com.gtnewhorizons.angelica.client.rendering.GlUniformFloat3Array;
+import com.gtnewhorizons.angelica.client.rendering.GlUniformFloat4Array;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.states.FogState;
@@ -11,8 +13,10 @@ import org.embeddedt.embeddium.impl.gl.shader.GlShader;
 import org.embeddedt.embeddium.impl.gl.shader.ShaderBindingContext;
 import org.embeddedt.embeddium.impl.gl.shader.ShaderConstants;
 import org.embeddedt.embeddium.impl.gl.shader.ShaderType;
-import org.embeddedt.embeddium.impl.gl.shader.uniform.GlUniform;
 import org.embeddedt.embeddium.impl.gl.shader.uniform.GlUniformFloat;
+import org.embeddedt.embeddium.impl.gl.shader.uniform.GlUniformFloat3v;
+import org.embeddedt.embeddium.impl.gl.shader.uniform.GlUniformFloat4v;
+import org.embeddedt.embeddium.impl.gl.shader.uniform.GlUniformInt;
 import org.embeddedt.embeddium.impl.gl.shader.uniform.GlUniformMatrix4f;
 import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
 import org.joml.Matrix4f;
@@ -52,6 +56,7 @@ final class PortalDrawer {
     private static final float[] LAYER_DEPTH = new float[LAYERS];
     private static final float[] LAYER_SCALE = new float[LAYERS];
     private static final float[] LAYER_ANGLE = new float[LAYERS];
+    private static final float[] FOG_PARAMS = new float[4];
     private static int maxPlanes;
 
     static {
@@ -116,10 +121,14 @@ final class PortalDrawer {
         final float end = fog.getEnd();
         final float density = fog.getDensity();
         final float range = end - start;
-        GLStateManager.glUniform4f(uniforms.fogParams, range != 0.0f ? -1.0f / range : 0.0f, range != 0.0f ? end / range : 1.0f, (float) (density / LN2), (float) (density / SQRT_LN2));
-        GLStateManager.glUniform3f(uniforms.fogColor, (float) fog.getFogColor().x, (float) fog.getFogColor().y, (float) fog.getFogColor().z);
-        GLStateManager.glUniform1i(uniforms.fogMode, fogMode);
-        GLStateManager.glUniform1i(uniforms.fogDistanceMode, fog.getFogDistanceMode());
+        FOG_PARAMS[0] = range != 0.0f ? -1.0f / range : 0.0f;
+        FOG_PARAMS[1] = range != 0.0f ? end / range : 1.0f;
+        FOG_PARAMS[2] = (float) (density / LN2);
+        FOG_PARAMS[3] = (float) (density / SQRT_LN2);
+        uniforms.fogParams.set(FOG_PARAMS);
+        uniforms.fogColor.set((float) fog.getFogColor().x, (float) fog.getFogColor().y, (float) fog.getFogColor().z);
+        uniforms.fogMode.setInt(fogMode);
+        uniforms.fogDistanceMode.setInt(fog.getFogDistanceMode());
     }
 
     private static void instanced(int attribute, int size, int floatOffset) {
@@ -187,12 +196,12 @@ final class PortalDrawer {
             if (directFogged == null) directFogged = buildProgram(false, true);
             program = directFogged;
         }
-        draw(program, faces, 0, count, tunnelTexture, fieldTexture, frame, false, fogMode);
+        draw(program, faces, 0, count, tunnelTexture, fieldTexture, frame, fogMode);
     }
 
     void drawCapture(float[] faces, int first, int count, int tunnelTexture, int fieldTexture, Frame frame) {
         if (capture == null) capture = buildProgram(true, false);
-        draw(capture, faces, first, count, tunnelTexture, fieldTexture, frame, true, 0);
+        draw(capture, faces, first, count, tunnelTexture, fieldTexture, frame, 0);
     }
 
     GlFramebuffer atlasFramebuffer() {
@@ -209,7 +218,10 @@ final class PortalDrawer {
             atlasFramebuffer.drawBuffers(new int[]{0});
             atlasFramebuffer.readBuffer(0);
             if (!atlasFramebuffer.isComplete()) {
-                destroy();
+                atlasFramebuffer.destroy();
+                GLStateManager.glDeleteTextures(atlasTexture);
+                atlasFramebuffer = null;
+                atlasTexture = 0;
                 throw new IllegalStateException("Incomplete Thaumcraft portal atlas framebuffer");
             }
         }
@@ -235,7 +247,7 @@ final class PortalDrawer {
         atlasTexture = 0;
     }
 
-    private void draw(GlProgram<Uniforms> program, float[] faces, int first, int count, int tunnelTexture, int fieldTexture, Frame frame, boolean capturing, int fogMode) {
+    private void draw(GlProgram<Uniforms> program, float[] faces, int first, int count, int tunnelTexture, int fieldTexture, Frame frame, int fogMode) {
         final int previousProgram = GLStateManager.getActiveProgram();
         final int previousVao = GLStateManager.getBoundVAO();
         final int depth = GLStateManager.pushState(StateSet.forMask(GL11.GL_ENABLE_BIT | GL11.GL_COLOR_BUFFER_BIT | GL11.GL_TEXTURE_BIT));
@@ -246,9 +258,9 @@ final class PortalDrawer {
             if (uniforms.modelViewProjection != null) uniforms.modelViewProjection.set(frame.modelViewProjection);
             if (uniforms.uploadedFrame != frame || uniforms.uploadedVersion != frame.version) {
                 uniforms.modelView.set(frame.modelView);
-                GLStateManager.glUniform3(uniforms.eyePlane, frame.eyePlane);
-                GLStateManager.glUniform3(uniforms.rowS, frame.rowS);
-                GLStateManager.glUniform3(uniforms.rowT, frame.rowT);
+                uniforms.eyePlane.set(frame.eyePlane);
+                uniforms.rowS.set(frame.rowS);
+                uniforms.rowT.set(frame.rowT);
                 uniforms.uploadedFrame = frame;
                 uniforms.uploadedVersion = frame.version;
                 uniforms.uploadedPlanes = 0;
@@ -258,15 +270,12 @@ final class PortalDrawer {
                 if (planeUpload == null || planeUpload.capacity() < floats) planeUpload = BufferUtils.createFloatBuffer(maxPlanes() * FLOATS_PER_PLANE);
                 planeUpload.clear();
                 planeUpload.put(frame.planeData, 0, floats).flip();
-                GLStateManager.glUniform4(uniforms.planes, planeUpload);
+                uniforms.planes.set(planeUpload);
                 uniforms.uploadedPlanes = frame.planeCount;
             }
             uniforms.lightmapUv.set(frame.lightmapU, frame.lightmapV);
             uniforms.lightmapEnabled.setFloat(frame.lightmapEnabled ? 1.0F : 0.0F);
-            if (capturing) {
-                assert uniforms.atlasSize != null;
-                uniforms.atlasSize.setFloat(ATLAS_SIZE);
-            }
+            if (uniforms.atlasSize != null) uniforms.atlasSize.setFloat(ATLAS_SIZE);
             if (fogMode != 0) uploadFog(uniforms, fogMode);
 
             GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + FIELD_UNIT);
@@ -429,17 +438,17 @@ final class PortalDrawer {
     private static final class Uniforms {
         final GlUniformMatrix4f modelViewProjection;
         final GlUniformMatrix4f modelView;
-        final int eyePlane;
-        final int rowS;
-        final int rowT;
-        final int planes;
+        final GlUniformFloat3Array eyePlane;
+        final GlUniformFloat3Array rowS;
+        final GlUniformFloat3Array rowT;
+        final GlUniformFloat4Array planes;
         final GlUniformFloat2v lightmapUv;
         final GlUniformFloat lightmapEnabled;
         final GlUniformFloat atlasSize;
-        final int fogParams;
-        final int fogColor;
-        final int fogMode;
-        final int fogDistanceMode;
+        final GlUniformFloat4v fogParams;
+        final GlUniformFloat3v fogColor;
+        final GlUniformInt fogMode;
+        final GlUniformInt fogDistanceMode;
         Frame uploadedFrame;
         int uploadedVersion;
         int uploadedPlanes;
@@ -447,36 +456,17 @@ final class PortalDrawer {
         Uniforms(ShaderBindingContext context) {
             modelViewProjection = context.bindUniformIfPresent("u_ModelViewProjection", GlUniformMatrix4f::new);
             modelView = context.bindUniform("u_ModelView", GlUniformMatrix4f::new);
-            eyePlane = context.bindUniform("u_EyePlane", Location::new).location;
-            rowS = context.bindUniform("u_RowS", Location::new).location;
-            rowT = context.bindUniform("u_RowT", Location::new).location;
-            planes = context.bindUniform("u_Planes", Location::new).location;
+            eyePlane = context.bindUniform("u_EyePlane", GlUniformFloat3Array::new);
+            rowS = context.bindUniform("u_RowS", GlUniformFloat3Array::new);
+            rowT = context.bindUniform("u_RowT", GlUniformFloat3Array::new);
+            planes = context.bindUniform("u_Planes", GlUniformFloat4Array::new);
             lightmapUv = context.bindUniform("u_LightmapUv", GlUniformFloat2v::new);
             lightmapEnabled = context.bindUniform("u_LightmapEnabled", GlUniformFloat::new);
             atlasSize = context.bindUniformIfPresent("u_AtlasSize", GlUniformFloat::new);
-            fogParams = location(context, "u_FogParams");
-            fogColor = location(context, "u_FogColor");
-            fogMode = location(context, "u_FogMode");
-            fogDistanceMode = location(context, "u_FogDistanceMode");
-        }
-
-        private static int location(ShaderBindingContext context, String name) {
-            final Location uniform = context.bindUniformIfPresent(name, Location::new);
-            return uniform != null ? uniform.location : -1;
-        }
-    }
-
-    private static final class Location extends GlUniform<Object> {
-        final int location;
-
-        Location(int location) {
-            super(location);
-            this.location = location;
-        }
-
-        @Override
-        public void set(Object value) {
-            throw new UnsupportedOperationException();
+            fogParams = context.bindUniformIfPresent("u_FogParams", GlUniformFloat4v::new);
+            fogColor = context.bindUniformIfPresent("u_FogColor", GlUniformFloat3v::new);
+            fogMode = context.bindUniformIfPresent("u_FogMode", GlUniformInt::new);
+            fogDistanceMode = context.bindUniformIfPresent("u_FogDistanceMode", GlUniformInt::new);
         }
     }
 }

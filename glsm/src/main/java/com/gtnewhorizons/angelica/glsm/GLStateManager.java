@@ -67,6 +67,8 @@ import com.gtnewhorizons.angelica.glsm.states.SamplerUnitArray;
 import com.gtnewhorizons.angelica.glsm.states.ImageUnitBinding;
 import com.gtnewhorizons.angelica.glsm.states.TextureBinding;
 import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
+import com.gtnewhorizons.angelica.glsm.streaming.LineQuads;
+import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import com.gtnewhorizons.angelica.glsm.texture.TextureStaging;
@@ -524,11 +526,8 @@ public class GLStateManager {
     // Line width range queried at init from GL_ALIASED_LINE_WIDTH_RANGE
     static float lineWidthMin = 1.0f;
     static float lineWidthMax = 1.0f;
-    /** True when the driver cannot render wide lines natively (Mesa forward-compat). GS emulation handles widths > 1.0. */
+    // The driver cannot draw wide lines (Mesa forward-compat, SDL_GPU), so FFP widens them from LineQuads in the vertex shader
     public static boolean wideLineEmulationEnabled = false;
-    // Without geometry shaders, FFP widens lines from LineQuads in its vertex shader instead
-    public static boolean widenLinesInVertexShader = false;
-    public static boolean supportsGeometryShaders() { return RENDER_BACKEND.supportsGeometryShaders(); }
     public static boolean framebufferCompletenessIsMeaningful() { return RENDER_BACKEND.framebufferCompletenessIsMeaningful(); }
     public static void setFfpInstancing(Instancing mode) {
         ctx().ffpInstancing = mode;
@@ -729,9 +728,8 @@ public class GLStateManager {
             while (RENDER_BACKEND.getError() != GL11.GL_NO_ERROR) {}
         }
         wideLineEmulationEnabled = lineWidthMax <= 1.0f;
-        widenLinesInVertexShader = wideLineEmulationEnabled && !RENDER_BACKEND.supportsGeometryShaders();
         if (wideLineEmulationEnabled) {
-            LOGGER.info("GL line width: aliased range [{}, {}], probe at {} rejected, native [{}, {}], GS emulation active for [{}, {}]", lineWidthMin, queriedMax, queriedMax, lineWidthMin, lineWidthMax, lineWidthMax, queriedMax);
+            LOGGER.info("GL line width: aliased range [{}, {}], probe at {} rejected, native [{}, {}], line quads widen ({}, {}]", lineWidthMin, queriedMax, queriedMax, lineWidthMin, lineWidthMax, lineWidthMax, queriedMax);
         } else {
             LOGGER.info("GL line width: aliased range [{}, {}], probe at {} accepted, native [{}, {}]", lineWidthMin, queriedMax, queriedMax, lineWidthMin, lineWidthMax);
         }
@@ -2780,6 +2778,10 @@ public class GLStateManager {
                 QuadConverter.drawQuadElementsAsTriangles(glCtx, indices.remaining(), GL11.GL_UNSIGNED_BYTE, indices);
                 return;
             }
+            if (widensLineDraw(mode, indices.remaining())) {
+                drawLinesAsQuads(glCtx, ImmediateModeRecorder.processDrawElementsFromAttribs(mode, indices.remaining(), GL11.GL_UNSIGNED_BYTE, MemoryUtilities.memAddress(indices)));
+                return;
+            }
             preDraw(glCtx, mode);
             RENDER_BACKEND.drawElements(mode, indices);
         } finally {
@@ -2806,6 +2808,10 @@ public class GLStateManager {
         try {
             if (mode == GL11.GL_QUADS) {
                 QuadConverter.drawQuadElementsAsTriangles(glCtx, indices);
+                return;
+            }
+            if (widensLineDraw(mode, indices.remaining())) {
+                drawLinesAsQuads(glCtx, ImmediateModeRecorder.processDrawElementsFromAttribs(mode, indices.remaining(), GL11.GL_UNSIGNED_INT, MemoryUtilities.memAddress(indices)));
                 return;
             }
             preDraw(glCtx, mode);
@@ -2836,6 +2842,10 @@ public class GLStateManager {
                 QuadConverter.drawQuadElementsAsTriangles(glCtx, indices);
                 return;
             }
+            if (widensLineDraw(mode, indices.remaining())) {
+                drawLinesAsQuads(glCtx, ImmediateModeRecorder.processDrawElementsFromAttribs(mode, indices.remaining(), GL11.GL_UNSIGNED_SHORT, MemoryUtilities.memAddress(indices)));
+                return;
+            }
             preDraw(glCtx, mode);
             RENDER_BACKEND.drawElements(mode, indices);
         } finally {
@@ -2862,6 +2872,10 @@ public class GLStateManager {
         try {
             if (mode == GL11.GL_QUADS) {
                 QuadConverter.drawQuadElementsAsTriangles(glCtx, count, type, indices);
+                return;
+            }
+            if (widensLineDraw(mode, count)) {
+                drawLinesAsQuads(glCtx, ImmediateModeRecorder.processDrawElementsFromAttribs(mode, count, type, MemoryUtilities.memAddress(indices)));
                 return;
             }
             preDraw(glCtx, mode);
@@ -2894,6 +2908,10 @@ public class GLStateManager {
         }
         final boolean locked = acquireDrawLock();
         try {
+            if (widensLineDraw(mode, indices_count)) {
+                drawLinesAsQuads(glCtx, lineElementsFromBuffer(glCtx, mode, indices_count, type, indices_buffer_offset));
+                return;
+            }
             final boolean ffpExt = FfpExtendedAttribs.maybeBindIndexed(glCtx, mode, indices_count, type, indices_buffer_offset);
             try {
                 if (mode == GL11.GL_QUADS) {
@@ -2948,6 +2966,7 @@ public class GLStateManager {
                 QuadConverter.drawQuadElementsAsTrianglesInstanced(glCtx, count, type, indices, primcount);
                 return;
             }
+            warnIfInstancedWideLines(mode);
             preDraw(glCtx, mode);
             RENDER_BACKEND.drawElementsInstanced(mode, count, type, indices, primcount);
         } finally {
@@ -2969,6 +2988,7 @@ public class GLStateManager {
                 preDraw(glCtx, GL11.GL_TRIANGLES);
                 RENDER_BACKEND.drawArraysInstanced(GL11.GL_TRIANGLE_FAN, first, count, primcount);
             } else {
+                warnIfInstancedWideLines(mode);
                 preDraw(glCtx, mode);
                 RENDER_BACKEND.drawArraysInstanced(mode, first, count, primcount);
             }
@@ -2981,6 +3001,10 @@ public class GLStateManager {
         final GLContextState glCtx = ctx();
         final boolean locked = acquireDrawLock();
         try {
+            if (widensLineDraw(mode, count)) {
+                drawLinesAsQuads(glCtx, lineElementsFromBuffer(glCtx, mode, count, type, indices));
+                return;
+            }
             preDraw(glCtx, mode);
             RENDER_BACKEND.drawRangeElements(mode, start, end, count, type, indices);
         } finally {
@@ -2996,6 +3020,14 @@ public class GLStateManager {
         final GLContextState glCtx = ctx();
         final boolean locked = acquireDrawLock();
         try {
+            if (LineQuads.isLineMode(mode) && ffpWidensLineQuads()) {
+                for (int i = firsts.position(); i < firsts.limit(); i++) {
+                    final int count = counts.get(counts.position() + i - firsts.position());
+                    if (LineQuads.segmentCount(mode, count) == 0) continue;
+                    drawLinesAsQuads(glCtx, ImmediateModeRecorder.processDrawArraysFromAttribs(mode, firsts.get(i), count));
+                }
+                return;
+            }
             preDraw(glCtx, mode);
             RENDER_BACKEND.multiDrawArrays(mode, firsts, counts);
         } finally {
@@ -3042,6 +3074,10 @@ public class GLStateManager {
         final GLContextState glCtx = ctx();
         final boolean locked = acquireDrawLock();
         try {
+            if (widensLineDraw(mode, count)) {
+                drawLinesAsQuads(glCtx, ImmediateModeRecorder.processDrawArraysFromAttribs(mode, first, count));
+                return;
+            }
             final boolean ffpExt = FfpExtendedAttribs.maybeBind(glCtx, mode, first, count);
             try {
                 if (mode == GL11.GL_QUADS) {
@@ -6046,25 +6082,53 @@ public class GLStateManager {
 
     public static boolean ffpWidensLineQuads() {
         final GLContextState glCtx = ctx();
-        return widenLinesInVertexShader && glCtx.activeProgram == 0 && glCtx.lineState.getWidth() > 1.0f
+        return wideLineEmulationEnabled && glCtx.activeProgram == 0 && glCtx.lineState.getWidth() > 1.0f
             && !DisplayListManager.isRecording();
     }
 
-    private static void prepareLineEmulation(GLContextState glCtx, int drawMode) {
-        final boolean isLine = drawMode == GL11.GL_LINES || drawMode == GL11.GL_LINE_STRIP || drawMode == GL11.GL_LINE_LOOP;
-        glCtx.wideLineEmulationActive = wideLineEmulationEnabled && RENDER_BACKEND.supportsGeometryShaders() && isLine && glCtx.lineState.getWidth() > 1.0f;
-        setLineStippleActive(glCtx, (isLine || glCtx.lineQuadsActive) && glCtx.lineStippleState.isEnabled());
-        suspendCullForWideLines(glCtx, glCtx.wideLineEmulationActive && glCtx.activeProgram == 0 && glCtx.cullState.isEnabled());
+    private static boolean widensLineDraw(int mode, int count) {
+        return LineQuads.isLineMode(mode) && LineQuads.segmentCount(mode, count) > 0 && ffpWidensLineQuads();
     }
 
-    private static void suspendCullForWideLines(GLContextState glCtx, boolean suspend) {
-        if (suspend) {
-            RENDER_BACKEND.disable(GL11.GL_CULL_FACE);
-            glCtx.cullSuspendedForWideLines = true;
-        } else if (glCtx.cullSuspendedForWideLines) {
-            glCtx.cullState.applyToBackend();
-            glCtx.cullSuspendedForWideLines = false;
+    private static void drawLinesAsQuads(GLContextState glCtx, DirectTessellator lines) {
+        if (lines == null) return;
+        if (readsBufferObject(glCtx.vaos)) {
+            warnOnce("line-readback", "Wide GL_LINES drawn from a buffer object; widening them reads the buffer back, which waits for the GPU");
         }
+        final int vao = glCtx.boundVAO;
+        final int vbo = glCtx.boundVBO;
+        TessellatorStreamingDrawer.drawDirect(lines);
+        glBindVertexArray(vao);
+        glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+    }
+
+    private static DirectTessellator lineElementsFromBuffer(GLContextState glCtx, int mode, int count, int type, long offset) {
+        if (glCtx.vaos.boundEBO == 0) return null;
+        final ByteBuffer indices = MemoryUtilities.memAlloc(count * GLTypes.sizeBytes(type));
+        try {
+            glGetBufferSubData(GL15.GL_ELEMENT_ARRAY_BUFFER, offset, indices);
+            return ImmediateModeRecorder.processDrawElementsFromAttribs(mode, count, type, MemoryUtilities.memAddress0(indices));
+        } finally {
+            MemoryUtilities.memFree(indices);
+        }
+    }
+
+    private static void warnIfInstancedWideLines(int mode) {
+        if (LineQuads.isLineMode(mode) && ffpWidensLineQuads()) {
+            warnOnce("instanced-wide-lines", "Instanced wide GL_LINES are not widened and draw 1 px wide");
+        }
+    }
+
+    private static boolean readsBufferObject(VAOManager vaos) {
+        for (int i = 0; i < VAOManager.MAX_ATTRIBS; i++) {
+            final VAOManager.Attrib attrib = vaos.attrib(i);
+            if (attrib != null && attrib.enabled && attrib.vboId != 0) return true;
+        }
+        return false;
+    }
+
+    private static void prepareLineEmulation(GLContextState glCtx, int drawMode) {
+        setLineStippleActive(glCtx, (LineQuads.isLineMode(drawMode) || glCtx.lineQuadsActive) && glCtx.lineStippleState.isEnabled());
     }
 
     private static void setLineStippleActive(GLContextState glCtx, boolean active) {

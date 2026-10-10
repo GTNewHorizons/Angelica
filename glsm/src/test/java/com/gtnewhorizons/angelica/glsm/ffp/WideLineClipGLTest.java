@@ -13,7 +13,6 @@ import java.nio.FloatBuffer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 @GLCoreTest
 class WideLineClipGLTest {
@@ -32,7 +31,7 @@ class WideLineClipGLTest {
 
     @BeforeEach
     void setUp() {
-        assumeTrue(GLStateManager.supportsGeometryShaders());
+        FfpFixture.routeVertexFormats(true);
         savedEmulation = GLStateManager.wideLineEmulationEnabled;
         GLStateManager.wideLineEmulationEnabled = true;
 
@@ -51,6 +50,7 @@ class WideLineClipGLTest {
 
     @AfterEach
     void tearDown() {
+        FfpFixture.routeVertexFormats(false);
         GLStateManager.wideLineEmulationEnabled = savedEmulation;
         GLStateManager.glLineWidth(1.0f);
         if (vbo != 0) { GLStateManager.glDeleteBuffers(vbo); vbo = 0; }

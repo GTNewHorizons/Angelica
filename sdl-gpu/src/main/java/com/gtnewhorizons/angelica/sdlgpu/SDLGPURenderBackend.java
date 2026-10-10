@@ -1247,6 +1247,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         if (rp == 0) return;
         final int firstIndex = (int) (indices / FormatMap.indexElementSize(type));
         if (SystemProperties.FFP_TRACE) ffpTrace.trace(st, "elementsInstanced", mode, count, type, firstIndex, 0);
+        pipelineApplier.bindInstancedConstants(st, rp, primcount);
         drawDispatch.issueIndexedDraw(st, rp, st.currentVao.elementBuffer, type, count, primcount, firstIndex, 0);
         captureVertexWrites(st, 0, count, primcount, type, indices, 0);
     }
@@ -4481,7 +4482,9 @@ public class SDLGPURenderBackend extends RenderBackend {
         if (!frameManager.isRenderPassActive()) return;
         if (!pipelineApplier.applyPipelineAndState(st)) return;
         if (SystemProperties.FFP_TRACE) ffpTrace.trace(st, "arraysInstanced", mode, count, 0, first, 0);
-        SDL_DrawGPUPrimitives(frameManager.getRenderPass(), count, primcount, first, 0);
+        final long rp = frameManager.getRenderPass();
+        pipelineApplier.bindInstancedConstants(st, rp, primcount);
+        SDL_DrawGPUPrimitives(rp, count, primcount, first, 0);
         captureVertexWrites(st, first, count, primcount, 0, 0, 0);
     }
 

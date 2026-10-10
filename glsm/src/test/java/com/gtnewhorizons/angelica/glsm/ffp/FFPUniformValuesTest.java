@@ -42,7 +42,7 @@ class FFPUniformValuesTest {
 
         final VertexKey vk = VertexKey.fromState(false, false, false, false, 0);
         final FragmentKey fk = FragmentKey.fromState();
-        final Program program = Program.create(vk, fk, VertexShaderGenerator.generate(vk), FragmentShaderGenerator.generate(fk), null);
+        final Program program = Program.create(vk, fk, VertexShaderGenerator.generate(vk), FragmentShaderGenerator.generate(fk));
         final Uniforms uniforms = new Uniforms();
         try {
             GL20.glUseProgram(program.getProgramId());

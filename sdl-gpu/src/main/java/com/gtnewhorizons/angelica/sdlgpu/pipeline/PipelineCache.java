@@ -387,8 +387,10 @@ public final class PipelineCache {
         h = Hashing.fmix64(h, Hashing.packHiLo(stencilCompareMask, stencilWriteMask));
         h = Hashing.fmix64(h, Hashing.packHiLo(getEffectiveCullMode(), effectiveFrontFace()));
         h = Hashing.fmix64(h, Hashing.packHiLo(fillMode, colorWriteMask));
-        h = Hashing.fmix64(h, Hashing.packHiLo(Float.floatToRawIntBits(depthBiasConstant), Float.floatToRawIntBits(depthBiasSlopeFactor)));
-        h = Hashing.fmix64(h, Float.floatToRawIntBits(depthBiasClamp));
+        if (effectiveDepthBiasEnabled()) {
+            h = Hashing.fmix64(h, Hashing.packHiLo(Float.floatToRawIntBits(depthBiasConstant), Float.floatToRawIntBits(depthBiasSlopeFactor)));
+            h = Hashing.fmix64(h, Float.floatToRawIntBits(depthBiasClamp));
+        }
         h = Hashing.fmix64(h, Hashing.packHiLo(ctfLen, hasDepthTarget ? depthTargetFormat : 0));
         for (int i = 0; i < ctfLen; i++) {
             h = Hashing.fmix64(h, colorTargetFormats()[i]);
@@ -900,7 +902,7 @@ public final class PipelineCache {
         final int numAttributes = numBuffers;
         final SDL_GPUVertexAttribute.Buffer attrs = SDL_GPUVertexAttribute.calloc(numAttributes, stack);
         final SDL_GPUVertexBufferDescription.Buffer bindings = SDL_GPUVertexBufferDescription.calloc(numBuffers, stack);
-        final int constantPitch = store.device() == null || "vulkan".equals(store.device().getDriverName()) ? 0 : 16;
+        final int constantPitch = store.device().isMetal() ? 16 : 0;
 
         for (int i = 0; i < numBuffers; i++) {
             if ((inputMask & (1 << i)) == 0) {

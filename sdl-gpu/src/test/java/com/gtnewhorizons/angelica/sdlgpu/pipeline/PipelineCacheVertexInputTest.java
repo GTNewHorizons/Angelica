@@ -32,7 +32,13 @@ class PipelineCacheVertexInputTest {
     @BeforeEach
     void setUp() {
         PipelineCache.setSwapchainFormats(new int[]{SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM});
-        store = new PipelineStore(null);
+        store = new PipelineStore(device("vulkan"));
+    }
+
+    private static Device device(String driverName) {
+        final Device device = new Device();
+        Reflect.set(device, "driverName", driverName);
+        return device;
     }
 
     private static int nextTestSetId = 1;
@@ -294,7 +300,7 @@ class PipelineCacheVertexInputTest {
     }
 
     @Test
-    void constantBindingUsesZeroPitchOnlyOnVulkan() {
+    void constantBindingUsesZeroPitchExceptOnMetal() {
         final int[] vecSizes = new int[ContextState.MAX_VERTEX_ATTRIBS];
         vecSizes[4] = 3;
         final int[] baseTypes = new int[ContextState.MAX_VERTEX_ATTRIBS];
@@ -303,12 +309,10 @@ class PipelineCacheVertexInputTest {
         final ContextState cs = new ContextState();
 
         for (String driver : new String[] { "vulkan", "metal", "direct3d12" }) {
-            final Device device = new Device();
-            Reflect.set(device, "driverName", driver);
             try (MemoryStack stack = MemoryStack.stackPush()) {
-                final PipelineCache.VertexInputResult r = c.buildVertexInput(new PipelineStore(device), cs, stack);
+                final PipelineCache.VertexInputResult r = c.buildVertexInput(new PipelineStore(device(driver)), cs, stack);
                 assertNotNull(r);
-                final int expectedPitch = driver.equals("vulkan") ? 0 : 16;
+                final int expectedPitch = driver.equals("metal") ? 16 : 0;
                 assertEquals(expectedPitch, r.bindings().get(4).pitch(), driver + " current normal");
                 assertEquals(expectedPitch, r.bindings().get(0).pitch(), driver + " unused slot");
             }

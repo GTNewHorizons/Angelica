@@ -232,6 +232,7 @@ class PipelineCacheKeyTest {
     void testDepthBiasChangeProducesDifferentKey() {
         final PipelineCache a = createCache();
         final PipelineCache b = createCache();
+        a.polygonOffsetFillEnabled = b.polygonOffsetFillEnabled = true;
         b.depthBiasConstant = 1.0f;
         b.depthBiasSlopeFactor = 2.0f;
 
@@ -239,9 +240,21 @@ class PipelineCacheKeyTest {
     }
 
     @Test
+    void depthBiasValuesShareAPipelineWhileOffsetIsOff() {
+        final PipelineCache a = createCache();
+        final PipelineCache b = createCache();
+        b.depthBiasConstant = 1.0f;
+        b.depthBiasSlopeFactor = 2.0f;
+        b.depthBiasClamp = 0.5f;
+
+        assertEquals(computeKey(a), computeKey(b), "glPolygonOffset with the offset disabled must not build a new pipeline");
+    }
+
+    @Test
     void testDepthBiasClampProducesDifferentKey() {
         final PipelineCache a = createCache();
         final PipelineCache b = createCache();
+        a.polygonOffsetFillEnabled = b.polygonOffsetFillEnabled = true;
         a.depthBiasConstant = b.depthBiasConstant = 1.0f;
         a.depthBiasSlopeFactor = b.depthBiasSlopeFactor = 2.0f;
         b.depthBiasClamp = 0.5f;

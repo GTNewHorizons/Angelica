@@ -15,7 +15,7 @@ class ProgramUniformTrackingTest {
     private static Program buildProgram(boolean hasColor) {
         final VertexKey vk = VertexKey.fromState(hasColor, false, false, false, 0);
         final FragmentKey fk = FragmentKey.fromState();
-        return Program.create(vk, fk, VertexShaderGenerator.generate(vk), FragmentShaderGenerator.generate(fk), null);
+        return Program.create(vk, fk, VertexShaderGenerator.generate(vk), FragmentShaderGenerator.generate(fk));
     }
 
     @Test

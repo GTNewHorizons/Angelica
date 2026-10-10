@@ -60,6 +60,22 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
     @Unique
     private int lastBrightnessX, lastBrightnessY, lastBrightnessZ;
 
+    @Unique
+    private boolean renderingPlainCube;
+
+    @Surround(method = "renderBlockByRenderType", id = "plainCube",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderBlocks;renderStandardBlock(Lnet/minecraft/block/Block;III)Z"),
+        require = 1)
+    private void angelica$enterPlainCube() {
+        @Surround.Carry final boolean wasPlainCube = this.renderingPlainCube;
+        this.renderingPlainCube = true;
+    }
+
+    @Surround.Finally("plainCube")
+    private void angelica$exitPlainCube(@Surround.Carry boolean wasPlainCube) {
+        this.renderingPlainCube = wasPlainCube;
+    }
+
     @Surround(method = "renderBlockByRenderType", id = "byType")
     private void angelica$enterByType() {
         @Surround.Carry final boolean wasByType = this.isRenderingByType;
@@ -131,8 +147,8 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
         } finally {
             this.applyingCeleritasAO = false;
         }
-        // ISBRHs that emit their own vertices after renderStandardBlock inherit its Tessellator brightness.
-        if (rendered) {
+        // ISBRHs and multi-part render types that emit their own vertices after renderStandardBlock inherit its Tessellator brightness.
+        if (rendered && !this.renderingPlainCube) {
             TessellatorManager.get().setBrightness(block.getMixedBrightnessForBlock(this.blockAccess, this.lastBrightnessX, this.lastBrightnessY, this.lastBrightnessZ));
         }
         return rendered;

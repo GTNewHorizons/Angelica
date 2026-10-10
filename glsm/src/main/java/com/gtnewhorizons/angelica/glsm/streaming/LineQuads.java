@@ -22,6 +22,7 @@ public final class LineQuads {
         VertexFormatElement.Usage.NORMAL, 3, VertexFlags.NORMAL_BIT, DefaultVertexFormat.NORMAL_ELEMENT.getWriter());
 
     private static final VertexFormat[] QUAD_FORMATS = new VertexFormat[VertexFlags.BITSET_SIZE];
+    private static final int[][] SOURCE_OFFSETS = new int[VertexFlags.BITSET_SIZE][];
 
     static {
         for (int flags = 0; flags < QUAD_FORMATS.length; flags++) {
@@ -31,6 +32,14 @@ public final class LineQuads {
                 if (elements[i] == DefaultVertexFormat.NORMAL_ELEMENT) elements[i] = NORMAL_SLOT;
             }
             QUAD_FORMATS[flags] = new VertexFormat(elements);
+        }
+        for (int flags = 0; flags < SOURCE_OFFSETS.length; flags++) {
+            final VertexFormatElement[] quadElements = QUAD_FORMATS[flags | VertexFlags.NORMAL_BIT].elementsArray;
+            final int[] offsets = new int[quadElements.length];
+            for (int i = 0; i < quadElements.length; i++) {
+                offsets[i] = offsetOf(DefaultVertexFormat.ALL_FORMATS[flags], quadElements[i]);
+            }
+            SOURCE_OFFSETS[flags] = offsets;
         }
     }
 
@@ -80,72 +89,56 @@ public final class LineQuads {
     }
 
     private static void expand(long src, VertexFormat srcFormat, int drawMode, int vertexCount, long dst, boolean otherEnd) {
-        final VertexFormat dstFormat = quadFormat(srcFormat);
-        final VertexFormatElement[] dstElements = dstFormat.elementsArray;
-        final int[] srcOffsets = new int[dstElements.length];
-        for (int i = 0; i < dstElements.length; i++) {
-            srcOffsets[i] = offsetOf(srcFormat, dstElements[i]);
-        }
-
+        final VertexFormatElement[] dstElements = quadFormat(srcFormat).elementsArray;
+        final int[] srcOffsets = SOURCE_OFFSETS[srcFormat.getVertexFlags()];
         final int srcStride = srcFormat.getVertexSize();
         final int segments = segmentCount(drawMode, vertexCount);
-        final float[] forA = new float[3];
-        final float[] forB = new float[3];
         long out = dst;
         for (int s = 0; s < segments; s++) {
             final int a = drawMode == GL11.GL_LINES ? s * 2 : s;
             final int b = drawMode == GL11.GL_LINE_LOOP && s == vertexCount - 1 ? 0 : a + 1;
             final long srcA = src + (long) a * srcStride;
             final long srcB = src + (long) b * srcStride;
+            // What A's and B's corners carry in the normal slot
+            final float ax, ay, az, bx, by, bz;
             if (otherEnd) {
-                readPosition(srcB, forA);
-                readPosition(srcA, forB);
+                ax = memGetFloat(srcB); ay = memGetFloat(srcB + 4); az = memGetFloat(srcB + 8);
+                bx = memGetFloat(srcA); by = memGetFloat(srcA + 4); bz = memGetFloat(srcA + 8);
             } else {
-                unitDirection(srcA, srcB, forA);
-                System.arraycopy(forA, 0, forB, 0, 3);
+                final float x = memGetFloat(srcB) - memGetFloat(srcA);
+                final float y = memGetFloat(srcB + 4) - memGetFloat(srcA + 4);
+                final float z = memGetFloat(srcB + 8) - memGetFloat(srcA + 8);
+                final float lengthSquared = x * x + y * y + z * z;
+                final float scale = lengthSquared == 0.0f ? 0.0f : 1.0f / (float) Math.sqrt(lengthSquared);
+                ax = bx = x * scale;
+                ay = by = y * scale;
+                az = bz = z * scale;
             }
 
-            out = writeVertex(srcA, out, dstElements, srcOffsets, forA);
-            out = writeVertex(srcA, out, dstElements, srcOffsets, forA);
-            out = writeVertex(srcB, out, dstElements, srcOffsets, forB);
-            out = writeVertex(srcA, out, dstElements, srcOffsets, forA);
-            out = writeVertex(srcB, out, dstElements, srcOffsets, forB);
-            out = writeVertex(srcB, out, dstElements, srcOffsets, forB);
+            out = writeVertex(srcA, out, dstElements, srcOffsets, ax, ay, az);
+            out = writeVertex(srcA, out, dstElements, srcOffsets, ax, ay, az);
+            out = writeVertex(srcB, out, dstElements, srcOffsets, bx, by, bz);
+            out = writeVertex(srcA, out, dstElements, srcOffsets, ax, ay, az);
+            out = writeVertex(srcB, out, dstElements, srcOffsets, bx, by, bz);
+            out = writeVertex(srcB, out, dstElements, srcOffsets, bx, by, bz);
         }
     }
 
-    private static void readPosition(long vertex, float[] out) {
-        out[0] = memGetFloat(vertex);
-        out[1] = memGetFloat(vertex + 4);
-        out[2] = memGetFloat(vertex + 8);
-    }
-
-    private static long writeVertex(long src, long dst, VertexFormatElement[] dstElements, int[] srcOffsets, float[] normalSlot) {
+    private static long writeVertex(long src, long dst, VertexFormatElement[] dstElements, int[] srcOffsets, float x, float y, float z) {
         long out = dst;
         for (int i = 0; i < dstElements.length; i++) {
             final VertexFormatElement element = dstElements[i];
             final int size = element.getByteSize();
             if (element == NORMAL_SLOT) {
-                memPutFloat(out, normalSlot[0]);
-                memPutFloat(out + 4, normalSlot[1]);
-                memPutFloat(out + 8, normalSlot[2]);
+                memPutFloat(out, x);
+                memPutFloat(out + 4, y);
+                memPutFloat(out + 8, z);
             } else {
                 memCopy(src + srcOffsets[i], out, size);
             }
             out += size;
         }
         return out;
-    }
-
-    private static void unitDirection(long a, long b, float[] out) {
-        final float dx = memGetFloat(b) - memGetFloat(a);
-        final float dy = memGetFloat(b + 4) - memGetFloat(a + 4);
-        final float dz = memGetFloat(b + 8) - memGetFloat(a + 8);
-        final float lengthSquared = dx * dx + dy * dy + dz * dz;
-        final float scale = lengthSquared == 0.0f ? 0.0f : 1.0f / (float) Math.sqrt(lengthSquared);
-        out[0] = dx * scale;
-        out[1] = dy * scale;
-        out[2] = dz * scale;
     }
 
     private static int offsetOf(VertexFormat format, VertexFormatElement element) {

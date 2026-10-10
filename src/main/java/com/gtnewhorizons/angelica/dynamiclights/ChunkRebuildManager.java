@@ -35,7 +35,7 @@ public class ChunkRebuildManager {
         final long packed = CoordinatePacker.pack(x, y, z);
         lock.writeLock().lock();
         try {
-            // Reset wait counter if already pending, otherwise add new entry
+            // An already pending section keeps its wait count
             pendingRebuilds.putIfAbsent(packed, 0);
         } finally {
             lock.writeLock().unlock();

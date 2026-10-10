@@ -1078,7 +1078,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	}
 
 	public void beginPass(Pass pass) {
-		IrisDisplayListState.runProgramTransition(() -> beginPassNow(pass));
+		IrisDisplayListState.runProgramTransition(DeferredWorldRenderingPipeline::beginPassNow, this, pass);
 	}
 
 	private void beginPassNow(Pass pass) {
@@ -1432,7 +1432,12 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		}
 
 		public void use() {
-			IrisDisplayListState.runProgramTransition(this::useNow);
+			IrisDisplayListState.runProgramTransition(Pass::useNow, this);
+		}
+
+		void rebindProgram() {
+			if (program != null) program.use();
+			DeferredWorldRenderingPipeline.this.customUniforms.push(this);
 		}
 
 		private void useNow() {
@@ -1679,7 +1684,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		if (current != previous) {
 			beginPass(previous);
 		} else {
-			previous.use();
+			previous.rebindProgram();
 		}
 	}
 
