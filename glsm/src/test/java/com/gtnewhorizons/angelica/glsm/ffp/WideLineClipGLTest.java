@@ -22,7 +22,7 @@ class WideLineClipGLTest {
     private static final float LINE_WIDTH = 3.0f;
     private static final int BACKGROUND = 0xFF000000;
 
-    private static final float[] IN_FRONT = { 0f, -1f, -2f };
+    private static final float[] IN_FRONT = { 0f, -0.9875f, -2f };
     private static final float[] BEHIND = { 0f, 0.8f, 2f };
 
     private boolean savedEmulation;
