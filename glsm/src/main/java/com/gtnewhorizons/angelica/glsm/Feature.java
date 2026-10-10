@@ -96,6 +96,7 @@ public class Feature {
             , GLStateManager.getSecondaryColor() // Current secondary color
             , ShaderManager.getNormalStack()    // Current normal vector
             , ShaderManager.getTexCoordStack()  // Current texture coordinates
+            , GLStateManager.getEdgeFlagState()
             // Current color index
             // Current raster position
             // GL_CURRENT_RASTER_POSITION_VALID flag
@@ -158,6 +159,8 @@ public class Feature {
             , GLStateManager.getPolygonOffsetPointState()
             , GLStateManager.getPolygonOffsetLineState()
             , GLStateManager.getPolygonOffsetFillState()
+            , GLStateManager.getPointSpriteState()
+            , GLStateManager.getVertexProgramTwoSideState()
             , GLStateManager.getPolygonSmoothState()
             , GLStateManager.getPolygonStippleState()
             , GLStateManager.getRescaleNormalState()
@@ -178,6 +181,7 @@ public class Feature {
             enableBits.add(GLStateManager.getTextures().getTexture1DStates(i));
             enableBits.add(GLStateManager.getTextures().getTextureUnitStates(i));
             enableBits.add(GLStateManager.getTextures().getTexture3DStates(i));
+            enableBits.add(GLStateManager.getTextures().getTextureCubeMapStates(i));
         }
 
         // Flags GL_TEXTURE_GEN_x where x is S, T, R, or Q
@@ -216,13 +220,7 @@ public class Feature {
                                        // ^^ GL_FOG_MODE value
         ));
         attribToFeatures.put(GL11.GL_HINT_BIT, ImmutableSet.of(
-            // GL_PERSPECTIVE_CORRECTION_HINT setting
-            // GL_POINT_SMOOTH_HINT setting
-            // GL_LINE_SMOOTH_HINT setting
-            // GL_POLYGON_SMOOTH_HINT setting
-            // GL_FOG_HINT setting
-            // GL_GENERATE_MIPMAP_HINT setting
-            // GL_TEXTURE_COMPRESSION_HINT setting
+            GLStateManager.getHintState()
         ));
         attribToFeatures.put(GL11.GL_LIGHTING_BIT, ImmutableSet.of(
             GLStateManager.getColorMaterial()
@@ -286,6 +284,7 @@ public class Feature {
         ));
         attribToFeatures.put(GL11.GL_POINT_BIT, ImmutableSet.of(
               GLStateManager.getPointSmoothState()
+            , GLStateManager.getPointSpriteState()
             , GLStateManager.getPointState()
         ));
         attribToFeatures.put(GL11.GL_POLYGON_BIT, ImmutableSet.of(
@@ -328,6 +327,10 @@ public class Feature {
         for(int i = 0 ; i < GLStateManager.MAX_TEXTURE_UNITS; i++) {
             textureAttribs.add(GLStateManager.getTextures().getTextureUnitBindings(i));
             textureAttribs.add(GLStateManager.getTextures().getTexEnvState(i));
+            textureAttribs.add(GLStateManager.getTextures().getTexture1DStates(i));
+            textureAttribs.add(GLStateManager.getTextures().getTextureUnitStates(i));
+            textureAttribs.add(GLStateManager.getTextures().getTexture3DStates(i));
+            textureAttribs.add(GLStateManager.getTextures().getTextureCubeMapStates(i));
         }
 
         // Enable bits GL_TEXTURE_GEN_x where x is S, T, R, or Q

@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
 import com.gtnewhorizons.angelica.glsm.recording.ImmediateModeRecorder;
 import com.gtnewhorizons.angelica.glsm.states.ViewportState;
 import org.joml.Matrix4f;
@@ -141,6 +142,7 @@ public class FeedbackManager {
     public static void processDrawArrays(int mode, int first, int count) {
         computeMVP();
         final GLContextState glCtx = GLStateManager.ctx();
+        if (!glCtx.vaos.isAttribEnabled(0)) return;
         final int stride = positionStride(glCtx);
         final long posOffset = positionOffset(glCtx);
         final int byteCount = count * stride;
@@ -154,6 +156,7 @@ public class FeedbackManager {
     public static void processDrawElements(int mode, int indexCount, int type, long eboOffset) {
         computeMVP();
         final GLContextState glCtx = GLStateManager.ctx();
+        if (!glCtx.vaos.isAttribEnabled(0)) return;
         final int stride = positionStride(glCtx);
 
         final int elementSize = GLTypes.sizeBytes(type);
@@ -210,6 +213,7 @@ public class FeedbackManager {
     private static void processDrawElementsImpl(int mode, int count, IndexReader reader) {
         computeMVP();
         final GLContextState glCtx = GLStateManager.ctx();
+        if (!glCtx.vaos.isAttribEnabled(0)) return;
         final int stride = positionStride(glCtx);
 
         int minIdx = Integer.MAX_VALUE, maxIdx = Integer.MIN_VALUE;
@@ -261,6 +265,14 @@ public class FeedbackManager {
     }
 
     private static void readPositionBuffer(long offset, ByteBuffer destination, GLContextState glCtx) {
+        final VAOManager.Attrib position = glCtx.vaos.attrib(0);
+        if (position != null && position.clientPointer != null) {
+            final ByteBuffer source = position.clientPointer.duplicate();
+            source.position(source.position() + (int) offset);
+            if (source.remaining() > destination.remaining()) source.limit(source.position() + destination.remaining());
+            destination.duplicate().put(source);
+            return;
+        }
         final int positionVbo = glCtx.vaos.attribVBO(0);
         final int previousVbo = glCtx.boundVBO;
 

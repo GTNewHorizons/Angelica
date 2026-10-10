@@ -4126,7 +4126,7 @@ public class SDLGPURenderBackend extends RenderBackend {
     }
     @Override public void getFloat(int pname, FloatBuffer params) {
         if (params == null || params.remaining() == 0) return;
-        if (pname == GL12.GL_ALIASED_LINE_WIDTH_RANGE || pname == GL11.GL_LINE_WIDTH_RANGE) {
+        if (pname == GL12.GL_ALIASED_LINE_WIDTH_RANGE || pname == GL11.GL_LINE_WIDTH_RANGE || pname == GL12.GL_ALIASED_POINT_SIZE_RANGE || pname == GL11.GL_POINT_SIZE_RANGE) {
             if (params.remaining() >= 2) {
                 params.put(params.position(), 1.0f);
                 params.put(params.position() + 1, 1.0f);

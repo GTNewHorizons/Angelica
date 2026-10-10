@@ -451,6 +451,7 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
 
     @Override
     public void hint(int target, int mode) {
+        if (RenderSystem.isGLES() && target != GL20C.GL_FRAGMENT_SHADER_DERIVATIVE_HINT) return;
         GL11C.glHint(target, mode);
     }
 
@@ -1822,11 +1823,13 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
 
     @Override
     public void pointParameterf(int pname, float param) {
+        if (RenderSystem.isGLES()) return;
         GL14C.glPointParameterf(pname, param);
     }
 
     @Override
     public void pointParameteri(int pname, int param) {
+        if (RenderSystem.isGLES()) return;
         GL14C.glPointParameteri(pname, param);
     }
 
