@@ -59,8 +59,7 @@ public final class SpirvShaderTranslator {
         final SpirvCompiler.Result cr = SpirvCompiler.compile(pre.rewrittenSource(), shaderKind, debugName, SpirvCompiler.Options.vulkanRelaxed());
         if (cr.spirv() == null) {
             final String firstErr = cr.error() == null ? "(no error)" : cr.error().split("\\R", 2)[0];
-            LOGGER.error("shaderc failed for '{}' (kind=0x{}): {} (dumped to {})",
-                    debugName, Integer.toHexString(shaderKind), firstErr, cr.dumpPath() == null ? "<dump failed>" : cr.dumpPath());
+            LOGGER.error("shaderc failed for '{}' (kind=0x{}): {} (dumped to {})", debugName, Integer.toHexString(shaderKind), firstErr, cr.dumpPath() == null ? "<dump failed>" : cr.dumpPath());
             return null;
         }
         try {

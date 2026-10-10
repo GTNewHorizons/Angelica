@@ -53,6 +53,20 @@ class StageDiskCacheTest {
         void main() { undeclared_var = 1.0; }
         """;
 
+    private static final String REDEFINES_CLAMP = """
+        #version 330 core
+        in vec4 uv;
+        layout(location = 0) out vec4 color;
+        float clamp(float min, float f, float max) {
+            if (f > max) f = max;
+            if (f < min) f = min;
+            return f;
+        }
+        void main() {
+            color = vec4(clamp(0.0, uv.x, 1.0), clamp(0.0, uv.y, 1.0), 0.0, 1.0);
+        }
+        """;
+
     private static final byte[] POISON_SPIRV = {1, 2, 3, 4, 5, 6, 7, 8};
 
     private static final PerFrameUniformBlock BLOCK_A = new PerFrameUniformBlock(List.of(new Member("frameTimeCounter", UniformType.FLOAT)));
@@ -175,6 +189,37 @@ class StageDiskCacheTest {
         assertFalse(object(sm, shader).compiled);
         assertNull(ShaderDiskCache.get(ShaderManager.stageKey(sm.getShaderSource(shader), GL20.GL_VERTEX_SHADER)));
         sm.deleteShader(shader);
+    }
+
+    @Test
+    void redefinedBuiltinCompilesAndIsStored(@TempDir Path dir) {
+        ShaderDiskCache.configure(dir, "t");
+        ShaderManager.prewarmSpirv(REDEFINES_CLAMP, GL20.GL_FRAGMENT_SHADER);
+        assertNotNull(ShaderDiskCache.get(ShaderManager.prewarmKey(REDEFINES_CLAMP, GL20.GL_FRAGMENT_SHADER, null, null)));
+
+        ShaderManager.clearPrewarmCache();
+        final ShaderManager sm = new ShaderManager(null);
+        final int shader = sm.createShader(GL20.GL_FRAGMENT_SHADER);
+        sm.shaderSource(shader, REDEFINES_CLAMP);
+        sm.compileShader(shader);
+        assertTrue(object(sm, shader).compiled);
+        assertNotNull(ShaderDiskCache.get(ShaderManager.stageKey(sm.getShaderSource(shader), GL20.GL_FRAGMENT_SHADER)));
+        sm.deleteShader(shader);
+    }
+
+    @Test
+    void linkLogNamesTheMissingAndUncompiledStages() {
+        final ShaderManager sm = new ShaderManager(null);
+        final int program = sm.createProgram();
+        sm.linkProgram(program);
+        assertEquals("Vertex shader missing; Fragment shader missing", sm.getProgramInfoLog(program));
+
+        final int shader = sm.createShader(GL20.GL_VERTEX_SHADER);
+        sm.shaderSource(shader, BROKEN);
+        sm.compileShader(shader);
+        sm.attachShader(program, shader);
+        sm.linkProgram(program);
+        assertEquals("Vertex shader not compiled; Fragment shader missing", sm.getProgramInfoLog(program));
     }
 
     @Test
