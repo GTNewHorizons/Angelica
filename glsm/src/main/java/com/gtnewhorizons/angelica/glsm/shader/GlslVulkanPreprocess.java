@@ -1,9 +1,12 @@
 package com.gtnewhorizons.angelica.glsm.shader;
 
 import com.gtnewhorizons.angelica.glsm.GlslTransformUtils;
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.Nullable;
@@ -215,6 +218,40 @@ public final class GlslVulkanPreprocess {
 
     private static void rename(ShaderIndex index, String name, String replacement, List<Edit> edits) {
         for (Token tok : index.occurrences(name)) edits.add(new Edit(tok.getStartIndex(), tok.getStopIndex(), replacement));
+    }
+
+    static @Nullable String renameUserFunctions(String source) {
+        final GLSLParser.Translation_unitContext root;
+        try {
+            root = GlslTransformUtils.parseFullQuiet(source);
+        } catch (Exception e) {
+            return null;
+        }
+
+        Object2IntOpenHashMap<String> prototypes = null;
+        for (GLSLParser.External_declarationContext external : root.external_declaration()) {
+            final GLSLParser.Function_definitionContext function = external.function_definition();
+            final GLSLParser.DeclarationContext declaration = function == null ? external.declaration() : null;
+            final GLSLParser.Function_prototypeContext prototype = function != null ? function.function_prototype() : declaration != null ? declaration.function_prototype() : null;
+            final TerminalNode identifier = prototype == null ? null : prototype.IDENTIFIER();
+            if (identifier == null) continue;
+            final String name = identifier.getText();
+            if ("main".equals(name)) continue;
+            if (prototypes == null) prototypes = new Object2IntOpenHashMap<>();
+            prototypes.addTo(name, 1);
+        }
+        if (prototypes == null) return null;
+
+        final ShaderIndex index = new ShaderIndex(root, source);
+        final Set<String> inDirectives = index.directives().identifiers();
+        final List<Edit> edits = new ArrayList<>();
+        for (Object2IntMap.Entry<String> prototype : prototypes.object2IntEntrySet()) {
+            final String name = prototype.getKey();
+            if (inDirectives.contains(name)) continue;
+            if (index.occurrences(name).size() != prototype.getIntValue() + index.callsTo(name).size()) continue;
+            rename(index, name, RESERVED_RENAMED_PREFIX + name, edits);
+        }
+        return edits.isEmpty() ? null : applyEdits(source, edits);
     }
 
     private static void rewriteReadOnlyImageCalls(List<GLSLParser.Postfix_expressionContext> calls, String replacement, Set<String> readOnlyImages, List<Edit> edits) {
