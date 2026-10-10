@@ -36,6 +36,8 @@ public abstract class MixinForgeHooksClient_CoreProfile {
 
     @Shadow static int stencilBits;
 
+    @Unique private static String angelica$lastRejection;
+
     /**
      * @author Angelica
      * @reason Request highest GL version with core profile context, or GL ES 3.2 when requested
@@ -56,9 +58,9 @@ public abstract class MixinForgeHooksClient_CoreProfile {
                 LOGGER.info("Created GL ES 3.2 context");
                 return;
             }
-            angelica$reportContextFailure(e);
-            if (e instanceof LWJGLException lwjgl) throw lwjgl;
-            throw new LWJGLException("Failed to create OpenGL ES 3.2 context", e);
+            final String msg = "Failed to create OpenGL ES 3.2 context: " + e.getMessage();
+            angelica$reportContextFailure(msg);
+            throw new RuntimeException(msg, e);
         }
 
         final ContextAttribs attribs = new ContextAttribs(3, 3).withProfileCore(true).withForwardCompatible(true).withDebug(AngelicaMod.lwjglDebug);
@@ -98,7 +100,7 @@ public abstract class MixinForgeHooksClient_CoreProfile {
 
         // Try pinned version first if configured
         final int pinned = angelica$clampPinned(AngelicaConfig.pinnedGLVersion, platformMax);
-        if (pinned >= 33 && pinned != requested) {
+        if (pinned >= 33 && pinned != requested && pinned <= maxProbe) {
             final Exception e = angelica$tryCreate(attribs, format, setMajor, setMinor, pinned / 10, pinned % 10);
             if (e == null) {
                 final int cap = angelica$validateContext(pinned / 10, pinned % 10);
@@ -138,11 +140,12 @@ public abstract class MixinForgeHooksClient_CoreProfile {
             }
         }
 
-        angelica$reportContextFailure(lastException);
-        if (lastException instanceof LWJGLException lwjgl) {
-            throw lwjgl;
-        }
-        throw new LWJGLException("Failed to create OpenGL core profile context", lastException);
+        final StringBuilder msg = new StringBuilder("Angelica requires an OpenGL 3.3 core profile context and could not create one.");
+        if (angelica$lastRejection != null) msg.append(" Last driver answer: ").append(angelica$lastRejection).append('.');
+        if (lastException != null) msg.append(" Last error: ").append(lastException.getMessage()).append('.');
+        msg.append(" Update or install the GPU driver.");
+        angelica$reportContextFailure(msg.toString());
+        throw new RuntimeException(msg.toString(), lastException);
     }
 
     @Unique
@@ -192,10 +195,11 @@ public abstract class MixinForgeHooksClient_CoreProfile {
         if (RenderSystem.isContextValid(major, minor, actual, core)) {
             return 0;
         }
-        LOGGER.warn("Requested GL {}.{} core context but driver returned \"{}\" (core profile: {}, GPU: {}); falling back to a lower version", major, minor, glVersion, core, GLStateManager.glGetString(GL11.GL_RENDERER));
+        final String renderer = GLStateManager.glGetString(GL11.GL_RENDERER);
+        LOGGER.warn("Requested GL {}.{} core context but driver returned \"{}\" (core profile: {}, GPU: {}); falling back to a lower version", major, minor, glVersion, core, renderer);
+        angelica$lastRejection = "requested GL " + major + "." + minor + " core, driver returned \"" + glVersion + "\" (core profile: " + core + ", GPU: " + renderer + ")";
         try { Display.destroy(); } catch (Exception ignored) {}
-        final int requested = major * 10 + minor;
-        return (actual >= 0 && actual < requested) ? actual : requested - 1;
+        return RenderSystem.probeCapAfterRejection(major * 10 + minor, actual);
     }
 
     @Unique
@@ -210,9 +214,8 @@ public abstract class MixinForgeHooksClient_CoreProfile {
     }
 
     @Unique
-    private static void angelica$reportContextFailure(Exception e) {
-        LOGGER.error("FATAL: Failed to create OpenGL core profile context.");
-        LOGGER.error("Error: {}", e != null ? e.getMessage() : "unknown");
+    private static void angelica$reportContextFailure(String message) {
+        LOGGER.error("FATAL: {}", message);
         if (Display.isCreated()) {
             try {
                 LOGGER.error("GPU: {}, Driver: {}", GLStateManager.glGetString(GL11.GL_RENDERER), GLStateManager.glGetString(GL11.GL_VERSION));
