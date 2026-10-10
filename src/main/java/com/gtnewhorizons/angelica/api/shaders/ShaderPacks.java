@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.api;
+package com.gtnewhorizons.angelica.api.shaders;
 
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
