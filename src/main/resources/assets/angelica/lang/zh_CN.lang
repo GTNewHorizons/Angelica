@@ -222,6 +222,8 @@ sodium.options.use_render_pass_optimization.tooltip=分析贴图透明度，当�
 
 options.angelica.aggressiveChunkLoading=更激进地区块加载
 options.angelica.aggressiveChunkLoading.tooltip=区块加载后立即渲染，即使相邻区块尚未加载完毕。将提升最大渲染距离处区块的加载速度。在相邻区块加载后会自动重建。适用于渲染距离较低的服务器。
+options.angelica.groupedf3=启用 F3 分组界面
+options.angelica.groupedf3.tooltip=将 F3 调试信息按类别分组显示。
 options.angelica.disablef3=禁用F3附加信息显示
 options.angelica.disablef3.tooltip=禁用Angelica在F3调试界面的附加信息。
 
@@ -237,3 +239,12 @@ sodium.options.upload_method.buffer_subdata=部分更新 (BufferSubData)
 sodium.options.upload_method.map_buffer=内存映射 (MapBufferRange)
 sodium.options.enable_deferred_batching.name=延迟粒子渲染
 sodium.options.enable_deferred_batching.tooltip=按层合并粒子绘制调用，减少绘制次数。如果粒子渲染不正确请禁用此项
+
+angelica.debug.game=游戏
+angelica.debug.position=位置
+angelica.debug.world=世界
+angelica.debug.memory=内存
+angelica.debug.system=系统信息
+angelica.debug.rendering=渲染
+angelica.debug.target=指向的方块
+angelica.debug.other=其他信息

@@ -108,6 +108,10 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(true)
     public static boolean modernizeF3Screen;
 
+    @Config.Comment("Group F3 debug information into labeled panels.")
+    @Config.DefaultBoolean(true)
+    public static boolean enableGroupedF3;
+
     @Config.Comment("Show block registry name and meta value in F3, similar to 1.8+. [From ArchaicFix]")
     @Config.DefaultBoolean(true)
     public static boolean showBlockDebugInfo;
