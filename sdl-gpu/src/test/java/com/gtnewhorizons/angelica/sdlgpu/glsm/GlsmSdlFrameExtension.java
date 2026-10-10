@@ -1,12 +1,18 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
 import org.junit.jupiter.api.extension.AfterEachCallback;
+import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public final class GlsmSdlFrameExtension implements BeforeEachCallback, AfterEachCallback {
+public final class GlsmSdlFrameExtension implements BeforeAllCallback, BeforeEachCallback, AfterEachCallback {
+
+    @Override
+    public void beforeAll(ExtensionContext context) {
+        GlsmSdlHeadlessRig.boot();
+    }
 
     @Override
     public void beforeEach(ExtensionContext context) {

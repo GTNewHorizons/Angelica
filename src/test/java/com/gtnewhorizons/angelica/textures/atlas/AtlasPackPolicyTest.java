@@ -13,6 +13,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 
@@ -28,6 +29,9 @@ import net.minecraft.util.ResourceLocation;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class AtlasPackPolicyTest {
 
@@ -104,28 +108,18 @@ class AtlasPackPolicyTest {
         }
     }
 
-    @Test
-    void noPackClaimsAllowsPrefetch() {
-        final List<IResourcePack> packs = List.of(new FakePack(new ResourceLocation("tinker", "unrelated.png")));
-        assertFalse(AtlasPackPolicy.isClaimed(packs, PNG));
+    static Stream<Arguments> claims() {
+        return Stream.of(
+            Arguments.of("no pack claims the sprite", new FakePack(new ResourceLocation("tinker", "unrelated.png")), false),
+            Arguments.of("a pack claims the png", new FakePack(PNG), true),
+            Arguments.of("a pack claims only the mcmeta", new FakePack(MCMETA), true),
+            Arguments.of("resourceExists throws", new FakePack(new IllegalStateException("boom")), true));
     }
 
-    @Test
-    void packClaimingPngForcesSerial() {
-        final List<IResourcePack> packs = List.of(new FakePack(PNG));
-        assertTrue(AtlasPackPolicy.isClaimed(packs, PNG));
-    }
-
-    @Test
-    void packClaimingOnlyMcmetaForcesSerial() {
-        final List<IResourcePack> packs = List.of(new FakePack(MCMETA));
-        assertTrue(AtlasPackPolicy.isClaimed(packs, PNG));
-    }
-
-    @Test
-    void resourceExistsThrowingForcesSerial() {
-        final List<IResourcePack> packs = List.of(new FakePack(new IllegalStateException("boom")));
-        assertTrue(AtlasPackPolicy.isClaimed(packs, PNG));
+    @ParameterizedTest(name = "{0} -> claimed={2}")
+    @MethodSource("claims")
+    void isClaimed(String name, IResourcePack pack, boolean expected) {
+        assertEquals(expected, AtlasPackPolicy.isClaimed(List.of(pack), PNG));
     }
 
     @Test

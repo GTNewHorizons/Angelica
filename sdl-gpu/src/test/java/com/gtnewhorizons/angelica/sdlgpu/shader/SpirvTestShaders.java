@@ -1,8 +1,25 @@
 package com.gtnewhorizons.angelica.sdlgpu.shader;
 
+import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
+
+import java.nio.ByteBuffer;
+
+import static org.junit.jupiter.api.Assertions.fail;
+
 public final class SpirvTestShaders {
 
     private SpirvTestShaders() {}
+
+    /** Caller frees the result. */
+    public static ByteBuffer compileOrFail(String source, int shaderKind) {
+        return compileOrFail(source, shaderKind, SpirvCompiler.Options.vulkanForced460Core());
+    }
+
+    public static ByteBuffer compileOrFail(String source, int shaderKind, SpirvCompiler.Options options) {
+        final SpirvCompiler.Result r = SpirvCompiler.compile(source, shaderKind, "test_shader", options);
+        if (r.spirv() == null) fail("shader compilation failed: " + r.error() + "\nsource:\n" + source);
+        return r.spirv();
+    }
 
     public static final String VERTEX_GLSL = """
         #version 460 core

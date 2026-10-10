@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 import static com.gtnewhorizons.angelica.sdlgpu.pipeline.PipelineApplier.foldClearColor;
 import static com.gtnewhorizons.angelica.sdlgpu.pipeline.PipelineApplier.foldClearDepth;
 import static com.gtnewhorizons.angelica.sdlgpu.pipeline.PipelineApplier.foldClearStencil;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 class ClearValueLayoutHashTest {
@@ -15,11 +14,6 @@ class ClearValueLayoutHashTest {
     @Test
     void depthZeroAndDepthOneDoNotCollide() {
         assertNotEquals(foldClearDepth(SEED, 0.0f), foldClearDepth(SEED, 1.0f), "the minimap mask clear must not reuse the world's depth-1 clear target");
-    }
-
-    @Test
-    void depthFoldIsStableForTheSameValue() {
-        assertEquals(foldClearDepth(SEED, 0.0f), foldClearDepth(SEED, 0.0f));
     }
 
     @Test
@@ -39,6 +33,5 @@ class ClearValueLayoutHashTest {
     @Test
     void stencilValuesDoNotCollide() {
         assertNotEquals(foldClearStencil(SEED, 0), foldClearStencil(SEED, 1));
-        assertEquals(foldClearStencil(SEED, 0xFF), foldClearStencil(SEED, 0xFF));
     }
 }

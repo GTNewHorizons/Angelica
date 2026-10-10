@@ -9,6 +9,7 @@ import org.lwjgl.opengl.GL13;
 
 import java.nio.ByteBuffer;
 
+import static com.gtnewhorizons.angelica.glsm.GlTestSupport.drainErrors;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @GLCoreTest
@@ -71,8 +72,7 @@ public class DSAUnsupportedBindingTest {
             GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, t);
             GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, y);
             GLStateManager.glBindTexture(GL12.GL_TEXTURE_3D, x);
-            while (GL11.glGetError() != GL11.GL_NO_ERROR) {
-            }
+            drainErrors();
 
             dsa.texParameteri(t, GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
 

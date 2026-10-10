@@ -4,10 +4,14 @@ import com.gtnewhorizons.angelica.rendering.celeritas.threading.ThreadedAngelica
 import org.embeddedt.embeddium.impl.render.chunk.RenderSection;
 import org.embeddedt.embeddium.impl.util.task.CancellationToken;
 import org.joml.Vector3d;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class DeferredSectionMeshTest {
 
@@ -25,36 +29,20 @@ class DeferredSectionMeshTest {
         return new DeferredSectionMesh(task, token, null, null, null, null, null, 0L, false, 0L);
     }
 
-    @Test
-    void freshSectionIsNotObsolete() {
-        final RenderSection section = new RenderSection(null, 0, 0, 0);
-        assertFalse(mesh(section, 5, false).isObsolete());
+    static Stream<Arguments> sections() {
+        return Stream.of(
+            Arguments.of("fresh section", (Consumer<RenderSection>) section -> {}, false, false),
+            Arguments.of("same built frame", (Consumer<RenderSection>) section -> section.setLastBuiltFrame(5), false, false),
+            Arguments.of("newer built frame", (Consumer<RenderSection>) section -> section.setLastBuiltFrame(6), false, true),
+            Arguments.of("cancelled token", (Consumer<RenderSection>) section -> {}, true, true),
+            Arguments.of("deleted section", (Consumer<RenderSection>) RenderSection::delete, false, true));
     }
 
-    @Test
-    void sameBuiltFrameIsNotObsolete() {
+    @ParameterizedTest(name = "{0} -> obsolete={3}")
+    @MethodSource("sections")
+    void isObsolete(String name, Consumer<RenderSection> setup, boolean cancelled, boolean expected) {
         final RenderSection section = new RenderSection(null, 0, 0, 0);
-        section.setLastBuiltFrame(5);
-        assertFalse(mesh(section, 5, false).isObsolete());
-    }
-
-    @Test
-    void newerBuiltFrameIsObsolete() {
-        final RenderSection section = new RenderSection(null, 0, 0, 0);
-        section.setLastBuiltFrame(6);
-        assertTrue(mesh(section, 5, false).isObsolete());
-    }
-
-    @Test
-    void cancelledTokenIsObsolete() {
-        final RenderSection section = new RenderSection(null, 0, 0, 0);
-        assertTrue(mesh(section, 5, true).isObsolete());
-    }
-
-    @Test
-    void deletedSectionIsObsolete() {
-        final RenderSection section = new RenderSection(null, 0, 0, 0);
-        section.delete();
-        assertTrue(mesh(section, 5, false).isObsolete());
+        setup.accept(section);
+        assertEquals(expected, mesh(section, 5, cancelled).isObsolete());
     }
 }

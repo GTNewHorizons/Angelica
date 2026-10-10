@@ -1,7 +1,6 @@
 package net.coderbot.iris.pipeline.transform;
 
-import com.gtnewhorizons.angelica.glsm.RenderSystem;
-import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,16 +41,21 @@ class CompositeVertexWriteExtractionTest {
         void main() { gl_FragData[0] = vec4(texCoord, 0.0, 1.0); }
         """;
 
+    private static int previousMaxGlslVersion;
+
     @BeforeAll
-    static void initShaderTransformer() throws Exception {
-        Reflect.setStatic(RenderSystem.class, "maxGlslVersion", 460);
-        ShaderTransformer.init();
+    static void pinGlslVersion() {
+        previousMaxGlslVersion = TransformTestSupport.pinGlslVersion(460);
+    }
+
+    @AfterAll
+    static void restoreGlslVersion() {
+        TransformTestSupport.restoreGlslVersion(previousMaxGlslVersion);
     }
 
     @BeforeEach
     void clearCaches() {
-        TransformPatcher.clearCache();
-        ShaderTransformer.clearCache();
+        TransformTestSupport.clearCaches();
     }
 
     @Test

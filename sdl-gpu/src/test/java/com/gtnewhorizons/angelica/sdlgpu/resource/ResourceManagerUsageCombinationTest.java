@@ -1,6 +1,11 @@
 package com.gtnewhorizons.angelica.sdlgpu.resource;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.lwjgl.sdl.SDLGPU.*;
@@ -24,27 +29,20 @@ class ResourceManagerUsageCombinationTest {
         assertNotEquals(0, out & SDL_GPU_TEXTUREUSAGE_SAMPLER);
     }
 
-    @Test
-    void samplerKeepsPlainComputeStorage() {
-        final int merged = SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_READ | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE;
-        assertEquals(merged, ResourceManager.reconcileUsage(merged), "SDL transitions plain compute storage symmetrically to and from the sampler default");
+    /** Plain compute storage survives because SDL transitions it symmetrically to and from the sampler default. */
+    static Stream<Arguments> unchangedUsages() {
+        return Stream.of(
+            Arguments.of("sampler + plain compute storage",
+                SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_READ | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE),
+            Arguments.of("every storage bit without sampler",
+                SDL_GPU_TEXTUREUSAGE_GRAPHICS_STORAGE_READ | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_READ | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_SIMULTANEOUS_READ_WRITE),
+            Arguments.of("plain sampled colour target", SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COLOR_TARGET),
+            Arguments.of("sampled depth target", SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET));
     }
 
-    @Test
-    void withoutSamplerEveryStorageBitSurvives() {
-        final int merged = SDL_GPU_TEXTUREUSAGE_GRAPHICS_STORAGE_READ | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_READ | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_SIMULTANEOUS_READ_WRITE;
-        assertEquals(merged, ResourceManager.reconcileUsage(merged));
-    }
-
-    @Test
-    void plainSampledColourTextureIsUnchanged() {
-        final int merged = SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COLOR_TARGET;
-        assertEquals(merged, ResourceManager.reconcileUsage(merged));
-    }
-
-    @Test
-    void depthTargetIsUnchanged() {
-        final int merged = SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET;
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("unchangedUsages")
+    void usageIsUnchanged(String name, int merged) {
         assertEquals(merged, ResourceManager.reconcileUsage(merged));
     }
 }

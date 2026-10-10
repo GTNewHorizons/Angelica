@@ -81,7 +81,7 @@ final class LegacyQueries {
         return value < 0 ? -Math.round(-value) : Math.round(value);
     }
 
-    private static int toInt(int type, float value) {
+    static int toInt(int type, float value) {
         return type == FLOATN ? floatToInt(value) : lround(value);
     }
 

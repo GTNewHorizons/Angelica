@@ -2,6 +2,8 @@ package com.gtnewhorizons.angelica.glsm;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.lwjgl.opengl.GL11;
 
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyState;
@@ -28,106 +30,26 @@ class GLSM_DisplayList_FormatOptimization_Test {
         GLStateManager.glNormal3f(0.0f, 0.0f, 1.0f);
     }
 
-    @Test
-    void testPositionOnlyFormat() {
-        // Create a display list with only position data (no color, texture, brightness, or normals)
-        // Use GLStateManager for all calls to ensure they go through GLSM (test env doesn't redirect GL11)
+    private static final float[][] CORNERS = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
+    private static final float[][] COLORS = {{1, 1, 1, 1}, {1, 0, 0, 1}, {0, 1, 0, 1}, {0, 0, 1, 1}};
+
+    @ParameterizedTest(name = "normals={0}")
+    @ValueSource(booleans = {false, true})
+    void colorTextureFormatLeavesLastColorCurrent(boolean normals) {
         displayList = GL11.glGenLists(1);
         GLStateManager.glNewList(displayList, GL11.GL_COMPILE);
 
         GLStateManager.glBegin(GL11.GL_QUADS);
-        GLStateManager.glVertex3f(0, 0, 0);
-        GLStateManager.glVertex3f(1, 0, 0);
-        GLStateManager.glVertex3f(1, 1, 0);
-        GLStateManager.glVertex3f(0, 1, 0);
+        for (int i = 0; i < 4; i++) {
+            if (normals) GLStateManager.glNormal3f(0, 0, 1);
+            GLStateManager.glColor4f(COLORS[i][0], COLORS[i][1], COLORS[i][2], COLORS[i][3]);
+            GLStateManager.glTexCoord2f(CORNERS[i][0], CORNERS[i][1]);
+            GLStateManager.glVertex3f(CORNERS[i][0], CORNERS[i][1], 0);
+        }
         GLStateManager.glEnd();
 
         GLStateManager.glEndList();
 
-        // Call the list to ensure it doesn't crash (verifies compilation succeeded)
-        GLStateManager.glCallList(displayList);
-    }
-
-    @Test
-    void testPositionTextureFormat() {
-        // Create a display list with position and texture coordinates
-        displayList = GL11.glGenLists(1);
-        GLStateManager.glNewList(displayList, GL11.GL_COMPILE);
-
-        GLStateManager.glBegin(GL11.GL_QUADS);
-        GLStateManager.glTexCoord2f(0, 0);
-        GLStateManager.glVertex3f(0, 0, 0);
-        GLStateManager.glTexCoord2f(1, 0);
-        GLStateManager.glVertex3f(1, 0, 0);
-        GLStateManager.glTexCoord2f(1, 1);
-        GLStateManager.glVertex3f(1, 1, 0);
-        GLStateManager.glTexCoord2f(0, 1);
-        GLStateManager.glVertex3f(0, 1, 0);
-        GLStateManager.glEnd();
-
-        GLStateManager.glEndList();
-
-        // Call the list to ensure it doesn't crash (verifies compilation succeeded)
-        GLStateManager.glCallList(displayList);
-    }
-
-    @Test
-    void testPositionColorTextureFormat() {
-        // Create a display list with position, color, and texture
-        displayList = GL11.glGenLists(1);
-        GLStateManager.glNewList(displayList, GL11.GL_COMPILE);
-
-        GLStateManager.glBegin(GL11.GL_QUADS);
-        GLStateManager.glColor4f(1, 1, 1, 1);
-        GLStateManager.glTexCoord2f(0, 0);
-        GLStateManager.glVertex3f(0, 0, 0);
-        GLStateManager.glColor4f(1, 0, 0, 1);
-        GLStateManager.glTexCoord2f(1, 0);
-        GLStateManager.glVertex3f(1, 0, 0);
-        GLStateManager.glColor4f(0, 1, 0, 1);
-        GLStateManager.glTexCoord2f(1, 1);
-        GLStateManager.glVertex3f(1, 1, 0);
-        GLStateManager.glColor4f(0, 0, 1, 1);
-        GLStateManager.glTexCoord2f(0, 1);
-        GLStateManager.glVertex3f(0, 1, 0);
-        GLStateManager.glEnd();
-
-        GLStateManager.glEndList();
-
-        // Call the list and verify color is restored to last value (blue)
-        GLStateManager.glCallList(displayList);
-        verifyState(GL11.GL_CURRENT_COLOR, new float[]{0f, 0f, 1f, 1f},
-            "After playback, color should be blue (last color in immediate mode block)");
-    }
-
-    @Test
-    void testFullFormat() {
-        // Create a display list with all attributes: position, color, texture, and normal
-        displayList = GL11.glGenLists(1);
-        GLStateManager.glNewList(displayList, GL11.GL_COMPILE);
-
-        GLStateManager.glBegin(GL11.GL_QUADS);
-        GLStateManager.glNormal3f(0, 0, 1);
-        GLStateManager.glColor4f(1, 1, 1, 1);
-        GLStateManager.glTexCoord2f(0, 0);
-        GLStateManager.glVertex3f(0, 0, 0);
-        GLStateManager.glNormal3f(0, 0, 1);
-        GLStateManager.glColor4f(1, 0, 0, 1);
-        GLStateManager.glTexCoord2f(1, 0);
-        GLStateManager.glVertex3f(1, 0, 0);
-        GLStateManager.glNormal3f(0, 0, 1);
-        GLStateManager.glColor4f(0, 1, 0, 1);
-        GLStateManager.glTexCoord2f(1, 1);
-        GLStateManager.glVertex3f(1, 1, 0);
-        GLStateManager.glNormal3f(0, 0, 1);
-        GLStateManager.glColor4f(0, 0, 1, 1);
-        GLStateManager.glTexCoord2f(0, 1);
-        GLStateManager.glVertex3f(0, 1, 0);
-        GLStateManager.glEnd();
-
-        GLStateManager.glEndList();
-
-        // Call the list and verify color is restored to last value (blue)
         GLStateManager.glCallList(displayList);
         verifyState(GL11.GL_CURRENT_COLOR, new float[]{0f, 0f, 1f, 1f},
             "After playback, color should be blue (last color in immediate mode block)");

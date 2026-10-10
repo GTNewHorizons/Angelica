@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.rendering.culling;
 import com.gtnewhorizons.angelica.glsm.CompatUniformManager;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GlTestSupport;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import org.joml.Matrix4f;
 import org.junit.jupiter.api.AfterEach;
@@ -11,7 +12,6 @@ import org.junit.jupiter.api.Test;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
-import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL40;
 
 import java.nio.ByteBuffer;
@@ -34,8 +34,6 @@ class MultiDrawCompatStompTest {
         + "layout(location = 0) in vec3 a_Pos;\n"
         + "void main() { gl_Position = iris_ModelViewMatrix * vec4(a_Pos, 1.0); }\n";
 
-    private int vsh;
-    private int fsh;
     private int program;
     private int vao;
     private int indirectBuffer;
@@ -56,13 +54,7 @@ class MultiDrawCompatStompTest {
 
     @BeforeEach
     void armSentinel() {
-        vsh = IndirectCullDrawParityTest.compileShader(GL20.GL_VERTEX_SHADER, IRIS_MVM_VS);
-        fsh = IndirectCullDrawParityTest.compileShader(GL20.GL_FRAGMENT_SHADER, IndirectCullDrawParityTest.FLAT_FS);
-        program = GLStateManager.glCreateProgram();
-        GLStateManager.glAttachShader(program, vsh);
-        GLStateManager.glAttachShader(program, fsh);
-        GLStateManager.glLinkProgram(program);
-        assertEquals(GL11.GL_TRUE, GLStateManager.glGetProgrami(program, GL20.GL_LINK_STATUS), () -> "program failed to link:\n" + GLStateManager.glGetProgramInfoLog(program, 4096));
+        program = GlTestSupport.program(IRIS_MVM_VS, GlTestSupport.TRIVIAL_FS);
         assertTrue(CompatUniformManager.hasProgram(program), "program with iris_ModelViewMatrix was not registered by CompatUniformManager at link");
         location = GLStateManager.glGetUniformLocation(program, "iris_ModelViewMatrix");
         assertTrue(location >= 0, "iris_ModelViewMatrix location not found");
@@ -96,8 +88,6 @@ class MultiDrawCompatStompTest {
         if (indirectBuffer != 0) GLStateManager.glDeleteBuffers(indirectBuffer);
         if (elementBuffer != 0) GLStateManager.glDeleteBuffers(elementBuffer);
         GLStateManager.glDeleteProgram(program);
-        GLStateManager.glDeleteShader(vsh);
-        GLStateManager.glDeleteShader(fsh);
         final FloatBuffer identity = BufferUtils.createFloatBuffer(16);
         new Matrix4f().get(identity);
         GLStateManager.glLoadMatrix(identity);

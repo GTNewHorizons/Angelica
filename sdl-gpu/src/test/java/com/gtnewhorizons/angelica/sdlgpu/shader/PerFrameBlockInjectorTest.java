@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.sdlgpu.shader;
 
-import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
 import com.gtnewhorizons.angelica.glsm.hooks.PerFrameUniformBlock;
 import com.gtnewhorizons.angelica.glsm.shader.UniformType;
 import com.gtnewhorizons.angelica.glsm.hooks.PerFrameUniformBlock.Member;
@@ -11,9 +10,9 @@ import java.nio.ByteBuffer;
 import java.util.LinkedHashMap;
 import java.util.List;
 
+import static com.gtnewhorizons.angelica.sdlgpu.shader.SpirvTestShaders.compileOrFail;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.lwjgl.system.MemoryUtil.memFree;
@@ -101,9 +100,7 @@ class PerFrameBlockInjectorTest {
         assertTrue(out.contains("angelica_pfb_unused_rainStrength"), "shadowed member must be renamed, not dropped");
         assertTrue(out.contains("const float rainStrength = 3.14159265359;"), "the pack's declaration must survive");
 
-        final SpirvCompiler.Result r = SpirvCompiler.compile(out, Shaderc.shaderc_fragment_shader, "shadowed.frag", SpirvCompiler.Options.vulkanForced460Core());
-        assertNotNull(r.spirv(), () -> "shadowed source failed to compile: " + r.error());
-        memFree(r.spirv());
+        memFree(compileOrFail(out, Shaderc.shaderc_fragment_shader));
     }
 
     @Test
@@ -124,9 +121,7 @@ class PerFrameBlockInjectorTest {
         assertFalse(out.contains("angelica_pfb_unused_cameraPosition"));
         assertTrue(out.contains("vec4 cameraPosition = vec4(0);"), "the local declaration must survive");
 
-        final SpirvCompiler.Result r = SpirvCompiler.compile(out, Shaderc.shaderc_fragment_shader, "localshadow.frag", SpirvCompiler.Options.vulkanForced460Core());
-        assertNotNull(r.spirv(), () -> "locally-shadowed source failed to compile: " + r.error());
-        memFree(r.spirv());
+        memFree(compileOrFail(out, Shaderc.shaderc_fragment_shader));
     }
 
     @Test
@@ -163,9 +158,7 @@ class PerFrameBlockInjectorTest {
         assertTrue(out.contains("angelica_pfb_unused_isRightHanded"), "its block slot must still be held");
         assertFalse(out.contains("    int isRightHanded;"));
 
-        final SpirvCompiler.Result r = SpirvCompiler.compile(out, Shaderc.shaderc_fragment_shader, "booltype.frag", SpirvCompiler.Options.vulkanForced460Core());
-        assertNotNull(r.spirv(), () -> "bool-typed uniform failed to compile: " + r.error());
-        memFree(r.spirv());
+        memFree(compileOrFail(out, Shaderc.shaderc_fragment_shader));
     }
 
     @Test
@@ -237,9 +230,7 @@ class PerFrameBlockInjectorTest {
     }
 
     private static LinkedHashMap<String, Integer> offsetsOf(String source) {
-        final SpirvCompiler.Result r = SpirvCompiler.compile(source, Shaderc.shaderc_fragment_shader, "off.frag", SpirvCompiler.Options.vulkanForced460Core());
-        assertNotNull(r.spirv(), () -> "compile failed: " + r.error());
-        final ByteBuffer spirv = r.spirv();
+        final ByteBuffer spirv = compileOrFail(source, Shaderc.shaderc_fragment_shader);
         try {
             final LinkedHashMap<String, Integer> out = new LinkedHashMap<>();
             for (ShaderManager.UboMember m : ShaderManager.reflectStage(spirv, false).blocks()[ShaderManager.BLOCK_PER_FRAME].members()) {
@@ -261,10 +252,7 @@ class PerFrameBlockInjectorTest {
             void main() { fragColor = vec4(cameraPosition, rainStrength); }
             """, BLOCK, null);
 
-        final SpirvCompiler.Result r = SpirvCompiler.compile(out, Shaderc.shaderc_fragment_shader, "injected.frag", SpirvCompiler.Options.vulkanForced460Core());
-        assertNotNull(r.spirv(), () -> "injected source failed to compile: " + r.error());
-
-        final ByteBuffer spirv = r.spirv();
+        final ByteBuffer spirv = compileOrFail(out, Shaderc.shaderc_fragment_shader);
         try {
             final ShaderManager.StageReflection refl = ShaderManager.reflectStage(spirv, false);
             final List<ShaderManager.UboMember> members = refl.blocks()[ShaderManager.BLOCK_PER_FRAME].members();

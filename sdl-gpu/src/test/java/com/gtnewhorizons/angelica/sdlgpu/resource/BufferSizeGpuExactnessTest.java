@@ -1,25 +1,27 @@
 package com.gtnewhorizons.angelica.sdlgpu.resource;
 
+import com.gtnewhorizons.angelica.sdlgpu.RealDeviceExtension;
 import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 import com.gtnewhorizons.angelica.sdlgpu.device.Device;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.opengl.GL15;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@ExtendWith(RealDeviceExtension.class)
 class BufferSizeGpuExactnessTest {
 
     private static Device device;
     private static ResourceManager resourceManager;
-    private static long sdlDevice;
 
     @BeforeAll
     static void setUp() throws Exception {
-        final SdlTestRig rig = SdlTestRig.acquireRealDevice();
+        final SdlTestRig rig = RealDeviceExtension.rig();
         device = rig.device;
         resourceManager = rig.resourceManager;
     }
@@ -27,7 +29,6 @@ class BufferSizeGpuExactnessTest {
     @AfterAll
     static void tearDown() {
         if (resourceManager != null) resourceManager.shutdown();
-        SdlTestRig.releaseRealDevice();
     }
 
     @Test

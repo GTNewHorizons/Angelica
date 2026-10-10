@@ -6,7 +6,6 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -70,24 +69,10 @@ class GLRedirectsTest {
         "GL42, glTexStorage2D, glTexStorage2D",
         "GL43, glDispatchCompute, glDispatchCompute",
         "GL44, glBufferStorage, glBufferStorage",
-    })
-    void glVersionClassMethodRedirects(String className, String method, String expected) {
-        assertEquals(expected, GLRedirects.getTargetMethodName(className + "." + method));
-    }
-
-    @ParameterizedTest(name = "{0}.{1} -> {2}")
-    @CsvSource({
         "GL11C, glDrawArrays, glDrawArrays",
         "GL20C, glUseProgram, glUseProgram",
         "GL30C, glBindFramebuffer, glBindFramebuffer",
         "GL33C, glBindSampler, glBindSampler",
-    })
-    void cVariantsUseGLPrefixMap(String className, String method, String expected) {
-        assertEquals(expected, GLRedirects.getTargetMethodName(className + "." + method));
-    }
-
-    @ParameterizedTest(name = "{0}.{1} -> {2}")
-    @CsvSource({
         "EXTBlendFuncSeparate, glBlendFuncSeparateEXT, tryBlendFuncSeparate",
         "ARBMultitexture, glActiveTextureARB, glActiveTextureARB",
         "ARBShaderObjects, glUseProgramObjectARB, glUseProgram",
@@ -116,7 +101,7 @@ class GLRedirectsTest {
         "Project, gluPerspective, gluPerspective",
         "Project, gluPickMatrix, gluPickMatrix",
     })
-    void namedClassMethodRedirects(String className, String method, String expected) {
+    void classMethodRedirects(String className, String method, String expected) {
         assertEquals(expected, GLRedirects.getTargetMethodName(className + "." + method));
     }
 
@@ -177,10 +162,5 @@ class GLRedirectsTest {
         assertTrue(result.contains("GLStateManager.glPushMatrix()"), "glPushMatrix not redirected: " + result);
         assertTrue(result.contains("GLStateManager.glTranslatef(1,2,3)"), "glTranslatef not redirected: " + result);
         assertTrue(result.contains("GLStateManager.glEnable(GL11.GL_BLEND)"), "glEnable not redirected or GL_BLEND mangled: " + result);
-    }
-
-    @Test
-    void patternIsNotNull() {
-        assertNotNull(GLRedirects.getMethodRedirectPattern());
     }
 }

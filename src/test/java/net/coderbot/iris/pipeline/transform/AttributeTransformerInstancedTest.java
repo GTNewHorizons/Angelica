@@ -5,10 +5,9 @@ import com.gtnewhorizons.angelica.glsm.ffp.CubeInstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
 import com.gtnewhorizons.angelica.glsm.ffp.ParticleInstancedAttribs;
-import com.gtnewhorizons.angelica.glsm.RenderSystem;
-import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.pipeline.transform.parameter.AttributeParameters;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,6 +18,8 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static net.coderbot.iris.pipeline.transform.TransformTestSupport.TEX_LM;
+import static net.coderbot.iris.pipeline.transform.TransformTestSupport.squash;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -28,8 +29,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AttributeTransformerInstancedTest {
 
     private static final Pattern ATTRIBUTE_LOCATION = Pattern.compile("layout\\s*\\(\\s*location\\s*=\\s*(\\d+)\\s*\\)\\s*in\\s+\\w+\\s+(\\w+)");
-
-    private static final InputAvailability TEX_LM = InputAvailability.of(true, true);
 
     private static final String PARTICLE_VERTEX = """
         #version 120
@@ -160,20 +159,21 @@ class AttributeTransformerInstancedTest {
         }
         """;
 
+    private static int previousMaxGlslVersion;
+
     @BeforeAll
-    static void initShaderTransformer() throws Exception {
-        Reflect.setStatic(RenderSystem.class, "maxGlslVersion", 460);
-        ShaderTransformer.init();
+    static void pinGlslVersion() {
+        previousMaxGlslVersion = TransformTestSupport.pinGlslVersion(460);
+    }
+
+    @AfterAll
+    static void restoreGlslVersion() {
+        TransformTestSupport.restoreGlslVersion(previousMaxGlslVersion);
     }
 
     @BeforeEach
     void clearCaches() {
-        TransformPatcher.clearCache();
-        ShaderTransformer.clearCache();
-    }
-
-    private static String squash(String s) {
-        return s.replaceAll("\\s+", "");
+        TransformTestSupport.clearCaches();
     }
 
     private static void assertHas(String shader, String snippet) {
@@ -229,14 +229,9 @@ class AttributeTransformerInstancedTest {
     }
 
     @Test
-    void generatedInstancedShaderHasNoOverlappingAttributeLocations() {
-        final Map<Integer, String> byLocation = attributeLocations(instancedVertex(VERTEX));
-        assertFalse(byLocation.isEmpty(), "expected the instanced variant to declare attribute locations");
-    }
-
-    @Test
-    void declaresInstanceAttribsAndGlobalMatrices() {
+    void declaresInstanceAttribsAtDistinctLocationsAndGlobalMatrices() {
         final String v = instancedVertex(VERTEX);
+        attributeLocations(v);
         assertHas(v, "layout(location = " + InstancedAttribs.LOC_ROW0 + ") in vec4 iris_InstRow0");
         assertHas(v, "layout(location = " + InstancedAttribs.LOC_ROW1 + ") in vec4 iris_InstRow1");
         assertHas(v, "layout(location = " + InstancedAttribs.LOC_ROW2 + ") in vec4 iris_InstRow2");

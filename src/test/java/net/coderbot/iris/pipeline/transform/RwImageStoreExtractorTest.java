@@ -2,12 +2,18 @@ package net.coderbot.iris.pipeline.transform;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.stream.Stream;
+
+import static net.coderbot.iris.pipeline.transform.TransformTestSupport.norm;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class RwImageStoreExtractorTest {
@@ -15,10 +21,6 @@ class RwImageStoreExtractorTest {
     @AfterEach
     void clearImageRegistry() {
         RwImageStoreExtractor.setActiveCustomImages(null);
-    }
-
-    private static String norm(String s) {
-        return s.replaceAll("\\s+", " ").trim();
     }
 
     private static final String MINIMAL_VOX_VSH = String.join("\n",
@@ -71,63 +73,99 @@ class RwImageStoreExtractorTest {
         assertFalse(stripped.contains("imageAtomic"), stripped);
     }
 
-    @Test void detection_returnsNullWhenNoImageStore() {
-        assertNull(RwImageStoreExtractor.tryExtract(NO_IMAGESTORE_VSH, PatchShaderType.VERTEX, "shadow"));
+    static Stream<Arguments> undetected() {
+        return Stream.of(Arguments.of("no imageStore", NO_IMAGESTORE_VSH), Arguments.of("null input", null));
     }
 
-    @Test void detection_returnsNullOnNullInput() {
-        assertNull(RwImageStoreExtractor.tryExtract(null, PatchShaderType.VERTEX, "shadow"));
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("undetected")
+    void detection_returnsNull(String what, String source) {
+        assertNull(RwImageStoreExtractor.tryExtract(source, PatchShaderType.VERTEX, "shadow"));
     }
 
-    @Test void writtenImages_collectedFromImageStoreCalls() {
+    private static Arguments has(String what, String needle) {
+        return Arguments.of(what, false, needle, true);
+    }
+
+    private static Arguments lacks(String what, String needle) {
+        return Arguments.of(what, false, needle, false);
+    }
+
+    private static Arguments hasNorm(String what, String needle) {
+        return Arguments.of(what, true, needle, true);
+    }
+
+    private static Arguments lacksNorm(String what, String needle) {
+        return Arguments.of(what, true, needle, false);
+    }
+
+    private static void assertSource(String source, boolean normalized, String needle, boolean present) {
+        final String haystack = normalized ? norm(source) : source;
+        assertEquals(present, haystack.contains(needle), () -> (present ? "missing: " : "unexpected: ") + needle + "\n\n" + source);
+    }
+
+    @Test void minimalVox_resultBasics() {
         final var result = RwImageStoreExtractor.tryExtract(MINIMAL_VOX_VSH, PatchShaderType.VERTEX, "shadow");
         assertNotNull(result);
         assertTrue(result.writtenImages().contains("voxel_img"));
-    }
-
-    @Test void modeIsChunkWhenChunkAttrsPresent() {
-        final var result = RwImageStoreExtractor.tryExtract(MINIMAL_VOX_VSH, PatchShaderType.VERTEX, "shadow");
         assertEquals(RwImageStoreExtractor.RwExtractMode.CHUNK, result.mode());
-    }
-
-    @Test void compute_hasComputeVersionAndWorkgroup() {
-        final var result = RwImageStoreExtractor.tryExtract(MINIMAL_VOX_VSH, PatchShaderType.VERTEX, "shadow");
         assertTrue(result.computeSource().startsWith("// _vg_mode: chunk\n"));
-        assertTrue(result.computeSource().contains("#version 460 core"));
-        assertTrue(result.computeSource().contains("layout(local_size_x = 64) in;"));
     }
 
-    @Test void compute_hasUniformsAndSsboBinding() {
-        final var result = RwImageStoreExtractor.tryExtract(MINIMAL_VOX_VSH, PatchShaderType.VERTEX, "shadow");
-        final String s = result.computeSource();
-        assertTrue(s.contains("uniform int _vg_rangeBase;"));
-        assertTrue(s.contains("uniform int _vg_rangeCount;"));
-        assertTrue(s.contains("uniform int _vg_vertexTotal;"));
-        assertTrue(s.contains("uniform int _vg_invocationBase;"));
-        assertTrue(s.contains("layout(std430, binding = 10) readonly buffer _VgRanges { uvec2 r[]; } _vg_ranges;"));
-        assertTrue(s.contains("int id = int(_vg_ranges.r[_vg_lo].x + (_vg_g - _vg_ranges.r[_vg_lo].y));"));
-        assertFalse(s.contains("_vg_startVertex"));
-        assertFalse(s.contains("_vg_vertexCount"));
-        assertTrue(s.contains("readonly buffer _VgVbuf"));
-        assertTrue(s.contains("layout(std430, binding = " + RwImageStoreExtractor.VG_VBUF_SSBO_BINDING + ") readonly buffer _VgVbuf"), "VBO SSBO must bind at the dedicated voxelization slot (not 0..8 which shaderpacks claim via buffer.N)");
+    static Stream<Arguments> minimalVoxCompute() {
+        return Stream.of(
+            has("compute version", "#version 460 core"),
+            has("workgroup size", "layout(local_size_x = 64) in;"),
+            has("range base uniform", "uniform int _vg_rangeBase;"),
+            has("range count uniform", "uniform int _vg_rangeCount;"),
+            has("vertex total uniform", "uniform int _vg_vertexTotal;"),
+            has("invocation base uniform", "uniform int _vg_invocationBase;"),
+            has("ranges SSBO", "layout(std430, binding = 10) readonly buffer _VgRanges { uvec2 r[]; } _vg_ranges;"),
+            has("vertex id from the range table", "int id = int(_vg_ranges.r[_vg_lo].x + (_vg_g - _vg_ranges.r[_vg_lo].y));"),
+            lacks("no start vertex uniform", "_vg_startVertex"),
+            lacks("no vertex count uniform", "_vg_vertexCount"),
+            has("VBO SSBO binds at the dedicated voxelization slot, not 0..8 which shaderpacks claim via buffer.N",
+                "layout(std430, binding = " + RwImageStoreExtractor.VG_VBUF_SSBO_BINDING + ") readonly buffer _VgVbuf"),
+            has("original main renamed", "_vg_body"),
+            lacksNorm("user-original main no longer named main", "void main ( ) { texCoord ="),
+            has("synthesized main reads the invocation id", "gl_GlobalInvocationID"),
+            has("synthesized main unpacks", "_vg_unpack(uint(id));"),
+            has("synthesized main calls the body", "_vg_body();"),
+            has("unpack reads iris_Vertex", "iris_Vertex = vec4(uintBitsToFloat(_vg_vbuf.data[base + 0u])"),
+            has("unpack reads iris_Color", "iris_Color = vec4(float(_vg_vbuf.data[base + 3u] & 0xFFu)"),
+            has("ATTRIBUTES-patch mc_Entity is delivered as vec4 raw", "mc_Entity = vec4(float(_vg_vbuf.data[base + 10u])"),
+            lacksNorm("out qualifier stripped from varyings", "out vec2 texCoord"),
+            hasNorm("varying becomes a global", "vec2 texCoord"),
+            lacksNorm("flat is interface-only; a compute global carrying it does not compile", "flat"),
+            hasNorm("flat varying still becomes a global", "int mat"),
+            lacksNorm("iris_Vertex input declaration stripped", "in vec4 iris_Vertex"),
+            lacksNorm("mc_Entity attribute declaration stripped", "attribute vec4 mc_Entity"));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("minimalVoxCompute")
+    void minimalVox_compute(String what, boolean normalized, String needle, boolean present) {
+        assertSource(RwImageStoreExtractor.tryExtract(MINIMAL_VOX_VSH, PatchShaderType.VERTEX, "shadow").computeSource(), normalized, needle, present);
+    }
+
+    static Stream<Arguments> minimalVoxRaster() {
+        return Stream.of(
+            lacks("no imageStore calls", "imageStore("),
+            lacks("no writeonly image decls", "writeonly uniform uimage"),
+            lacksNorm("no uimage3D voxel_img decl", "uniform uimage3D voxel_img"),
+            has("keeps main", "main"),
+            has("keeps a version directive", "#version"),
+            has("preserves the user #extension directive", "#extension GL_ARB_shader_image_load_store"));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("minimalVoxRaster")
+    void minimalVox_raster(String what, boolean normalized, String needle, boolean present) {
+        assertSource(RwImageStoreExtractor.tryExtract(MINIMAL_VOX_VSH, PatchShaderType.VERTEX, "shadow").strippedSource(), normalized, needle, present);
     }
 
     @Test void compute_ssboBindingDoesNotCollideWithShaderpackSlots() {
         assertTrue(RwImageStoreExtractor.VG_VBUF_SSBO_BINDING >= 9, "VG_VBUF_SSBO_BINDING must be >= 9 to avoid colliding with shaderpack buffer.N slots; got " + RwImageStoreExtractor.VG_VBUF_SSBO_BINDING);
-    }
-
-    @Test void compute_renamesOriginalMainToVgBody() {
-        final var result = RwImageStoreExtractor.tryExtract(MINIMAL_VOX_VSH, PatchShaderType.VERTEX, "shadow");
-        final String s = result.computeSource();
-        assertTrue(s.contains("_vg_body"), "expected _vg_body in compute output");
-        assertFalse(norm(s).contains("void main ( ) { texCoord ="), "user-original main must be renamed");
-    }
-
-    @Test void compute_synthesizedMainCallsUnpackAndBody() {
-        final String s = RwImageStoreExtractor.tryExtract(MINIMAL_VOX_VSH, PatchShaderType.VERTEX, "shadow").computeSource();
-        assertTrue(s.contains("gl_GlobalInvocationID"));
-        assertTrue(s.contains("_vg_unpack(uint(id));"));
-        assertTrue(s.contains("_vg_body();"));
     }
 
     @Test void compute_hoistsAttributeDependentGlobalInitializers() {
@@ -154,19 +192,6 @@ class RwImageStoreExtractorTest {
         assertTrue(n.indexOf("tintA =") == n.lastIndexOf("tintA ="), "tintA: initializer must not additionally be hoisted into the body");
     }
 
-    @Test void compute_unpackHasExpectedAttributeReads() {
-        final String s = RwImageStoreExtractor.tryExtract(MINIMAL_VOX_VSH, PatchShaderType.VERTEX, "shadow").computeSource();
-        assertTrue(s.contains("iris_Vertex = vec4(uintBitsToFloat(_vg_vbuf.data[base + 0u])"));
-        assertTrue(s.contains("iris_Color = vec4(float(_vg_vbuf.data[base + 3u] & 0xFFu)"));
-        assertTrue(s.contains("mc_Entity = vec4(float(_vg_vbuf.data[base + 10u])"), "ATTRIBUTES-patch mc_Entity is delivered as vec4 raw");
-    }
-
-    @Test void compute_dropsOutQualifierFromVaryings() {
-        final String s = RwImageStoreExtractor.tryExtract(MINIMAL_VOX_VSH, PatchShaderType.VERTEX, "shadow").computeSource();
-        assertFalse(norm(s).contains("out vec2 texCoord"), "out qualifier should be stripped\n\n" + s);
-        assertTrue(norm(s).contains("vec2 texCoord"), "varying becomes a global");
-    }
-
     @Test void compute_vertInitOnlyAssignsUnpackedAttributes() {
         final String src = String.join("\n",
             "#version 460 core",
@@ -181,12 +206,6 @@ class RwImageStoreExtractorTest {
         assertTrue(s.contains("_vert_position = a_PosId"), "the used attribute is still decoded\n\n" + s);
         assertFalse(s.contains("a_TexCoord"), "an unused attribute must not be referenced\n\n" + s);
         assertFalse(s.contains("a_LightCoord"), "an unused attribute must not be referenced\n\n" + s);
-    }
-
-    @Test void compute_dropsInterpolationQualifierFromVaryings() {
-        final String s = norm(RwImageStoreExtractor.tryExtract(MINIMAL_VOX_VSH, PatchShaderType.VERTEX, "shadow").computeSource());
-        assertFalse(s.contains("flat"), "flat is interface-only; a compute global carrying it does not compile\n\n" + s);
-        assertTrue(s.contains("int mat"), "the varying still becomes a global");
     }
 
     @Test void compute_dropsAuxiliaryStorageQualifierFromVaryings() {
@@ -205,44 +224,16 @@ class RwImageStoreExtractorTest {
         assertTrue(s.contains("vec2 texCoord"), "the varying still becomes a global");
     }
 
-    @Test void compute_stripsChunkVertexAttributeDeclarations() {
-        final String s = RwImageStoreExtractor.tryExtract(MINIMAL_VOX_VSH, PatchShaderType.VERTEX, "shadow").computeSource();
-        assertFalse(norm(s).contains("in vec4 iris_Vertex"));
-        assertFalse(norm(s).contains("attribute vec4 mc_Entity"));
-    }
-
-    @Test void raster_strippedHasNoImageStoreOrWriteonly() {
-        final var result = RwImageStoreExtractor.tryExtract(MINIMAL_VOX_VSH, PatchShaderType.VERTEX, "shadow");
-        final String r = result.strippedSource();
-        assertFalse(r.contains("imageStore("), "raster should have no imageStore calls");
-        assertFalse(r.contains("writeonly uniform uimage"), "raster should have no writeonly image decls");
-        assertFalse(norm(r).contains("uniform uimage3D voxel_img"), "raster should have no uimage3D voxel_img decl");
-        assertTrue(r.contains("main"), "raster keeps main");
-    }
-
-    @Test void directives_preservedThroughRasterStrip() {
-        final var result = RwImageStoreExtractor.tryExtract(MINIMAL_VOX_VSH, PatchShaderType.VERTEX, "shadow");
-        final String r = result.strippedSource();
-        assertTrue(r.contains("#version"), "raster keeps a version directive");
-        assertTrue(r.contains("#extension GL_ARB_shader_image_load_store"), "raster preserves user #extension directive\n\n" + r);
-    }
-
-    @Test void knownAttributes_includesAllNineCanonicals() {
-        for (String name : new String[]{"iris_Vertex","iris_Color","iris_MultiTexCoord0","iris_MultiTexCoord1", "mc_midTexCoord","at_tangent","iris_Normal","mc_Entity","at_midBlock"}) {
-            assertNotNull(RwImageStoreExtractor.CHUNK_VERTEX_ATTRS.get(name), "missing " + name);
-        }
-    }
-
-    @Test void knownAttributeVariants_includesCeleritasTypings() {
-        final var variants = RwImageStoreExtractor.CHUNK_VERTEX_ATTRS;
-        assertNotNull(variants.get("a_PosId").get("vec3"));
-        assertNotNull(variants.get("a_Color").get("vec4"));
-        assertNotNull(variants.get("a_TexCoord").get("vec2"));
-        assertNotNull(variants.get("a_LightCoord").get("uint"));
-        assertNotNull(variants.get("mc_Entity").get("vec4"));
-        assertNotNull(variants.get("mc_Entity").get("uint"));
-        assertNotNull(variants.get("mc_midTexCoord").get("vec4"));
-        assertNotNull(variants.get("mc_midTexCoord").get("vec2"));
+    @ParameterizedTest(name = "{0} {1}")
+    @CsvSource({
+        "iris_Vertex,", "iris_Color,", "iris_MultiTexCoord0,", "iris_MultiTexCoord1,", "mc_midTexCoord,", "at_tangent,", "iris_Normal,", "mc_Entity,", "at_midBlock,",
+        "a_PosId, vec3", "a_Color, vec4", "a_TexCoord, vec2", "a_LightCoord, uint",
+        "mc_Entity, vec4", "mc_Entity, uint", "mc_midTexCoord, vec4", "mc_midTexCoord, vec2",
+    })
+    void knownAttributes_includeCanonicalsAndCeleritasTypings(String name, String type) {
+        final var variants = RwImageStoreExtractor.CHUNK_VERTEX_ATTRS.get(name);
+        assertNotNull(variants, "missing " + name);
+        if (type != null) assertNotNull(variants.get(type), name + " has no " + type + " variant");
     }
 
     private static final String CELERITAS_PATCHED_VOX_VSH = String.join("\n",
@@ -302,31 +293,30 @@ class RwImageStoreExtractorTest {
         assertEquals(RwImageStoreExtractor.RwExtractMode.CHUNK, result.mode());
     }
 
-    @Test void celeritas_computeContainsLiveBranchGlobals() {
-        final String s = RwImageStoreExtractor.tryExtract(CELERITAS_PATCHED_VOX_VSH, PatchShaderType.VERTEX, "CELERITAS_TERRAIN").computeSource();
-        assertTrue(s.contains("vec3 a_PosId;"), "uncompressed (live) a_PosId global");
-        assertTrue(s.contains("vec4 a_Color;"));
-        assertTrue(s.contains("vec2 a_TexCoord;"));
-        assertTrue(s.contains("uint a_LightCoord;"));
-        assertTrue(s.contains("uint mc_Entity;"));
-        assertTrue(s.contains("vec2 mc_midTexCoord;"));
-        assertTrue(s.contains("vec3 iris_Normal;"));
-        assertTrue(s.contains("vec4 at_midBlock;"));
+    static Stream<Arguments> celeritasCompute() {
+        return Stream.of(
+            has("uncompressed (live) a_PosId global", "vec3 a_PosId;"),
+            has("a_Color global", "vec4 a_Color;"),
+            has("a_TexCoord global", "vec2 a_TexCoord;"),
+            has("a_LightCoord global", "uint a_LightCoord;"),
+            has("mc_Entity global", "uint mc_Entity;"),
+            has("mc_midTexCoord global", "vec2 mc_midTexCoord;"),
+            has("iris_Normal global", "vec3 iris_Normal;"),
+            has("at_midBlock global", "vec4 at_midBlock;"),
+            has("unpack reads a_PosId", "a_PosId = vec3(uintBitsToFloat(_vg_vbuf.data[base + 0u])"),
+            has("unpack reads a_TexCoord", "a_TexCoord = vec2(uintBitsToFloat(_vg_vbuf.data[base + 4u])"),
+            has("unpack reads a_LightCoord", "a_LightCoord = _vg_vbuf.data[base + 6u]"),
+            has("celeritas-typed mc_Entity is delivered as the raw packed uint", "mc_Entity = _vg_vbuf.data[base + 10u]"),
+            has("mc_midTexCoord is an unnormalized ushort delivered raw by the vertex stage, so the compute prelude must not rescale it",
+                "mc_midTexCoord = vec2(float(_vg_vbuf.data[base + 7u] & 0xFFFFu),"),
+            has("vertex decode assigns position", "_vert_position = a_PosId;"),
+            has("_get_draw_translation depends on _draw_id", "_draw_id = (_vg_draw_params >> 8) & 0xFFu;"));
     }
 
-    @Test void celeritas_unpackContainsCeleritasFormulas() {
-        final String s = RwImageStoreExtractor.tryExtract(CELERITAS_PATCHED_VOX_VSH, PatchShaderType.VERTEX, "CELERITAS_TERRAIN").computeSource();
-        assertTrue(s.contains("a_PosId = vec3(uintBitsToFloat(_vg_vbuf.data[base + 0u])"));
-        assertTrue(s.contains("a_TexCoord = vec2(uintBitsToFloat(_vg_vbuf.data[base + 4u])"));
-        assertTrue(s.contains("a_LightCoord = _vg_vbuf.data[base + 6u]"));
-        assertTrue(s.contains("mc_Entity = _vg_vbuf.data[base + 10u]"), "celeritas-typed mc_Entity must be delivered as the raw packed uint");
-        assertTrue(s.contains("mc_midTexCoord = vec2(float(_vg_vbuf.data[base + 7u] & 0xFFFFu),"), "mc_midTexCoord is an unnormalized ushort delivered raw by the vertex stage, so the compute prelude must not rescale it");
-    }
-
-    @Test void celeritas_computeDecodesVertexGlobals() {
-        final String s = RwImageStoreExtractor.tryExtract(CELERITAS_PATCHED_VOX_VSH, PatchShaderType.VERTEX, "CELERITAS_TERRAIN").computeSource();
-        assertTrue(s.contains("_vert_position = a_PosId;"), "vertex decode must assign position\n\n" + s);
-        assertTrue(s.contains("_draw_id = (_vg_draw_params >> 8) & 0xFFu;"), "_get_draw_translation depends on _draw_id\n\n" + s);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("celeritasCompute")
+    void celeritas_compute(String what, boolean normalized, String needle, boolean present) {
+        assertSource(RwImageStoreExtractor.tryExtract(CELERITAS_PATCHED_VOX_VSH, PatchShaderType.VERTEX, "CELERITAS_TERRAIN").computeSource(), normalized, needle, present);
     }
 
     @Test void celeritas_vertexDecodeComesAfterTheGlobalDeclarations() {
@@ -337,13 +327,6 @@ class RwImageStoreExtractorTest {
             assertTrue(declared >= 0, global + " should be declared by the celeritas header\n\n" + s);
             assertTrue(assigned < 0 || declared < assigned, global + " is assigned at " + assigned + " before its declaration at " + declared + "\n\n" + s);
         }
-    }
-
-    @Test void celeritas_strippedHasNoImageStoreOrUimage() {
-        final var result = RwImageStoreExtractor.tryExtract(CELERITAS_PATCHED_VOX_VSH, PatchShaderType.VERTEX, "CELERITAS_TERRAIN");
-        final String r = result.strippedSource();
-        assertFalse(r.contains("imageStore("));
-        assertFalse(norm(r).contains("uniform uimage3D voxel_img"));
     }
 
     private static final String MULTI_IMAGE_VSH = String.join("\n",
@@ -610,13 +593,6 @@ class RwImageStoreExtractorTest {
         assertTrue(nc.contains("int _vg_prev = imageLoad ( endcrystal_img"), "inline emulation must load the prior value with the original global name\n\n" + c);
         assertTrue(nc.contains("imageStore ( endcrystal_img"), "inline emulation must write the new value back to the original global\n\n" + c);
         assertTrue(nc.contains("ivec4 ( _vg_prev +"), "inline emulation must compute prev + val in the destination vec\n\n" + c);
-    }
-
-    @Test void atomicEmulation_droppedWriteonlyQualifier() {
-        final var result = RwImageStoreExtractor.tryExtract(ATOMIC_NOT_WRITEONLY_VSH, PatchShaderType.VERTEX, "atomic");
-        final String c = result.computeSource();
-        assertFalse(c.contains("writeonly uniform iimage2D endcrystal_img"), "image used by imageAtomic* must not get writeonly qualifier (now load+store)\n\n" + c);
-        assertTrue(c.contains("uniform iimage2D endcrystal_img"), "image decl present in prelude\n\n" + c);
     }
 
     private static final String MIXED_ATOMIC_AND_STORE_VSH = String.join("\n",

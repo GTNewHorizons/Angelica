@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.rendering.celeritas;
 
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GlTestSupport;
 import org.embeddedt.embeddium.impl.gl.attribute.GlVertexAttribute;
 import org.embeddedt.embeddium.impl.gl.shader.ShaderConstants;
 import org.embeddedt.embeddium.impl.gl.shader.ShaderParser;
@@ -81,15 +82,7 @@ class TerrainShaderLinkTest {
 
     private static int compile(int type, String name, ShaderConstants constants) {
         final String src = ShaderParser.parseShader(ShaderLoader.getShaderSource(name), ShaderLoader::getShaderSource, constants);
-        final int shader = GLStateManager.glCreateShader(type);
-        GLStateManager.glShaderSource(shader, src);
-        GLStateManager.glCompileShader(shader);
-        if (GLStateManager.glGetShaderi(shader, GL20.GL_COMPILE_STATUS) != GL11.GL_TRUE) {
-            final String log = GLStateManager.glGetShaderInfoLog(shader, 8192);
-            GLStateManager.glDeleteShader(shader);
-            throw new AssertionError(name + " failed to compile with " + constants.getDefineStrings() + ":\n" + log);
-        }
-        return shader;
+        return GlTestSupport.compile(type, src);
     }
 
     @ParameterizedTest(name = "fog={0} vertex={1} filter={2} noMips={3}")

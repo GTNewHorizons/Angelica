@@ -1,13 +1,12 @@
 package com.gtnewhorizons.angelica.rendering;
 
 import net.minecraft.client.model.ModelBiped;
-import net.minecraft.client.model.ModelBox;
 import net.minecraft.client.model.ModelRenderer;
-import net.minecraft.client.model.TexturedQuad;
 import org.junit.jupiter.api.Test;
 
-import java.lang.reflect.Field;
-
+import static com.gtnewhorizons.angelica.rendering.PlayerReflectionTestSupport.FLOATS;
+import static com.gtnewhorizons.angelica.rendering.PlayerReflectionTestSupport.MODEL_SCALE;
+import static com.gtnewhorizons.angelica.rendering.PlayerReflectionTestSupport.emit;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -15,35 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PlayerReflectionLayoutTest {
 
-    static final int FLOATS = PlayerReflectionCapture.FLOATS_PER_VERTEX;
-    static final int PART_VERTS = PlayerReflectionCapture.VERTICES_PER_PART;
-    static final float MODEL_SCALE = 0.0625f;
-
-    private static Field quadListField;
-
-    static TexturedQuad[] quadsOf(ModelRenderer part) {
-        if (part == null || part.cubeList == null || part.cubeList.isEmpty()) return null;
-        try {
-            if (quadListField == null) {
-                quadListField = ModelBox.class.getDeclaredField("quadList");
-                quadListField.setAccessible(true);
-            }
-            return (TexturedQuad[]) quadListField.get(part.cubeList.getFirst());
-        } catch (ReflectiveOperationException e) {
-            throw new AssertionError("ModelBox.quadList is no longer reachable", e);
-        }
-    }
-
-    static float[] emit(ModelBiped model, float scale) {
-        final float[] out = new float[PlayerReflectionCapture.VERTEX_COUNT * FLOATS];
-        final ModelRenderer[] parts = PlayerReflectionCapture.partOrder(model, new ModelRenderer[PlayerReflectionCapture.PART_COUNT]);
-        int o = 0;
-        for (ModelRenderer part : parts) {
-            o = PlayerReflectionCapture.emitBox(part, quadsOf(part), out, o, scale);
-        }
-        assertEquals(out.length, o, "emit did not fill exactly 288 vertices");
-        return out;
-    }
+    private static final int PART_VERTS = PlayerReflectionCapture.VERTICES_PER_PART;
 
     private static float min(float[] v, int block, int component) {
         float m = Float.POSITIVE_INFINITY;

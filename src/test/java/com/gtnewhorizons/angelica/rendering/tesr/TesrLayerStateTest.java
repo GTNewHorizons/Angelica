@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.api.tesr.TesrShaders;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GlTestSupport;
 import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.hooks.TextureUtilHooks;
@@ -25,14 +26,17 @@ import org.joml.Matrix4f;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
-import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrTestSupport.capturedLayer;
+import static com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrTestSupport.liveCull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
@@ -62,10 +66,7 @@ class TesrLayerStateTest {
     void tearDown() {
         AlphaTestStorage.restoreAlphaTest();
         DepthColorStorage.unlockDepthColor();
-        GLStateManager.getAlphaTest().setVanillaLayer(null);
-        GLStateManager.getAlphaState().setVanillaLayer(null);
-        GLStateManager.getDepthState().setVanillaLayer(null);
-        GLStateManager.getColorMask().setVanillaLayer(null);
+        VanillaLayerRig.clear();
 
         ModelPartBatcher.INSTANCE.clear();
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
@@ -239,7 +240,7 @@ class TesrLayerStateTest {
 
     @Test
     void batchDrawSwapsOutAForeignProgramAndFramebuffer() {
-        final int program = linkTrivialProgram();
+        final int program = GlTestSupport.program(GlTestSupport.TRIVIAL_VS, GlTestSupport.TRIVIAL_FS);
         final int framebuffer = GLStateManager.glGenFramebuffers();
         final AngelicaBufferSource source = new AngelicaBufferSource();
         final RenderLayer layer = layer(EntityMaterials.DROPPED_ITEM_CUTOUT);
@@ -317,22 +318,6 @@ class TesrLayerStateTest {
         }
     }
 
-    private static int linkTrivialProgram() {
-        final int vertex = GLStateManager.glCreateShader(GL20.GL_VERTEX_SHADER);
-        GLStateManager.glShaderSource(vertex, "#version 330 core\nvoid main() { gl_Position = vec4(0.0); }\n");
-        GLStateManager.glCompileShader(vertex);
-        final int fragment = GLStateManager.glCreateShader(GL20.GL_FRAGMENT_SHADER);
-        GLStateManager.glShaderSource(fragment, "#version 330 core\nout vec4 color;\nvoid main() { color = vec4(1.0); }\n");
-        GLStateManager.glCompileShader(fragment);
-        final int program = GLStateManager.glCreateProgram();
-        GLStateManager.glAttachShader(program, vertex);
-        GLStateManager.glAttachShader(program, fragment);
-        GLStateManager.glLinkProgram(program);
-        GLStateManager.glDeleteShader(vertex);
-        GLStateManager.glDeleteShader(fragment);
-        return program;
-    }
-
     private static RenderLayer glint(int slot) {
         return RenderLayer.tesr(null, EntityMaterials.GLINT, PassOverride.NONE, 0f, 0f, slot, DrawState.CULL_BACK, true, true);
     }
@@ -354,16 +339,6 @@ class TesrLayerStateTest {
         assertEquals(1, releases[0]);
         assertEquals(1, thrown.getSuppressed().length);
         assertSame(teardown, thrown.getSuppressed()[0]);
-    }
-
-    private static int liveCull(TesrMaterial material) {
-        return material.isNoCull() ? DrawState.DISABLED : DrawState.liveCull();
-    }
-
-    static RenderLayer capturedLayer(TesrMaterial material) {
-        return Reflect.invoke(ModelPartBatcher.INSTANCE, "layerFor",
-            new Class<?>[] { ResourceLocation.class, TesrMaterial.class, PassOverride.class, float.class, float.class, int.class, int.class, boolean.class, boolean.class },
-            null, material, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, liveCull(material), DrawState.liveLit(material), DrawState.liveLightmap());
     }
 
     private static RenderLayer queuedLayer(TesrMaterial material) {
@@ -439,21 +414,15 @@ class TesrLayerStateTest {
         assertNotSame(glint(ShaderGlint.NO_TINT), glint(0), "an untinted glint must not share a tinted layer");
     }
 
-    @Test
-    void startDrawingLeavesUndeclaredPhasesToTheSurroundingContext() {
-        layer(TesrMaterial.CURRENT_STATE).startDrawing();
-
-        assertFalse(GLStateManager.getFogMode().isEnabled(), "fog");
-    }
-
-    @Test
-    void endDrawingLeavesUndeclaredPhasesToTheSurroundingContext() {
-        GLStateManager.enableFog();
+    @ParameterizedTest(name = "fog={0}")
+    @ValueSource(booleans = { false, true })
+    void drawingLeavesUndeclaredPhasesToTheSurroundingContext(boolean fog) {
+        if (fog) GLStateManager.enableFog();
         final RenderLayer layer = layer(TesrMaterial.CURRENT_STATE);
         layer.startDrawing();
+        assertEquals(fog, GLStateManager.getFogMode().isEnabled(), "fog after startDrawing");
         layer.endDrawing();
-
-        assertTrue(GLStateManager.getFogMode().isEnabled(), "fog");
+        assertEquals(fog, GLStateManager.getFogMode().isEnabled(), "fog after endDrawing");
     }
 
     @Test

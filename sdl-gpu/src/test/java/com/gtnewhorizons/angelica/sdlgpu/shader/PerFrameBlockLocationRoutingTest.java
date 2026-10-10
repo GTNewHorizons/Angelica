@@ -3,13 +3,13 @@ package com.gtnewhorizons.angelica.sdlgpu.shader;
 import com.gtnewhorizons.angelica.glsm.hooks.PerFrameUniformBlock;
 import com.gtnewhorizons.angelica.glsm.shader.UniformType;
 import com.gtnewhorizons.angelica.glsm.hooks.PerFrameUniformBlock.Member;
-import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.util.shaderc.Shaderc;
 
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import static com.gtnewhorizons.angelica.sdlgpu.shader.SpirvTestShaders.compileOrFail;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -39,10 +39,7 @@ class PerFrameBlockLocationRoutingTest {
 
     private static ShaderManager.ProgramObject linkedProgram() {
         final String injected = ShaderTransformChain.inject(SOURCE, PER_FRAME, PER_PASS);
-        final SpirvCompiler.Result r = SpirvCompiler.compile(injected, Shaderc.shaderc_fragment_shader, "routing.frag", SpirvCompiler.Options.vulkanForced460Core());
-        assertNotNull(r.spirv(), () -> "compile failed: " + r.error());
-
-        final ByteBuffer spirv = r.spirv();
+        final ByteBuffer spirv = compileOrFail(injected, Shaderc.shaderc_fragment_shader);
         try {
             final ShaderManager.StageReflection refl = ShaderManager.reflectStage(spirv, false);
             final ShaderManager.ProgramObject prog = new ShaderManager.ProgramObject();

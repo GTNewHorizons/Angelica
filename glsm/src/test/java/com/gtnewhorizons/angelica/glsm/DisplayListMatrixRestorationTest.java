@@ -54,9 +54,7 @@ class DisplayListMatrixRestorationTest extends DisplayListTestFixture {
     }
 
     private static float translation(int target) {
-        FloatBuffer b = BufferUtils.createFloatBuffer(16);
-        GLStateManager.glGetFloat(target, b);
-        return b.get(12);
+        return GlTestSupport.matrix(target).get(12);
     }
 
     @Test

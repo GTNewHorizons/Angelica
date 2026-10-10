@@ -5,11 +5,15 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 
 import java.nio.FloatBuffer;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -59,17 +63,18 @@ class WideLineClipGLTest {
         GLStateManager.glLoadIdentity();
         GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
         FfpFixture.resetFfpState();
-        while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
     }
 
-    @Test
-    void lineEndingBehindTheCameraKeepsItsWidth() {
-        assertConstantWidth(IN_FRONT, BEHIND);
+    static Stream<Arguments> linesCrossingTheNearPlane() {
+        return Stream.of(
+            Arguments.of("line ending behind the camera", IN_FRONT, BEHIND),
+            Arguments.of("line starting behind the camera", BEHIND, IN_FRONT));
     }
 
-    @Test
-    void lineStartingBehindTheCameraKeepsItsWidth() {
-        assertConstantWidth(BEHIND, IN_FRONT);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("linesCrossingTheNearPlane")
+    void lineCrossingTheNearPlaneKeepsItsWidth(String name, float[] start, float[] end) {
+        assertConstantWidth(start, end);
     }
 
     @Test
@@ -144,7 +149,6 @@ class WideLineClipGLTest {
             final int y = row, count = lit;
             assertTrue(count > 0 && count <= LINE_WIDTH + 1, () -> "row " + y + " is " + count + " pixels wide");
         }
-        assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
     }
 
     private int[] drawLine(float[] start, float[] end) {

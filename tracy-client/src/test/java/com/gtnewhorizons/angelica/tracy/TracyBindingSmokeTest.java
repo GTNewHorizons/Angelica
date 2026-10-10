@@ -36,19 +36,16 @@ class TracyBindingSmokeTest {
     private static TracyClientBackend backend;
 
     static boolean nativePresent() {
-        for (String platform : new String[] {"windows-x64", "linux-x64", "macos-x64", "macos-arm64"}) {
-            for (String lib : new String[] {"TracyClient.dll", "libTracyClient.so", "libTracyClient.dylib"}) {
-                if (TracyBindingSmokeTest.class.getResource("/natives/tracy/" + TracyTags.TRACY_VERSION + "/" + platform + "/" + lib) != null) {
-                    return true;
-                }
-            }
-        }
-        return false;
+        return anyNativePresent("TracyClient.dll", "libTracyClient.so", "libTracyClient.dylib");
     }
 
     static boolean captureLibPresent() {
+        return anyNativePresent("AngelicaTracyCapture.dll", "libAngelicaTracyCapture.so", "libAngelicaTracyCapture.dylib");
+    }
+
+    private static boolean anyNativePresent(String... libs) {
         for (String platform : new String[] {"windows-x64", "linux-x64", "macos-x64", "macos-arm64"}) {
-            for (String lib : new String[] {"AngelicaTracyCapture.dll", "libAngelicaTracyCapture.so", "libAngelicaTracyCapture.dylib"}) {
+            for (String lib : libs) {
                 if (TracyBindingSmokeTest.class.getResource("/natives/tracy/" + TracyTags.TRACY_VERSION + "/" + platform + "/" + lib) != null) {
                     return true;
                 }

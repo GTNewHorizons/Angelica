@@ -1,27 +1,26 @@
 package net.coderbot.iris.pipeline.transform;
 
 import org.junit.jupiter.api.Test;
-import org.taumc.glsl.ShaderParser;
-import org.taumc.glsl.ShaderPrinter;
 import org.taumc.glsl.Transformer;
 
 import java.util.EnumMap;
 import java.util.Map;
 
+import static net.coderbot.iris.pipeline.transform.TransformTestSupport.format;
+import static net.coderbot.iris.pipeline.transform.TransformTestSupport.occurrences;
+import static net.coderbot.iris.pipeline.transform.TransformTestSupport.parse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SamplerAliasDeduplicatorTest {
 
-    private static Transformer parse(String src) {
-        return new Transformer(ShaderParser.parseShader(src).full());
-    }
-
-    private static String format(Transformer t) {
-        StringBuilder sb = new StringBuilder();
-        t.mutateTree(tree -> sb.append(ShaderPrinter.getFormattedShader(tree)));
-        return sb.toString();
+    private static String transformFragment(String src) {
+        final Transformer t = parse(src);
+        final Map<PatchShaderType, Transformer> trees = new EnumMap<>(PatchShaderType.class);
+        trees.put(PatchShaderType.FRAGMENT, t);
+        SamplerAliasDeduplicator.transformGrouped(trees, null);
+        return format(t);
     }
 
     @Test
@@ -35,12 +34,7 @@ class SamplerAliasDeduplicatorTest {
             "    fragColor = texture(textureAtlas, vec2(0.5)) + texture(tex, vec2(0.5));\n" +
             "}\n";
 
-        Transformer t = parse(src);
-        Map<PatchShaderType, Transformer> trees = new EnumMap<>(PatchShaderType.class);
-        trees.put(PatchShaderType.FRAGMENT, t);
-        SamplerAliasDeduplicator.transformGrouped(trees, null);
-
-        String out = format(t);
+        String out = transformFragment(src);
         assertTrue(out.contains("uniform sampler2D tex"), "canonical declaration must remain");
         assertFalse(out.contains("uniform sampler2D textureAtlas"), "alias declaration must be removed: " + out);
         assertFalse(out.contains("textureAtlas"), "all references to alias must be rewritten: " + out);
@@ -55,12 +49,7 @@ class SamplerAliasDeduplicatorTest {
             "out vec4 fragColor;\n" +
             "void main() { fragColor = texture(textureAtlas, vec2(0.5)); }\n";
 
-        Transformer t = parse(src);
-        Map<PatchShaderType, Transformer> trees = new EnumMap<>(PatchShaderType.class);
-        trees.put(PatchShaderType.FRAGMENT, t);
-        SamplerAliasDeduplicator.transformGrouped(trees, null);
-
-        String out = format(t);
+        String out = transformFragment(src);
         assertTrue(out.contains("uniform sampler2D tex"), "alias should be promoted to canonical: " + out);
         assertFalse(out.contains("textureAtlas"), "no alias should remain: " + out);
     }
@@ -103,12 +92,7 @@ class SamplerAliasDeduplicatorTest {
             "out vec4 fragColor;\n" +
             "void main() { fragColor = texture(somethingElse, vec2(0.5)); }\n";
 
-        Transformer t = parse(src);
-        Map<PatchShaderType, Transformer> trees = new EnumMap<>(PatchShaderType.class);
-        trees.put(PatchShaderType.FRAGMENT, t);
-        SamplerAliasDeduplicator.transformGrouped(trees, null);
-
-        String out = format(t);
+        String out = transformFragment(src);
         assertTrue(out.contains("uniform sampler2D somethingElse"), "untouched uniform must survive: " + out);
         assertFalse(out.contains("uniform sampler2D tex"), "no spurious tex declaration: " + out);
     }
@@ -122,19 +106,8 @@ class SamplerAliasDeduplicatorTest {
             "out vec4 fragColor;\n" +
             "void main() { fragColor = texture(gdepthtex, vec2(0.5)) + texture(depthtex0, vec2(0.5)); }\n";
 
-        Transformer t = parse(src);
-        Map<PatchShaderType, Transformer> trees = new EnumMap<>(PatchShaderType.class);
-        trees.put(PatchShaderType.FRAGMENT, t);
-        SamplerAliasDeduplicator.transformGrouped(trees, null);
-
-        String out = format(t);
+        String out = transformFragment(src);
         assertTrue(out.contains("uniform sampler2D depthtex0"));
         assertFalse(out.contains("gdepthtex"), out);
-    }
-
-    private static int occurrences(String haystack, String needle) {
-        int n = 0, i = 0;
-        while ((i = haystack.indexOf(needle, i)) != -1) { n++; i += needle.length(); }
-        return n;
     }
 }

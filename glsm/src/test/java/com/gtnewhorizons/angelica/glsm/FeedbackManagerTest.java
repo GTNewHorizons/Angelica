@@ -3,12 +3,16 @@ package com.gtnewhorizons.angelica.glsm;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL30;
 
 import java.nio.FloatBuffer;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -97,68 +101,23 @@ class FeedbackManagerTest {
         assertEquals(42.0f, buf.get(1), "Second token should be the pass-through value");
     }
 
-    @Test
-    void testTriangleFeedback_GL2D() {
-        final FloatBuffer buf = BufferUtils.createFloatBuffer(128);
-        FeedbackManager.glFeedbackBuffer(GL11.GL_2D, buf);
-        FeedbackManager.glRenderMode(GL11.GL_FEEDBACK);
-
-        // Identity MV/proj, viewport (0,0,800,600)
-        GLStateManager.getModelViewMatrix().identity();
-        GLStateManager.getProjectionMatrix().identity();
-        GLStateManager.getViewportState().setViewPort(0, 0, 800, 600);
-        GLStateManager.getViewportState().setDepthRange(0.0, 1.0);
-
-        // Upload 3 vertices forming a triangle
-        final int vao = GL30.glGenVertexArrays();
-        GLStateManager.glBindVertexArray(vao);
-
-        // NDC vertices: (0,0,0), (1,0,0), (0,1,0)
-        // With identity MVP and viewport 800x600:
-        //   NDC(0,0) → window(400, 300)
-        //   NDC(1,0) → window(800, 300)
-        //   NDC(0,1) → window(400, 600)
-        final float[] verts = { 0f, 0f, 0f, 1f, 0f, 0f, 0f, 1f, 0f };
-        final FloatBuffer vertBuf = BufferUtils.createFloatBuffer(9);
-        vertBuf.put(verts).flip();
-
-        final int vbo = GL15.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, vertBuf, GL15.GL_STATIC_DRAW);
-        GLStateManager.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 12, 0);
-        GLStateManager.glEnableVertexAttribArray(0);
-
-        FeedbackManager.processDrawArrays(GL11.GL_TRIANGLES, 0, 3);
-
-        final int count = FeedbackManager.glRenderMode(GL11.GL_RENDER);
-
-        // GL_2D: POLYGON_TOKEN, 3, x0, y0, x1, y1, x2, y2 = 8 floats
-        assertEquals(8, count, "Triangle in GL_2D should produce 8 floats");
-
-        assertEquals(GL11.GL_POLYGON_TOKEN, buf.get(0), 0.001f);
-        assertEquals(3.0f, buf.get(1), 0.001f);
-
-        // Vertex 0: NDC(0,0) → window(400, 300)
-        assertEquals(400.0f, buf.get(2), 0.01f);
-        assertEquals(300.0f, buf.get(3), 0.01f);
-
-        // Vertex 1: NDC(1,0) → window(800, 300)
-        assertEquals(800.0f, buf.get(4), 0.01f);
-        assertEquals(300.0f, buf.get(5), 0.01f);
-
-        // Vertex 2: NDC(0,1) → window(400, 600)
-        assertEquals(400.0f, buf.get(6), 0.01f);
-        assertEquals(600.0f, buf.get(7), 0.01f);
-
-        // Cleanup
-        GLStateManager.glDisableVertexAttribArray(0);
-        GLStateManager.glBindVertexArray(0);
-        GL15.glDeleteBuffers(vbo);
-        GLStateManager.glDeleteVertexArrays(vao);
+    // Identity MVP on an 800x600 viewport: NDC (0,0) -> window (400,300), (1,0) -> (800,300), (0,1) -> (400,600)
+    static Stream<Arguments> primitives() {
+        return Stream.of(
+            Arguments.of("triangle", GL11.GL_TRIANGLES,
+                new float[] { 0f, 0f, 0f, 1f, 0f, 0f, 0f, 1f, 0f },
+                new float[] { GL11.GL_POLYGON_TOKEN, 3f, 400f, 300f, 800f, 300f, 400f, 600f }),
+            Arguments.of("polygon", GL11.GL_POLYGON,
+                new float[] { 0f, 0f, 0f, 1f, 0f, 0f, 1f, 1f, 0f, 0f, 1f, 0f },
+                new float[] { GL11.GL_POLYGON_TOKEN, 4f, 400f, 300f, 800f, 300f, 800f, 600f, 400f, 600f }),
+            Arguments.of("quad strip", GL11.GL_QUAD_STRIP,
+                new float[] { 0f, 0f, 0f, 0f, 1f, 0f, 1f, 0f, 0f, 1f, 1f, 0f },
+                new float[] { GL11.GL_POLYGON_TOKEN, 4f, 400f, 300f, 400f, 600f, 800f, 600f, 800f, 300f }));
     }
 
-    @Test
-    void testPolygonFeedback_GL2D() {
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("primitives")
+    void testPrimitiveFeedback_GL2D(String name, int mode, float[] verts, float[] expected) {
         final FloatBuffer buf = BufferUtils.createFloatBuffer(128);
         FeedbackManager.glFeedbackBuffer(GL11.GL_2D, buf);
         FeedbackManager.glRenderMode(GL11.GL_FEEDBACK);
@@ -171,12 +130,6 @@ class FeedbackManagerTest {
         final int vao = GL30.glGenVertexArrays();
         GLStateManager.glBindVertexArray(vao);
 
-        final float[] verts = {
-            0f, 0f, 0f,
-            1f, 0f, 0f,
-            1f, 1f, 0f,
-            0f, 1f, 0f
-        };
         final FloatBuffer vertBuf = BufferUtils.createFloatBuffer(verts.length);
         vertBuf.put(verts).flip();
 
@@ -186,72 +139,15 @@ class FeedbackManagerTest {
         GLStateManager.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 12, 0);
         GLStateManager.glEnableVertexAttribArray(0);
 
-        FeedbackManager.processDrawArrays(GL11.GL_POLYGON, 0, 4);
+        FeedbackManager.processDrawArrays(mode, 0, verts.length / 3);
 
         final int count = FeedbackManager.glRenderMode(GL11.GL_RENDER);
 
-        assertEquals(10, count, "Polygon in GL_2D should produce 10 floats");
-        assertEquals(GL11.GL_POLYGON_TOKEN, buf.get(0), 0.001f);
-        assertEquals(4.0f, buf.get(1), 0.001f);
-        assertEquals(400.0f, buf.get(2), 0.01f);
-        assertEquals(300.0f, buf.get(3), 0.01f);
-        assertEquals(800.0f, buf.get(4), 0.01f);
-        assertEquals(300.0f, buf.get(5), 0.01f);
-        assertEquals(800.0f, buf.get(6), 0.01f);
-        assertEquals(600.0f, buf.get(7), 0.01f);
-        assertEquals(400.0f, buf.get(8), 0.01f);
-        assertEquals(600.0f, buf.get(9), 0.01f);
-
-        GLStateManager.glDisableVertexAttribArray(0);
-        GLStateManager.glBindVertexArray(0);
-        GL15.glDeleteBuffers(vbo);
-        GLStateManager.glDeleteVertexArrays(vao);
-    }
-
-    @Test
-    void testQuadStripFeedback_GL2D() {
-        final FloatBuffer buf = BufferUtils.createFloatBuffer(128);
-        FeedbackManager.glFeedbackBuffer(GL11.GL_2D, buf);
-        FeedbackManager.glRenderMode(GL11.GL_FEEDBACK);
-
-        GLStateManager.getModelViewMatrix().identity();
-        GLStateManager.getProjectionMatrix().identity();
-        GLStateManager.getViewportState().setViewPort(0, 0, 800, 600);
-        GLStateManager.getViewportState().setDepthRange(0.0, 1.0);
-
-        final int vao = GL30.glGenVertexArrays();
-        GLStateManager.glBindVertexArray(vao);
-
-        final float[] verts = {
-            0f, 0f, 0f,
-            0f, 1f, 0f,
-            1f, 0f, 0f,
-            1f, 1f, 0f
-        };
-        final FloatBuffer vertBuf = BufferUtils.createFloatBuffer(verts.length);
-        vertBuf.put(verts).flip();
-
-        final int vbo = GL15.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, vertBuf, GL15.GL_STATIC_DRAW);
-        GLStateManager.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 12, 0);
-        GLStateManager.glEnableVertexAttribArray(0);
-
-        FeedbackManager.processDrawArrays(GL11.GL_QUAD_STRIP, 0, 4);
-
-        final int count = FeedbackManager.glRenderMode(GL11.GL_RENDER);
-
-        assertEquals(10, count, "Quad strip in GL_2D should produce 10 floats");
-        assertEquals(GL11.GL_POLYGON_TOKEN, buf.get(0), 0.001f);
-        assertEquals(4.0f, buf.get(1), 0.001f);
-        assertEquals(400.0f, buf.get(2), 0.01f);
-        assertEquals(300.0f, buf.get(3), 0.01f);
-        assertEquals(400.0f, buf.get(4), 0.01f);
-        assertEquals(600.0f, buf.get(5), 0.01f);
-        assertEquals(800.0f, buf.get(6), 0.01f);
-        assertEquals(600.0f, buf.get(7), 0.01f);
-        assertEquals(800.0f, buf.get(8), 0.01f);
-        assertEquals(300.0f, buf.get(9), 0.01f);
+        // GL_2D: POLYGON_TOKEN, vertex count, then x, y per vertex
+        assertEquals(expected.length, count, name + " float count");
+        for (int i = 0; i < expected.length; i++) {
+            assertEquals(expected[i], buf.get(i), 0.01f, name + " feedback value " + i);
+        }
 
         GLStateManager.glDisableVertexAttribArray(0);
         GLStateManager.glBindVertexArray(0);

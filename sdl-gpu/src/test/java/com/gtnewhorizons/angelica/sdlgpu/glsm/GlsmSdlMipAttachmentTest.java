@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,6 +10,7 @@ import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;
 
+import static com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig.RED;
 import static com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig.assertUniform;
 import static com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig.createSolidMipTexture;
 import static com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig.readTextureLevel;
@@ -23,12 +23,6 @@ class GlsmSdlMipAttachmentTest {
     private static final int MAX_LEVEL = 6;
     private static final int CLEAR = 0xFF204080;
     private static final int BASE = 0xFF10C030;
-    private static final int RED = 0xFFFF0000;
-
-    @BeforeAll
-    static void boot() {
-        GlsmSdlHeadlessRig.boot();
-    }
 
     private static void setClearColor(int argb) {
         GLStateManager.glClearColor(((argb >> 16) & 0xFF) / 255.0f, ((argb >> 8) & 0xFF) / 255.0f, (argb & 0xFF) / 255.0f, ((argb >>> 24) & 0xFF) / 255.0f);

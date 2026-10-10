@@ -33,8 +33,7 @@ class TextureReleaseUploadOrderTest {
     void releaseIsDeferredWhileTextureUploadsAreStillQueued() {
         final SdlTestRig rig = SdlTestRig.create();
         final ResourceManager rm = rig.resourceManager;
-        final TransferThread tt = new TransferThread(rig.device, rm);
-        rm.setTransferThread(tt);
+        final TransferThread tt = rig.installTransferThread();
         setUploadSeqs(rm, 50L);
         Reflect.setDeclared(TransferThread.class, tt, "submittedSeq", 10L);
 
@@ -50,8 +49,7 @@ class TextureReleaseUploadOrderTest {
     void releaseIsImmediateOnceTheTransferThreadHasCaughtUp() {
         final SdlTestRig rig = SdlTestRig.create();
         final ResourceManager rm = rig.resourceManager;
-        final TransferThread tt = new TransferThread(rig.device, rm);
-        rm.setTransferThread(tt);
+        final TransferThread tt = rig.installTransferThread();
         setUploadSeqs(rm, 50L);
 
         Reflect.setDeclared(TransferThread.class, tt, "submittedSeq", 49L);
@@ -97,8 +95,7 @@ class TextureReleaseUploadOrderTest {
     void reallocReleaseObeysTheSameRule() {
         final SdlTestRig rig = SdlTestRig.create();
         final ResourceManager rm = rig.resourceManager;
-        final TransferThread tt = new TransferThread(rig.device, rm);
-        rm.setTransferThread(tt);
+        final TransferThread tt = rig.installTransferThread();
         setUploadSeqs(rm, 7L);
         Reflect.setDeclared(TransferThread.class, tt, "submittedSeq", 0L);
 

@@ -6,6 +6,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import com.gtnewhorizons.angelica.api.ThreadSafeISBRH;
 import com.gtnewhorizons.angelica.api.ThreadSafeISBRHFactory;
+import com.gtnewhorizons.angelica.glsm.testutil.TestThreads;
 import com.gtnewhorizons.angelica.rendering.IsbrhDispatch;
 import cpw.mods.fml.client.registry.ISimpleBlockRenderingHandler;
 import net.minecraft.block.Block;
@@ -97,9 +98,7 @@ class ThreadedCanRenderOffThreadTest {
         assertSame(shared, IsbrhDispatch.resolve(handlers, 1, true));
 
         AtomicReference<ISimpleBlockRenderingHandler> offThread = new AtomicReference<>();
-        Thread t = new Thread(() -> offThread.set(IsbrhDispatch.resolve(handlers, 1, false)));
-        t.start();
-        t.join();
+        TestThreads.run("off-thread", () -> offThread.set(IsbrhDispatch.resolve(handlers, 1, false)));
         assertSame(shared, offThread.get());
     }
 
@@ -118,9 +117,7 @@ class ThreadedCanRenderOffThreadTest {
         assertSame(first, sameClassOtherId);
 
         AtomicReference<ISimpleBlockRenderingHandler> spawned = new AtomicReference<>();
-        Thread t = new Thread(() -> spawned.set(IsbrhDispatch.resolve(handlers, 2, false)));
-        t.start();
-        t.join();
+        TestThreads.run("off-thread", () -> spawned.set(IsbrhDispatch.resolve(handlers, 2, false)));
         assertNotSame(first, spawned.get());
     }
 

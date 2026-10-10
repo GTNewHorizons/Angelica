@@ -79,6 +79,8 @@ public class GLSM_TextureUploadGeneration_GLTest {
             final int afterSub = info.getUploadGeneration();
             GLStateManager.glTexSubImage2D(GL11.GL_TEXTURE_2D, 1, 0, 0, 1, 1, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, BufferUtils.createByteBuffer(4));
             assertEquals(afterSub, info.getUploadGeneration(), "only level 0 is tracked");
+            // Level 1 was never allocated, so the driver rejects that upload.
+            assertEquals(GL11.GL_INVALID_OPERATION, GL11.glGetError());
         } finally {
             GLStateManager.glDeleteTextures(texId);
         }

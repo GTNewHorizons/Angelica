@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.TreeSet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -64,15 +63,5 @@ class VertexAttributeLayoutTest {
     void instancedRowsAreContiguous() {
         assertEquals(InstancedAttribs.LOC_ROW0 + 1, InstancedAttribs.LOC_ROW1, "instance row 1 must sit at LOC_ROW0 + 1");
         assertEquals(InstancedAttribs.LOC_ROW0 + 2, InstancedAttribs.LOC_ROW2, "instance row 2 must sit at LOC_ROW0 + 2");
-    }
-
-    @Test
-    void reportsRemainingFreeLocations() {
-        reservedAttributeLocationsDoNotOverlap();
-        final TreeSet<Integer> free = new TreeSet<>();
-        for (int i = 0; i < MAX_VERTEX_ATTRIBS; i++) {
-            if (!claimed.containsKey(i)) free.add(i);
-        }
-        System.out.println("free vertex attribute locations: " + free);
     }
 }

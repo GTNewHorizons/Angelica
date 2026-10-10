@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.client.font;
 
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GlTestSupport;
 import com.gtnewhorizons.angelica.glsm.testutil.TestPaths;
 import net.coderbot.iris.uniforms.builtin.BuiltinReplacementUniforms;
 import org.joml.Matrix4f;
@@ -12,7 +13,6 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL15;
-import org.lwjgl.opengl.GL20;
 
 import java.nio.ByteBuffer;
 
@@ -54,24 +54,9 @@ class FontFilterLightmapGLTest {
         if (program != 0) { GLStateManager.glDeleteProgram(program); program = 0; }
     }
 
-    private static int compile(int type, String name) {
-        final int shader = GLStateManager.glCreateShader(type);
-        GLStateManager.glShaderSource(shader, TestPaths.readString("src/main/resources/assets/angelica/shaders/" + name));
-        GLStateManager.glCompileShader(shader);
-        assertEquals(GL11.GL_TRUE, GLStateManager.glGetShaderi(shader, GL20.GL_COMPILE_STATUS), () -> name + " failed to compile:\n" + GLStateManager.glGetShaderInfoLog(shader, 4096));
-        return shader;
-    }
-
     private void buildProgram() {
-        final int vertex = compile(GL20.GL_VERTEX_SHADER, "fontFilter.vsh");
-        final int fragment = compile(GL20.GL_FRAGMENT_SHADER, "fontFilter.fsh");
-        program = GLStateManager.glCreateProgram();
-        GLStateManager.glAttachShader(program, vertex);
-        GLStateManager.glAttachShader(program, fragment);
-        GLStateManager.glLinkProgram(program);
-        assertEquals(GL11.GL_TRUE, GLStateManager.glGetProgrami(program, GL20.GL_LINK_STATUS), () -> "fontFilter failed to link:\n" + GLStateManager.glGetProgramInfoLog(program, 4096));
-        GLStateManager.glDeleteShader(vertex);
-        GLStateManager.glDeleteShader(fragment);
+        final String dir = "src/main/resources/assets/angelica/shaders/";
+        program = GlTestSupport.program(TestPaths.readString(dir + "fontFilter.vsh"), TestPaths.readString(dir + "fontFilter.fsh"));
     }
 
     private void buildLightmapTexture() {

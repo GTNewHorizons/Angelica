@@ -1,14 +1,14 @@
 package com.gtnewhorizons.angelica.glsm;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
 import com.gtnewhorizons.angelica.glsm.recording.GLCommand;
 import it.unimi.dsi.fastutil.ints.IntList;
-import net.minecraft.client.renderer.Tessellator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL11;
 
+import static com.gtnewhorizons.angelica.glsm.DisplayListTestHelper.immediateQuad;
+import static com.gtnewhorizons.angelica.glsm.DisplayListTestHelper.rawQuad;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -25,34 +25,6 @@ class GLSM_DisplayList_RawTessellatorTransform_Test {
             testList = -1;
         }
         GLStateManager.glLoadIdentity();
-    }
-
-    private static void rawQuad(float size) {
-        final Tessellator tess = Tessellator.instance;
-        final float[][] corners = { { 0.0f, 0.0f }, { size, 0.0f }, { size, size }, { 0.0f, size } };
-        tess.rawBuffer = new int[4 * 8];
-        for (int i = 0; i < 4; i++) {
-            final int base = i * 8;
-            tess.rawBuffer[base] = Float.floatToRawIntBits(corners[i][0]);
-            tess.rawBuffer[base + 1] = Float.floatToRawIntBits(corners[i][1]);
-            tess.rawBuffer[base + 3] = Float.floatToRawIntBits(i == 1 || i == 2 ? 1.0f : 0.0f);
-            tess.rawBuffer[base + 4] = Float.floatToRawIntBits(i >= 2 ? 1.0f : 0.0f);
-        }
-        tess.isDrawing = true;
-        tess.drawMode = GL11.GL_QUADS;
-        tess.hasTexture = true;
-        tess.rawBufferIndex = 4 * 8;
-        tess.vertexCount = 4;
-        TessellatorManager.interceptDraw(tess);
-    }
-
-    private static void immediateQuad(float size) {
-        GLStateManager.glBegin(GL11.GL_QUADS);
-        GLStateManager.glVertex3f(0.0f, 0.0f, 0.0f);
-        GLStateManager.glVertex3f(size, 0.0f, 0.0f);
-        GLStateManager.glVertex3f(size, size, 0.0f);
-        GLStateManager.glVertex3f(0.0f, size, 0.0f);
-        GLStateManager.glEnd();
     }
 
     @Test

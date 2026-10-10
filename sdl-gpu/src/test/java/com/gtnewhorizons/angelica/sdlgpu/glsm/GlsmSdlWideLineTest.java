@@ -2,11 +2,15 @@ package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.lwjgl.opengl.GL11;
+
+import java.util.stream.Stream;
 
 import static com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig.SIZE;
 import static com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig.pixelAt;
@@ -16,11 +20,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Tag("glsm-sdl")
 @ExtendWith(GlsmSdlFrameExtension.class)
 class GlsmSdlWideLineTest {
-
-    @BeforeAll
-    static void boot() {
-        GlsmSdlHeadlessRig.boot();
-    }
 
     @AfterEach
     void resetLineState() {
@@ -94,14 +93,16 @@ class GlsmSdlWideLineTest {
         assertTrue(drawnRows >= SIZE / 4, () -> "line covers only " + drawnRows + " rows");
     }
 
-    @Test
-    void lineEndingBehindTheCameraKeepsItsWidth() {
-        assertWidthAcrossTheNearPlane(IN_FRONT, BEHIND);
+    static Stream<Arguments> nearPlaneCrossings() {
+        return Stream.of(
+            Arguments.of("ending behind the camera", IN_FRONT, BEHIND),
+            Arguments.of("starting behind the camera", BEHIND, IN_FRONT));
     }
 
-    @Test
-    void lineStartingBehindTheCameraKeepsItsWidth() {
-        assertWidthAcrossTheNearPlane(BEHIND, IN_FRONT);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("nearPlaneCrossings")
+    void lineCrossingTheNearPlaneKeepsItsWidth(String name, float[] start, float[] end) {
+        assertWidthAcrossTheNearPlane(start, end);
     }
 
     @Test

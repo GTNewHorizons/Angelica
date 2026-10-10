@@ -57,11 +57,6 @@ class PerFrameUniformBlockHarvesterTest {
         assertTrue(names.contains("shadowModelView"), "shadow matrices are pure functions of pack directives");
     }
 
-    @Test
-    void orderIsDeterministic() {
-        assertEquals(blockNames(), blockNames());
-    }
-
     private static List<String> perPassNames() {
         final PerFrameUniformBlock block = PerFrameUniformBlockHarvester.toPerPassBlock(manifest(), manifest());
         return block.members().stream().map(PerFrameUniformBlock.Member::name).toList();

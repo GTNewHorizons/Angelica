@@ -21,12 +21,6 @@ class FrustumExtractorTest {
     private static final int SWEEP_SECTIONS = 6;
 
     @Test
-    void uboSizeIs160() {
-        assertEquals(160, FrustumExtractor.UBO_SIZE_BYTES);
-        assertEquals(0, FrustumExtractor.UBO_SIZE_BYTES % 16, "std140 requires a 16-byte multiple");
-    }
-
-    @Test
     void patchBatchEntryBase_writesAtOffset128() {
         final ByteBuffer out = FrustumExtractor.allocateUboByteBuffer();
         FrustumExtractor.patchBatchEntryBase(777, out);

@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizons.angelica.glsm.testutil.TestThreads;
 import org.joml.Matrix4f;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL11;
@@ -18,23 +19,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @GLCoreTest
 public class GLSM_PerThread_UnitTest {
 
-    private static void runThreaded(int n, ThreadBody body) throws Throwable {
+    private static void runThreaded(int n, ThreadBody body) throws InterruptedException {
         final CyclicBarrier barrier = new CyclicBarrier(n);
-        final Throwable[] errs = new Throwable[n];
-        final Thread[] ts = new Thread[n];
+        final TestThreads.Worker[] workers = new TestThreads.Worker[n];
         for (int i = 0; i < n; i++) {
             final int tid = i;
-            ts[i] = new Thread(() -> {
-                try {
-                    body.run(tid, barrier);
-                } catch (Throwable t) {
-                    errs[tid] = t;
-                }
-            }, "glsm-perthread-" + i);
+            workers[i] = TestThreads.start("glsm-perthread-" + i, () -> body.run(tid, barrier));
         }
-        for (Thread t : ts) t.start();
-        for (Thread t : ts) t.join();
-        for (int i = 0; i < n; i++) if (errs[i] != null) throw errs[i];
+        for (TestThreads.Worker worker : workers) worker.join();
     }
 
     interface ThreadBody {

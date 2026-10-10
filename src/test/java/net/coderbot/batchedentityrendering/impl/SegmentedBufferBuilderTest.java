@@ -1,14 +1,9 @@
 package net.coderbot.batchedentityrendering.impl;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuad;
-import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
-import com.gtnewhorizons.angelica.rendering.tesr.DrawState;
 import com.gtnewhorizons.angelica.rendering.tesr.TemplateBuffer;
-import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
-import net.coderbot.iris.layer.PassOverride;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
-import net.minecraft.util.ResourceLocation;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.junit.jupiter.api.Test;
@@ -21,13 +16,12 @@ import static com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil.CO
 import static com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil.VERTEX_SIZE;
 import static com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil.X_INDEX;
 
+import static net.coderbot.batchedentityrendering.impl.BufferSourceProbe.layer;
+import static net.coderbot.batchedentityrendering.impl.BufferSourceProbe.quad;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SegmentedBufferBuilderTest {
-
-    private static final TesrMaterial OPAQUE_MATERIAL = TesrMaterial.CURRENT_STATE;
-    private static final TesrMaterial TRANSLUCENT_MATERIAL = TesrMaterial.builder().translucent().build();
 
     @Test
     void segmentsSnapshotAllIdsAndTintAtQueueTime() {
@@ -65,21 +59,6 @@ class SegmentedBufferBuilderTest {
             state.popCurrentBlockEntity();
             state.popCurrentEntityAndItem();
         }
-    }
-
-    static RenderLayer layer(String name, TransparencyType transparencyType) {
-        final TesrMaterial material = transparencyType == TransparencyType.OPAQUE ? OPAQUE_MATERIAL : TRANSLUCENT_MATERIAL;
-        return RenderLayer.tesr(new ResourceLocation("angelicatest", name), material, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.DISABLED, false, true);
-    }
-
-    static ModelQuad quad() {
-        final ModelQuad q = new ModelQuad();
-        for (int i = 0; i < 4; i++) {
-            q.setX(i, i);
-            q.setY(i, i);
-            q.setZ(i, i);
-        }
-        return q;
     }
 
     @Test

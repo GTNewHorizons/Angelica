@@ -5,6 +5,9 @@ import com.gtnewhorizons.angelica.glsm.states.ViewportState;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
@@ -12,6 +15,7 @@ import org.lwjgl.opengl.GL15;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.function.IntPredicate;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -72,7 +76,6 @@ public class GLSM_LineStipple_GLTest {
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         if (vbo != 0) GLStateManager.glDeleteBuffers(vbo);
         if (vao != 0) GLStateManager.glDeleteVertexArrays(vao);
-        while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
     }
 
     private boolean[] renderLine(float x0, float x1) {
@@ -117,35 +120,29 @@ public class GLSM_LineStipple_GLTest {
         GLStateManager.glLineStipple(factor, (short) pattern);
     }
 
-    @Test
-    void solidPatternCoversEveryPixel() {
-        stipple(1, 0xFFFF);
-        assertArrayEquals(expected(i -> true), renderLine(0f, W));
+    static Stream<Arguments> patterns() {
+        return Stream.of(
+            pattern("solid pattern covers every pixel", true, 1, 0xFFFF, i -> true),
+            pattern("empty pattern covers nothing", true, 1, 0x0000, i -> false),
+            pattern("alternating pattern dashes every other pixel", true, 1, 0xAAAA, i -> (i & 1) == 1),
+            pattern("factor stretches each bit across that many pixels", true, 2, 0xAAAA, i -> ((i / 2) & 1) == 1),
+            pattern("disabled stipple covers every pixel", false, 1, 0xAAAA, i -> true));
     }
 
-    @Test
-    void emptyPatternCoversNothing() {
-        stipple(1, 0x0000);
-        assertArrayEquals(expected(i -> false), renderLine(0f, W));
+    private static Arguments pattern(String name, boolean enabled, int factor, int pattern, IntPredicate on) {
+        return Arguments.of(name, enabled, factor, pattern, on);
     }
 
-    @Test
-    void alternatingPatternDashesEveryOtherPixel() {
-        stipple(1, 0xAAAA);
-        assertArrayEquals(expected(i -> (i & 1) == 1), renderLine(0f, W));
-    }
-
-    @Test
-    void factorStretchesEachBitAcrossThatManyPixels() {
-        stipple(2, 0xAAAA);
-        assertArrayEquals(expected(i -> ((i / 2) & 1) == 1), renderLine(0f, W));
-    }
-
-    @Test
-    void disabledStippleCoversEveryPixel() {
-        GLStateManager.glLineStipple(1, (short) 0xAAAA);
-        GLStateManager.glDisable(GL11.GL_LINE_STIPPLE);
-        assertArrayEquals(expected(i -> true), renderLine(0f, W));
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("patterns")
+    void patternSelectsTheCoveredPixels(String name, boolean enabled, int factor, int pattern, IntPredicate on) {
+        GLStateManager.glLineStipple(factor, (short) pattern);
+        if (enabled) {
+            GLStateManager.glEnable(GL11.GL_LINE_STIPPLE);
+        } else {
+            GLStateManager.glDisable(GL11.GL_LINE_STIPPLE);
+        }
+        assertArrayEquals(expected(on), renderLine(0f, W));
     }
 
     @Test

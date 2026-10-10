@@ -42,10 +42,9 @@ class GlsmSdlTextureStagingTest {
 
     @BeforeAll
     static void boot() {
-        GlsmSdlHeadlessRig.boot();
         final Object backend = BackendManager.RENDER_BACKEND;
         if (Reflect.get(backend, "transferThread") == null) {
-            final ResourceManager rm = Reflect.get(backend, "resourceManager");
+            final ResourceManager rm = GlsmSdlHeadlessRig.resourceManager();
             installed = new TransferThread(SDLGPUGate.device(), rm);
             Reflect.set(backend, "transferThread", installed);
             rm.setTransferThread(installed);
@@ -60,7 +59,7 @@ class GlsmSdlTextureStagingTest {
         installed.getThread().join();
         final Object backend = BackendManager.RENDER_BACKEND;
         Reflect.set(backend, "transferThread", null);
-        final ResourceManager rm = Reflect.get(backend, "resourceManager");
+        final ResourceManager rm = GlsmSdlHeadlessRig.resourceManager();
         rm.setTransferThread(null);
         installed = null;
     }

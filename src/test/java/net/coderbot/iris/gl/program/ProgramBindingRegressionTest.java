@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GlTestSupport;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import com.gtnewhorizons.angelica.glsm.recording.GLCommand;
@@ -84,20 +85,7 @@ class ProgramBindingRegressionTest {
     }
 
     private static int linkedProgram() {
-        int vertex = GLStateManager.glCreateShader(GL20.GL_VERTEX_SHADER);
-        int fragment = GLStateManager.glCreateShader(GL20.GL_FRAGMENT_SHADER);
-        GLStateManager.glShaderSource(vertex, "#version 330 core\nvoid main() { gl_Position = vec4(0); }");
-        GLStateManager.glShaderSource(fragment, "#version 330 core\nout vec4 color; void main() { color = vec4(1); }");
-        GLStateManager.glCompileShader(vertex);
-        GLStateManager.glCompileShader(fragment);
-        int program = GLStateManager.glCreateProgram();
-        GLStateManager.glAttachShader(program, vertex);
-        GLStateManager.glAttachShader(program, fragment);
-        GLStateManager.glLinkProgram(program);
-        GLStateManager.glDeleteShader(vertex);
-        GLStateManager.glDeleteShader(fragment);
-        assertEquals(GL11.GL_TRUE, GLStateManager.glGetProgrami(program, GL20.GL_LINK_STATUS));
-        return program;
+        return GlTestSupport.program(GlTestSupport.TRIVIAL_VS, GlTestSupport.TRIVIAL_FS);
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.rendering.voxelization;
 
+import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.rendering.RenderRegionKeys;
 import org.embeddedt.embeddium.impl.gl.attribute.GlVertexFormat;
 import org.embeddedt.embeddium.impl.gl.util.VertexRange;
@@ -18,7 +19,6 @@ import org.embeddedt.embeddium.impl.render.viewport.CameraTransform;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.Iterator;
@@ -88,45 +88,15 @@ class ShadowVoxelizerTest {
     }
 
     private static SectionRenderDataStorage storage(long heap, SectionRenderDataUnsafe.Strategy layout) {
-        final SectionRenderDataStorage storage = allocateInstance(SectionRenderDataStorage.class);
-        setField(storage, SectionRenderDataStorage.class, "storageStrategy", layout);
-        setField(storage, SectionRenderDataStorage.class, "primitiveType", PRIMITIVE);
-        setField(storage, SectionRenderDataStorage.class, "pMeshDataArray", heap);
+        final SectionRenderDataStorage storage = Reflect.allocate(SectionRenderDataStorage.class);
+        Reflect.setDeclared(SectionRenderDataStorage.class, storage, "storageStrategy", layout);
+        Reflect.setDeclared(SectionRenderDataStorage.class, storage, "primitiveType", PRIMITIVE);
+        Reflect.setDeclared(SectionRenderDataStorage.class, storage, "pMeshDataArray", heap);
         return storage;
     }
 
-    @SuppressWarnings("unchecked")
-    private static <T> T allocateInstance(Class<T> type) {
-        try {
-            final Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
-            final Field theUnsafe = unsafeClass.getDeclaredField("theUnsafe");
-            theUnsafe.setAccessible(true);
-            final Object unsafe = theUnsafe.get(null);
-            return (T) unsafeClass.getMethod("allocateInstance", Class.class).invoke(unsafe, type);
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
-    private static void setField(Object target, Class<?> owner, String name, Object value) {
-        try {
-            final Field field = owner.getDeclaredField(name);
-            field.setAccessible(true);
-            field.set(target, value);
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
     private static void attachStorage(RenderRegion region, TerrainRenderPass renderPass, SectionRenderDataStorage storage) {
-        try {
-            final Field field = RenderRegion.class.getDeclaredField("sectionRenderData");
-            field.setAccessible(true);
-            ((Map<TerrainRenderPass, SectionRenderDataStorage>) field.get(region)).put(renderPass, storage);
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException(e);
-        }
+        Reflect.<Map<TerrainRenderPass, SectionRenderDataStorage>>get(region, "sectionRenderData").put(renderPass, storage);
     }
 
     private static ChunkRenderList renderList(RenderRegion region, int... localSectionIndices) {
@@ -135,8 +105,8 @@ class ShadowVoxelizerTest {
         for (int i = 0; i < localSectionIndices.length; i++) {
             sections[i] = (byte) localSectionIndices[i];
         }
-        setField(list, ChunkRenderList.class, "sectionsWithGeometry", sections);
-        setField(list, ChunkRenderList.class, "sectionsWithGeometryCount", localSectionIndices.length);
+        Reflect.setDeclared(ChunkRenderList.class, list, "sectionsWithGeometry", sections);
+        Reflect.setDeclared(ChunkRenderList.class, list, "sectionsWithGeometryCount", localSectionIndices.length);
         return list;
     }
 

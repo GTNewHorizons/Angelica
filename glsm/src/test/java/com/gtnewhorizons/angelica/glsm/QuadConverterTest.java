@@ -82,11 +82,6 @@ class QuadConverterTest {
     }
 
     @Test
-    void triangulateQuads_zeroQuads_noop() {
-        QuadConverter.triangulateQuads(0L, GL11.GL_UNSIGNED_INT, 0L, GL11.GL_UNSIGNED_INT, 0);
-    }
-
-    @Test
     void triangulateQuads_unsupportedTypes_throw() {
         final ByteBuffer src = MemoryUtilities.memAlloc(16);
         final ByteBuffer dst = MemoryUtilities.memAlloc(24);
@@ -239,8 +234,6 @@ class QuadConverterTest {
             MemoryUtilities.memFree(dst);
         }
     }
-
-    // === helpers ===
 
     private static void assertUintIndices(ByteBuffer buf, int... expected) {
         for (int i = 0; i < expected.length; i++) {

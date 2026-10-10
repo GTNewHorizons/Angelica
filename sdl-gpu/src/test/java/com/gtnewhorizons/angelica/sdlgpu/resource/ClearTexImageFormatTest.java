@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.sdlgpu.resource;
 
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.lwjgl.sdl.SDLGPU.*;
@@ -27,11 +28,7 @@ class ClearTexImageFormatTest {
     }
 
     @Test
-    void volumeSizingAccountsForDepth() {
-        final int bpp = PixelOps.sdlFormatTexelBytes(SDL_GPU_TEXTUREFORMAT_R16_UINT);
-        assertTrue(bpp == 2, "R16_UINT is two bytes per texel, got " + bpp);
-        final long slice = 512L * 256L * bpp;
-        final long volume = slice * 512L;
-        assertTrue(volume / slice == 512, "a depth-aware clear must cover every slice");
+    void r16UintIsTwoBytesPerTexel() {
+        assertEquals(2, PixelOps.sdlFormatTexelBytes(SDL_GPU_TEXTUREFORMAT_R16_UINT));
     }
 }

@@ -1,11 +1,12 @@
 package net.coderbot.iris.pipeline.transform;
 
-import com.gtnewhorizons.angelica.glsm.RenderSystem;
-import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.taumc.glsl.ShaderParser;
 import org.taumc.glsl.ShaderPrinter;
 import org.taumc.glsl.Transformer;
@@ -15,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -26,18 +28,13 @@ class LocalZeroInitTransformerTest {
 
     @BeforeAll
     static void initShaderTransformer() {
-        savedMaxGlsl = Reflect.getStatic(RenderSystem.class, "maxGlslVersion");
-        Reflect.setStatic(RenderSystem.class, "maxGlslVersion", 460);
         ShaderTransformer.clearCache();
-        ShaderTransformer.init();
+        savedMaxGlsl = TransformTestSupport.pinGlslVersion(460);
     }
 
     @AfterAll
     static void restoreCapabilities() {
-        Reflect.setStatic(RenderSystem.class, "maxGlslVersion", savedMaxGlsl);
-        ShaderTransformer.clearCache();
-        TransformPatcher.clearCache();
-        ShaderTransformer.init();
+        TransformTestSupport.restoreGlslVersion(savedMaxGlsl);
     }
 
     private static final Set<String> NUMERIC = Set.of(
@@ -129,34 +126,37 @@ class LocalZeroInitTransformerTest {
         assertTrue(out.contains("vec3(1.0)"), "b must keep its own initializer: " + out);
     }
 
-    @Test
-    void arrayDeclarationsAreSkippedInBothSpellings() {
-        final String src =
-            "#version 460 core\n" +
-            "void main() {\n" +
-            "    float a[3];\n" +
-            "    float[3] b;\n" +
-            "    vec3 c[2];\n" +
-            "}\n";
-
-        final String out = run(src);
-        assertTrue(isUninitialized(out, "a"), out);
-        assertTrue(isUninitialized(out, "b"), out);
-        assertTrue(isUninitialized(out, "c"), out);
+    static Stream<Arguments> skippedLocals() {
+        return Stream.of(
+            Arguments.of("array declarations in both spellings", List.of("a", "b", "c"),
+                "#version 460 core\n" +
+                "void main() {\n" +
+                "    float a[3];\n" +
+                "    float[3] b;\n" +
+                "    vec3 c[2];\n" +
+                "}\n"),
+            Arguments.of("struct locals have no scalar zero constructor", List.of("m"),
+                "#version 460 core\n" +
+                "struct Material { vec3 albedo; float rough; };\n" +
+                "void main() {\n" +
+                "    Material m;\n" +
+                "    m.rough = 1.0;\n" +
+                "}\n"),
+            Arguments.of("bool and double", List.of("flag", "d"),
+                "#version 460 core\n" +
+                "void main() {\n" +
+                "    bool flag;\n" +
+                "    double d;\n" +
+                "}\n"));
     }
 
-    @Test
-    void structAndOpaqueLocalsAreSkipped() {
-        final String src =
-            "#version 460 core\n" +
-            "struct Material { vec3 albedo; float rough; };\n" +
-            "void main() {\n" +
-            "    Material m;\n" +
-            "    m.rough = 1.0;\n" +
-            "}\n";
-
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("skippedLocals")
+    void nonNumericLocalsAreSkipped(String name, List<String> locals, String src) {
         final String out = run(src);
-        assertTrue(isUninitialized(out, "m"), "struct locals have no scalar zero constructor: " + out);
+        for (String local : locals) {
+            assertTrue(isUninitialized(out, local), local + " must stay uninitialized: " + out);
+        }
     }
 
     @Test
@@ -171,20 +171,6 @@ class LocalZeroInitTransformerTest {
         final String out = run(src);
         assertTrue(isUninitialized(out, "p"), out);
         assertTrue(out.contains("2.0"), "const initializer must survive: " + out);
-    }
-
-    @Test
-    void boolAndDoubleAreSkipped() {
-        final String src =
-            "#version 460 core\n" +
-            "void main() {\n" +
-            "    bool flag;\n" +
-            "    double d;\n" +
-            "}\n";
-
-        final String out = run(src);
-        assertTrue(isUninitialized(out, "flag"), out);
-        assertTrue(isUninitialized(out, "d"), out);
     }
 
     private static int numericBareCount(String src) {

@@ -2,6 +2,8 @@ package com.gtnewhorizons.angelica.glsm;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
@@ -14,6 +16,23 @@ public class GLSM_DisplayList_PixelStore_Test {
 
     private static final int SRC = 8;
     private static final int SUB = 4;
+
+    enum Upload {
+        TEX_SUB_IMAGE_2D {
+            @Override
+            void run(ByteBuffer src) {
+                GLStateManager.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, SUB, SUB, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, src);
+            }
+        },
+        TEX_IMAGE_2D {
+            @Override
+            void run(ByteBuffer src) {
+                GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, SUB, SUB, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, src);
+            }
+        };
+
+        abstract void run(ByteBuffer src);
+    }
 
     @AfterEach
     void resetUnpackState() {
@@ -96,8 +115,9 @@ public class GLSM_DisplayList_PixelStore_Test {
         GLStateManager.glDeleteLists(list, 1);
     }
 
-    @Test
-    void stridedTexSubImage2DCompile() {
+    @ParameterizedTest
+    @EnumSource(Upload.class)
+    void stridedUploadCompile(Upload upload) {
         final int tex = makeTexture(SUB, ByteBuffer.allocateDirect(SUB * SUB * 4).order(ByteOrder.nativeOrder()));
         final ByteBuffer src = makeSource(SRC);
 
@@ -105,7 +125,7 @@ public class GLSM_DisplayList_PixelStore_Test {
 
         final int list = GLStateManager.glGenLists(1);
         GLStateManager.glNewList(list, GL11.GL_COMPILE);
-        GLStateManager.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, SUB, SUB, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, src);
+        upload.run(src);
         GLStateManager.glEndList();
 
         assertEquals(0, red(readback(SUB), SUB, 0, 0), "GL_COMPILE must not execute the upload");
@@ -146,58 +166,15 @@ public class GLSM_DisplayList_PixelStore_Test {
         GLStateManager.glDeleteTextures(tex);
     }
 
-    @Test
-    void stridedTexImage2DCompile() {
-        final int tex = makeTexture(SUB, ByteBuffer.allocateDirect(SUB * SUB * 4).order(ByteOrder.nativeOrder()));
-        final ByteBuffer src = makeSource(SRC);
-
-        setStridedUnpack();
-
-        final int list = GLStateManager.glGenLists(1);
-        GLStateManager.glNewList(list, GL11.GL_COMPILE);
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, SUB, SUB, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, src);
-        GLStateManager.glEndList();
-
-        setUnpack(0, 0, 0);
-
-        GLStateManager.glCallList(list);
-        assertStridedSubImage(readback(SUB));
-        assertUnpack(0, 0, 0);
-
-        GLStateManager.glDeleteLists(list, 1);
-        GLStateManager.glDeleteTextures(tex);
-    }
-
-    @Test
-    void defaultRecordedTexSubImage2DReplaysWithDefaults() {
+    @ParameterizedTest
+    @EnumSource(Upload.class)
+    void defaultRecordedUploadReplaysWithDefaults(Upload upload) {
         final int tex = makeTexture(SUB, ByteBuffer.allocateDirect(SUB * SUB * 4).order(ByteOrder.nativeOrder()));
         final ByteBuffer src = makeSource(SUB);
 
         final int list = GLStateManager.glGenLists(1);
         GLStateManager.glNewList(list, GL11.GL_COMPILE);
-        GLStateManager.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, SUB, SUB, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, src);
-        GLStateManager.glEndList();
-
-        GLStateManager.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1);
-        setStridedUnpack();
-
-        GLStateManager.glCallList(list);
-        assertTightSubImage(readback(SUB));
-        assertEquals(1, GL11.glGetInteger(GL11.GL_UNPACK_ALIGNMENT), "live state must survive replay");
-        assertUnpack(SRC, 1, 2);
-
-        GLStateManager.glDeleteLists(list, 1);
-        GLStateManager.glDeleteTextures(tex);
-    }
-
-    @Test
-    void defaultRecordedTexImage2DReplaysWithDefaults() {
-        final int tex = makeTexture(SUB, ByteBuffer.allocateDirect(SUB * SUB * 4).order(ByteOrder.nativeOrder()));
-        final ByteBuffer src = makeSource(SUB);
-
-        final int list = GLStateManager.glGenLists(1);
-        GLStateManager.glNewList(list, GL11.GL_COMPILE);
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, SUB, SUB, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, src);
+        upload.run(src);
         GLStateManager.glEndList();
 
         GLStateManager.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1);

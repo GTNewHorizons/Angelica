@@ -1,16 +1,14 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
-import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
-import com.gtnewhorizons.angelica.sdlgpu.SDLGPUGate;
-import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
-import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
@@ -20,39 +18,30 @@ import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
+import java.util.function.IntBinaryOperator;
+import java.util.stream.Stream;
 
+import static com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig.BLUE;
+import static com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig.GREEN;
+import static com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig.RED;
 import static com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig.SIZE;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @Tag("glsm-sdl")
 @ExtendWith(GlsmSdlFrameExtension.class)
 class GlsmSdlCopyBlitTest {
 
-    private static final int RED = 0xFFFF0000;
-    private static final int GREEN = 0xFF00FF00;
-    private static final int BLUE = 0xFF0000FF;
-
     private static final int SCISSOR_ROWS = 16;
     private static final byte SENTINEL_BYTE = 0x7B;
     private static final int SENTINEL = 0x7B7B7B7B;
 
-    private static FrameManager frameManager;
-    private static ResourceManager resourceManager;
-
     @BeforeAll
-    static void boot() {
-        GlsmSdlHeadlessRig.boot();
-        frameManager = Reflect.get(BackendManager.RENDER_BACKEND, "frameManager");
-        resourceManager = Reflect.get(BackendManager.RENDER_BACKEND, "resourceManager");
-        frameManager.destroyFinalTarget();
-        frameManager.finalTarget().create(SDLGPUGate.device(), resourceManager, SIZE, SIZE, resourceManager.mapTextureFormat(GL11.GL_RGBA8));
-        assertEquals(SIZE, frameManager.getFbo0Height());
+    static void installFinalTarget() {
+        GlsmSdlHeadlessRig.installFinalTarget(SIZE, SIZE);
     }
 
     @AfterAll
     static void dropFinalTarget() {
-        GlsmSdlHeadlessRig.endFrame();
-        if (frameManager != null) frameManager.destroyFinalTarget();
+        GlsmSdlHeadlessRig.dropFinalTarget();
     }
 
     private static void assertRow(int[] pixels, int y, int expected, String label) {
@@ -88,25 +77,9 @@ class GlsmSdlCopyBlitTest {
         GLStateManager.glTexParameterf(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MIN_LOD, 0.0f);
         GLStateManager.glTexParameterf(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LOD, 1.0f);
         GLStateManager.glTexParameterf(GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_LOD_BIAS, 0.0f);
-        uploadLevel(0, SIZE, level0Argb);
-        uploadLevel(1, SIZE / 2, level1Argb);
+        GlsmSdlHeadlessRig.uploadSolidLevel(0, SIZE, level0Argb);
+        GlsmSdlHeadlessRig.uploadSolidLevel(1, SIZE / 2, level1Argb);
         return id;
-    }
-
-    private static void uploadLevel(int level, int size, int argb) {
-        final ByteBuffer texels = MemoryUtil.memAlloc(size * size * 4);
-        try {
-            for (int i = 0; i < size * size; i++) {
-                texels.put(i * 4, (byte) ((argb >> 16) & 0xFF));
-                texels.put(i * 4 + 1, (byte) ((argb >> 8) & 0xFF));
-                texels.put(i * 4 + 2, (byte) (argb & 0xFF));
-                texels.put(i * 4 + 3, (byte) ((argb >>> 24) & 0xFF));
-            }
-            GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, level, GL11.GL_RGBA8, size, size, 0,
-                GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels);
-        } finally {
-            MemoryUtil.memFree(texels);
-        }
     }
 
     private static int copyGreenIntoLevelOne() {
@@ -181,7 +154,7 @@ class GlsmSdlCopyBlitTest {
 
     private static void blitLevelOneInto(int dstSize, int dstLevel) {
         final int source = GlsmSdlHeadlessRig.createSolidMipTexture(SIZE, 1, RED);
-        uploadLevel(1, SIZE / 2, GREEN);
+        GlsmSdlHeadlessRig.uploadSolidLevel(1, SIZE / 2, GREEN);
         final int destination = GlsmSdlHeadlessRig.createSolidMipTexture(dstSize, dstLevel, BLUE);
         final int readFbo = GlsmSdlHeadlessRig.fboWithColor(source, 1);
         final int drawFbo = GlsmSdlHeadlessRig.fboWithColor(destination, dstLevel);
@@ -202,19 +175,17 @@ class GlsmSdlCopyBlitTest {
         GLStateManager.glDeleteTextures(destination);
     }
 
-    @Test
-    void blitFramebufferReadsTheSourceAttachmentLevel() {
-        blitLevelOneInto(SIZE / 2, 0);
+    static Stream<Arguments> levelBlits() {
+        return Stream.of(
+            Arguments.of("1:1 into level 0: reads the source attachment level", SIZE / 2, 0),
+            Arguments.of("scaled into level 0: reads the source attachment level", SIZE, 0),
+            Arguments.of("into level 1: writes the destination attachment level", SIZE, 1));
     }
 
-    @Test
-    void scaledBlitFramebufferReadsTheSourceAttachmentLevel() {
-        blitLevelOneInto(SIZE, 0);
-    }
-
-    @Test
-    void blitFramebufferWritesTheDestinationAttachmentLevel() {
-        blitLevelOneInto(SIZE, 1);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("levelBlits")
+    void blitFramebufferHonoursAttachmentLevels(String name, int dstSize, int dstLevel) {
+        blitLevelOneInto(dstSize, dstLevel);
     }
 
     @Test
@@ -299,12 +270,7 @@ class GlsmSdlCopyBlitTest {
         try {
             for (int y = 0; y < SIZE; y++) {
                 for (int x = 0; x < SIZE; x++) {
-                    final int argb = pattern(x, y);
-                    final int i = (y * SIZE + x) * 4;
-                    texels.put(i, (byte) ((argb >> 16) & 0xFF));
-                    texels.put(i + 1, (byte) ((argb >> 8) & 0xFF));
-                    texels.put(i + 2, (byte) (argb & 0xFF));
-                    texels.put(i + 3, (byte) ((argb >>> 24) & 0xFF));
+                    GlsmSdlHeadlessRig.putArgb(texels, y * SIZE + x, pattern(x, y));
                 }
             }
             GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, SIZE, SIZE, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels);
@@ -331,32 +297,25 @@ class GlsmSdlCopyBlitTest {
         return pixels;
     }
 
-    @Test
-    void blitFramebufferWithReversedSourceXMirrorsHorizontally() {
-        final int[] pixels = blitPattern(SIZE, 0, 0, SIZE, 0, 0, SIZE, SIZE);
-        for (int y = 0; y < SIZE; y++) {
-            for (int x = 0; x < SIZE; x++) {
-                GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, x, y, pattern(SIZE - 1 - x, y), "horizontal mirror");
-            }
-        }
+    private static Arguments mirror(String name, int[] srcRect, int[] dstRect, IntBinaryOperator expected) {
+        return Arguments.of(name, srcRect, dstRect, expected);
     }
 
-    @Test
-    void blitFramebufferWithReversedDestinationYMirrorsVertically() {
-        final int[] pixels = blitPattern(0, 0, SIZE, SIZE, 0, SIZE, SIZE, 0);
-        for (int y = 0; y < SIZE; y++) {
-            for (int x = 0; x < SIZE; x++) {
-                GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, x, y, pattern(x, SIZE - 1 - y), "vertical mirror");
-            }
-        }
+    /** Rects are x0, y0, x1, y1; {@code expected} maps a destination pixel to the pattern colour it must hold. */
+    static Stream<Arguments> mirroredBlits() {
+        return Stream.of(
+            mirror("reversed source X mirrors horizontally", new int[]{SIZE, 0, 0, SIZE}, new int[]{0, 0, SIZE, SIZE}, (x, y) -> pattern(SIZE - 1 - x, y)),
+            mirror("reversed destination Y mirrors vertically", new int[]{0, 0, SIZE, SIZE}, new int[]{0, SIZE, SIZE, 0}, (x, y) -> pattern(x, SIZE - 1 - y)),
+            mirror("both ranges reversed does not mirror", new int[]{SIZE, SIZE, 0, 0}, new int[]{SIZE, SIZE, 0, 0}, (x, y) -> pattern(x, y)));
     }
 
-    @Test
-    void blitFramebufferWithBothRangesReversedDoesNotMirror() {
-        final int[] pixels = blitPattern(SIZE, SIZE, 0, 0, SIZE, SIZE, 0, 0);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("mirroredBlits")
+    void blitFramebufferMirrorsByRangeDirection(String name, int[] src, int[] dst, IntBinaryOperator expected) {
+        final int[] pixels = blitPattern(src[0], src[1], src[2], src[3], dst[0], dst[1], dst[2], dst[3]);
         for (int y = 0; y < SIZE; y++) {
             for (int x = 0; x < SIZE; x++) {
-                GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, x, y, pattern(x, y), "both ranges reversed");
+                GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, x, y, expected.applyAsInt(x, y), name);
             }
         }
     }

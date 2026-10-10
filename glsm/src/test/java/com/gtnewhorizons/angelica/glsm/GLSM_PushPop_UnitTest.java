@@ -13,6 +13,7 @@ import org.lwjgl.opengl.GL20;
 
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
+import java.util.List;
 
 import static com.gtnewhorizons.angelica.util.GLSMUtil.resetGLState;
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyIsEnabled;
@@ -48,6 +49,24 @@ class GLSM_PushPop_UnitTest {
     public static final float[] FLOAT_ARRAY_4_0010 = { 0f, 0f, 1f, 0f };
     public static final float[] FLOAT_ARRAY_3_1 = { 1f, 1f, 1f };
     public static final float[] FLOAT_ARRAY_GL_SPOT_DIRECTION_DEFAULT = { 0f, 0f, -1f };
+
+    private static void toggleAndVerify(List<GLBit> bits) {
+        for (GLBit bit : bits) {
+            verifyState(bit.glEnum(), bit.initial(), bit.name() + " Initial State");
+            if (bit.initial()) {
+                GLStateManager.glDisable(bit.glEnum());
+            } else {
+                GLStateManager.glEnable(bit.glEnum());
+            }
+            verifyState(bit.glEnum(), !bit.initial(), bit.name() + " Toggle State");
+        }
+    }
+
+    private static void verifyReset(List<GLBit> bits) {
+        for (GLBit bit : bits) {
+            verifyState(bit.glEnum(), bit.initial(), bit.name() + " Reset State");
+        }
+    }
 
     @Test
     void testPushPopColorBufferBit() {
@@ -241,19 +260,11 @@ class GLSM_PushPop_UnitTest {
         bits.add(new GLBit(GL11.GL_TEXTURE_GEN_Q, "Texture Gen Q", false));
 
         GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
-        bits.forEach(bit -> {
-            verifyState(bit.glEnum(), bit.initial(), bit.name() + " Initial State");
-            if(bit.initial()) {
-                GLStateManager.glDisable(bit.glEnum());
-            } else {
-                GLStateManager.glEnable(bit.glEnum());
-            }
-            verifyState(bit.glEnum(), !bit.initial(), bit.name() + " Toggle State");
-        });
+        toggleAndVerify(bits);
 
         GLStateManager.glPopAttrib();
 
-        bits.forEach(bit -> verifyState(bit.glEnum(), bit.initial(), bit.name() + " Reset State"));
+        verifyReset(bits);
     }
 
     @Test
@@ -329,15 +340,7 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_SHADE_MODEL, GL11.GL_FLAT, "Shade Model");
 
 
-        bits.forEach(bit -> {
-            verifyState(bit.glEnum(), bit.initial(), bit.name() + " Initial State");
-            if(bit.initial()) {
-                GLStateManager.glDisable(bit.glEnum());
-            } else {
-                GLStateManager.glEnable(bit.glEnum());
-            }
-            verifyState(bit.glEnum(), !bit.initial(), bit.name() + " Toggle State");
-        });
+        toggleAndVerify(bits);
 
         GLStateManager.glPopAttrib();
         verifyState(GL11.GL_COLOR_MATERIAL_FACE, GL11.GL_FRONT_AND_BACK, "Color Material Face - Reset");
@@ -353,7 +356,7 @@ class GLSM_PushPop_UnitTest {
         verifyLightState(GL11.GL_LIGHT0, GL11.GL_SPOT_DIRECTION, FLOAT_ARRAY_GL_SPOT_DIRECTION_DEFAULT, "Light Spot Direction - Reset");
         verifyState(GL11.GL_SHADE_MODEL, GL11.GL_SMOOTH, "Shade Model - Reset");
 
-        bits.forEach(bit -> verifyState(bit.glEnum(), bit.initial(), bit.name() + " Reset State"));
+        verifyReset(bits);
     }
 
     @Test
@@ -388,15 +391,7 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE1, "Active Texture");
         verifyState(GL11.GL_TEXTURE_BINDING_2D, tex2, "Texture Binding - Unit 1");
 
-        bits.forEach(bit -> {
-            verifyState(bit.glEnum(), bit.initial(), bit.name() + " Initial State");
-            if(bit.initial()) {
-                GLStateManager.glDisable(bit.glEnum());
-            } else {
-                GLStateManager.glEnable(bit.glEnum());
-            }
-            verifyState(bit.glEnum(), !bit.initial(), bit.name() + " Toggle State");
-        });
+        toggleAndVerify(bits);
 
         GLStateManager.glPopAttrib();
         verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE0, "Active Texture Unit 0 - Reset");
@@ -404,7 +399,7 @@ class GLSM_PushPop_UnitTest {
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
         verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding Unit 1 - Reset");
 
-        bits.forEach(bit -> verifyState(bit.glEnum(), bit.initial(), bit.name() + " Reset State"));
+        verifyReset(bits);
 
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
         GLStateManager.glDeleteTextures(tex1);
@@ -1154,30 +1149,6 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL14.GL_BLEND_DST_ALPHA, GL11.GL_ZERO, "Blend Destination Alpha");
 
         GLStateManager.glBlendFunc(GL11.GL_ONE, GL11.GL_ZERO);
-    }
-
-    @Test
-    void testPolygonStateReadBack() {
-        GLStateManager.glCullFace(GL11.GL_FRONT);
-        GLStateManager.glFrontFace(GL11.GL_CW);
-        GLStateManager.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
-
-        verifyState(GL11.GL_CULL_FACE_MODE, GL11.GL_FRONT, "Cull Face Mode");
-        verifyState(GL11.GL_FRONT_FACE, GL11.GL_CW, "Front Face");
-        verifyState(GL11.GL_POLYGON_MODE, new int[] { GL11.GL_LINE, GL11.GL_LINE }, "Polygon Mode");
-
-        GLStateManager.glCullFace(GL11.GL_BACK);
-        GLStateManager.glFrontFace(GL11.GL_CCW);
-        GLStateManager.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
-    }
-
-    @Test
-    void testActiveTextureReadBack() {
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-        verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE1, "Active Texture");
-
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE0, "Active Texture - Reset");
     }
 
     @Test

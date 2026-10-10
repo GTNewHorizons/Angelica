@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu;
 
+import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import com.gtnewhorizons.angelica.sdlgpu.pipeline.PipelineApplier;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
@@ -9,7 +10,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.system.MemoryUtil;
 
-import java.lang.reflect.Field;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
@@ -48,11 +48,8 @@ class UniformNegativeLocationTest {
         st.releaseUniformStaging(prog);
     }
 
-    private static void clearApplier(SDLGPURenderBackend backend) throws Exception {
-        final Field f = SDLGPURenderBackend.class.getDeclaredField("pipelineApplier");
-        f.setAccessible(true);
-        f.set(backend, null);
-        assertNull(f.get(backend), "test rig failed to null the applier");
+    private static void clearApplier(SDLGPURenderBackend backend) {
+        Reflect.set(backend, "pipelineApplier", null);
     }
 
     @Test

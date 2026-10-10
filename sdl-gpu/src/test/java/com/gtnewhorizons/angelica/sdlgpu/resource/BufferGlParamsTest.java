@@ -2,26 +2,18 @@ package com.gtnewhorizons.angelica.sdlgpu.resource;
 
 import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 
-import com.gtnewhorizons.angelica.sdlgpu.device.Device;
-import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL44;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BufferGlParamsTest {
 
-    private static ResourceManager newResourceManager() {
-        return SdlTestRig.resourceManager();
-    }
-
     @Test
     void unknownBuffer_reportsGlDefaults() {
-        final ResourceManager rm = newResourceManager();
+        final ResourceManager rm = SdlTestRig.resourceManager();
         assertEquals(GL15.GL_STATIC_DRAW, rm.getBufferGlUsage(4242));
         assertEquals(BufferParams.MUTABLE_STORE, rm.getBufferStorageFlags(4242));
         assertEquals(0L, rm.getBufferSize(4242));
@@ -29,7 +21,7 @@ class BufferGlParamsTest {
 
     @Test
     void recordedParams_roundTrip() {
-        final ResourceManager rm = newResourceManager();
+        final ResourceManager rm = SdlTestRig.resourceManager();
         rm.recordBufferGlParams(1, GL15.GL_STREAM_DRAW, BufferParams.MUTABLE_STORE);
         assertEquals(GL15.GL_STREAM_DRAW, rm.getBufferGlUsage(1));
         assertEquals(BufferParams.MUTABLE_STORE, rm.getBufferStorageFlags(1));
@@ -42,7 +34,7 @@ class BufferGlParamsTest {
 
     @Test
     void recordedParams_overwrittenOnRespecification() {
-        final ResourceManager rm = newResourceManager();
+        final ResourceManager rm = SdlTestRig.resourceManager();
         rm.recordBufferGlParams(3, GL15.GL_DYNAMIC_DRAW, GL30.GL_MAP_WRITE_BIT);
         rm.recordBufferGlParams(3, GL15.GL_STATIC_DRAW, BufferParams.MUTABLE_STORE);
         assertEquals(GL15.GL_STATIC_DRAW, rm.getBufferGlUsage(3));
@@ -51,7 +43,7 @@ class BufferGlParamsTest {
 
     @Test
     void deleteBuffer_clearsParamsBackToDefaults() {
-        final ResourceManager rm = newResourceManager();
+        final ResourceManager rm = SdlTestRig.resourceManager();
         rm.recordBufferSizeOnly(5, 1000);
         rm.recordBufferGlParams(5, GL15.GL_STREAM_READ, GL30.GL_MAP_READ_BIT);
 

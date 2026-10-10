@@ -10,17 +10,17 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
-import org.lwjgl.opengl.GL13;
-import org.lwjgl.system.MemoryUtil;
 
-import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
 import static com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig.SIZE;
+import static com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig.TEXEL;
 import static com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig.describe;
 import static com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig.pixelAt;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -30,18 +30,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @ExtendWith(GlsmSdlFrameExtension.class)
 class GlsmSdlFfpTest {
 
-    private static final int TEXEL = 0xFFFF4020;
-    private static final int LIGHTMAP_SIZE = 16;
-
     private static int baseTexture;
     private static int lightmapTexture;
 
     @BeforeAll
     static void boot() {
-        GlsmSdlHeadlessRig.boot();
         GlsmSdlHeadlessRig.beginFrame();
         baseTexture = GlsmSdlHeadlessRig.createSolidTexture(TEXEL);
-        lightmapTexture = createLightmapTexture();
+        lightmapTexture = GlsmSdlHeadlessRig.createLightmapTexture(true);
         GlsmSdlHeadlessRig.endFrame();
     }
 
@@ -53,37 +49,8 @@ class GlsmSdlFfpTest {
         FfpFixture.IntegerInstances.delete();
     }
 
-    private static int createLightmapTexture() {
-        final int id = GLStateManager.glGenTextures();
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, id);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, LIGHTMAP_SIZE, LIGHTMAP_SIZE, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
-        final ByteBuffer texels = MemoryUtil.memAlloc(LIGHTMAP_SIZE * LIGHTMAP_SIZE * 4);
-        try {
-            for (int y = 0; y < LIGHTMAP_SIZE; y++) {
-                for (int x = 0; x < LIGHTMAP_SIZE; x++) {
-                    final boolean brightest = (x == 0 && y == 0) || (x == LIGHTMAP_SIZE - 1 && y == LIGHTMAP_SIZE - 1);
-                    texels.put((byte) (brightest ? 255 : 0));
-                    texels.put((byte) 255);
-                    texels.put((byte) (brightest ? 255 : 0));
-                    texels.put((byte) 255);
-                }
-            }
-            texels.flip();
-            GLStateManager.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, LIGHTMAP_SIZE, LIGHTMAP_SIZE, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels);
-        } finally {
-            MemoryUtil.memFree(texels);
-        }
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        return id;
-    }
-
     private static void bindBaseTexture() {
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, baseTexture);
-        GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+        GlsmSdlHeadlessRig.bindBaseTexture(baseTexture);
     }
 
     private static void enableLightmapUnit(boolean vanillaTextureMatrix) {
@@ -100,13 +67,7 @@ class GlsmSdlFfpTest {
     }
 
     private static void quadTwoUnits(boolean vanillaBrightness) {
-        final short brightness = (short) (vanillaBrightness ? 240 : 0);
-        GLStateManager.glBegin(GL11.GL_QUADS);
-        GlsmSdlHeadlessRig.emitVertex(-1.0f, -1.0f, 0.0f, 0.0f, true, brightness);
-        GlsmSdlHeadlessRig.emitVertex(1.0f, -1.0f, 1.0f, 0.0f, true, brightness);
-        GlsmSdlHeadlessRig.emitVertex(1.0f, 1.0f, 1.0f, 1.0f, true, brightness);
-        GlsmSdlHeadlessRig.emitVertex(-1.0f, 1.0f, 0.0f, 1.0f, true, brightness);
-        GLStateManager.glEnd();
+        GlsmSdlHeadlessRig.quadTwoUnits((short) (vanillaBrightness ? 240 : 0));
     }
 
     private static void assertTexelEverywhere(String label) {
@@ -124,22 +85,15 @@ class GlsmSdlFfpTest {
         assertTexelEverywhere("single unit");
     }
 
-    @Test
-    void twoUnitTerrainQuadWithVanillaLightmapMatrixShowsTheTexel() {
+    /** Vanilla pairs its lightmap texture matrix with brightness 240; the identity matrix case uses brightness 0. */
+    @ParameterizedTest(name = "vanilla lightmap matrix and brightness: {0}")
+    @ValueSource(booleans = {true, false})
+    void twoUnitTerrainQuadShowsTheTexel(boolean vanilla) {
         bindBaseTexture();
-        enableLightmapUnit(true);
+        enableLightmapUnit(vanilla);
         GlsmSdlHeadlessRig.terrainRenderState();
-        quadTwoUnits(true);
-        assertTexelEverywhere("two units, vanilla lightmap matrix");
-    }
-
-    @Test
-    void twoUnitTerrainQuadWithIdentityLightmapMatrixShowsTheTexel() {
-        bindBaseTexture();
-        enableLightmapUnit(false);
-        GlsmSdlHeadlessRig.terrainRenderState();
-        quadTwoUnits(false);
-        assertTexelEverywhere("two units, identity lightmap matrix, zero brightness");
+        quadTwoUnits(vanilla);
+        assertTexelEverywhere(vanilla ? "two units, vanilla lightmap matrix" : "two units, identity lightmap matrix, zero brightness");
     }
 
     @Test
@@ -226,9 +180,9 @@ class GlsmSdlFfpTest {
 
         final int[] pixels = GlsmSdlHeadlessRig.readTarget();
 
-        GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, 13, SIZE / 2, 0xFFFF0000, "entity -1 must render red");
-        GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, 32, SIZE / 2, 0xFF00FF00, "entity 7 must render green");
-        GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, 51, SIZE / 2, 0xFF0000FF, "entity 50020 must render blue");
+        GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, 13, SIZE / 2, GlsmSdlHeadlessRig.RED, "entity -1 must render red");
+        GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, 32, SIZE / 2, GlsmSdlHeadlessRig.GREEN, "entity 7 must render green");
+        GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, 51, SIZE / 2, GlsmSdlHeadlessRig.BLUE, "entity 50020 must render blue");
     }
 
     private static void enableGuiStandardItemLighting() {

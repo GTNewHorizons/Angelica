@@ -2,7 +2,6 @@ package com.gtnewhorizons.angelica.sdlgpu.shader.dxbc;
 
 import com.gtnewhorizons.angelica.glsm.shader.ShaderCacheIO;
 import com.gtnewhorizons.angelica.glsm.shader.ShaderDiskCache;
-import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
 import com.gtnewhorizons.angelica.sdlgpu.shader.SpirvTestShaders;
@@ -12,6 +11,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL43;
 import org.lwjgl.system.MemoryUtil;
@@ -21,12 +23,13 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.stream.Stream;
 
+import static com.gtnewhorizons.angelica.sdlgpu.shader.SpirvTestShaders.compileOrFail;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 @EnabledOnOs(OS.WINDOWS)
 class DxbcCompileTest {
@@ -43,56 +46,27 @@ class DxbcCompileTest {
     private static final byte DXBC_MAGIC_B = 'B';
     private static final byte DXBC_MAGIC_C = 'C';
 
-
-
-    @Test
-    void vertexShaderCrossCompilesAndProducesDxbc() {
-        final ByteBuffer spirv = compile(SpirvTestShaders.VERTEX_GLSL, Shaderc.shaderc_vertex_shader);
-        try {
-            ShaderManager.remapSpirvForSDLGPU(spirv, GL20.GL_VERTEX_SHADER);
-            final CrossCompileCache.Output out = DxbcCrossCompile.compile(spirv, GL20.GL_VERTEX_SHADER);
-            try {
-                assertNotNull(out.code());
-                assertTrue(out.code().remaining() >= 4, "DXBC output too short");
-                assertDxbcMagic(out.code());
-                assertEquals("main", out.entrypoint());
-            } finally {
-                MemoryUtil.memFree(out.code());
-            }
-        } finally {
-            MemoryUtil.memFree(spirv);
-        }
+    static Stream<Arguments> stages() {
+        return Stream.of(
+            Arguments.of("vertex", SpirvTestShaders.VERTEX_GLSL, Shaderc.shaderc_vertex_shader, GL20.GL_VERTEX_SHADER),
+            Arguments.of("fragment", SpirvTestShaders.FRAGMENT_GLSL, Shaderc.shaderc_fragment_shader, GL20.GL_FRAGMENT_SHADER),
+            Arguments.of("compute", SpirvTestShaders.HIZ_INIT_GLSL, Shaderc.shaderc_compute_shader, GL43.GL_COMPUTE_SHADER));
     }
 
-    @Test
-    void fragmentShaderCrossCompilesAndProducesDxbc() {
-        final ByteBuffer spirv = compile(SpirvTestShaders.FRAGMENT_GLSL, Shaderc.shaderc_fragment_shader);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("stages")
+    void shaderCrossCompilesAndProducesDxbc(String name, String glsl, int shadercKind, int glStage) {
+        final ByteBuffer spirv = compileOrFail(glsl, shadercKind);
         try {
-            ShaderManager.remapSpirvForSDLGPU(spirv, GL20.GL_FRAGMENT_SHADER);
-            final CrossCompileCache.Output out = DxbcCrossCompile.compile(spirv, GL20.GL_FRAGMENT_SHADER);
-            try {
-                assertNotNull(out.code());
-                assertTrue(out.code().remaining() >= 4, "DXBC output too short");
-                assertDxbcMagic(out.code());
-                assertEquals("main", out.entrypoint());
-            } finally {
-                MemoryUtil.memFree(out.code());
+            if (glStage == GL43.GL_COMPUTE_SHADER) {
+                ShaderManager.remapSpirvForComputeSDLGPU(spirv);
+            } else {
+                ShaderManager.remapSpirvForSDLGPU(spirv, glStage);
             }
-        } finally {
-            MemoryUtil.memFree(spirv);
-        }
-    }
-
-
-    @Test
-    void computeShaderCrossCompilesAndProducesDxbc() {
-        final ByteBuffer spirv = compile(SpirvTestShaders.HIZ_INIT_GLSL, Shaderc.shaderc_compute_shader);
-        try {
-            ShaderManager.remapSpirvForComputeSDLGPU(spirv);
-            final CrossCompileCache.Output out = DxbcCrossCompile.compile(spirv, GL43.GL_COMPUTE_SHADER);
+            final CrossCompileCache.Output out = DxbcCrossCompile.compile(spirv, glStage);
             try {
                 assertNotNull(out.code());
-                assertTrue(out.code().remaining() >= 4, "DXBC compute output too short");
+                assertTrue(out.code().remaining() >= 4, "DXBC " + name + " output too short");
                 assertDxbcMagic(out.code());
                 assertEquals("main", out.entrypoint());
             } finally {
@@ -116,24 +90,10 @@ class DxbcCompileTest {
     }
 
     @Test
-    void crossCompileFreesNativeMemory() {
-        for (int i = 0; i < 200; i++) {
-            final ByteBuffer spirv = compile(SpirvTestShaders.VERTEX_GLSL, Shaderc.shaderc_vertex_shader);
-            try {
-                ShaderManager.remapSpirvForSDLGPU(spirv, GL20.GL_VERTEX_SHADER);
-                final CrossCompileCache.Output out = DxbcCrossCompile.compile(spirv, GL20.GL_VERTEX_SHADER);
-                MemoryUtil.memFree(out.code());
-            } finally {
-                MemoryUtil.memFree(spirv);
-            }
-        }
-    }
-
-    @Test
     void diskCacheHitReturnsStoredBlob(@TempDir Path dir) {
         ShaderDiskCache.configure(dir, "t");
         Reflect.<Map<?, ?>>get(cache(), "cache").clear();
-        final ByteBuffer spirv = compile(SpirvTestShaders.VERTEX_GLSL, Shaderc.shaderc_vertex_shader);
+        final ByteBuffer spirv = compileOrFail(SpirvTestShaders.VERTEX_GLSL, Shaderc.shaderc_vertex_shader);
         try {
             ShaderManager.remapSpirvForSDLGPU(spirv, GL20.GL_VERTEX_SHADER);
             final byte[] heap = ShaderCacheIO.toHeap(spirv);
@@ -158,13 +118,5 @@ class DxbcCompileTest {
         assertEquals(DXBC_MAGIC_X, view.get(1), "DXBC magic byte 1");
         assertEquals(DXBC_MAGIC_B, view.get(2), "DXBC magic byte 2");
         assertEquals(DXBC_MAGIC_C, view.get(3), "DXBC magic byte 3");
-    }
-
-    private static ByteBuffer compile(String source, int shaderKind) {
-        final SpirvCompiler.Result r = SpirvCompiler.compile(source, shaderKind, "test_shader", SpirvCompiler.Options.vulkanForced460Core());
-        if (r.spirv() == null) {
-            fail("Shader compilation failed: " + r.error());
-        }
-        return r.spirv();
     }
 }

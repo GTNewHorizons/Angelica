@@ -406,6 +406,7 @@ public class GLStateManager {
     // Deferred texture deletion: names kept valid until glGenTextures recycles them.
     // Emulates Mesa/compat-profile behavior where delete-then-bind doesn't error.
     private static final IntOpenHashSet deferredDeleteTextures = new IntOpenHashSet();
+    private static final IntOpenHashSet unshrinkableTextures = new IntOpenHashSet();
     private static final IntOpenHashSet writeMappedBuffers = new IntOpenHashSet();
 
     @Getter private static Vendor VENDOR;
@@ -2358,6 +2359,7 @@ public class GLStateManager {
             final boolean locked = acquireDrawLock();
             try {
                 deferredDeleteTextures.remove(texture);
+                if (target != GL11.GL_TEXTURE_2D) unshrinkableTextures.add(texture);
             } finally {
                 if (locked) releaseDrawLock();
             }
@@ -2622,17 +2624,21 @@ public class GLStateManager {
         if (id == 0) return;
 
         final int savedUnit = glCtx.activeTextureUnit.getValue();
-        final int savedBinding = glCtx.textures.getTextureUnitBindings(savedUnit).getBinding();
+        final TextureBindingStack savedUnitBindings = glCtx.textures.getTextureUnitBindings(savedUnit);
+        final int savedBinding = savedUnitBindings.getBinding();
+        final int savedTarget = savedUnitBindings.getTarget();
         boolean changedUnit = false;
 
         // Unbind from all units that have this texture
         for (int i = 0; i <= glCtx.maxBoundTextureUnit; i++) {
-            if (glCtx.textures.getTextureUnitBindings(i).getBinding() == id) {
+            final TextureBindingStack unitBindings = glCtx.textures.getTextureUnitBindings(i);
+            if (unitBindings.getBinding() == id) {
                 if (i != savedUnit) {
                     RENDER_BACKEND.activeTexture(GL13.GL_TEXTURE0 + i);
                     changedUnit = true;
                 }
-                RENDER_BACKEND.bindTexture(GL11.GL_TEXTURE_2D, 0);
+                final int unitTarget = unitBindings.getTarget();
+                RENDER_BACKEND.bindTexture(unitTarget == 0 ? GL11.GL_TEXTURE_2D : unitTarget, 0);
             }
         }
 
@@ -2640,6 +2646,17 @@ public class GLStateManager {
         if (changedUnit) {
             RENDER_BACKEND.activeTexture(GL13.GL_TEXTURE0 + savedUnit);
         }
+
+        final boolean shrinkable;
+        final boolean locked = acquireDrawLock();
+        try {
+            shrinkable = !unshrinkableTextures.contains(id);
+            deferredDeleteTextures.add(id);
+        } finally {
+            if (locked) releaseDrawLock();
+        }
+        if (!shrinkable) return;
+
         RENDER_BACKEND.bindTexture(GL11.GL_TEXTURE_2D, id);
         RENDER_BACKEND.texParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 0);
         suspendPixelUnpackBuffer();
@@ -2647,14 +2664,8 @@ public class GLStateManager {
         restorePixelUnpackBuffer();
 
         // Restore previous binding on active unit
-        RENDER_BACKEND.bindTexture(GL11.GL_TEXTURE_2D, savedBinding == id ? 0 : savedBinding);
-
-        final boolean locked = acquireDrawLock();
-        try {
-            deferredDeleteTextures.add(id);
-        } finally {
-            if (locked) releaseDrawLock();
-        }
+        final boolean savedIs2D = savedTarget == GL11.GL_TEXTURE_2D || savedTarget == 0;
+        RENDER_BACKEND.bindTexture(GL11.GL_TEXTURE_2D, savedBinding == id || !savedIs2D ? 0 : savedBinding);
     }
 
     /** Flush deferred deletes so the driver can recycle names. */
@@ -2666,6 +2677,7 @@ public class GLStateManager {
         while (it.hasNext()) {
             final int id = it.nextInt();
             RENDER_BACKEND.deleteTextures(id);
+            unshrinkableTextures.remove(id);
             clearTextureBindings(primary, id);
             for (int i = 0; i < drawables.length; i++) {
                 clearTextureBindings(drawables[i], id);
@@ -5847,6 +5859,14 @@ public class GLStateManager {
     }
     public static void glTexStorage2D(int target, int levels, int internalFormat, int width, int height) {
         RENDER_BACKEND.texStorage2D(target, levels, internalFormat, width, height);
+        if (target == GL11.GL_TEXTURE_2D) {
+            final boolean locked = acquireDrawLock();
+            try {
+                unshrinkableTextures.add(getBoundTextureForServerState());
+            } finally {
+                if (locked) releaseDrawLock();
+            }
+        }
         TextureInfoCache.INSTANCE.onTexStorage2D(target, internalFormat, width, height);
     }
     public static void glClearTexImage(int texture, int level, int format, int type, ByteBuffer data) { RENDER_BACKEND.clearTexImage(texture, level, format, type); }

@@ -1,11 +1,9 @@
 package net.coderbot.iris.pipeline.transform;
 
-import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
-import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
-import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.pipeline.transform.RwImageStoreExtractor.VertexInput;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,6 +12,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
+import static net.coderbot.iris.pipeline.transform.TransformTestSupport.TEX_LM;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -58,18 +57,21 @@ class VertexReplayExtractionTest {
         void main() { gl_FragData[0] = texture2D(tex, texCoord); }
         """;
 
-    private static final InputAvailability TEX_LM = InputAvailability.of(true, true);
+    private static int previousMaxGlslVersion;
 
     @BeforeAll
-    static void initShaderTransformer() throws Exception {
-        Reflect.setStatic(RenderSystem.class, "maxGlslVersion", 460);
-        ShaderTransformer.init();
+    static void pinGlslVersion() {
+        previousMaxGlslVersion = TransformTestSupport.pinGlslVersion(460);
+    }
+
+    @AfterAll
+    static void restoreGlslVersion() {
+        TransformTestSupport.restoreGlslVersion(previousMaxGlslVersion);
     }
 
     @BeforeEach
     void clearCaches() {
-        TransformPatcher.clearCache();
-        ShaderTransformer.clearCache();
+        TransformTestSupport.clearCaches();
     }
 
     private static RwImageStoreExtractor.Result replayOf(Map<PatchShaderType, String> transformed) {
@@ -193,7 +195,7 @@ class VertexReplayExtractionTest {
                 gl_Position = iris_Vertex;
             }
             """);
-        final String compute = result.computeSource().replaceAll("\\s+", " ");
+        final String compute = TransformTestSupport.norm(result.computeSource());
         assertTrue(compute.contains("void fill ( out float value )"), compute);
         assertFalse(compute.contains("out vec2 texCoord"), compute);
     }
@@ -217,7 +219,7 @@ class VertexReplayExtractionTest {
             }
             """);
         assertNotNull(result);
-        final String compute = result.computeSource().replaceAll("\\s+", " ");
+        final String compute = TransformTestSupport.norm(result.computeSource());
         assertTrue(compute.contains("layout ( std430 ) buffer ;"), compute);
         assertFalse(compute.contains("gl_PerVertex"), compute);
         assertTrue(compute.contains("struct Outputs { int id ; vec2 uv ; }; Outputs v ;"), compute);

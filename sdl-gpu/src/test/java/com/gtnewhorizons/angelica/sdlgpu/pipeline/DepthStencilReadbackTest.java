@@ -1,11 +1,11 @@
 package com.gtnewhorizons.angelica.sdlgpu.pipeline;
 
+import com.gtnewhorizons.angelica.sdlgpu.RealDeviceExtension;
 import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
 import com.gtnewhorizons.angelica.sdlgpu.resource.FBOClearTracker;
 import com.gtnewhorizons.angelica.sdlgpu.resource.FboState;
-import com.gtnewhorizons.angelica.sdlgpu.resource.PixelOps;
 import com.gtnewhorizons.angelica.sdlgpu.resource.TextureOps;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
 import com.gtnewhorizons.angelica.sdlgpu.util.MemoryAccess;
@@ -14,8 +14,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL30;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.sdl.SDL_GPUDepthStencilTargetInfo;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
@@ -27,9 +26,9 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.lwjgl.sdl.SDLGPU.SDL_GPU_LOADOP_LOAD;
 import static org.lwjgl.sdl.SDLGPU.SDL_GPU_STOREOP_STORE;
-import static org.lwjgl.sdl.SDLGPU.SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET;
 import static org.lwjgl.system.MemoryStack.stackPush;
 
+@ExtendWith(RealDeviceExtension.class)
 @Tag("glsm-sdl")
 @Timeout(120)
 class DepthStencilReadbackTest {
@@ -55,9 +54,8 @@ class DepthStencilReadbackTest {
 
     @BeforeAll
     static void setUp() throws Exception {
-        rig = SdlTestRig.acquireRealDevice();
+        rig = RealDeviceExtension.rig();
         frameManager = rig.frameManager;
-        rig.resourceManager.cachePreferredDepthFormats();
         sm = new ShaderManager(rig.device);
         store = new PipelineStore(rig.device);
         clearTracker = new FBOClearTracker(frameManager, rig.resourceManager, sm);
@@ -66,11 +64,9 @@ class DepthStencilReadbackTest {
         readback = new DepthStencilReadback(frameManager, rig.resourceManager, store, sm, clearTracker);
         st = new ContextState();
 
-        rig.resourceManager.createTexture(9801, GL11.GL_TEXTURE_2D, GL30.GL_DEPTH24_STENCIL8, W, H, 1, 1);
-        depthTexture = rig.resourceManager.ensureTextureUsage(9801, SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET);
-        assertNotEquals(0L, depthTexture, "depth+stencil texture creation failed");
-        depthFormat = rig.resourceManager.getTextureMeta(9801).sdlFormat();
-        assertTrue(PixelOps.isDepthStencilFormat(depthFormat), "test needs a packed depth+stencil format");
+        final RealDeviceExtension.Target depth = RealDeviceExtension.depthStencilTarget(9801, W, H);
+        depthTexture = depth.texture();
+        depthFormat = depth.sdlFormat();
     }
 
     @AfterAll
@@ -81,7 +77,6 @@ class DepthStencilReadbackTest {
             readback.shutdown();
         }
         if (store != null) store.shutdown();
-        SdlTestRig.releaseRealDevice();
     }
 
     private static void clearRegion(float depth, int stencil) {

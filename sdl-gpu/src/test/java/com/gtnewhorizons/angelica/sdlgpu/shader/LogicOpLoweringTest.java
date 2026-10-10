@@ -10,6 +10,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.function.IntBinaryOperator;
 
+import static com.gtnewhorizons.angelica.sdlgpu.shader.SpirvTestShaders.compileOrFail;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -36,9 +37,7 @@ class LogicOpLoweringTest {
     }
 
     private static List<String> compileAndReflectSamplers(String src) {
-        final SpirvCompiler.Result r = SpirvCompiler.compile(src, Shaderc.shaderc_fragment_shader, "logicop.frag", SpirvCompiler.Options.vulkanForced460Core());
-        assertNotNull(r.spirv(), () -> "compile failed: " + r.error() + "\n" + src);
-        final ByteBuffer spirv = r.spirv();
+        final ByteBuffer spirv = compileOrFail(src, Shaderc.shaderc_fragment_shader);
         try {
             ShaderManager.remapSpirvForSDLGPU(spirv, GL20.GL_FRAGMENT_SHADER);
             return ShaderManager.reflectStage(spirv, false).samplerNames();

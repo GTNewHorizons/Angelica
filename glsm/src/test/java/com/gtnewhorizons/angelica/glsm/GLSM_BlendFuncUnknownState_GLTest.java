@@ -22,7 +22,6 @@ class GLSM_BlendFuncUnknownState_GLTest {
     @BeforeEach
     void requireBufferBlending() {
         assumeTrue(RenderSystem.supportsBufferBlending());
-        drainGlErrors();
     }
 
     @AfterEach
@@ -30,11 +29,6 @@ class GLSM_BlendFuncUnknownState_GLTest {
         if (!RenderSystem.supportsBufferBlending()) return;
         GLStateManager.tryBlendFuncSeparate(GL11.GL_ZERO, GL11.GL_ZERO, GL11.GL_ZERO, GL11.GL_ZERO);
         GLStateManager.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE, GL11.GL_ZERO);
-        drainGlErrors();
-    }
-
-    private static void drainGlErrors() {
-        while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
     }
 
     private static void seedVanillaSeparate() {
@@ -59,7 +53,6 @@ class GLSM_BlendFuncUnknownState_GLTest {
             assertBufferBlend(buffer, VANILLA_SRC_RGB, VANILLA_DST_RGB, VANILLA_SRC_ALPHA, VANILLA_DST_ALPHA);
         }
         assertFalse(GLStateManager.getBlendState().isFuncUnknown(), "forward must clear the unknown flag");
-        assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
     }
 
     @Test

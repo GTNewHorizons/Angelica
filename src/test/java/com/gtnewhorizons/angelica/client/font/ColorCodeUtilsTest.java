@@ -4,6 +4,11 @@ import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -27,42 +32,26 @@ class ColorCodeUtilsTest {
         ColorCodeUtils.setConversionSuppressor(null);
     }
 
-    @Test
-    void convertsHexShorthand() {
-        assertEquals("§x§f§f§0§0§0§0Hello", ColorCodeUtils.convertAmpersandToSectionX("&#ff0000Hello"));
+    static Stream<Arguments> conversions() {
+        return Stream.of(
+            Arguments.of("hex shorthand", "&#ff0000Hello", "§x§f§f§0§0§0§0Hello"),
+            Arguments.of("hex digit case is preserved", "&#FF0000Hi", "§x§F§F§0§0§0§0Hi"),
+            Arguments.of("single codes", "&cred &lbold &rreset &qrainbow", "§cred §lbold §rreset §qrainbow"),
+            Arguments.of("gradient form", "&g&#ff0000&#0000ffGrad", "§g§x§f§f§0§0§0§0§x§0§0§0§0§f§fGrad"),
+            Arguments.of("bare gradient prefix stays literal", "&gplain", "&gplain"),
+            Arguments.of("escaped ampersand becomes the sentinel", "\\&c", ColorCodeUtils.ESCAPED_AMPERSAND + "c"));
     }
 
-    @Test
-    void preservesHexDigitCase() {
-        assertEquals("§x§F§F§0§0§0§0Hi", ColorCodeUtils.convertAmpersandToSectionX("&#FF0000Hi"));
-    }
-
-    @Test
-    void convertsSingleCodes() {
-        assertEquals("§cred §lbold §rreset §qrainbow", ColorCodeUtils.convertAmpersandToSectionX("&cred &lbold &rreset &qrainbow"));
-    }
-
-    @Test
-    void convertsGradientForm() {
-        assertEquals("§g§x§f§f§0§0§0§0§x§0§0§0§0§f§fGrad",
-            ColorCodeUtils.convertAmpersandToSectionX("&g&#ff0000&#0000ffGrad"));
-    }
-
-    @Test
-    void bareGradientPrefixStaysLiteral() {
-        assertEquals("&gplain", ColorCodeUtils.convertAmpersandToSectionX("&gplain"));
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("conversions")
+    void convertsAmpersandForms(String name, String input, String expected) {
+        assertEquals(expected, ColorCodeUtils.convertAmpersandToSectionX(input));
     }
 
     @Test
     void invalidHexStaysLiteral() {
         String input = "&#zzzzzz nope";
         assertSame(input, ColorCodeUtils.convertAmpersandToSectionX(input));
-    }
-
-    @Test
-    void escapedAmpersandBecomesSentinel() {
-        assertEquals(String.valueOf(ColorCodeUtils.ESCAPED_AMPERSAND) + "c",
-            ColorCodeUtils.convertAmpersandToSectionX("\\&c"));
     }
 
     @Test

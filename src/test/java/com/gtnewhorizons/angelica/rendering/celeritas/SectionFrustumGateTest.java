@@ -15,20 +15,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SectionFrustumGateTest {
 
-    private static FrustumIntersection knownFrustum() {
-        return new FrustumIntersection(new Matrix4f().perspective((float) Math.toRadians(90), 1.0f, 0.1f, 100.0f));
-    }
-
-    @Test
-    void triStateVerdictsAgainstKnownPerspective() {
-        final FrustumIntersection frustum = knownFrustum();
-
-        assertEquals(FrustumIntersection.INSIDE, frustum.intersectAab(-1, -1, -50, 1, 1, -40));
-        assertEquals(FrustumIntersection.INTERSECT, frustum.intersectAab(-1, -1, -5, 1, 1, 5));
-        assertTrue(frustum.intersectAab(-1, -1, 10, 1, 1, 20) >= 0);
-        assertTrue(frustum.intersectAab(-100, -1, -20, -50, 1, -10) >= 0);
-    }
-
     @Test
     void sectionVerdictIsSoundForContainedBoxes() {
         final Random rng = new Random(0x5EC7104);

@@ -26,7 +26,6 @@ class GlsmSdlLWJGLServiceRoutingTest {
 
     @BeforeAll
     static void boot() {
-        GlsmSdlHeadlessRig.boot();
         svc = SDLGPULWJGLService.create();
     }
 

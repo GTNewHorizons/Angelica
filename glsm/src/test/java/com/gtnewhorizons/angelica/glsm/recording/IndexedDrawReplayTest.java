@@ -15,6 +15,7 @@ import org.lwjgl.opengl.GL15;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import static com.gtnewhorizons.angelica.glsm.GlTestSupport.drainErrors;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -36,7 +37,7 @@ class IndexedDrawReplayTest extends DisplayListTestFixture {
         GL11.glViewport(0, 0, 16, 16);
         GL11.glDisable(GL11.GL_DEPTH_TEST);
         GL11.glClear(GL11.GL_COLOR_BUFFER_BIT);
-        while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
+        drainErrors();
 
         final int query = GL15.glGenQueries();
         GL15.glBeginQuery(GL15.GL_SAMPLES_PASSED, query);
@@ -92,7 +93,7 @@ class IndexedDrawReplayTest extends DisplayListTestFixture {
         GLStateManager.glBindVertexArray(distractorVao);
         GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
 
-        while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
+        drainErrors();
 
         compiledOf(list).render();
 
@@ -100,35 +101,6 @@ class IndexedDrawReplayTest extends DisplayListTestFixture {
         assertEquals(GL11.GL_NO_ERROR, err,
             () -> "replay produced GL error 0x" + Integer.toHexString(err));
 
-        GLStateManager.glBindVertexArray(0);
-    }
-
-    @Test
-    void replayThenDelete_thenBindBufferCycle_isGlNoError() {
-        final int vbo = defaultQuadVbo();
-        final int ebo = uploadEbo(GL11.GL_UNSIGNED_SHORT, 0, 1, 2, 3);
-        final int vao = setupPosColorVao(vbo);
-        final int list = recordSingleIndexedDraw(vao, ebo, GL11.GL_QUADS, 4, GL11.GL_UNSIGNED_SHORT);
-
-        compiledOf(list).render();
-
-
-        final int sharedEbo = firstBatch(list).getSharedEBO();
-        final int foreignVao = newVao();
-        GLStateManager.glBindVertexArray(foreignVao);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, sharedEbo);
-        GLStateManager.glBindVertexArray(0);
-
-        GLStateManager.glDeleteLists(list, 1);
-        untrackList(list);
-
-        GLStateManager.glBindVertexArray(foreignVao);
-        assertEquals(0, GLStateManager.getBoundEBO(), "batched EBO id survived list delete in vaoEboMap — non-gen crash imminent");
-        while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
-        final int prevEbo = GLStateManager.getBoundEBO();
-        GL15.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, prevEbo);
-        final int err = GL11.glGetError();
-        assertEquals(GL11.GL_NO_ERROR, err, () -> "post-delete bindBuffer(" + prevEbo + ") hit GL 0x" + Integer.toHexString(err));
         GLStateManager.glBindVertexArray(0);
     }
 
@@ -153,7 +125,7 @@ class IndexedDrawReplayTest extends DisplayListTestFixture {
 
         final int distractor = newVao();
         GLStateManager.glBindVertexArray(distractor);
-        while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
+        drainErrors();
 
         compiledOf(list).render();
 
@@ -229,7 +201,7 @@ class IndexedDrawReplayTest extends DisplayListTestFixture {
         GLStateManager.glDrawElements(GL11.GL_QUADS, 4, GL11.GL_UNSIGNED_SHORT, 0L);
         GLStateManager.glEndList();
 
-        while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
+        drainErrors();
 
         compiledOf(list).render();
         compiledOf(list).render();

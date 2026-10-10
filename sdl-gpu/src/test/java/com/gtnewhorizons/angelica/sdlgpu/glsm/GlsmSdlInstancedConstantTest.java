@@ -1,22 +1,20 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GlTestSupport;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.sdlgpu.SDLGPUGate;
 import com.gtnewhorizons.angelica.sdlgpu.device.Device;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
-import org.lwjgl.opengl.GL20;
 import org.lwjgl.system.MemoryUtil;
 
 import java.nio.FloatBuffer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Metal steps a per-instance constant binding by 16 bytes per instance.
@@ -48,29 +46,12 @@ class GlsmSdlInstancedConstantTest {
         }
         """;
 
-    @BeforeAll
-    static void boot() {
-        GlsmSdlHeadlessRig.boot();
-    }
-
-    private static int compile(int type, String source) {
-        final int shader = GLStateManager.glCreateShader(type);
-        GLStateManager.glShaderSource(shader, source);
-        GLStateManager.glCompileShader(shader);
-        assertTrue(GLStateManager.glGetShaderi(shader, GL20.GL_COMPILE_STATUS) != 0, () -> GLStateManager.glGetShaderInfoLog(shader));
-        return shader;
-    }
-
     @Test
     void everyInstanceReadsTheConstantWhenInstancesStepTheBinding() {
         final Device device = SDLGPUGate.device();
         final String driver = device.getDriverName();
         Reflect.set(device, "driverName", "metal");
-        final int program = GLStateManager.glCreateProgram();
-        GLStateManager.glAttachShader(program, compile(GL20.GL_VERTEX_SHADER, VERT));
-        GLStateManager.glAttachShader(program, compile(GL20.GL_FRAGMENT_SHADER, FRAG));
-        GLStateManager.glLinkProgram(program);
-        assertTrue(GLStateManager.glGetProgrami(program, GL20.GL_LINK_STATUS) != 0, "program did not link");
+        final int program = GlTestSupport.program(VERT, FRAG);
 
         final int vao = GLStateManager.glGenVertexArrays();
         final int vbo = GLStateManager.glGenBuffers();

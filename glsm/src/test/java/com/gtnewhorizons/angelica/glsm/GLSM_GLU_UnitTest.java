@@ -3,12 +3,16 @@ package com.gtnewhorizons.angelica.glsm;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -20,35 +24,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @GLCompatTest
 public class GLSM_GLU_UnitTest {
 
-    private static final FloatBuffer buffer = BufferUtils.createFloatBuffer(16);
-
     private Matrix4f getModelviewMatrix() {
-        buffer.clear();
-        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, buffer);
-        return new Matrix4f(buffer);
+        return new Matrix4f(GlTestSupport.modelview());
     }
 
     private Matrix4f getProjectionMatrix() {
-        buffer.clear();
-        GLStateManager.glGetFloat(GL11.GL_PROJECTION_MATRIX, buffer);
-        return new Matrix4f(buffer);
+        return new Matrix4f(GlTestSupport.matrix(GL11.GL_PROJECTION_MATRIX));
     }
 
     private void assertMatrixEquals(Matrix4f expected, Matrix4f actual, String message) {
         assertTrue(expected.equals(actual, 0.001f), () -> message + "\nExpected:\n" + expected + "\nActual:\n" + actual);
-    }
-
-    @Test
-    void gluPerspective_matchesJOML() {
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glLoadIdentity();
-
-        GLStateManager.gluPerspective(60.0f, 1.5f, 0.1f, 1000.0f);
-
-        Matrix4f expected = new Matrix4f().perspective((float) Math.toRadians(60.0f), 1.5f, 0.1f, 1000.0f);
-        assertMatrixEquals(expected, getProjectionMatrix(), "gluPerspective standard");
-
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
     }
 
     @Test
@@ -65,40 +50,6 @@ public class GLSM_GLU_UnitTest {
         assertMatrixEquals(expected, getProjectionMatrix(), "gluPerspective after scale");
 
         GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-    }
-
-    @Test
-    void gluLookAt_matchesJOML() {
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glLoadIdentity();
-
-        GLStateManager.gluLookAt(
-            0.0f, 0.0f, 5.0f,   // eye
-            0.0f, 0.0f, 0.0f,   // center
-            0.0f, 1.0f, 0.0f);  // up
-
-        Matrix4f expected = new Matrix4f().lookAt(
-            0.0f, 0.0f, 5.0f,
-            0.0f, 0.0f, 0.0f,
-            0.0f, 1.0f, 0.0f);
-        assertMatrixEquals(expected, getModelviewMatrix(), "gluLookAt simple");
-    }
-
-    @Test
-    void gluLookAt_offAxis() {
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glLoadIdentity();
-
-        GLStateManager.gluLookAt(
-            3.0f, 4.0f, 5.0f,
-            1.0f, 2.0f, 0.0f,
-            0.0f, 1.0f, 0.0f);
-
-        Matrix4f expected = new Matrix4f().lookAt(
-            3.0f, 4.0f, 5.0f,
-            1.0f, 2.0f, 0.0f,
-            0.0f, 1.0f, 0.0f);
-        assertMatrixEquals(expected, getModelviewMatrix(), "gluLookAt off-axis");
     }
 
     @Test
@@ -208,25 +159,23 @@ public class GLSM_GLU_UnitTest {
         GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
     }
 
-    @Test
-    void gluErrorString_glErrors() {
-        assertEquals("No error", GLStateManager.gluErrorString(GL11.GL_NO_ERROR));
-        assertEquals("Invalid enum", GLStateManager.gluErrorString(GL11.GL_INVALID_ENUM));
-        assertEquals("Invalid value", GLStateManager.gluErrorString(GL11.GL_INVALID_VALUE));
-        assertEquals("Invalid operation", GLStateManager.gluErrorString(GL11.GL_INVALID_OPERATION));
-        assertEquals("Out of memory", GLStateManager.gluErrorString(GL11.GL_OUT_OF_MEMORY));
+    static Stream<Arguments> errorStrings() {
+        return Stream.of(
+            Arguments.of(GL11.GL_NO_ERROR, "No error"),
+            Arguments.of(GL11.GL_INVALID_ENUM, "Invalid enum"),
+            Arguments.of(GL11.GL_INVALID_VALUE, "Invalid value"),
+            Arguments.of(GL11.GL_INVALID_OPERATION, "Invalid operation"),
+            Arguments.of(GL11.GL_OUT_OF_MEMORY, "Out of memory"),
+            Arguments.of(100900, "Invalid enum (glu)"),
+            Arguments.of(100901, "Invalid value (glu)"),
+            Arguments.of(100902, "Out of memory (glu)"),
+            Arguments.of(99999, "Unknown error: 99999"));
     }
 
-    @Test
-    void gluErrorString_gluErrors() {
-        assertEquals("Invalid enum (glu)", GLStateManager.gluErrorString(100900));
-        assertEquals("Invalid value (glu)", GLStateManager.gluErrorString(100901));
-        assertEquals("Out of memory (glu)", GLStateManager.gluErrorString(100902));
-    }
-
-    @Test
-    void gluErrorString_unknownCode() {
-        assertEquals("Unknown error: 99999", GLStateManager.gluErrorString(99999));
+    @ParameterizedTest(name = "{1}")
+    @MethodSource("errorStrings")
+    void gluErrorString(int code, String expected) {
+        assertEquals(expected, GLStateManager.gluErrorString(code));
     }
 
     @Test

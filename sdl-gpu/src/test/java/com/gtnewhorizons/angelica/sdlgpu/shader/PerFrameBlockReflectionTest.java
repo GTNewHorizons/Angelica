@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.sdlgpu.shader;
 
-import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.util.shaderc.Shaderc;
 
@@ -8,8 +7,8 @@ import java.nio.ByteBuffer;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import static com.gtnewhorizons.angelica.sdlgpu.shader.SpirvTestShaders.compileOrFail;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.lwjgl.system.MemoryUtil.memFree;
 class PerFrameBlockReflectionTest {
@@ -38,7 +37,6 @@ class PerFrameBlockReflectionTest {
         assertEquals(80, offsets.get("fogColor"));
         assertEquals(96, offsets.get("rainStrength"));
     }
-
 
     @Test
     void offsetsAreIdenticalAcrossProgramsReferencingDifferentMembers() {
@@ -94,9 +92,7 @@ class PerFrameBlockReflectionTest {
     }
 
     private static ShaderManager.StageReflection reflect(String source) {
-        final SpirvCompiler.Result r = SpirvCompiler.compile(source, Shaderc.shaderc_fragment_shader, "test.frag", SpirvCompiler.Options.vulkanForced460Core());
-        assertNotNull(r.spirv(), () -> "shaderc failed: " + r.error());
-        final ByteBuffer spirv = r.spirv();
+        final ByteBuffer spirv = compileOrFail(source, Shaderc.shaderc_fragment_shader);
         try {
             return ShaderManager.reflectStage(spirv, false);
         } finally {

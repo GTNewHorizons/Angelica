@@ -11,10 +11,10 @@ import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL31;
 
 import java.nio.DoubleBuffer;
-import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.gtnewhorizons.angelica.glsm.GlTestSupport.floats;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
@@ -23,12 +23,6 @@ class FfpUniformBlockDedupTest {
 
     private static int boundRangeStart() {
         return GL30.glGetInteger(GL31.GL_UNIFORM_BUFFER_START, FFPUniformBlock.BINDING_POINT);
-    }
-
-    private static FloatBuffer floats(float... values) {
-        final FloatBuffer buf = BufferUtils.createFloatBuffer(values.length);
-        buf.put(values).flip();
-        return buf;
     }
 
     private static DoubleBuffer doubles(double... values) {

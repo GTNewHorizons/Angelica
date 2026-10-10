@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.sdlgpu.frame;
 
 import com.gtnewhorizons.angelica.glsm.backend.MainThreadPump;
+import com.gtnewhorizons.angelica.glsm.testutil.TestThreads;
 import com.gtnewhorizons.angelica.sdlgpu.device.Device;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -115,9 +116,7 @@ class PresenterTest {
 
         p.requestPresent(1L, 10, 10, SDL_FLIP_NONE);
 
-        final Thread windowThread = new Thread(executor::runNext, "window-thread");
-        windowThread.start();
-        windowThread.join();
+        TestThreads.run("window-thread", executor::runNext);
 
         assertEquals(before, fm.registeredFrameCount(), "the window thread must stay out of the frame registry");
     }

@@ -19,8 +19,8 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
-import static com.gtnewhorizons.angelica.rendering.PlayerReflectionLayoutTest.MODEL_SCALE;
-import static com.gtnewhorizons.angelica.rendering.PlayerReflectionLayoutTest.emit;
+import static com.gtnewhorizons.angelica.rendering.PlayerReflectionTestSupport.MODEL_SCALE;
+import static com.gtnewhorizons.angelica.rendering.PlayerReflectionTestSupport.emit;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
@@ -108,7 +108,7 @@ class PlayerReflectionSsboMappingTest {
         GLStateManager.glBindVertexArray(vao);
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
         GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, verts, GL15.GL_STATIC_DRAW);
-        final int stride = PlayerReflectionLayoutTest.FLOATS * 4;
+        final int stride = PlayerReflectionTestSupport.FLOATS * 4;
         GL20.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, stride, 0L);
         GL20.glEnableVertexAttribArray(0);
         GL20.glVertexAttribPointer(1, 2, GL11.GL_FLOAT, false, stride, 12L);
@@ -138,8 +138,7 @@ class PlayerReflectionSsboMappingTest {
         return out;
     }
 
-    @Test
-    void quadIndexPatternProducesTheVertexIdsThePackIndexesBy() {
+    private float[] drawBipedIntoSsbos() {
         assumeTrue(RenderSystem.supportsSSBO(), "SSBOs unsupported");
 
         final float[] xyzuv = emit(new ModelBiped(0.0f), MODEL_SCALE);
@@ -150,9 +149,15 @@ class PlayerReflectionSsboMappingTest {
         GLStateManager.glUseProgram(program);
         GLStateManager.glBindVertexArray(vao);
         QuadConverter.drawQuadsAsTriangles(GLStateManager.ctx(), 0, PlayerReflectionCapture.VERTEX_COUNT);
+        return xyzuv;
+    }
+
+    @Test
+    void quadIndexPatternProducesTheVertexIdsThePackIndexesBy() {
+        final float[] xyzuv = drawBipedIntoSsbos();
 
         final ByteBuffer ssboData = readback(ssbo, SSBO_BYTES);
-        final int floats = PlayerReflectionLayoutTest.FLOATS;
+        final int floats = PlayerReflectionTestSupport.FLOATS;
 
         for (int i = 0; i < SSBO_ENTRIES; i++) {
             final int vertexId = i + i / 3;
@@ -167,16 +172,7 @@ class PlayerReflectionSsboMappingTest {
 
     @Test
     void everyQuadCornerRunsTheVertexShader() {
-        assumeTrue(RenderSystem.supportsSSBO(), "SSBOs unsupported");
-
-        final float[] xyzuv = emit(new ModelBiped(0.0f), MODEL_SCALE);
-        buildProgram();
-        uploadVertices(xyzuv);
-        allocateSsbo();
-
-        GLStateManager.glUseProgram(program);
-        GLStateManager.glBindVertexArray(vao);
-        QuadConverter.drawQuadsAsTriangles(GLStateManager.ctx(), 0, PlayerReflectionCapture.VERTEX_COUNT);
+        drawBipedIntoSsbos();
 
         final ByteBuffer visitedData = readback(visitedSsbo, VISITED_BYTES);
         for (int vertexId = 0; vertexId < PlayerReflectionCapture.VERTEX_COUNT; vertexId++) {

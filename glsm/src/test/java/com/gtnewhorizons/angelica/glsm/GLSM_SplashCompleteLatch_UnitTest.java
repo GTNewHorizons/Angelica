@@ -54,18 +54,14 @@ public class GLSM_SplashCompleteLatch_UnitTest {
     @Test
     void cachingIsThreadScopedBeforeTheLatchAndGlobalAfter() throws Exception {
         final AtomicBoolean cachingOffThread = new AtomicBoolean(true);
-        final Runnable probe = () -> cachingOffThread.set(GLStateManager.isCachingEnabled());
+        final TestThreads.Body probe = () -> cachingOffThread.set(GLStateManager.isCachingEnabled());
 
-        Thread t = new Thread(probe, "non-holder");
-        t.start();
-        t.join();
+        TestThreads.run("non-holder", probe);
         assertFalse(cachingOffThread.get(), "caching must be holder-scoped during the dual-context window");
 
         GLStateManager.markSplashComplete("test");
 
-        t = new Thread(probe, "non-holder");
-        t.start();
-        t.join();
+        TestThreads.run("non-holder", probe);
         assertTrue(cachingOffThread.get(), "after the latch caching is global - this is what the latch buys");
     }
 

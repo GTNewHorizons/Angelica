@@ -1,10 +1,12 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL30;
@@ -14,6 +16,7 @@ import org.lwjgl.opengl.GL44;
 import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -30,11 +33,6 @@ class GlsmSdlBufferMappingLifetimeTest {
     private static final int PERSISTENT_STORAGE = GL44.GL_MAP_PERSISTENT_BIT | GL30.GL_MAP_WRITE_BIT | GL44.GL_MAP_COHERENT_BIT | GL44.GL_CLIENT_STORAGE_BIT;
     private static final int PERSISTENT_MAP = GL44.GL_MAP_PERSISTENT_BIT | GL30.GL_MAP_WRITE_BIT | GL44.GL_MAP_COHERENT_BIT;
     private static final int PLAIN_MAP = GL30.GL_MAP_WRITE_BIT | GL30.GL_MAP_INVALIDATE_BUFFER_BIT;
-
-    @BeforeAll
-    static void boot() {
-        GlsmSdlHeadlessRig.boot();
-    }
 
     private static void fill(ByteBuffer buf, int seed) {
         for (int i = 0; i < buf.capacity(); i++) buf.put(i, (byte) (seed * 37 + i * 7 + 1));
@@ -300,7 +298,15 @@ class GlsmSdlBufferMappingLifetimeTest {
         }
     }
 
-    private static void assertBufferDataUnmapsPlainMapping(int target) {
+    static Stream<Arguments> plainMapTargets() {
+        return Stream.of(
+            Arguments.of("GL_ARRAY_BUFFER", GL15.GL_ARRAY_BUFFER),
+            Arguments.of("GL_UNIFORM_BUFFER", GL31.GL_UNIFORM_BUFFER));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("plainMapTargets")
+    void bufferDataOnMappedBufferUnmapsIt(String name, int target) {
         final int id = GLStateManager.glGenBuffers();
         try {
             GLStateManager.glBindBuffer(target, id);
@@ -312,16 +318,6 @@ class GlsmSdlBufferMappingLifetimeTest {
         } finally {
             GLStateManager.glDeleteBuffers(id);
         }
-    }
-
-    @Test
-    void bufferDataOnMappedArrayBufferUnmapsIt() {
-        assertBufferDataUnmapsPlainMapping(GL15.GL_ARRAY_BUFFER);
-    }
-
-    @Test
-    void bufferDataOnMappedUniformBufferUnmapsIt() {
-        assertBufferDataUnmapsPlainMapping(GL31.GL_UNIFORM_BUFFER);
     }
 
     @Test

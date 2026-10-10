@@ -40,21 +40,15 @@ class ShaderTransformerDiskCacheTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        savedMaxGlsl = Reflect.getStatic(RenderSystem.class, "maxGlslVersion");
-        Reflect.setStatic(RenderSystem.class, "maxGlslVersion", 460);
-        TransformPatcher.clearCache();
-        ShaderTransformer.clearCache();
-        ShaderTransformer.init();
+        TransformTestSupport.clearCaches();
+        savedMaxGlsl = TransformTestSupport.pinGlslVersion(460);
         ShaderDiskCache.configure(dir, "t");
     }
 
     @AfterEach
     void tearDown() throws Exception {
-        TransformPatcher.clearCache();
-        ShaderTransformer.clearCache();
         Reflect.setStatic(ShaderDiskCache.class, "root", null);
-        Reflect.setStatic(RenderSystem.class, "maxGlslVersion", savedMaxGlsl);
-        ShaderTransformer.init();
+        TransformTestSupport.restoreGlslVersion(savedMaxGlsl);
     }
 
     private static EnumMap<PatchShaderType, String> compositeInputs() {
@@ -74,8 +68,7 @@ class ShaderTransformerDiskCacheTest {
     @Test
     void compositeDiskHitSkipsTransform() {
         assertNotNull(TransformPatcher.patchComposite(VERTEX, null, FRAGMENT));
-        TransformPatcher.clearCache();
-        ShaderTransformer.clearCache();
+        TransformTestSupport.clearCaches();
 
         ShaderDiskCache.putStrings(ShaderTransformer.diskKey(Patch.COMPOSITE, compositeInputs(), compositeParams()), Map.of("VERTEX", "POISON-V", "FRAGMENT", "POISON-F"));
 
@@ -87,8 +80,7 @@ class ShaderTransformerDiskCacheTest {
     @Test
     void computeDiskHitSkipsTransform() {
         assertNotNull(TransformPatcher.patchCompute("shadowcomp", COMPUTE, null, null));
-        TransformPatcher.clearCache();
-        ShaderTransformer.clearCache();
+        TransformTestSupport.clearCaches();
 
         final EnumMap<PatchShaderType, String> inputs = new EnumMap<>(PatchShaderType.class);
         inputs.put(PatchShaderType.COMPUTE, COMPUTE);

@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu.shader;
 
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess;
-import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
 import com.gtnewhorizons.angelica.glsm.testutil.TestPaths;
 import com.gtnewhorizons.angelica.sdlgpu.sampler.SamplerLookup;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
@@ -12,8 +11,8 @@ import org.lwjgl.util.shaderc.Shaderc;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import static com.gtnewhorizons.angelica.sdlgpu.shader.SpirvTestShaders.compileOrFail;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.lwjgl.system.MemoryUtil.memFree;
 
@@ -30,10 +29,7 @@ class FontFilterVertexSamplerTest {
     }
 
     private static ShaderManager.StageReflection reflect(String source) {
-        final SpirvCompiler.Result r = SpirvCompiler.compile(source, Shaderc.shaderc_vertex_shader,
-            "fontFilter.vsh", SpirvCompiler.Options.vulkanForced460Core());
-        assertNotNull(r.spirv(), () -> "fontFilter.vsh failed to compile for Vulkan: " + r.error());
-        final ByteBuffer spirv = r.spirv();
+        final ByteBuffer spirv = compileOrFail(source, Shaderc.shaderc_vertex_shader);
         try {
             return ShaderManager.reflectStage(spirv, true);
         } finally {

@@ -1,15 +1,14 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GlTestSupport;
 import com.gtnewhorizons.angelica.glsm.ffp.LogicOpFixture;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 
 import java.nio.ByteBuffer;
@@ -20,7 +19,6 @@ import static com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig.SIZE;
 import static com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig.describe;
 import static com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig.pixelAt;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Tag("glsm-sdl")
 @ExtendWith(GlsmSdlFrameExtension.class)
@@ -57,11 +55,6 @@ class GlsmSdlLogicOpTest {
 
     private static int singleProgram;
     private static int mrtProgram;
-
-    @BeforeAll
-    static void boot() {
-        GlsmSdlHeadlessRig.boot();
-    }
 
     @AfterEach
     void cleanup() {
@@ -183,23 +176,7 @@ class GlsmSdlLogicOpTest {
     }
 
     private static int buildProgram(int cached, String frag) {
-        if (cached != 0) return cached;
-        final int vs = compile(GL20.GL_VERTEX_SHADER, VERT);
-        final int fs = compile(GL20.GL_FRAGMENT_SHADER, frag);
-        final int p = GLStateManager.glCreateProgram();
-        GLStateManager.glAttachShader(p, vs);
-        GLStateManager.glAttachShader(p, fs);
-        GLStateManager.glLinkProgram(p);
-        assertTrue(GLStateManager.glGetProgrami(p, GL20.GL_LINK_STATUS) != 0, "program did not link");
-        return p;
-    }
-
-    private static int compile(int type, String src) {
-        final int s = GLStateManager.glCreateShader(type);
-        GLStateManager.glShaderSource(s, src);
-        GLStateManager.glCompileShader(s);
-        assertTrue(GLStateManager.glGetShaderi(s, GL20.GL_COMPILE_STATUS) != 0, () -> "shader: " + GLStateManager.glGetShaderInfoLog(s));
-        return s;
+        return cached != 0 ? cached : GlTestSupport.program(VERT, frag);
     }
 
     private static int centerPixel() {
