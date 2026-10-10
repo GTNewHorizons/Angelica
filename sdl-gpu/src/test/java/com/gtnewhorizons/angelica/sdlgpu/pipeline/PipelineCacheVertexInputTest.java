@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.sdlgpu.pipeline;
 
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
+import com.gtnewhorizons.angelica.sdlgpu.device.Device;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,14 +25,20 @@ import static org.lwjgl.sdl.SDLGPU.SDL_GPU_VERTEXINPUTRATE_INSTANCE;
 import static org.lwjgl.sdl.SDLGPU.SDL_GPU_VERTEXINPUTRATE_VERTEX;
 
 class PipelineCacheVertexInputTest {
-    private static final int PLACEHOLDER_PITCH = 16;
+    private static final int PLACEHOLDER_PITCH = 0;
 
     private PipelineStore store;
 
     @BeforeEach
     void setUp() {
         PipelineCache.setSwapchainFormats(new int[]{SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM});
-        store = new PipelineStore(null);
+        store = new PipelineStore(device("vulkan"));
+    }
+
+    private static Device device(String driverName) {
+        final Device device = new Device();
+        Reflect.set(device, "driverName", driverName);
+        return device;
     }
 
     private static int nextTestSetId = 1;
@@ -269,7 +276,7 @@ class PipelineCacheVertexInputTest {
     }
 
     @Test
-    void shaderExpectsButVaoMissing_emitsInstanceExpansion() {
+    void shaderExpectsButVaoMissing_emitsConstantBinding() {
         final int[] vecSizes = new int[ContextState.MAX_VERTEX_ATTRIBS];
         vecSizes[0] = 3; vecSizes[1] = 4;
         final int[] baseTypes = new int[ContextState.MAX_VERTEX_ATTRIBS];
@@ -289,6 +296,26 @@ class PipelineCacheVertexInputTest {
             assertEquals(SDL_GPU_VERTEXINPUTRATE_INSTANCE, r.bindings().get(1).input_rate());
             assertEquals(1, r.attrs().get(1).location());
             assertEquals(1, r.attrs().get(1).buffer_slot());
+        }
+    }
+
+    @Test
+    void constantBindingUsesZeroPitchExceptOnMetal() {
+        final int[] vecSizes = new int[ContextState.MAX_VERTEX_ATTRIBS];
+        vecSizes[4] = 3;
+        final int[] baseTypes = new int[ContextState.MAX_VERTEX_ATTRIBS];
+        baseTypes[4] = Spvc.SPVC_BASETYPE_FP32;
+        final PipelineCache c = cache(1 << 4, vecSizes, baseTypes);
+        final ContextState cs = new ContextState();
+
+        for (String driver : new String[] { "vulkan", "metal", "direct3d12" }) {
+            try (MemoryStack stack = MemoryStack.stackPush()) {
+                final PipelineCache.VertexInputResult r = c.buildVertexInput(new PipelineStore(device(driver)), cs, stack);
+                assertNotNull(r);
+                final int expectedPitch = driver.equals("metal") ? 16 : 0;
+                assertEquals(expectedPitch, r.bindings().get(4).pitch(), driver + " current normal");
+                assertEquals(expectedPitch, r.bindings().get(0).pitch(), driver + " unused slot");
+            }
         }
     }
 

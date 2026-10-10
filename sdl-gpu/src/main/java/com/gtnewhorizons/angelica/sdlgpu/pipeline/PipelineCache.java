@@ -108,9 +108,15 @@ public final class PipelineCache {
         return cullEnabled ? cullFaceMode : SDL_GPU_CULLMODE_NONE;
     }
     public int fillMode = SDL_GPU_FILLMODE_FILL;
+    public boolean polygonOffsetFillEnabled;
     public float depthBiasConstant;
     public float depthBiasSlopeFactor;
     public float depthBiasClamp;
+
+    public boolean effectiveDepthBiasEnabled() {
+        return polygonOffsetFillEnabled && fillMode == SDL_GPU_FILLMODE_FILL
+            && (primitiveType == SDL_GPU_PRIMITIVETYPE_TRIANGLELIST || primitiveType == SDL_GPU_PRIMITIVETYPE_TRIANGLESTRIP);
+    }
 
     public int colorWriteMask = SDL_GPU_COLORCOMPONENT_R | SDL_GPU_COLORCOMPONENT_G | SDL_GPU_COLORCOMPONENT_B | SDL_GPU_COLORCOMPONENT_A;
 
@@ -364,6 +370,7 @@ public final class PipelineCache {
             | ((depthWriteOn        ? 1L : 0L) <<  2)
             | ((stencilOn           ? 1L : 0L) <<  3)
             | ((hasDepthTarget      ? 1L : 0L) <<  4)
+            | ((effectiveDepthBiasEnabled() ? 1L : 0L) << 5)
             | (((long) blendBits & 0xFFFFFFFFL) << 32);
         long h = OUTPUT_SEED;
         h = Hashing.fmix64(h, bits);
@@ -380,8 +387,10 @@ public final class PipelineCache {
         h = Hashing.fmix64(h, Hashing.packHiLo(stencilCompareMask, stencilWriteMask));
         h = Hashing.fmix64(h, Hashing.packHiLo(getEffectiveCullMode(), effectiveFrontFace()));
         h = Hashing.fmix64(h, Hashing.packHiLo(fillMode, colorWriteMask));
-        h = Hashing.fmix64(h, Hashing.packHiLo(Float.floatToRawIntBits(depthBiasConstant), Float.floatToRawIntBits(depthBiasSlopeFactor)));
-        h = Hashing.fmix64(h, Float.floatToRawIntBits(depthBiasClamp));
+        if (effectiveDepthBiasEnabled()) {
+            h = Hashing.fmix64(h, Hashing.packHiLo(Float.floatToRawIntBits(depthBiasConstant), Float.floatToRawIntBits(depthBiasSlopeFactor)));
+            h = Hashing.fmix64(h, Float.floatToRawIntBits(depthBiasClamp));
+        }
         h = Hashing.fmix64(h, Hashing.packHiLo(ctfLen, hasDepthTarget ? depthTargetFormat : 0));
         for (int i = 0; i < ctfLen; i++) {
             h = Hashing.fmix64(h, colorTargetFormats()[i]);
@@ -523,6 +532,7 @@ public final class PipelineCache {
                 .cull_mode(getEffectiveCullMode())
                 .front_face(effectiveFrontFace())
                 .fill_mode(fillMode)
+                .enable_depth_bias(effectiveDepthBiasEnabled())
                 .depth_bias_constant_factor(depthBiasConstant)
                 .depth_bias_slope_factor(depthBiasSlopeFactor)
                 .depth_bias_clamp(depthBiasClamp);
@@ -609,6 +619,7 @@ public final class PipelineCache {
         sb.append("  Rasterizer: cull=").append(getEffectiveCullMode())
           .append(" front=").append(effectiveFrontFace())
           .append(" fill=").append(fillMode)
+          .append(" biasEnabled=").append(effectiveDepthBiasEnabled())
           .append(" biasConst=").append(depthBiasConstant)
           .append(" biasSlope=").append(depthBiasSlopeFactor)
           .append(" biasClamp=").append(depthBiasClamp).append('\n');
@@ -891,11 +902,12 @@ public final class PipelineCache {
         final int numAttributes = numBuffers;
         final SDL_GPUVertexAttribute.Buffer attrs = SDL_GPUVertexAttribute.calloc(numAttributes, stack);
         final SDL_GPUVertexBufferDescription.Buffer bindings = SDL_GPUVertexBufferDescription.calloc(numBuffers, stack);
+        final int constantPitch = store.device().isMetal() ? 16 : 0;
 
         for (int i = 0; i < numBuffers; i++) {
             if ((inputMask & (1 << i)) == 0) {
                 bindings.get(i)
-                    .slot(i).pitch(16)
+                    .slot(i).pitch(constantPitch)
                     .input_rate(SDL_GPU_VERTEXINPUTRATE_INSTANCE).instance_step_rate(0);
                 attrs.get(i)
                     .location(i).buffer_slot(i)
@@ -955,7 +967,7 @@ public final class PipelineCache {
             } else {
                 final int vecSize = i < shaderInputVecSize.length ? shaderInputVecSize[i] : 4;
                 bindings.get(i)
-                    .slot(i).pitch(16) // sizeof(vec4), one element
+                    .slot(i).pitch(constantPitch)
                     .input_rate(SDL_GPU_VERTEXINPUTRATE_INSTANCE).instance_step_rate(0);
                 attrs.get(i)
                     .location(i).buffer_slot(i)

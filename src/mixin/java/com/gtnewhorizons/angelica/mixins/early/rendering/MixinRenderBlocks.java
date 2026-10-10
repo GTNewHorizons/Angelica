@@ -58,6 +58,28 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
 
     private boolean applyingCeleritasAO = false;
 
+    @Unique
+    private int lastBrightnessX, lastBrightnessY, lastBrightnessZ;
+
+    @Unique
+    private boolean discardedBrightness;
+
+    @Unique
+    private boolean renderingPlainCube;
+
+    @Surround(method = "renderBlockByRenderType", id = "plainCube",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderBlocks;renderStandardBlock(Lnet/minecraft/block/Block;III)Z"),
+        require = 1)
+    private void angelica$enterPlainCube() {
+        @Surround.Carry final boolean wasPlainCube = this.renderingPlainCube;
+        this.renderingPlainCube = true;
+    }
+
+    @Surround.Finally("plainCube")
+    private void angelica$exitPlainCube(@Surround.Carry boolean wasPlainCube) {
+        this.renderingPlainCube = wasPlainCube;
+    }
+
     @Surround(method = "renderBlockByRenderType", id = "byType")
     private void angelica$enterByType() {
         @Surround.Carry final boolean wasByType = this.isRenderingByType;
@@ -123,11 +145,19 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
     @Surround.Skipped("celeritasAo")
     private boolean angelica$celeritasAoSkipped(Block block, int x, int y, int z, float r, float g, float b) {
         this.applyingCeleritasAO = true;
+        this.discardedBrightness = false;
+        final boolean rendered;
         try {
-            return this.renderStandardBlockWithColorMultiplier(block, x, y, z, r, g, b);
+            rendered = this.renderStandardBlockWithColorMultiplier(block, x, y, z, r, g, b);
         } finally {
             this.applyingCeleritasAO = false;
         }
+        // Multi-part render types that emit their own vertices after renderStandardBlock inherit its Tessellator
+        // brightness. Only a discarded lookup left it wrong; lastBrightness* is stale otherwise.
+        if (rendered && this.discardedBrightness && !this.renderingPlainCube) {
+            TessellatorManager.get().setBrightness(block.getMixedBrightnessForBlock(this.blockAccess, this.lastBrightnessX, this.lastBrightnessY, this.lastBrightnessZ));
+        }
+        return rendered;
     }
 
     @Redirect(method = "renderStandardBlockWithColorMultiplier",
@@ -138,7 +168,12 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
             && ((Object) this).getClass() == RenderBlocks.class
             && !IsbrhDispatch.isRenderingWorldBlock()
             && ((StateAwareTessellator) tessellator).angelica$isCeleritasMeshing();
-        return discard ? 0 : block.getMixedBrightnessForBlock(world, x, y, z);
+        if (!discard) return block.getMixedBrightnessForBlock(world, x, y, z);
+        this.discardedBrightness = true;
+        this.lastBrightnessX = x;
+        this.lastBrightnessY = y;
+        this.lastBrightnessZ = z;
+        return 0;
     }
 
     @Override

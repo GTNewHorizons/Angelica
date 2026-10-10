@@ -11,6 +11,7 @@ public final class GLSMHooks {
     public static DeferredDepthColorHandler depthColorHandler;
     public static GlintColorHandler glintColorHandler;
     public static ImmediateExtendedAttribHandler immediateExtendedHandler;
+    public static LineDrawHandler lineDrawHandler;
     public static ShaderTransformPostProcessor postTransformProcessor;
     public static PerFrameUniformBlock perFrameUniformBlock;
     public static PerFrameUniformBlock perPassUniformBlock;

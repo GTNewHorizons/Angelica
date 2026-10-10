@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.glsm.hooks.DeferredBlendHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.DeferredDepthColorHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
+import com.gtnewhorizons.angelica.glsm.hooks.LineDrawHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.ShaderTransformPostProcessor;
 import com.gtnewhorizons.angelica.glsm.shader.ShaderType;
 import org.taumc.glsl.grammar.GLSLParser;
@@ -103,6 +104,24 @@ public class IrisGLSMBridge {
         GLSMConfig.expandVertexFormats = Iris.enabled;
         IrisSamplers.initRenderer();
         installPostTransformHook();
+        GLSMHooks.lineDrawHandler = new LineDrawHandler() {
+            private DeferredWorldRenderingPipeline linePipeline;
+
+            @Override
+            public boolean bindLineProgram() {
+                if (!Iris.enabled || !(Iris.getPipelineManager().getPipelineNullable() instanceof DeferredWorldRenderingPipeline drp) || !drp.bindLineProgram()) {
+                    return false;
+                }
+                linePipeline = drp;
+                return true;
+            }
+
+            @Override
+            public void restoreProgram() {
+                linePipeline.restoreAfterLines();
+                linePipeline = null;
+            }
+        };
         GLSMHooks.blendHandler = new DeferredBlendHandler() {
             @Override
             public boolean isBlendLocked() {

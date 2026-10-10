@@ -357,6 +357,10 @@ public final class Device {
         return driverName;
     }
 
+    public boolean isMetal() {
+        return isMetal(driverName);
+    }
+
     public boolean isFencePollEnabled() {
         return fencePollEnabled;
     }

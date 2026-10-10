@@ -898,8 +898,9 @@ public class Iris {
                     PerFrameUniformBlockHarvester.harvest(programs);
                     final DeferredWorldRenderingPipeline pipeline = new DeferredWorldRenderingPipeline(programs);
                     try {
-                        // Both are otherwise built lazily on first draw, after this pipeline is gone
+                        // These are otherwise built lazily on first draw, after this pipeline is gone
                         pipeline.compileInstancedVariants();
+                        pipeline.compileWideLinePrograms();
                         if (IrisShaderProviderHolder.getProvider() instanceof IrisCeleritasShaderProvider terrain) {
                             terrain.compileTerrainPrograms(pipeline.getCeleritasTerrainPipeline());
                         }

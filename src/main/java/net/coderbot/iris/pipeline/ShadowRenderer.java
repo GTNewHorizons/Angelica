@@ -10,6 +10,8 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.profiling.RenderClassTimings;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
+import com.gtnewhorizons.angelica.rendering.tesr.PendingTesrDraws;
+import com.gtnewhorizons.angelica.rendering.tesr.SectionBuiltBlockEntity;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
 import com.gtnewhorizons.angelica.rendering.tesr.TileEntityLight;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
@@ -771,8 +773,13 @@ public class ShadowRenderer {
                 }
             }
         }
+        if (tile instanceof SectionBuiltBlockEntity built && built.angelica$drawBuilt(
+            (double) tile.xCoord - cameraX, (double) tile.yCoord - cameraY, (double) tile.zCoord - cameraZ)) {
+            return;
+        }
         final World world = tile.getWorldObj();
         int brightness = TileEntityLight.packedLight(world, tile.xCoord, tile.yCoord, tile.zCoord, world.getLightBrightnessForSkyBlocks(tile.xCoord, tile.yCoord, tile.zCoord, 0));
+        PendingTesrDraws.beforeTileEntity(tile);
         GLStateManager.setLightmapTextureCoords(GL13.GL_TEXTURE1, (float) brightness % 65536, (float) brightness / 65536);
         GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
         TileEntityRendererDispatcher.instance.renderTileEntityAt(tile,
@@ -808,6 +815,7 @@ public class ShadowRenderer {
         GbufferPrograms.beginBlockEntities();
         GbufferPrograms.setBlockEntityDefaults();
         ModelPartBatcher.INSTANCE.begin(ModelPartBatcher.Mode.BLOCK_ENTITIES, true);
+        PendingTesrDraws.beginPass();
 
 		for (int b = 0, bn = visibleTileEntities.size(); b < bn; b++) {
 			final List<TileEntity> bucket = visibleTileEntities.get(b);
@@ -840,6 +848,7 @@ public class ShadowRenderer {
 			}
 		}
 
+        PendingTesrDraws.endPass();
         flushShadowModelParts();
         TesrBatchRenderer.INSTANCE.flush();
 

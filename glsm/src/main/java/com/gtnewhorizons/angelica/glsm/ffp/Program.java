@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 
 /**
- * A compiled and linked FFP emulation program (vertex + fragment + optional geometry shaders). Owns the GL program handle and caches uniform locations.
+ * A compiled and linked FFP emulation program (vertex + fragment shaders). Owns the GL program handle and caches uniform locations.
  */
 public class Program {
 
@@ -49,23 +49,19 @@ public class Program {
     }
 
     /**
-     * Compile vertex + fragment + optional geometry shaders, link into a program, and return the FFPProgram.
+     * Compile vertex + fragment shaders, link into a program, and return the FFPProgram.
      */
-    static Program create(VertexKey vk, FragmentKey fk, String vertSrc, String fragSrc, String geomSrc) {
+    static Program create(VertexKey vk, FragmentKey fk, String vertSrc, String fragSrc) {
         final RenderBackend backend = RENDER_BACKEND;
         final int id = PROGRAM_COUNTER.getAndIncrement();
         final String vkHex = Long.toHexString(vk.pack());
-        final boolean hasGeom = geomSrc != null;
 
         int shaderCount = 0;
-        final int[] shaders = new int[5]; // vertex, fragment, geometry, tess control, tess evaluation
+        final int[] shaders = new int[2];
         int program = 0;
         try {
             shaders[shaderCount++] = compileShader(GL20.GL_VERTEX_SHADER, vertSrc, "ffp_v_" + vkHex);
             shaders[shaderCount++] = compileShader(GL20.GL_FRAGMENT_SHADER, fragSrc, "ffp_f_" + id);
-            if (geomSrc != null) {
-                shaders[shaderCount++] = compileShader(GL32.GL_GEOMETRY_SHADER, geomSrc, "ffp_g_" + id);
-            }
 
             program = backend.createProgram();
             for (int i = 0; i < shaderCount; i++) backend.attachShader(program, shaders[i]);
@@ -80,7 +76,7 @@ public class Program {
                 throw new RuntimeException("FFP shader link failed (vk=0x" + vkHex + ", fk=" + fk + "): " + log);
             }
 
-            final String debugName = "FFP(v=0x" + vkHex + ",f=" + id + (hasGeom ? ",g" : "") + ")";
+            final String debugName = "FFP(v=0x" + vkHex + ",f=" + id + ")";
             GLDebug.nameObject(KHRDebug.GL_PROGRAM, program, debugName);
 
             // Detach and delete individual shaders - they're linked into the program

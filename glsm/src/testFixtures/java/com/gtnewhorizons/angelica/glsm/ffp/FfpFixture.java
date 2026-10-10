@@ -1,5 +1,8 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement.Usage;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
@@ -151,6 +154,27 @@ public final class FfpFixture {
     public static void attrib(int loc, int size, int type, boolean normalized, int stride, int offset) {
         GLStateManager.glEnableVertexAttribArray(loc);
         GLStateManager.glVertexAttribPointer(loc, size, type, normalized, stride, offset);
+    }
+
+    private static boolean formatRoutingRegistered;
+    private static boolean routeFormats;
+
+    public static void routeVertexFormats(boolean enabled) {
+        routeFormats = enabled;
+        if (formatRoutingRegistered) return;
+        formatRoutingRegistered = true;
+        VertexFormat.registerSetupBufferStateOverride((format, offset) -> {
+            if (!routeFormats) return false;
+            final int stride = format.getVertexSize();
+            int elementOffset = (int) offset;
+            for (VertexFormatElement element : format.elementsArray) {
+                final Usage usage = element.getUsage();
+                final boolean normalized = usage == Usage.COLOR || usage == Usage.NORMAL;
+                attrib(usage.getAttributeLocation(), element.getCount(), element.getType().getGlType(), normalized, stride, elementOffset);
+                elementOffset += element.getByteSize();
+            }
+            return true;
+        });
     }
 
     public static void clear() {

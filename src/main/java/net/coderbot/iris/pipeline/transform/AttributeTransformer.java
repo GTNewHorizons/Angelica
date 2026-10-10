@@ -11,7 +11,9 @@ import org.taumc.glsl.grammar.GLSLLexer;
 import org.taumc.glsl.grammar.GLSLParser;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Implements AttributeShaderTransformer using glsl-transformer AST
@@ -39,17 +41,28 @@ class AttributeTransformer {
 		final boolean cubeVertex = vertex && parameters.instancing == Instancing.CUBE;
 		final boolean particleVertex = vertex && parameters.instancing == Instancing.PARTICLE;
 		final boolean weatherVertex = vertex && parameters.instancing == Instancing.WEATHER;
+		final boolean lineVertex = vertex && parameters.wideLines;
 		final boolean matrixVertex = vertex && parameters.instancing.hasInstanceHead();
-		final boolean wantsMvInverse = matrixVertex && transformer.containsCall("gl_ModelViewMatrixInverse");
+		final Set<String> declaredInterface = declaredInterface(transformer);
 		CoreTransformHelper.injectMatrixUniforms(transformer, vertex ? parameters.instancing : Instancing.NONE);
 
-		aliasIfUsed(transformer, "projectionMatrix", "iris_ProjectionMatrix");
-		aliasIfUsed(transformer, "modelViewMatrix", "iris_ModelViewMatrix");
-		aliasIfUsed(transformer, "normalMatrix", "iris_NormalMatrix");
+		CORE_PROFILE_MATRICES.forEach((name, irisName) -> {
+			if (claimCoreProfileName(transformer, declaredInterface, name)) {
+				transformer.rename(name, irisName);
+			}
+		});
+		final boolean wantsMvInverse = matrixVertex && transformer.containsCall("iris_ModelViewMatrixInverse");
 
 		if (parameters.type == ShaderType.VERTEX) {
+			mapCoreProfileInputs(transformer, declaredInterface);
+
 			if (!particleVertex && !weatherVertex) {
-				transformer.injectVariable("layout(location = 0) in vec4 iris_Vertex;");
+				if (lineVertex) {
+					transformer.injectVariable("layout(location = 0) in vec4 iris_LineVertex;");
+					transformer.injectVariable("vec4 iris_Vertex = vec4(0.0, 0.0, 0.0, 1.0);");
+				} else {
+					transformer.injectVariable("layout(location = 0) in vec4 iris_Vertex;");
+				}
 				transformer.injectVariable("layout(location = 1) in vec4 iris_Color;");
 				if (cubeVertex) {
 					transformer.injectVariable("vec4 iris_MultiTexCoord0;");
@@ -62,15 +75,16 @@ class AttributeTransformer {
 					transformer.injectVariable("layout(location = " + SECONDARY_UV + ") in vec4 iris_MultiTexCoord1;");
 				}
 			}
-			transformer.injectVariable("layout(location = 4) in vec3 iris_Normal;");
+			if (lineVertex) {
+				transformer.injectVariable("layout(location = 4) in vec3 iris_LineDirection;");
+				transformer.injectVariable("const vec3 iris_Normal = vec3(0.0, 0.0, 1.0);");
+			} else {
+				transformer.injectVariable("layout(location = 4) in vec3 iris_Normal;");
+			}
 
 			transformer.rename("gl_Vertex", "iris_Vertex");
 			transformer.replaceExpression("gl_Color", matrixVertex ? "(iris_Color * iris_ColorModulator * iris_InstColor)" : "(iris_Color * iris_ColorModulator)");
 			transformer.rename("gl_Normal", "iris_Normal");
-			aliasIfUsed(transformer, "vaNormal", "iris_Normal");
-			if (transformer.containsCall("vaPosition") && !transformer.hasVariable("vaPosition")) {
-				transformer.replaceExpression("vaPosition", "iris_Vertex.xyz");
-			}
 
 			// ftransform() = gl_ModelViewProjectionMatrix * gl_Vertex
 			transformer.renameFunctionCall("ftransform", "iris_ftransform");
@@ -129,6 +143,42 @@ class AttributeTransformer {
 				transformer.prependMain(init.toString());
 			}
 		}
+
+		if (parameters.wideLines) {
+			widenLines(transformer, vertex);
+		}
+	}
+
+	private static void widenLines(Transformer transformer, boolean vertex) {
+		transformer.injectVariable("const mat4 iris_VIEW_SCALE = mat4(mat3(1.0 - (1.0 / 256.0)));");
+		transformer.replaceExpression("iris_ModelViewMatrix", "(iris_VIEW_SCALE * iris_ModelViewMatrix)", GLSLParser::postfix_expression);
+		if (!vertex) {
+			return;
+		}
+
+		transformer.injectVariable("uniform float iris_LineWidth;");
+		transformer.injectVariable("uniform vec2 iris_ScreenSize;");
+		transformer.rename("main", "irisMain");
+		transformer.injectAtEnd("void iris_widen_lines(vec4 linePosStart, vec4 linePosEnd) {"
+			+ " vec3 ndc1 = linePosStart.xyz / linePosStart.w;"
+			+ " vec3 ndc2 = linePosEnd.xyz / linePosEnd.w;"
+			+ " vec2 lineScreenDirection = normalize((ndc2.xy - ndc1.xy) * iris_ScreenSize);"
+			+ " vec2 lineOffset = vec2(-lineScreenDirection.y, lineScreenDirection.x) * iris_LineWidth / iris_ScreenSize;"
+			+ " if (lineOffset.x < 0.0) { lineOffset *= -1.0; }"
+			+ " if (gl_VertexID % 2 == 0) {"
+			+ " gl_Position = vec4((ndc1 + vec3(lineOffset, 0.0)) * linePosStart.w, linePosStart.w);"
+			+ " } else {"
+			+ " gl_Position = vec4((ndc1 - vec3(lineOffset, 0.0)) * linePosStart.w, linePosStart.w);"
+			+ " } }");
+		transformer.injectAtEnd("void main() {"
+			+ " iris_Vertex = iris_LineVertex + vec4(iris_LineDirection, 0.0);"
+			+ " irisMain();"
+			+ " vec4 linePosEnd = gl_Position;"
+			+ " gl_Position = vec4(0.0);"
+			+ " iris_Vertex = iris_LineVertex;"
+			+ " irisMain();"
+			+ " vec4 linePosStart = gl_Position;"
+			+ " iris_widen_lines(linePosStart, linePosEnd); }");
 	}
 
 	private static final int PRIMARY_UV = VertexFormatElement.Usage.PRIMARY_UV.getAttributeLocation();
@@ -200,9 +250,47 @@ class AttributeTransformer {
 		transformer.replaceExpression(name, replacement);
 	}
 
-	private static void aliasIfUsed(Transformer transformer, String modernName, String irisName) {
-		if (transformer.containsCall(modernName) && !transformer.hasVariable(modernName)) {
-			transformer.rename(modernName, irisName);
+	private static final Map<String, String> CORE_PROFILE_MATRICES = Map.of(
+		"projectionMatrix", "iris_ProjectionMatrix",
+		"projectionMatrixInverse", "iris_ProjectionMatrixInverse",
+		"modelViewMatrix", "iris_ModelViewMatrix",
+		"modelViewMatrixInverse", "iris_ModelViewMatrixInverse",
+		"normalMatrix", "iris_NormalMatrix",
+		"textureMatrix", "iris_TextureMatrix");
+
+	private static Set<String> declaredInterface(Transformer transformer) {
+		final Set<String> names = new HashSet<>(transformer.findQualifiers(GLSLLexer.UNIFORM).keySet());
+		names.addAll(transformer.findQualifiers(GLSLLexer.IN).keySet());
+		names.addAll(transformer.findQualifiers(GLSLLexer.ATTRIBUTE).keySet());
+		return names;
+	}
+
+	private static boolean claimCoreProfileName(Transformer transformer, Set<String> declaredInterface, String name) {
+		if (!transformer.containsCall(name)) {
+			return false;
+		}
+		if (declaredInterface.contains(name)) {
+			transformer.removeVariable(name);
+			return true;
+		}
+		return !transformer.hasVariable(name);
+	}
+
+	private static void mapCoreProfileInputs(Transformer transformer, Set<String> declaredInterface) {
+		final boolean overlayIsInt = transformer.findType("vaUV1") == GLSLLexer.IVEC2;
+		final boolean lightIsInt = transformer.findType("vaUV2") == GLSLLexer.IVEC2;
+		mapCoreProfileInput(transformer, declaredInterface, "vaPosition", "gl_Vertex.xyz");
+		mapCoreProfileInput(transformer, declaredInterface, "vaColor", "gl_Color");
+		mapCoreProfileInput(transformer, declaredInterface, "vaNormal", "gl_Normal");
+		mapCoreProfileInput(transformer, declaredInterface, "vaUV0", "gl_MultiTexCoord0.xy");
+		// There is no overlay attribute (entityColor carries the hurt tint), so every vertex reads "no overlay"
+		mapCoreProfileInput(transformer, declaredInterface, "vaUV1", overlayIsInt ? "ivec2(0, 10)" : "vec2(0.0, 10.0)");
+		mapCoreProfileInput(transformer, declaredInterface, "vaUV2", lightIsInt ? "ivec2(gl_MultiTexCoord1.xy)" : "gl_MultiTexCoord1.xy");
+	}
+
+	private static void mapCoreProfileInput(Transformer transformer, Set<String> declaredInterface, String name, String replacement) {
+		if (claimCoreProfileName(transformer, declaredInterface, name)) {
+			transformer.replaceExpression(name, replacement, GLSLParser::postfix_expression);
 		}
 	}
 }

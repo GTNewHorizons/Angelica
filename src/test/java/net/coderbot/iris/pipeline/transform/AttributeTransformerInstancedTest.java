@@ -100,6 +100,19 @@ class AttributeTransformerInstancedTest {
         }
         """;
 
+    private static final String VERTEX_CORE_PROFILE_MV_INVERSE = """
+        #version 150
+        in vec3 vaPosition;
+        uniform mat4 modelViewMatrix;
+        uniform mat4 modelViewMatrixInverse;
+        uniform mat4 projectionMatrix;
+        out vec3 wpos;
+        void main() {
+            wpos = (modelViewMatrixInverse * (modelViewMatrix * vec4(vaPosition, 1.0))).xyz;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(vaPosition, 1.0);
+        }
+        """;
+
     private static final String FRAGMENT = """
         #version 120
         varying vec4 color;
@@ -308,6 +321,13 @@ class AttributeTransformerInstancedTest {
         final String with = instancedVertex(VERTEX_MV_INVERSE);
         assertHas(with, "iris_ModelViewMatrixInverse = inverse(iris_ModelViewMatrix)");
         assertLacks(with, "uniform mat4 iris_ModelViewMatrixInverse;");
+    }
+
+    @Test
+    void coreProfileMvInverseIsComputedPerInstance() {
+        final String v = instancedVertex(VERTEX_CORE_PROFILE_MV_INVERSE);
+        assertHas(v, "iris_ModelViewMatrixInverse = inverse(iris_ModelViewMatrix)");
+        assertLacks(v, "modelViewMatrixInverse");
     }
 
     @Test
