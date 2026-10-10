@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.common.BlockError;
 import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
+import com.gtnewhorizons.angelica.rendering.IsbrhDispatch;
 import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.sugar.Local;
@@ -59,6 +60,9 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
 
     @Unique
     private int lastBrightnessX, lastBrightnessY, lastBrightnessZ;
+
+    @Unique
+    private boolean discardedBrightness;
 
     @Unique
     private boolean renderingPlainCube;
@@ -141,14 +145,16 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
     @Surround.Skipped("celeritasAo")
     private boolean angelica$celeritasAoSkipped(Block block, int x, int y, int z, float r, float g, float b) {
         this.applyingCeleritasAO = true;
+        this.discardedBrightness = false;
         final boolean rendered;
         try {
             rendered = this.renderStandardBlockWithColorMultiplier(block, x, y, z, r, g, b);
         } finally {
             this.applyingCeleritasAO = false;
         }
-        // ISBRHs and multi-part render types that emit their own vertices after renderStandardBlock inherit its Tessellator brightness.
-        if (rendered && !this.renderingPlainCube) {
+        // Multi-part render types that emit their own vertices after renderStandardBlock inherit its Tessellator
+        // brightness. Only a discarded lookup left it wrong; lastBrightness* is stale otherwise.
+        if (rendered && this.discardedBrightness && !this.renderingPlainCube) {
             TessellatorManager.get().setBrightness(block.getMixedBrightnessForBlock(this.blockAccess, this.lastBrightnessX, this.lastBrightnessY, this.lastBrightnessZ));
         }
         return rendered;
@@ -158,13 +164,16 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
         at = @At(value = "INVOKE", target = "Lnet/minecraft/block/Block;getMixedBrightnessForBlock(Lnet/minecraft/world/IBlockAccess;III)I"),
         require = 1)
     private int angelica$skipDiscardedBrightness(Block block, IBlockAccess world, int x, int y, int z, @Local(ordinal = 0) Tessellator tessellator) {
-        if (this.applyingCeleritasAO && ((StateAwareTessellator) tessellator).angelica$isCeleritasMeshing()) {
-            this.lastBrightnessX = x;
-            this.lastBrightnessY = y;
-            this.lastBrightnessZ = z;
-            return 0;
-        }
-        return block.getMixedBrightnessForBlock(world, x, y, z);
+        final boolean discard = this.applyingCeleritasAO && this.isRenderingByType
+            && ((Object) this).getClass() == RenderBlocks.class
+            && !IsbrhDispatch.isRenderingWorldBlock()
+            && ((StateAwareTessellator) tessellator).angelica$isCeleritasMeshing();
+        if (!discard) return block.getMixedBrightnessForBlock(world, x, y, z);
+        this.discardedBrightness = true;
+        this.lastBrightnessX = x;
+        this.lastBrightnessY = y;
+        this.lastBrightnessZ = z;
+        return 0;
     }
 
     @Override

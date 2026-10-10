@@ -33,7 +33,7 @@ public class MixinRenderingRegistry implements IRenderingRegistryExt {
     @Overwrite
     public boolean renderWorldBlock(RenderBlocks renderer, IBlockAccess world, int x, int y, int z, Block block, int modelId) {
         ISimpleBlockRenderingHandler h = IsbrhDispatch.resolve(this.blockRenderers, modelId);
-        return h != null && h.renderWorldBlock(world, x, y, z, block, modelId, renderer);
+        return h != null && IsbrhDispatch.renderWorldBlock(h, renderer, world, x, y, z, block, modelId);
     }
 
     @Surround(method = { "renderInventoryBlock", "renderItemAsFull3DBlock" }, at = @At(value="INVOKE", target="Ljava/util/Map;get(Ljava/lang/Object;)Ljava/lang/Object;"))
