@@ -1,8 +1,11 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
+import com.gtnewhorizons.angelica.glsm.GLContextState;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
+import com.gtnewhorizons.angelica.glsm.streaming.LineQuads;
+import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
@@ -55,8 +58,19 @@ public final class DisplayListVBO {
         private final int count;
         private final int vertexFlags;
         private int pendingExtVbo = 0;
+        private IVertexArrayObject lineQuads;
+        private int lineQuadStart;
+        private int lineQuadCount;
+        private int lineQuadFlags;
 
         void setPendingExtVbo(int extVbo) { this.pendingExtVbo = extVbo; }
+
+        void setLineQuads(IVertexArrayObject quads, int start, int count, int flags) {
+            this.lineQuads = quads;
+            this.lineQuadStart = start;
+            this.lineQuadCount = count;
+            this.lineQuadFlags = flags;
+        }
 
         public SubVBO(IVertexArrayObject vao, int drawMode, int start, int count, int vertexFlags) {
             this.vao = vao;
@@ -80,10 +94,15 @@ public final class DisplayListVBO {
 
         public void delete() {
             vao.delete();
+            if (lineQuads != null) lineQuads.delete();
         }
 
         public void render() {
             if (vao == null) return;
+            if (lineQuads != null && GLStateManager.ffpWidensLineQuads()) {
+                renderLineQuads();
+                return;
+            }
             vao.bind();
             if (pendingExtVbo != 0) {
                 GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, pendingExtVbo);
@@ -102,6 +121,22 @@ public final class DisplayListVBO {
             vao.unbind();
         }
 
+        private void renderLineQuads() {
+            final GLContextState glCtx = GLStateManager.ctx();
+            lineQuads.bind();
+            VAOManager.setCurrentVertexFlags(lineQuadFlags);
+            final boolean culled = LineQuads.disableCulling();
+            glCtx.lineQuadsActive = true;
+            FfpExtendedAttribs.beginInternalDraw();
+            try {
+                lineQuads.draw(GL11.GL_TRIANGLES, lineQuadStart, lineQuadCount);
+            } finally {
+                FfpExtendedAttribs.endInternalDraw();
+                glCtx.lineQuadsActive = false;
+                LineQuads.restoreCulling(culled);
+            }
+            lineQuads.unbind();
+        }
 
         public IVertexArrayObject getVAO() {
             return vao;

@@ -62,6 +62,7 @@ public final class PipelineApplier {
 
     private DrawDispatch.FanUploadSink deferredUploadSink;
     public void setDeferredUploadSink(DrawDispatch.FanUploadSink sink) { this.deferredUploadSink = sink; }
+    private final InstancedConstantBuffers instancedConstants;
     private boolean ringOverflowWarned;
 
     private final IntOpenHashSet pipelineZeroWarned        = new IntOpenHashSet();
@@ -86,6 +87,33 @@ public final class PipelineApplier {
         this.storageTextureBinder = storageTextureBinder;
         this.storageBufferBinder = storageBufferBinder;
         this.logicOpEmulator = new LogicOpEmulator(frameManager, resourceManager, shaderManager, this);
+        this.instancedConstants = new InstancedConstantBuffers(resourceManager);
+    }
+
+    /**
+     * Runs after {@link #applyPipelineAndState} for an instanced draw. On Metal every attribute without an enabled array
+     * is rebound to a buffer repeating its value once per instance (see {@link InstancedConstantBuffers}).
+     */
+    public void bindInstancedConstants(ContextState st, long rp, int instances) {
+        if (instances <= 1 || deferredUploadSink == null || !pipelineStore.device().isMetal()) return;
+        final ContextState.VAOState vao = st.currentVao;
+        final int usedMask = st.pipeline.shaderInputMask | vao.attribEnabledMask;
+        if (usedMask == 0) return;
+        final int bindingSize = SDL_GPUBufferBinding.SIZEOF;
+        final int maxSlot = 31 - Integer.numberOfLeadingZeros(usedMask);
+        int constants = ~vao.attribEnabledMask & ((1 << (maxSlot + 1)) - 1);
+        while (constants != 0) {
+            final int i = Integer.numberOfTrailingZeros(constants);
+            constants &= constants - 1;
+            final float[] d = st.attribDefaults;
+            final long buffer = instancedConstants.buffer(d[i * 4], d[i * 4 + 1], d[i * 4 + 2], d[i * 4 + 3], instances, deferredUploadSink);
+            if (buffer == 0) continue;
+            final long elemAddr = st.vboBindingsAddr + (long) i * bindingSize;
+            MemoryAccess.putAddress(elemAddr + SDL_GPUBufferBinding.BUFFER, buffer);
+            MemoryAccess.putInt(elemAddr + SDL_GPUBufferBinding.OFFSET, 0);
+            nSDL_BindGPUVertexBuffers(rp, i, elemAddr, 1);
+        }
+        st.lastAppliedVboBindGen = -1;
     }
 
     public void ensureDrawRenderPass(ContextState st) {

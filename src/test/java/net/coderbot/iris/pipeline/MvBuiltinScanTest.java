@@ -14,6 +14,12 @@ class MvBuiltinScanTest {
     }
 
     @Test
+    void detectsCoreProfileMatrixNames() {
+        String frag = "#version 150\nuniform mat4 modelViewMatrixInverse;\nvoid main() { gl_FragData[0] = modelViewMatrixInverse * vec4(1.0); }";
+        assertTrue(DeferredWorldRenderingPipeline.referencesMvBuiltins(frag));
+    }
+
+    @Test
     void detectsFtransformCall() {
         String vert = "#version 120\nvoid main() { gl_Position = ftransform(); }";
         assertTrue(DeferredWorldRenderingPipeline.referencesMvBuiltins(vert));

@@ -11,10 +11,12 @@ import com.gtnewhorizons.angelica.rendering.celeritas.iris.BlockRenderContext;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.ContextAwareChunkVertexEncoder;
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.RenderPassHelper;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.WorldSlice;
+import com.gtnewhorizons.angelica.rendering.tesr.SectionBuiltBlockEntity;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.utils.NaturalTextureUtils;
 import com.prupe.mcpatcher.mal.block.RenderBlocksUtils;
 import it.unimi.dsi.fastutil.floats.FloatArrayList;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceMap;
 import net.coderbot.iris.block_rendering.BlockMaterialMapping;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
@@ -173,6 +175,8 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
 
             final FloatArrayList culledBounds = buildContext.getTeBoundsScratch();
             culledBounds.clear();
+            List<SectionBuiltBlockEntity> sectionBuilt = null;
+            IntArrayList sectionBuiltResults = null;
             double maxTeRenderDistSq = 0;
 
             final RenderBlocks renderBlocks = new RenderBlocks(region);
@@ -199,6 +203,14 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
                         if (block.hasTileEntity(meta)) {
                             final TileEntity tileEntity = region.getTileEntity(x, y, z);
                             if (tileEntity != null && TileEntityRendererDispatcher.instance.hasSpecialRenderer(tileEntity)) {
+                                if (tileEntity instanceof SectionBuiltBlockEntity built) {
+                                    if (sectionBuilt == null) {
+                                        sectionBuilt = new ArrayList<>();
+                                        sectionBuiltResults = new IntArrayList();
+                                    }
+                                    sectionBuilt.add(built);
+                                    sectionBuiltResults.add(built.angelica$prepareFromSection(region));
+                                }
                                 final boolean isGlobal;
                                 AxisAlignedBB aabb = null;
                                 final byte boundsClass = TileEntityRenderBoundsRegistry.classify(tileEntity);
@@ -279,6 +291,10 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
             renderData.visibilityData = occluder.computeVisibilityEncoding();
             renderData.culledBlockEntityBounds = culledBounds.isEmpty() ? AngelicaBuiltRenderSectionData.EMPTY_BOUNDS : culledBounds.toFloatArray();
             renderData.maxTeRenderDistSq = maxTeRenderDistSq;
+            if (sectionBuilt != null) {
+                renderData.sectionBuilt = sectionBuilt.toArray(new SectionBuiltBlockEntity[0]);
+                renderData.sectionBuiltResults = sectionBuiltResults.toIntArray();
+            }
 
             if (handoff) {
                 if (region != buildContext.getWorldSlice()) {

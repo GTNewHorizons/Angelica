@@ -871,6 +871,9 @@ public class SDLGPURenderBackend extends RenderBackend {
             case GL11.GL_CULL_FACE -> {
                 if (cs.pipeline.cullEnabled != on) { cs.pipeline.cullEnabled = on; cs.pipeline.markOutputDirty(); }
             }
+            case GL11.GL_POLYGON_OFFSET_FILL -> {
+                if (cs.pipeline.polygonOffsetFillEnabled != on) { cs.pipeline.polygonOffsetFillEnabled = on; cs.pipeline.markOutputDirty(); }
+            }
             case GL11.GL_STENCIL_TEST -> {
                 if (cs.pipeline.stencilTestEnabled != on) { cs.pipeline.stencilTestEnabled = on; cs.pipeline.markOutputDirty(); }
             }
@@ -1244,6 +1247,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         if (rp == 0) return;
         final int firstIndex = (int) (indices / FormatMap.indexElementSize(type));
         if (SystemProperties.FFP_TRACE) ffpTrace.trace(st, "elementsInstanced", mode, count, type, firstIndex, 0);
+        pipelineApplier.bindInstancedConstants(st, rp, primcount);
         drawDispatch.issueIndexedDraw(st, rp, st.currentVao.elementBuffer, type, count, primcount, firstIndex, 0);
         captureVertexWrites(st, 0, count, primcount, type, indices, 0);
     }
@@ -4137,6 +4141,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             case GL11.GL_DEPTH_TEST -> cs.pipeline.depthTestEnabled;
             case GL11.GL_BLEND -> cs.pipeline.blendEnabledPerDrawBuffer[0];
             case GL11.GL_CULL_FACE -> cs.pipeline.cullEnabled;
+            case GL11.GL_POLYGON_OFFSET_FILL -> cs.pipeline.polygonOffsetFillEnabled;
             case GL11.GL_SCISSOR_TEST -> cs.scissorEnabled;
             case GL11.GL_STENCIL_TEST -> cs.pipeline.stencilTestEnabled;
             case GL11.GL_DEPTH_WRITEMASK -> cs.pipeline.depthWriteEnabled;
@@ -4477,7 +4482,9 @@ public class SDLGPURenderBackend extends RenderBackend {
         if (!frameManager.isRenderPassActive()) return;
         if (!pipelineApplier.applyPipelineAndState(st)) return;
         if (SystemProperties.FFP_TRACE) ffpTrace.trace(st, "arraysInstanced", mode, count, 0, first, 0);
-        SDL_DrawGPUPrimitives(frameManager.getRenderPass(), count, primcount, first, 0);
+        final long rp = frameManager.getRenderPass();
+        pipelineApplier.bindInstancedConstants(st, rp, primcount);
+        SDL_DrawGPUPrimitives(rp, count, primcount, first, 0);
         captureVertexWrites(st, first, count, primcount, 0, 0, 0);
     }
 

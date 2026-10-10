@@ -20,6 +20,9 @@ import net.minecraft.entity.Entity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+
 /**
  * Records Java-side rendering scopes alongside cached geometry.
  */
@@ -28,24 +31,36 @@ public final class IrisDisplayListState {
     private IrisDisplayListState() {}
 
     public static void runProgramTransition(Runnable transition) {
+        runProgramTransition((run, unused) -> run.run(), transition, null);
+    }
+
+    public static <T> void runProgramTransition(Consumer<T> transition, T argument) {
+        runProgramTransition(Consumer::accept, transition, argument);
+    }
+
+    public static <A, B> void runProgramTransition(BiConsumer<A, B> transition, A first, B second) {
         BatchStateGuard.suspend();
         try {
-            runUnrecorded(transition);
+            runUnrecorded(transition, first, second);
         } finally {
             BatchStateGuard.resume();
         }
     }
 
     public static void runUnrecorded(Runnable transition) {
+        runUnrecorded((run, unused) -> run.run(), transition, null);
+    }
+
+    private static <A, B> void runUnrecorded(BiConsumer<A, B> transition, A first, B second) {
         final DisplayListManager.RecordMode mode = DisplayListManager.getRecordMode();
         if (mode == DisplayListManager.RecordMode.COMPILE) return;
         if (mode == DisplayListManager.RecordMode.NONE) {
-            transition.run();
+            transition.accept(first, second);
             return;
         }
         final CommandRecorder recorder = DisplayListManager.pauseRecording();
         try {
-            transition.run();
+            transition.accept(first, second);
         } finally {
             DisplayListManager.resumeRecording(recorder);
         }

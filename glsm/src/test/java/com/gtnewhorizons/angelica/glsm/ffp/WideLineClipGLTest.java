@@ -13,7 +13,6 @@ import java.nio.FloatBuffer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 @GLCoreTest
 class WideLineClipGLTest {
@@ -23,7 +22,7 @@ class WideLineClipGLTest {
     private static final float LINE_WIDTH = 3.0f;
     private static final int BACKGROUND = 0xFF000000;
 
-    private static final float[] IN_FRONT = { 0f, -1f, -2f };
+    private static final float[] IN_FRONT = { 0f, -0.9875f, -2f };
     private static final float[] BEHIND = { 0f, 0.8f, 2f };
 
     private boolean savedEmulation;
@@ -32,7 +31,7 @@ class WideLineClipGLTest {
 
     @BeforeEach
     void setUp() {
-        assumeTrue(GLStateManager.supportsGeometryShaders());
+        FfpFixture.routeVertexFormats(true);
         savedEmulation = GLStateManager.wideLineEmulationEnabled;
         GLStateManager.wideLineEmulationEnabled = true;
 
@@ -51,6 +50,7 @@ class WideLineClipGLTest {
 
     @AfterEach
     void tearDown() {
+        FfpFixture.routeVertexFormats(false);
         GLStateManager.wideLineEmulationEnabled = savedEmulation;
         GLStateManager.glLineWidth(1.0f);
         if (vbo != 0) { GLStateManager.glDeleteBuffers(vbo); vbo = 0; }
@@ -77,6 +77,60 @@ class WideLineClipGLTest {
         final int[] pixels = drawLine(new float[] { 0f, -1f, 2f }, BEHIND);
         for (int px : pixels) {
             assertEquals(BACKGROUND, px);
+        }
+    }
+
+    private static void orthographic() {
+        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
+        GLStateManager.glLoadIdentity();
+        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+    }
+
+    private static float pixelCenter(int pixel) {
+        return (pixel + 0.5f) * 2.0f / SIZE - 1.0f;
+    }
+
+    private static int litInColumn(int[] pixels, int x) {
+        int lit = 0;
+        for (int row = 0; row < SIZE; row++) {
+            if (pixels[row * SIZE + x] != BACKGROUND) lit++;
+        }
+        return lit;
+    }
+
+    private int[] drawLineOnce(float[] start, float[] end) {
+        final int[] pixels = drawLine(start, end);
+        GLStateManager.glDeleteBuffers(vbo);
+        GLStateManager.glDeleteVertexArrays(vao);
+        vbo = 0;
+        vao = 0;
+        return pixels;
+    }
+
+    @Test
+    void wideLineCoversItsFirstPixelButNotItsLast() {
+        orthographic();
+        GLStateManager.glLineWidth(2.0f);
+        final float y = pixelCenter(16);
+        final int[] pixels = drawLineOnce(new float[] { pixelCenter(40), y, 0f }, new float[] { pixelCenter(20), y, 0f });
+        assertEquals(2, litInColumn(pixels, 40), "first pixel of a right-to-left line");
+        assertEquals(0, litInColumn(pixels, 20), "last pixel of a right-to-left line");
+        assertEquals(2, litInColumn(pixels, 21), "pixel next to the last");
+    }
+
+    @Test
+    void cullingKeepsWideLinesInBothDirections() {
+        orthographic();
+        GLStateManager.glLineWidth(2.0f);
+        GLStateManager.glEnable(GL11.GL_CULL_FACE);
+        try {
+            final int[] rightward = drawLineOnce(new float[] { -0.8f, 0f, 0f }, new float[] { 0.8f, 0f, 0f });
+            final int[] leftward = drawLineOnce(new float[] { 0.8f, 0f, 0f }, new float[] { -0.8f, 0f, 0f });
+            assertEquals(2, litInColumn(rightward, SIZE / 2), "left-to-right line with culling on");
+            assertEquals(2, litInColumn(leftward, SIZE / 2), "right-to-left line with culling on");
+            assertTrue(GLStateManager.getCullState().isEnabled(), "the game's cull state survives");
+        } finally {
+            GLStateManager.glDisable(GL11.GL_CULL_FACE);
         }
     }
 

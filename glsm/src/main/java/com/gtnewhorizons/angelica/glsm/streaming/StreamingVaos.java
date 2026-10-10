@@ -10,4 +10,7 @@ public final class StreamingVaos {
 
     final int[] extendedPersistentVAOs = new int[FORMAT_COUNT];
     final int[] extendedOrphanVAOs = new int[FORMAT_COUNT];
+
+    final int[] lineQuadPersistentVAOs = new int[FORMAT_COUNT];
+    final int[] lineQuadOrphanVAOs = new int[FORMAT_COUNT];
 }

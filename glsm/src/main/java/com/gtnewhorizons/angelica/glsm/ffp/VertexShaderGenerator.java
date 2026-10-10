@@ -34,28 +34,16 @@ public final class VertexShaderGenerator {
         }
         emitTexCoordPassthrough(sb, key);
         if (key.lineStipple()) {
-            emitLineStart(sb);
+            emitLineStart(sb, key.lineQuads() ? "lineCenter" : "gl_Position");
         }
         if (key.fogEnabled()) {
             emitFogDistance(sb, key);
         }
         if (key.clipPlanesEnabled()) {
-            emitClipDistances(sb);
+            emitClipDistances(sb, key);
         }
         sb.append("}\n");
-
-        String source = sb.toString();
-        if (key.wideLineEmulation()) {
-            source = source.replace("v_SpecularColor", "v_SpecularColor_gs")
-                           .replace("v_TexCoord0", "v_TexCoord0_gs")
-                           .replace("v_TexCoord1", "v_TexCoord1_gs")
-                           .replace("v_TexCoord2", "v_TexCoord2_gs")
-                           .replace("v_TexCoord3", "v_TexCoord3_gs")
-                           .replace("v_FogCoord", "v_FogCoord_gs")
-                           .replace("v_LineStart", "v_LineStart_gs")
-                           .replace("v_Color", "v_Color_gs");
-        }
-        return source;
+        return sb.toString();
     }
 
     private static void emitAttributes(StringBuilder sb, VertexKey key) {
@@ -78,6 +66,8 @@ public final class VertexShaderGenerator {
             }
             if (key.hasVertexNormal() || kind == Instancing.CUBE) {
                 sb.append("layout(location = ").append(VertexFormatElement.Usage.NORMAL.getAttributeLocation()).append(") in vec3 a_Normal;\n");
+            } else if (key.lineQuads()) {
+                sb.append("layout(location = ").append(VertexFormatElement.Usage.NORMAL.getAttributeLocation()).append(") in vec3 a_LineOtherEnd;\n");
             }
         }
         for (String d : InstancedGlslHelpers.attributeDecls("a_", kind)) {
@@ -97,8 +87,8 @@ public final class VertexShaderGenerator {
         };
     }
 
-    private static void emitLineStart(StringBuilder sb) {
-        sb.append("  vec2 ndc = gl_Position.xy / gl_Position.w;\n");
+    private static void emitLineStart(StringBuilder sb, String clipPosition) {
+        sb.append("  vec2 ndc = ").append(clipPosition).append(".xy / ").append(clipPosition).append(".w;\n");
         sb.append("  v_LineStart = u_Viewport.xy + (ndc * 0.5 + 0.5) * u_Viewport.zw;\n\n");
     }
 
@@ -151,13 +141,57 @@ public final class VertexShaderGenerator {
             sb.append("  v_Overlay = a_InstOverlay;\n");
         } else {
             sb.append("  gl_Position = u_MVPMatrix * pos4;\n");
+            if (key.lineQuads()) {
+                emitLineQuadWidening(sb);
+            }
 
             // Eye position needed for lighting, fog, EYE_LINEAR texgen, and clip planes
             if (key.lightingEnabled() || key.fogEnabled() || texGenNeedsEyePos(key) || key.clipPlanesEnabled()) {
                 sb.append("  vec4 eyePos = u_ModelViewMatrix * pos4;\n");
             }
+            if (key.lineQuads() && (key.fogEnabled() || key.clipPlanesEnabled())) {
+                sb.append("  vec4 lineEyeOther = u_ModelViewMatrix * vec4(a_LineOtherEnd, 1.0);\n");
+            }
         }
         sb.append('\n');
+    }
+
+    private static void emitLineQuadWidening(StringBuilder sb) {
+        sb.append("  int lineCorner = gl_VertexID % 6;\n");
+        sb.append("  bool lineStart = lineCorner == 0 || lineCorner == 1 || lineCorner == 3;\n");
+        sb.append("  vec4 lineOther = u_MVPMatrix * vec4(a_LineOtherEnd, 1.0);\n");
+        sb.append("  vec4 lineC0 = lineStart ? gl_Position : lineOther;\n");
+        sb.append("  vec4 lineC1 = lineStart ? lineOther : gl_Position;\n");
+        sb.append("  vec4 lineCenter = lineC0;\n");
+        sb.append("  float lineT = 0.0;\n");
+        sb.append("  float lineD0 = lineC0.z + lineC0.w;\n");
+        sb.append("  float lineD1 = lineC1.z + lineC1.w;\n");
+        sb.append("  if (lineD0 < 0.0 && lineD1 < 0.0) {\n");
+        sb.append("    gl_Position = vec4(0.0, 0.0, 2.0, 1.0);\n");
+        sb.append("  } else {\n");
+        sb.append("    float lineT0 = lineD0 < 0.0 ? lineD0 / (lineD0 - lineD1) : 0.0;\n");
+        sb.append("    float lineT1 = lineD1 < 0.0 ? lineD0 / (lineD0 - lineD1) : 1.0;\n");
+        sb.append("    lineT = lineStart ? lineT0 : lineT1;\n");
+        sb.append("    vec4 lineP0 = mix(lineC0, lineC1, lineT0);\n");
+        sb.append("    vec4 lineP1 = mix(lineC0, lineC1, lineT1);\n");
+        sb.append("    vec2 lineN0 = lineP0.xy / lineP0.w;\n");
+        sb.append("    vec2 lineN1 = lineP1.xy / lineP1.w;\n");
+        sb.append("    vec2 linePixel = 2.0 / u_ViewportSize;\n");
+        sb.append("    float lineHalfWidth = 0.5 * u_LineWidth;\n");
+        sb.append("    vec2 lineOffset;\n");
+        sb.append("    vec2 lineShift;\n");
+        sb.append("    vec2 lineSpan = abs(lineN1 - lineN0) * u_ViewportSize;\n");
+        sb.append("    if (lineSpan.x > lineSpan.y) {\n");
+        sb.append("      lineOffset = vec2(0.0, lineHalfWidth * linePixel.y);\n");
+        sb.append("      lineShift = vec2(lineN0.x < lineN1.x ? -0.5 : 0.5, -0.125) * linePixel;\n");
+        sb.append("    } else {\n");
+        sb.append("      lineOffset = vec2(lineHalfWidth * linePixel.x, 0.0);\n");
+        sb.append("      lineShift = vec2(0.125, lineN0.y < lineN1.y ? -0.5 : 0.5) * linePixel;\n");
+        sb.append("    }\n");
+        sb.append("    vec4 lineP = lineStart ? lineP0 : lineP1;\n");
+        sb.append("    vec2 lineN = lineStart ? lineN0 : lineN1;\n");
+        sb.append("    gl_Position = vec4((lineN + (lineCorner % 2 == 0 ? lineOffset : -lineOffset) + lineShift) * lineP.w, lineP.z, lineP.w);\n");
+        sb.append("  }\n");
     }
 
     private static void emitNormalTransform(StringBuilder sb, VertexKey key) {
@@ -380,24 +414,30 @@ public final class VertexShaderGenerator {
 
     private static void emitFogDistance(StringBuilder sb, VertexKey key) {
         sb.append("  // Fog distance\n");
-        // Mesa ffvertex_prog.c build_fog(): FDM_EYE_RADIAL/EYE_PLANE/EYE_PLANE_ABS
-        final int fogDistMode = key.fogDistanceMode();
-        switch (fogDistMode) {
-            case 0 -> // FDM_EYE_RADIAL: Euclidean distance
-                sb.append("  v_FogCoord = length(eyePos.xyz);\n");
-            case 1 -> // FDM_EYE_PLANE: raw Z (can be negative, clamped by fog factor)
-                sb.append("  v_FogCoord = eyePos.z;\n");
-            case 2 -> // FDM_EYE_PLANE_ABS: absolute Z
-                sb.append("  v_FogCoord = abs(eyePos.z);\n");
-            default ->
-                sb.append("  v_FogCoord = abs(eyePos.z);\n");
+        final String own = fogDistance(key, "eyePos");
+        final String fog = key.lineQuads() ? acrossLine(own, fogDistance(key, "lineEyeOther")) : own;
+        sb.append("  v_FogCoord = ").append(fog).append(";\n");
+    }
+
+    // Mesa ffvertex_prog.c build_fog(): FDM_EYE_RADIAL/EYE_PLANE/EYE_PLANE_ABS
+    private static String fogDistance(VertexKey key, String eye) {
+        return switch (key.fogDistanceMode()) {
+            case 0 -> "length(" + eye + ".xyz)"; // FDM_EYE_RADIAL: Euclidean distance
+            case 1 -> eye + ".z";                // FDM_EYE_PLANE: raw Z (can be negative, clamped by fog factor)
+            default -> "abs(" + eye + ".z)";     // FDM_EYE_PLANE_ABS: absolute Z
+        };
+    }
+
+    private static void emitClipDistances(StringBuilder sb, VertexKey key) {
+        sb.append("  // Clip distances\n");
+        for (int i = 0; i < 8; i++) {
+            final String own = "dot(u_ClipPlane[" + i + "], eyePos)";
+            final String distance = key.lineQuads() ? acrossLine(own, "dot(u_ClipPlane[" + i + "], lineEyeOther)") : own;
+            sb.append("  gl_ClipDistance[").append(i).append("] = ").append(distance).append(";\n");
         }
     }
 
-    private static void emitClipDistances(StringBuilder sb) {
-        sb.append("  // Clip distances\n");
-        for (int i = 0; i < 8; i++) {
-            sb.append("  gl_ClipDistance[").append(i).append("] = dot(u_ClipPlane[").append(i).append("], eyePos);\n");
-        }
+    private static String acrossLine(String own, String other) {
+        return "mix(lineStart ? " + own + " : " + other + ", lineStart ? " + other + " : " + own + ", lineT)";
     }
 }

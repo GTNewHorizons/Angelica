@@ -27,6 +27,7 @@ import org.embeddedt.embeddium.impl.render.chunk.RenderSection;
 import org.embeddedt.embeddium.impl.render.chunk.RenderSectionManager;
 import org.embeddedt.embeddium.impl.render.chunk.compile.ChunkBuildOutput;
 import org.embeddedt.embeddium.impl.render.chunk.compile.tasks.ChunkBuilderTask;
+import org.embeddedt.embeddium.impl.render.chunk.data.BuiltRenderSectionData;
 import org.embeddedt.embeddium.impl.render.chunk.fog.FogService;
 import org.embeddedt.embeddium.impl.render.chunk.lists.SectionTicker;
 import org.embeddedt.embeddium.impl.render.chunk.occlusion.AsyncOcclusionMode;
@@ -148,6 +149,12 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
             return true;
         }
         return array[y] == null || array[y].isEmpty();
+    }
+
+    @Override
+    protected boolean updateSectionInfo(RenderSection render, @Nullable BuiltRenderSectionData info) {
+        if (info instanceof AngelicaBuiltRenderSectionData data) data.applySectionBuilt();
+        return super.updateSectionInfo(render, info);
     }
 
     @Override

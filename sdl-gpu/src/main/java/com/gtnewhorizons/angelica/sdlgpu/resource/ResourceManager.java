@@ -2385,6 +2385,18 @@ public final class ResourceManager {
         return chunk * ATTRIB_RING_CHUNK_BLOCKS * DUMMY_VBO_SIZE;
     }
 
+    public long createVertexBuffer(int size) {
+        try (var stack = stackPush()) {
+            final long handle = SDL_CreateGPUBuffer(device.getDevice(), SDL_GPUBufferCreateInfo.calloc(stack).usage(SDL_GPU_BUFFERUSAGE_VERTEX).size(size));
+            if (handle == 0) {
+                LOG.error("Failed to create vertex buffer size={}: {}", size, SDLError.SDL_GetError());
+                return 0;
+            }
+            trackBufferHandle(handle);
+            return handle;
+        }
+    }
+
     public long getOrCreateDummyVertexBuffer() {
         if (dummyVertexBuffer != 0) return dummyVertexBuffer;
 
