@@ -688,4 +688,12 @@ public class RenderSystem {
         if (actualVersion < 0) return true;
         return actualVersion >= requestedMajor * 10 + requestedMinor;
     }
+
+    public static final int MIN_CORE_VERSION = 33;
+
+    public static int probeCapAfterRejection(int requested, int actual) {
+        if (actual >= MIN_CORE_VERSION && actual < requested) return actual;
+        if (actual >= 0 && actual < MIN_CORE_VERSION && requested > MIN_CORE_VERSION) return MIN_CORE_VERSION;
+        return requested - 1;
+    }
 }
