@@ -3425,6 +3425,7 @@ public class SDLGPURenderBackend extends RenderBackend {
     }
 
     private void downloadBufferBlocking(long handle, int offset, int size, ByteBuffer out) {
+        if (size <= 0) return;
         flushAndSubmitMidFrame();
         final long cb = SDL_AcquireGPUCommandBuffer(device.getDevice());
         if (cb == 0) return;
