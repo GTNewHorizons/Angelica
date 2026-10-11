@@ -162,10 +162,12 @@ public abstract class MixinRendererLivingEntity_GlintClock {
         Tracy.endZone();
     }
 
+    // Either GL11 or GLSM owns this call; the group validates the required match.
     @Group(name = "angelica$globalGlintPhase", min = 1, max = 1)
     @Redirect(
         method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
-        at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glTranslatef(FFF)V", ordinal = 1, remap = false)
+        at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glTranslatef(FFF)V", ordinal = 1, remap = false),
+        expect = 0
     )
     private void angelica$globalGlintPhase(float x, float y, float z) {
         GlintClock.translateArmorGlint();
@@ -179,7 +181,8 @@ public abstract class MixinRendererLivingEntity_GlintClock {
             target = "Lcom/gtnewhorizons/angelica/glsm/GLStateManager;glTranslatef(FFF)V",
             ordinal = 1,
             remap = false
-        )
+        ),
+        expect = 0
     )
     private void angelica$globalGlintPhaseGlsm(float x, float y, float z) {
         GlintClock.translateArmorGlint();
