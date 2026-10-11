@@ -9,7 +9,7 @@ on:
 
 jobs:
   build-and-test:
-    uses: GTNewHorizons/GTNH-Actions-Workflows/.github/workflows/build-and-test.yml@report-test-results
+    uses: GTNewHorizons/GTNH-Actions-Workflows/.github/workflows/build-and-test.yml@30d03306cd2dbfade5083f5c6552afad5321d2bb
     with:
-      disable-spotless-pr: false
+      disable-spotless-pr: true
     secrets: inherit
