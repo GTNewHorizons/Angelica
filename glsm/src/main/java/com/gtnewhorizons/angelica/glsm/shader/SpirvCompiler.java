@@ -81,7 +81,16 @@ public final class SpirvCompiler {
             }
         }
 
-        final Result result = compileUncached(cleanSrc, shaderKind, debugName, opts);
+        Result result = compileUncached(cleanSrc, shaderKind, debugName, opts);
+        if (result.spirv() == null) {
+            final String renamed = GlslVulkanPreprocess.renameUserFunctions(cleanSrc);
+            final Result retry = renamed == null ? null : compileUncached(renamed, shaderKind, debugName, opts);
+            if (retry == null || retry.spirv() == null) {
+                return new Result(null, result.error(), writeFailureDump(debugName, shaderKind, result.error(), cleanSrc));
+            }
+            LOGGER.info("'{}' compiled after renaming its functions; shaderc rejected the original: {}", debugName, result.error());
+            result = retry;
+        }
         final ByteBuffer spirv = result.spirv();
         if (spirv != null) {
             final byte[] heap = ShaderCacheIO.toHeap(spirv);
@@ -121,8 +130,7 @@ public final class SpirvCompiler {
                 final int status = Shaderc.shaderc_result_get_compilation_status(result);
                 if (status != Shaderc.shaderc_compilation_status_success) {
                     final String msg = Shaderc.shaderc_result_get_error_message(result);
-                    final Path dumpPath = writeFailureDump(debugName, shaderKind, msg, cleanSrc);
-                    return new Result(null, msg == null ? "(no error message)" : msg, dumpPath);
+                    return new Result(null, msg == null ? "(no error message)" : msg, null);
                 }
                 final ByteBuffer spirv = Shaderc.shaderc_result_get_bytes(result);
                 if (spirv == null || spirv.remaining() == 0) {

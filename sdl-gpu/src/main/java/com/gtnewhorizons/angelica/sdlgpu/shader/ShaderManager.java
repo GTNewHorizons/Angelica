@@ -524,6 +524,10 @@ public final class ShaderManager {
         shObj.attachCount++;
     }
 
+    private static String stageLinkError(String stage, ShaderObject obj) {
+        return stage + (obj == null ? " shader missing" : " shader not compiled");
+    }
+
     public void linkProgram(int program) {
         final ProgramObject prog = programObjects.get(program);
         if (prog == null) return;
@@ -537,9 +541,11 @@ public final class ShaderManager {
         final ShaderObject fs = shaderObjects.get(prog.fragmentShader);
         final ShaderObject gs = prog.geometryShader != 0 ? shaderObjects.get(prog.geometryShader) : null;
 
-        if (vs == null || !vs.compiled || fs == null || !fs.compiled) {
+        final boolean vertexBad = vs == null || !vs.compiled;
+        final boolean fragmentBad = fs == null || !fs.compiled;
+        if (vertexBad || fragmentBad) {
             prog.linked = false;
-            prog.infoLog = "Shader not compiled";
+            prog.infoLog = !fragmentBad ? stageLinkError("Vertex", vs) : !vertexBad ? stageLinkError("Fragment", fs) : stageLinkError("Vertex", vs) + "; " + stageLinkError("Fragment", fs);
             return;
         }
 

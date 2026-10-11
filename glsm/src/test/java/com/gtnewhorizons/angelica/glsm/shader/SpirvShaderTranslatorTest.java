@@ -132,6 +132,11 @@ class SpirvShaderTranslatorTest {
     }
 
     @Test
+    void redefinedBuiltin_translates() {
+        assertNotNull(SpirvShaderTranslator.glslToGlslEs(SpirvCompilerDiskCacheTest.REDEFINES_CLAMP, GL20.GL_FRAGMENT_SHADER, "redefines_clamp.frag"));
+    }
+
+    @Test
     void uniformBoolWithInitializer_roundTripsAsBool() {
         final String src = """
             #version 330 core
