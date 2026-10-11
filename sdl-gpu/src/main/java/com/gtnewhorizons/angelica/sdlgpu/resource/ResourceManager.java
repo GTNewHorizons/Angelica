@@ -1585,6 +1585,7 @@ public final class ResourceManager {
     public boolean arenaUpload(ByteBuffer data, long dstHandle, long dstOffset, boolean cycle) {
         final FrameManager.FrameState f = frameManager.frame();
         final int size = data.remaining();
+        if (size == 0) return true;
         if (!f.arena.fits(size)) {
             return false;
         }
@@ -1682,6 +1683,7 @@ public final class ResourceManager {
         if (srcOff < 0 || size < 0 || srcOff + size > src.capacity()) {
             throw new IllegalStateException("uploadRangeToBuffer: bad source range srcOff=" + srcOff + " size=" + size + " src.capacity=" + src.capacity());
         }
+        if (size == 0) return;
         final long xfer = acquireTransferBuffer(size);
         if (xfer == 0) return;
 
