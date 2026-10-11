@@ -27,9 +27,10 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
@@ -234,8 +235,9 @@ class IndexedDrawBatchBuilderTest extends DisplayListTestFixture {
         final int vao = setupPosColorVao(vbo);
         final int list = recordSingleIndexedDraw(vao, ebo, GL11.GL_TRIANGLES, 3, GL11.GL_UNSIGNED_SHORT);
 
+        replay(list);
         final IndexedDrawBatch batch = firstBatch(list);
-        final int sharedVAO = batch.getSharedVAO();
+        final int sharedVAO = vaoOf(batch);
         final int sharedVBO = batch.getSharedVBO();
         final int sharedEBO = batch.getSharedEBO();
         assertTrue(GL15.glIsBuffer(sharedVBO), "shared VBO live");
@@ -257,8 +259,9 @@ class IndexedDrawBatchBuilderTest extends DisplayListTestFixture {
         final int vao = setupPosColorVao(vbo);
         final int list = recordSingleIndexedDraw(vao, ebo, GL11.GL_TRIANGLES, 3, GL11.GL_UNSIGNED_SHORT);
 
+        replay(list);
         final IndexedDrawBatch first = firstBatch(list);
-        final int oldVAO = first.getSharedVAO();
+        final int oldVAO = vaoOf(first);
         final int oldVBO = first.getSharedVBO();
         final int oldEBO = first.getSharedEBO();
 
@@ -341,8 +344,8 @@ class IndexedDrawBatchBuilderTest extends DisplayListTestFixture {
         final List<IndexedDrawBatch> batches = batchesOf(list);
         assertEquals(1, batches.size(), "same layout → one shared batch");
 
-        assertEquals(cmds.get(0).getSharedVAO(), cmds.get(1).getSharedVAO(), "shared VAO across draws in the same batch");
-        assertEquals(batches.getFirst().getSharedVAO(), cmds.get(0).getSharedVAO());
+        assertSame(batchOf(cmds.get(0)), batchOf(cmds.get(1)), "shared batch across draws in the same layout");
+        assertSame(batches.getFirst(), batchOf(cmds.get(0)));
 
         assertEquals(0L, cmds.get(0).getIndexByteOffset());
         assertEquals(3 * 4L, cmds.get(1).getIndexByteOffset(), "second draw offset = first.indexCount * sizeof(UINT)");
@@ -396,7 +399,7 @@ class IndexedDrawBatchBuilderTest extends DisplayListTestFixture {
         final List<BatchedIndexedDrawCmd> cmds = allBatchedCmds(list);
         assertEquals(2, cmds.size());
         assertEquals(2, batchesOf(list).size(), "incompatible layouts → two batches");
-        assertNotEquals(cmds.get(0).getSharedVAO(), cmds.get(1).getSharedVAO(), "VAOs from separate batches must be distinct");
+        assertNotSame(batchOf(cmds.get(0)), batchOf(cmds.get(1)), "separate layouts must get distinct batches");
     }
 
     @Test
@@ -435,7 +438,7 @@ class IndexedDrawBatchBuilderTest extends DisplayListTestFixture {
         final List<BatchedIndexedDrawCmd> cmds = allBatchedCmds(list);
         assertEquals(2, cmds.size());
         assertEquals(2, batchesOf(list).size(), "different enabled locations → two batches");
-        assertNotEquals(cmds.get(0).getSharedVAO(), cmds.get(1).getSharedVAO(), "VAOs from separate batches must be distinct");
+        assertNotSame(batchOf(cmds.get(0)), batchOf(cmds.get(1)), "separate layouts must get distinct batches");
     }
 
     @Test
@@ -495,13 +498,13 @@ class IndexedDrawBatchBuilderTest extends DisplayListTestFixture {
         final List<BatchedIndexedDrawCmd> ba = allBatchedCmds(listBA);
         // Placeholders sit in command-stream order (A-first vs B-first).
         // Batches must be ordered so that placeholder[0] points at batch[0].
-        assertEquals(ab.get(0).getSharedVAO(), batchesOf(listAB).get(0).getSharedVAO(),
+        assertSame(batchesOf(listAB).get(0), batchOf(ab.get(0)),
             "listAB: batch[0] must match the first-recorded layout");
-        assertEquals(ab.get(1).getSharedVAO(), batchesOf(listAB).get(1).getSharedVAO(),
+        assertSame(batchesOf(listAB).get(1), batchOf(ab.get(1)),
             "listAB: batch[1] must match the second-recorded layout");
-        assertEquals(ba.get(0).getSharedVAO(), batchesOf(listBA).get(0).getSharedVAO(),
+        assertSame(batchesOf(listBA).get(0), batchOf(ba.get(0)),
             "listBA: batch[0] must match the first-recorded layout");
-        assertEquals(ba.get(1).getSharedVAO(), batchesOf(listBA).get(1).getSharedVAO(),
+        assertSame(batchesOf(listBA).get(1), batchOf(ba.get(1)),
             "listBA: batch[1] must match the second-recorded layout");
     }
 
