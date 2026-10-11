@@ -85,6 +85,12 @@ public enum Mixins implements IMixins {
         .addClientMixins("client.starminer.MixinTransformClientHelper")
     ),
 
+    RAILCRAFT_LANTERN_CONNECTIONS(new MixinBuilder("Fix Railcraft lanterns rendering with Angelica")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.RAILCRAFT)
+        .addClientMixins("client.railcraft.MixinRenderBlockLamp")
+    ),
+
     ANGELICA_ENTITY_OVERLAYS(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.entityOverlayFixes)
