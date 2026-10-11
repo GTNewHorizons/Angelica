@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.iris;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GlTestSupport;
 import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.recording.GLCommand;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
@@ -63,27 +64,10 @@ class IrisDisplayListStateTest {
     }
 
     private int program() {
-        int vertex = shader(GL20.GL_VERTEX_SHADER,
-            "#version 330 core\nvoid main() { gl_Position = vec4(0, 0, 0, 1); }");
-        int fragment = shader(GL20.GL_FRAGMENT_SHADER,
+        int program = GlTestSupport.program(GlTestSupport.TRIVIAL_VS,
             "#version 330 core\nuniform int itemId; out vec4 color; void main() { color = vec4(float(itemId)); }");
-        int program = GLStateManager.glCreateProgram();
         programs.add(program);
-        GLStateManager.glAttachShader(program, vertex);
-        GLStateManager.glAttachShader(program, fragment);
-        GLStateManager.glLinkProgram(program);
-        GLStateManager.glDeleteShader(vertex);
-        GLStateManager.glDeleteShader(fragment);
-        assertEquals(GL11.GL_TRUE, GLStateManager.glGetProgrami(program, GL20.GL_LINK_STATUS));
         return program;
-    }
-
-    private static int shader(int type, String source) {
-        int shader = GLStateManager.glCreateShader(type);
-        GLStateManager.glShaderSource(shader, source);
-        GLStateManager.glCompileShader(shader);
-        assertEquals(GL11.GL_TRUE, GLStateManager.glGetShaderi(shader, GL20.GL_COMPILE_STATUS));
-        return shader;
     }
 
     private void selectProgram() {

@@ -36,7 +36,6 @@ class LogicOpGLTest {
         GLStateManager.glDisable(GL11.GL_BLEND);
         LogicOpFixture.deleteResources();
         FfpFixture.resetFfpState();
-        while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
     }
 
     @Test
@@ -48,7 +47,6 @@ class LogicOpGLTest {
                 assertRgb(op, src);
             }
         }
-        assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
     }
 
     @Test

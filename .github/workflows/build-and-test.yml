@@ -10,4 +10,6 @@ on:
 jobs:
   build-and-test:
     uses: GTNewHorizons/GTNH-Actions-Workflows/.github/workflows/build-and-test.yml@master
+    with:
+      disable-spotless-pr: true
     secrets: inherit

@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.rendering;
 
-import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayDeque;
@@ -9,16 +8,20 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.function.LongConsumer;
-import java.util.function.LongSupplier;
 import java.util.function.ObjIntConsumer;
 
+import static com.gtnewhorizons.angelica.rendering.PacerTestClock.MS;
+import static com.gtnewhorizons.angelica.rendering.PacerTestClock.P144;
+import static com.gtnewhorizons.angelica.rendering.PacerTestClock.P5994;
+import static com.gtnewhorizons.angelica.rendering.PacerTestClock.P60;
+import static com.gtnewhorizons.angelica.rendering.PacerTestClock.cadenceNanos;
+import static com.gtnewhorizons.angelica.rendering.PacerTestClock.driverPaced;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PacerCoreSimTest {
 
     private static final long US = 1_000L;
-    private static final long MS = 1_000_000L;
     private static final int FRAMES = 3000;
     private static final int WARMUP = 300;
 
@@ -26,10 +29,6 @@ class PacerCoreSimTest {
     private static final long JITTER = 10 * US;
     private static final long SEED = 987654321L;
     private static final int MAILBOX_IMAGES = 2;
-
-    private static final long P60 = 1_000_000_000L / 60;
-    private static final long P5994 = 1_000_000_000L * 1001 / 60_000;
-    private static final long P144 = 1_000_000_000L / 144;
 
     private enum Mode {
         FIFO, MAILBOX, IMMEDIATE
@@ -39,22 +38,13 @@ class PacerCoreSimTest {
         SWAP, FIRST_CLEAR, NONE
     }
 
-    private static final class FakeClock implements LongSupplier {
-        long now;
-
-        @Override
-        public long getAsLong() {
-            return now;
-        }
-    }
-
     private static final class FakeSleeper implements LongConsumer {
-        private final FakeClock clock;
+        private final PacerTestClock clock;
         private final Random rng = new Random(SEED);
         private final long granularity;
         int parks;
 
-        FakeSleeper(FakeClock clock, long granularity) {
+        FakeSleeper(PacerTestClock clock, long granularity) {
             this.clock = clock;
             this.granularity = granularity;
         }
@@ -270,10 +260,10 @@ class PacerCoreSimTest {
     }
 
     private static Result run(Sim sim) {
-        final FakeClock clock = new FakeClock();
+        final PacerTestClock clock = new PacerTestClock();
         final FakeSleeper parker = new FakeSleeper(clock, sim.granularity);
-        final PacerSleeper sleeper = new PacerSleeper(clock, parker, false);
-        final PacerCore core = new PacerCore(clock, sleeper);
+        final PacerSleeper sleeper = new PacerSleeper(clock.clock(), parker, false);
+        final PacerCore core = new PacerCore(clock.clock(), sleeper);
         core.setRefreshPeriodNanos(sim.refreshPeriod);
         core.setTearFree(sim.tearFree);
         core.setVsyncOn(sim.vsyncOn);
@@ -302,7 +292,7 @@ class PacerCoreSimTest {
             final int startParks = parker.parks - parksBefore;
             if (f >= WARMUP) result.startParks += startParks;
             result.probed[f] = core.probing();
-            result.driven[f] = Reflect.<Boolean>invoke(core, "driverPaced", new Class<?>[0]);
+            result.driven[f] = driverPaced(core);
             if (core.probing()) result.probeFrames++;
             if (core.locked()) {
                 if (result.lockFrame < 0) result.lockFrame = f;
@@ -314,7 +304,7 @@ class PacerCoreSimTest {
                 wasLocked = false;
             }
             if (core.slackNanos() > result.maxStartSleep) result.maxStartSleep = core.slackNanos();
-            result.cadences[f] = Reflect.<Long>get(core, "cadenceNanos");
+            result.cadences[f] = cadenceNanos(core);
             result.margins[f] = core.marginNanos();
 
             final long start = clock.now;
@@ -342,8 +332,8 @@ class PacerCoreSimTest {
             clock.now = accepted;
         }
 
-        result.driverPaced = Reflect.<Boolean>invoke(core, "driverPaced", new Class<?>[0]);
-        result.cadence = Reflect.<Long>get(core, "cadenceNanos");
+        result.driverPaced = driverPaced(core);
+        result.cadence = cadenceNanos(core);
         result.margin = core.marginNanos();
         display.resolve(result);
         measure(display.frames, result);

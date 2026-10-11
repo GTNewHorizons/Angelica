@@ -1,15 +1,16 @@
 package com.gtnewhorizons.angelica.sdlgpu.resource;
 
+import com.gtnewhorizons.angelica.sdlgpu.RealDeviceExtension;
 import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 
 import com.gtnewhorizons.angelica.sdlgpu.device.Device;
 import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.sdl.SDLError;
 import org.lwjgl.sdl.SDL_GPUBufferCreateInfo;
@@ -25,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.lwjgl.sdl.SDLGPU.*;
 import static org.lwjgl.system.MemoryStack.stackPush;
 
+@ExtendWith(RealDeviceExtension.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class UploadArenaGpuRoundTripTest {
 
@@ -36,19 +38,11 @@ class UploadArenaGpuRoundTripTest {
 
     @BeforeAll
     static void setUp() throws Exception {
-        final SdlTestRig rig = SdlTestRig.acquireRealDevice();
+        final SdlTestRig rig = RealDeviceExtension.rig();
         device = rig.device;
         frameManager = rig.frameManager;
         resourceManager = rig.resourceManager;
         sdlDevice = rig.sdlHandle;
-    }
-
-    @AfterAll
-    static void tearDown() {
-        if (frameManager != null && frameManager.isFrameActive()) {
-            frameManager.endFrame();
-        }
-        SdlTestRig.releaseRealDevice();
     }
 
     private static void beginFrame() {

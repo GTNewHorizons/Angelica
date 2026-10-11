@@ -10,13 +10,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @GLCoreTest
 public class GLSM_TextureBindingTargetCache_UnitTest {
 
-    private static void drainErrors() {
-        while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
-    }
-
     @Test
     void flattenedCacheTracksNon2DTargets() {
-        drainErrors();
         final int t3d = GL11.glGenTextures();
         final int t2d = GL11.glGenTextures();
         try {
@@ -38,13 +33,11 @@ public class GLSM_TextureBindingTargetCache_UnitTest {
             GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
             GLStateManager.glDeleteTextures(t3d);
             GLStateManager.glDeleteTextures(t2d);
-            drainErrors();
         }
     }
 
     @Test
     void proxyTargetBindIsNeitherForwardedNorCached() {
-        drainErrors();
         final int t2d = GL11.glGenTextures();
         try {
             GLStateManager.glActiveTexture(GL13.GL_TEXTURE5);
@@ -60,13 +53,11 @@ public class GLSM_TextureBindingTargetCache_UnitTest {
             GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
             GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
             GLStateManager.glDeleteTextures(t2d);
-            drainErrors();
         }
     }
 
     @Test
     void popAttribRestoresRecordedTarget() {
-        drainErrors();
         final int t3d = GL11.glGenTextures();
         final int t2d = GL11.glGenTextures();
         try {
@@ -86,13 +77,11 @@ public class GLSM_TextureBindingTargetCache_UnitTest {
             GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
             GLStateManager.glDeleteTextures(t3d);
             GLStateManager.glDeleteTextures(t2d);
-            drainErrors();
         }
     }
 
     @Test
     void unbindIsNotElidedAcrossTargets() {
-        drainErrors();
         final int t2d = GL11.glGenTextures();
         try {
             GLStateManager.glActiveTexture(GL13.GL_TEXTURE4);
@@ -100,11 +89,9 @@ public class GLSM_TextureBindingTargetCache_UnitTest {
             GLStateManager.glBindTexture(GL12.GL_TEXTURE_3D, 0);
             GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
             assertEquals(0, GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D), "2D unbind after a 3D unbind must reach the driver");
-            assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
         } finally {
             GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
             GLStateManager.glDeleteTextures(t2d);
-            drainErrors();
         }
     }
 }

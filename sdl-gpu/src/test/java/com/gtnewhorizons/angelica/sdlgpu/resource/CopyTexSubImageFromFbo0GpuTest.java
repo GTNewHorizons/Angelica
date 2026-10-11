@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu.resource;
 
+import com.gtnewhorizons.angelica.sdlgpu.RealDeviceExtension;
 import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 import com.gtnewhorizons.angelica.sdlgpu.device.Device;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
@@ -8,6 +9,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.system.MemoryUtil;
 
@@ -17,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.lwjgl.sdl.SDLGPU.SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
 
+@ExtendWith(RealDeviceExtension.class)
 @Timeout(120)
 class CopyTexSubImageFromFbo0GpuTest {
 
@@ -32,7 +35,7 @@ class CopyTexSubImageFromFbo0GpuTest {
 
     @BeforeAll
     static void setUp() throws Exception {
-        final SdlTestRig rig = SdlTestRig.acquireRealDevice();
+        final SdlTestRig rig = RealDeviceExtension.rig();
         device = rig.device;
         frameManager = rig.frameManager;
         resourceManager = rig.resourceManager;
@@ -43,7 +46,6 @@ class CopyTexSubImageFromFbo0GpuTest {
     static void tearDown() {
         if (frameManager != null && frameManager.isFrameActive()) frameManager.endFrame();
         if (frameManager != null) frameManager.destroyFinalTarget();
-        SdlTestRig.releaseRealDevice();
     }
 
     private static byte srcRed(int col) {

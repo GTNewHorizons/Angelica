@@ -5,6 +5,7 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
+import org.lwjgl.opengl.GL14;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
@@ -16,14 +17,15 @@ import java.util.stream.IntStream;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 public class GLSMUtil {
 
-    // Cached GL limits (queried once at class load time)
-    private static final int MAX_CLIP_PLANES = GL11.glGetInteger(GL11.GL_MAX_CLIP_PLANES);
-    private static final int MAX_LIGHTS = GL11.glGetInteger(GL11.GL_MAX_LIGHTS);
-    private static final int MAX_TEXTURE_UNITS = GL11.glGetInteger(GL13.GL_MAX_TEXTURE_UNITS);
+    // Compat-only pnames, so they load with resetGLState() and not with the class: a core driver answers GL_INVALID_ENUM
+    private static final class CompatLimits {
+        static final int MAX_CLIP_PLANES = GL11.glGetInteger(GL11.GL_MAX_CLIP_PLANES);
+        static final int MAX_LIGHTS = GL11.glGetInteger(GL11.GL_MAX_LIGHTS);
+        static final int MAX_TEXTURE_UNITS = GL11.glGetInteger(GL13.GL_MAX_TEXTURE_UNITS);
+    }
 
     // MAP1 evaluator constants for DRY loops
     private static final int[] MAP1_STATES = {
@@ -76,11 +78,23 @@ public class GLSMUtil {
         GL11.GL_FOG_MODE, GL11.GL_FOG_INDEX,
         // Also removed from core profile
         GL11.GL_POINT_SMOOTH, GL11.GL_POLYGON_STIPPLE,
-        GL11.GL_INDEX_LOGIC_OP, GL11.GL_AUTO_NORMAL));
+        GL11.GL_INDEX_LOGIC_OP, GL11.GL_AUTO_NORMAL,
+        GL13.GL_CLIENT_ACTIVE_TEXTURE,
+        GL11.GL_VERTEX_ARRAY, GL11.GL_NORMAL_ARRAY, GL11.GL_COLOR_ARRAY, GL11.GL_TEXTURE_COORD_ARRAY,
+        GL11.GL_INDEX_ARRAY, GL11.GL_EDGE_FLAG_ARRAY, GL14.GL_SECONDARY_COLOR_ARRAY, GL14.GL_FOG_COORDINATE_ARRAY,
+        GL11.GL_VERTEX_ARRAY_SIZE, GL11.GL_VERTEX_ARRAY_TYPE, GL11.GL_VERTEX_ARRAY_STRIDE));
 
         for (int cap : MAP1_STATES) caps.add(cap);
         for (int cap : MAP2_STATES) caps.add(cap);
         return caps;
+    }
+
+    // A core driver rejects these caps with GL_INVALID_ENUM. Only that error is dropped: one already pending is the test's.
+    private static boolean driverBoolean(int glCap, boolean isEnabled) {
+        assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "GL error pending before the driver query");
+        final boolean value = isEnabled ? GL11.glIsEnabled(glCap) : GL11.glGetBoolean(glCap);
+        while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
+        return value;
     }
 
     private static boolean isFFPOnly(int glCap) {
@@ -94,7 +108,7 @@ public class GLSMUtil {
     public static void verifyIsEnabled(int glCap, boolean expected, String message) {
         if (isFFPOnly(glCap)) {
             assertAll(message,
-                () -> assertFalse(GL11.glIsEnabled(glCap), "GL State Mismatch - cache-only cap reached the driver"),
+                () -> assertFalse(driverBoolean(glCap, true), "GL State Mismatch - cache-only cap reached the driver"),
                 () -> assertEquals(expected, GLStateManager.glIsEnabled(glCap), "GLSM State Mismatch")
             );
         } else {
@@ -112,7 +126,7 @@ public class GLSMUtil {
     public static void verifyState(int glCap, boolean expected, String message) {
         if (isFFPOnly(glCap)) {
             assertAll(message,
-                () -> assertFalse(GL11.glGetBoolean(glCap), "GL State Mismatch - cache-only cap reached the driver"),
+                () -> assertFalse(driverBoolean(glCap, false), "GL State Mismatch - cache-only cap reached the driver"),
                 () -> assertEquals(expected, GLStateManager.glGetBoolean(glCap), "GLSM State Mismatch")
             );
         } else {
@@ -208,22 +222,6 @@ public class GLSMUtil {
         }
     }
 
-    public static void verifyNotDefaultState(int glCap, float[] expected, String message) {
-        if (isFFPOnly(glCap)) {
-            GLStateManager.glGetFloat(glCap, (FloatBuffer) glsmFloatBuffer.clear());
-            IntStream.range(0, expected.length).forEach(i ->
-                assertNotEquals(expected[i], glsmFloatBuffer.get(i), 0.0001f, message + " - GLSM State Mismatch: " + i)
-            );
-        } else {
-            GL11.glGetFloat(glCap, (FloatBuffer) glFloatBuffer.clear());
-            GLStateManager.glGetFloat(glCap, (FloatBuffer) glsmFloatBuffer.clear());
-            IntStream.range(0, expected.length).forEach(i -> assertAll(message,
-                () -> assertNotEquals(expected[i], glFloatBuffer.get(i), 0.0001f, "GL State Mismatch: " + i),
-                () -> assertNotEquals(expected[i], glsmFloatBuffer.get(i), 0.0001f, "GLSM State Mismatch: " + i)
-            ));
-        }
-    }
-
     public static void verifyState(int glCap, boolean[] expected) {
         verifyState(glCap, expected, "Boolean State Mismatch");
     }
@@ -275,7 +273,7 @@ public class GLSMUtil {
         GLStateManager.disableBlend();
 
         // Disable all clip planes (using cached MAX_CLIP_PLANES)
-        for(int i = 0; i < MAX_CLIP_PLANES; i++) {
+        for(int i = 0; i < CompatLimits.MAX_CLIP_PLANES; i++) {
             GLStateManager.glDisable(GL11.GL_CLIP_PLANE0 + i);
         }
 
@@ -290,7 +288,7 @@ public class GLSMUtil {
         GLStateManager.disableLighting();
 
         // Disable all lights (using cached MAX_LIGHTS)
-        for(int i = 0; i < MAX_LIGHTS; i++) {
+        for(int i = 0; i < CompatLimits.MAX_LIGHTS; i++) {
             GLStateManager.disableLight(i);
         }
 
@@ -330,7 +328,7 @@ public class GLSMUtil {
         GLStateManager.glDisable(GL11.GL_STENCIL_TEST);
 
         // Reset texture state for all units (using cached MAX_TEXTURE_UNITS)
-        for(int i = 0; i < MAX_TEXTURE_UNITS; i++) {
+        for(int i = 0; i < CompatLimits.MAX_TEXTURE_UNITS; i++) {
             GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + i);
             GLStateManager.glDisable(GL11.GL_TEXTURE_1D);
             GLStateManager.disableTexture(); // GL_TEXTURE_2D
@@ -383,9 +381,9 @@ public class GLSMUtil {
 
     public static void setClientState(int glCap, boolean state) {
         if (state) {
-            GL11.glEnableClientState(glCap);
+            GLStateManager.glEnableClientState(glCap);
         } else {
-            GL11.glDisableClientState(glCap);
+            GLStateManager.glDisableClientState(glCap);
         }
     }
 }

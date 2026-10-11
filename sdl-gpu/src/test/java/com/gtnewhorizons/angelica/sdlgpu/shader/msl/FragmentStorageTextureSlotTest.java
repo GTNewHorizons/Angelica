@@ -1,11 +1,12 @@
 package com.gtnewhorizons.angelica.sdlgpu.shader.msl;
 
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess;
-import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
 import com.gtnewhorizons.angelica.sdlgpu.shader.cross.CrossCompileCache;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.util.shaderc.Shaderc;
@@ -16,6 +17,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static com.gtnewhorizons.angelica.sdlgpu.shader.SpirvTestShaders.compileOrFail;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -47,14 +49,13 @@ class FragmentStorageTextureSlotTest {
         return Integer.parseInt(m.group(1));
     }
 
-    private void assertSlots(int samplerCount) {
+    @ParameterizedTest(name = "{0} samplers")
+    @ValueSource(ints = {0, 1, 3})
+    void storageTextureSitsAfterTheSamplers(int samplerCount) {
         final GlslVulkanPreprocess.Result pre = GlslVulkanPreprocess.run(fragmentSource(samplerCount),
             GL20.GL_FRAGMENT_SHADER, "storage-slot-s" + samplerCount, true);
         final String src = pre != null ? pre.rewrittenSource() : fragmentSource(samplerCount);
-        final SpirvCompiler.Result r = SpirvCompiler.compile(src,
-            Shaderc.shaderc_fragment_shader, "storage-slot-s" + samplerCount, SpirvCompiler.Options.vulkanForced460Core());
-        if (r.spirv() == null) fail("compile failed: " + r.error() + "\nsource:\n" + src);
-        final ByteBuffer spirv = r.spirv();
+        final ByteBuffer spirv = compileOrFail(src, Shaderc.shaderc_fragment_shader);
         try {
             ShaderManager.remapSpirvForSDLGPU(spirv, GL20.GL_FRAGMENT_SHADER);
             final CrossCompileCache.Output out = MslCrossCompile.compile(spirv, GL20.GL_FRAGMENT_SHADER, false);
@@ -76,10 +77,6 @@ class FragmentStorageTextureSlotTest {
             MemoryUtil.memFree(spirv);
         }
     }
-
-    @Test void storageTextureAfterZeroSamplers() { assertSlots(0); }
-    @Test void storageTextureAfterOneSampler() { assertSlots(1); }
-    @Test void storageTextureAfterThreeSamplers() { assertSlots(3); }
 
     @Test void multipleStorageImagesFollowReflectionOrder() throws Exception {
         final String src = String.join("\n",

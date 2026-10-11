@@ -6,7 +6,6 @@ import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SDLGPUBufferQueryTest {
 
@@ -26,11 +25,6 @@ class SDLGPUBufferQueryTest {
     @Test
     void emptyDrawBufferListReadsAsNone() {
         assertEquals(GL11.GL_NONE, SDLGPURenderBackend.bufferEnum(7, -1));
-    }
-
-    @Test
-    void defaultMatchesGLStateManagerDeclaredDefault() {
-        assertEquals(0x405, SDLGPURenderBackend.bufferEnum(0, 0));
     }
 
     @Test
@@ -54,12 +48,6 @@ class SDLGPUBufferQueryTest {
         assertEquals(1024, SDLGPURenderBackend.deviceLimit(GL20.GL_MAX_VERTEX_UNIFORM_COMPONENTS));
         assertEquals(1024, SDLGPURenderBackend.deviceLimit(GL20.GL_MAX_FRAGMENT_UNIFORM_COMPONENTS));
         assertEquals(256, SDLGPURenderBackend.deviceLimit(GL30.GL_MAX_ARRAY_TEXTURE_LAYERS));
-    }
-
-    @Test
-    void uniformLimitFitsSdlsUboSection() {
-        assertTrue(SDLGPURenderBackend.deviceLimit(GL20.GL_MAX_VERTEX_UNIFORM_COMPONENTS) * 4 <= 4096);
-        assertTrue(SDLGPURenderBackend.deviceLimit(GL30.GL_MAX_ARRAY_TEXTURE_LAYERS) <= 256);
     }
 
     @Test

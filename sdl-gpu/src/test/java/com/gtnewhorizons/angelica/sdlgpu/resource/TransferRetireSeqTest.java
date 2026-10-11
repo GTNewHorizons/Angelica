@@ -13,14 +13,8 @@ class TransferRetireSeqTest {
 
     private static TransferThread idleThread() {
         final SdlTestRig rig = SdlTestRig.create();
-        final TransferThread tt = new TransferThread(rig.device, rig.resourceManager);
-        tt.shutdown();
-        try {
-            tt.getThread().join(5_000L);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new AssertionError("interrupted while stopping the transfer thread", e);
-        }
+        final TransferThread tt = rig.newTransferThread();
+        SdlTestRig.shutdown(tt);
         assertFalse(tt.getThread().isAlive(), "the worker must be stopped first: its loop zeroes openHighestSeq after publishing, so a live worker races this test");
         return tt;
     }

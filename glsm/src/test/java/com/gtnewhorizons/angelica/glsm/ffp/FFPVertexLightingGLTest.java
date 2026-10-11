@@ -7,15 +7,19 @@ import org.joml.Vector3f;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL15;
 
 import java.nio.ByteBuffer;
-import java.nio.FloatBuffer;
+import java.util.stream.Stream;
 
 import static com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags.COLOR_BIT;
+import static com.gtnewhorizons.angelica.glsm.GlTestSupport.floats;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -112,12 +116,6 @@ class FFPVertexLightingGLTest {
             + " light1=" + GLStateManager.getLightStates()[1].isEnabled();
     }
 
-    private static FloatBuffer floats(float... values) {
-        final FloatBuffer buf = BufferUtils.createFloatBuffer(values.length);
-        buf.put(values).flip();
-        return buf;
-    }
-
     private void buildTriangle() {
         vao = GLStateManager.glGenVertexArrays();
         GLStateManager.glBindVertexArray(vao);
@@ -156,9 +154,8 @@ class FFPVertexLightingGLTest {
         GLStateManager.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
         assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "FFP draw must not raise a GL error");
 
-        final ByteBuffer pixel = BufferUtils.createByteBuffer(4);
-        GL11.glReadPixels(400, 200, 1, 1, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixel);
-        return new float[] { (pixel.get(0) & 0xFF) / 255.0f, (pixel.get(1) & 0xFF) / 255.0f, (pixel.get(2) & 0xFF) / 255.0f };
+        final int[] pixel = FfpFixture.readPixel(400, 200);
+        return new float[] { pixel[0] / 255.0f, pixel[1] / 255.0f, pixel[2] / 255.0f };
     }
 
     private void assertSolverMatchesShader(String context) {
@@ -170,23 +167,20 @@ class FFPVertexLightingGLTest {
         }
     }
 
-    @Test
-    void faceOnNormalMatchesGeneratedShader() {
-        GLStateManager.glNormal3f(0.0f, 0.0f, 1.0f);
-        assertSolverMatchesShader("face-on normal");
+    static Stream<Arguments> normals() {
+        return Stream.of(
+            Arguments.of("face-on normal", 0.0f, 0.0f, 1.0f, Float.POSITIVE_INFINITY),
+            // A 0.0104-long normal must stay at the 0.4 light model ambient floor rather than pick up 0.6 per light
+            Arguments.of("sign normal", 0.0f, 0.0f, -0.010416667f, 0.45f),
+            Arguments.of("tilted normal", 0.3f, 0.8f, 0.5f, Float.POSITIVE_INFINITY));
     }
 
-    @Test
-    void signNormalMatchesGeneratedShader() {
-        GLStateManager.glNormal3f(0.0f, 0.0f, -0.010416667f);
-        assertSolverMatchesShader("sign normal");
-        assertTrue(factor.x < 0.45f, "a 0.0104-long normal must stay at the 0.4 light model ambient floor rather than pick up 0.6 per light, got " + factor.x);
-    }
-
-    @Test
-    void tiltedNormalMatchesGeneratedShader() {
-        GLStateManager.glNormal3f(0.3f, 0.8f, 0.5f);
-        assertSolverMatchesShader("tilted normal");
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("normals")
+    void normalMatchesGeneratedShader(String name, float x, float y, float z, float factorCeiling) {
+        GLStateManager.glNormal3f(x, y, z);
+        assertSolverMatchesShader(name);
+        assertTrue(factor.x < factorCeiling, name + ": factor must stay below " + factorCeiling + ", got " + factor.x);
     }
 
     @Test
@@ -206,25 +200,29 @@ class FFPVertexLightingGLTest {
         assertTrue(factor.x > 1.2f, "normalize restores the unit normal, which must pick up more diffuse than rescale's 0.5-long one, got " + factor.x);
     }
 
-    @Test
-    void materialEmissionIsNotRepresentable() {
-        GLStateManager.glMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_EMISSION, floats(0.1f, 0.1f, 0.1f, 1.0f));
-        assertFalse(FFPVertexLighting.modulatesVertexColor(factor), "emission is additive, so the lit colour is not vertexColor * factor");
+    static Stream<Arguments> unrepresentableStates() {
+        return Stream.of(
+            unrepresentable("emission is additive, so the lit colour is not vertexColor * factor",
+                () -> GLStateManager.glMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_EMISSION, floats(0.1f, 0.1f, 0.1f, 1.0f))),
+            unrepresentable("specular is additive, so the lit colour is not vertexColor * factor", () -> {
+                GLStateManager.glMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_SPECULAR, floats(1.0f, 1.0f, 1.0f, 1.0f));
+                GLStateManager.glMaterialf(GL11.GL_FRONT_AND_BACK, GL11.GL_SHININESS, 16.0f);
+                GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_SPECULAR, floats(1.0f, 1.0f, 1.0f, 1.0f));
+            }),
+            unrepresentable("only AMBIENT_AND_DIFFUSE makes the lit colour scale with the vertex colour",
+                () -> GLStateManager.glColorMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_EMISSION)));
+    }
+
+    private static Arguments unrepresentable(String reason, Runnable state) {
+        return Arguments.of(reason, state);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("unrepresentableStates")
+    void additiveLightingIsNotRepresentable(String reason, Runnable state) {
+        state.run();
+        assertFalse(FFPVertexLighting.modulatesVertexColor(factor), reason);
         assertEquals(IDENTITY_FACTOR, factor, "a rejected solve must leave an identity factor");
-    }
-
-    @Test
-    void specularContributionIsNotRepresentable() {
-        GLStateManager.glMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_SPECULAR, floats(1.0f, 1.0f, 1.0f, 1.0f));
-        GLStateManager.glMaterialf(GL11.GL_FRONT_AND_BACK, GL11.GL_SHININESS, 16.0f);
-        GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_SPECULAR, floats(1.0f, 1.0f, 1.0f, 1.0f));
-        assertFalse(FFPVertexLighting.modulatesVertexColor(factor), "specular is additive, so the lit colour is not vertexColor * factor");
-    }
-
-    @Test
-    void nonAmbientAndDiffuseColorMaterialIsNotRepresentable() {
-        GLStateManager.glColorMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_EMISSION);
-        assertFalse(FFPVertexLighting.modulatesVertexColor(factor), "only AMBIENT_AND_DIFFUSE makes the lit colour scale with the vertex colour");
     }
 
     @Test

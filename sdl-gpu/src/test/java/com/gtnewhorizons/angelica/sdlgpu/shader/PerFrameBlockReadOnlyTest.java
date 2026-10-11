@@ -3,14 +3,13 @@ package com.gtnewhorizons.angelica.sdlgpu.shader;
 import com.gtnewhorizons.angelica.glsm.hooks.PerFrameUniformBlock;
 import com.gtnewhorizons.angelica.glsm.shader.UniformType;
 import com.gtnewhorizons.angelica.glsm.hooks.PerFrameUniformBlock.Member;
-import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.util.shaderc.Shaderc;
 
 import java.nio.ByteBuffer;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static com.gtnewhorizons.angelica.sdlgpu.shader.SpirvTestShaders.compileOrFail;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.lwjgl.system.MemoryUtil.memFree;
 
@@ -31,10 +30,7 @@ class PerFrameBlockReadOnlyTest {
     @Test
     void injectedBlocksAreDecoratedNonWritable() {
         final String injected = ShaderTransformChain.inject(DUAL_SOURCE, BLOCK, PER_PASS);
-        final SpirvCompiler.Result r = SpirvCompiler.compile(injected, Shaderc.shaderc_fragment_shader, "readonly.frag", SpirvCompiler.Options.vulkanForced460Core());
-        assertNotNull(r.spirv(), () -> "compile failed: " + r.error());
-
-        final ByteBuffer spirv = r.spirv();
+        final ByteBuffer spirv = compileOrFail(injected, Shaderc.shaderc_fragment_shader);
         try {
             final ShaderManager.StageReflection refl = ShaderManager.reflectStage(spirv, false);
             for (int b = 0; b < ShaderManager.BLOCK_COUNT; b++) {

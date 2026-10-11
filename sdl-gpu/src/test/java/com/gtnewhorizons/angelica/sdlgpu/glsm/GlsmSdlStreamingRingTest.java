@@ -6,7 +6,6 @@ import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
 import com.gtnewhorizons.angelica.glsm.streaming.PersistentStreamingBuffer;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import it.unimi.dsi.fastutil.ints.IntSet;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,11 +20,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Tag("glsm-sdl")
 @ExtendWith(GlsmSdlFrameExtension.class)
 class GlsmSdlStreamingRingTest {
-
-    @BeforeAll
-    static void boot() {
-        GlsmSdlHeadlessRig.boot();
-    }
 
     @Test
     void ringCreationLeavesTheGlsmArrayBufferCacheMatchingSdl() {

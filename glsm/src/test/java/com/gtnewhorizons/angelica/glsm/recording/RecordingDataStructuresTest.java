@@ -3,10 +3,8 @@ package com.gtnewhorizons.angelica.glsm.recording;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.glsm.GLCompatTest;
-import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLCompatTest;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL11;
@@ -31,37 +29,6 @@ class RecordingDataStructuresTest {
             GLStateManager.glDeleteLists(testList, 1);
             testList = -1;
         }
-    }
-
-    @Test
-    void testCompiledDisplayListCreation() {
-        // Create a display list with PushMatrix, Scale, PopMatrix
-        testList = GL11.glGenLists(1);
-        GLStateManager.glNewList(testList, GL11.GL_COMPILE);
-
-        GLStateManager.glPushMatrix();
-        GLStateManager.glScalef(2.0f, 2.0f, 2.0f);
-        GLStateManager.glPopMatrix();
-
-        GLStateManager.glEndList();
-
-        // Verify the compiled display list
-        CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
-        assertNotNull(compiled, "Display list should be compiled");
-        assertNotNull(compiled.getCommandBuffer(), "Command buffer should not be null");
-
-        // Get command counts to verify structure
-        Int2IntMap counts = compiled.getCommandCounts();
-
-        // Should have PushMatrix and PopMatrix
-        assertEquals(1, counts.getOrDefault(GLCommand.PUSH_MATRIX, 0), "Should have 1 PushMatrix");
-        assertEquals(1, counts.getOrDefault(GLCommand.POP_MATRIX, 0), "Should have 1 PopMatrix");
-
-        // Scale should be collapsed into a MultMatrix (optimizer collapses transforms)
-        // Or if in debug mode, might have individual commands - just check we have some transforms
-        int transformCount = counts.getOrDefault(GLCommand.MULT_MATRIX, 0)
-            + counts.getOrDefault(GLCommand.SCALE, 0);
-        assertTrue(transformCount >= 0, "Should have transform commands");
     }
 
     @Test

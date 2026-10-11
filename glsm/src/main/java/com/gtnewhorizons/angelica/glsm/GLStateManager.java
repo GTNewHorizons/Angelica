@@ -330,6 +330,7 @@ public class GLStateManager {
     public static final int MAX_CLIP_PLANES = 8;
     public static final int MAX_TEXTURE_UNITS = RENDER_BACKEND.getInteger(GL20.GL_MAX_TEXTURE_IMAGE_UNITS);
     public static final int MAX_LEGACY_TEXTURE_UNITS = Math.min(VertexKey.MAX_UNITS, MAX_TEXTURE_UNITS);
+    public static final int MAX_TEXTURE_COORDS = Math.min(VAOManager.TEX_COORD_UNITS, MAX_TEXTURE_UNITS);
 
     public static final GLFeatureSet HAS_MULTIPLE_SET = new GLFeatureSet();
 
@@ -405,6 +406,7 @@ public class GLStateManager {
     // Deferred texture deletion: names kept valid until glGenTextures recycles them.
     // Emulates Mesa/compat-profile behavior where delete-then-bind doesn't error.
     private static final IntOpenHashSet deferredDeleteTextures = new IntOpenHashSet();
+    private static final IntOpenHashSet unshrinkableTextures = new IntOpenHashSet();
     private static final IntOpenHashSet writeMappedBuffers = new IntOpenHashSet();
 
     @Getter private static Vendor VENDOR;
@@ -513,6 +515,18 @@ public class GLStateManager {
                 attribSlotsSaved++;
             }
         }
+    }
+
+    private static float maxPointSize(GLContextState glCtx) {
+        if (Float.isNaN(glCtx.maxPointSize)) {
+            final FloatBuffer range = glCtx.queryScratch;
+            range.clear();
+            RENDER_BACKEND.getFloat(GL11.GL_POINT_SIZE_RANGE, range);
+            final float smooth = range.get(1);
+            RENDER_BACKEND.getFloat(GL12.GL_ALIASED_POINT_SIZE_RANGE, range);
+            glCtx.maxPointSize = Math.max(smooth, range.get(1));
+        }
+        return glCtx.maxPointSize;
     }
 
     private static <T extends CowStateStack<?>> T mod(T s) {
@@ -640,6 +654,7 @@ public class GLStateManager {
             .addFeature(GL11.GL_COLOR_WRITEMASK)
             .addFeature(GL11.GL_CURRENT_COLOR)
             .addFeature(GL11.GL_CURRENT_NORMAL)
+            .addFeature(GL14.GL_POINT_DISTANCE_ATTENUATION)
             .addFeature(GL14.GL_CURRENT_SECONDARY_COLOR)
             .addFeature(GL11.GL_CURRENT_RASTER_COLOR)
             .addFeature(GL11.GL_CURRENT_RASTER_POSITION)
@@ -831,6 +846,8 @@ public class GLStateManager {
             case GL13.GL_MULTISAMPLE -> glCtx.multisampleState.enable();
             case GL11.GL_NORMALIZE -> glCtx.normalizeState.enable();
             case GL11.GL_POINT_SMOOTH -> glCtx.pointSmoothState.enable();
+            case GL20.GL_POINT_SPRITE -> glCtx.pointSpriteState.enable();
+            case GL20.GL_VERTEX_PROGRAM_TWO_SIDE -> glCtx.vertexProgramTwoSideState.enable();
             case GL11.GL_POLYGON_OFFSET_POINT -> glCtx.polygonOffsetPointState.enable();
             case GL11.GL_POLYGON_OFFSET_LINE -> glCtx.polygonOffsetLineState.enable();
             case GL11.GL_POLYGON_OFFSET_FILL -> glCtx.polygonOffsetFillState.enable();
@@ -846,11 +863,14 @@ public class GLStateManager {
             case GL11.GL_TEXTURE_1D -> glCtx.textures.getTexture1DStates(glCtx.activeTextureUnit.getValue()).enable();
             case GL11.GL_TEXTURE_2D -> enableTexture(glCtx);
             case GL12.GL_TEXTURE_3D -> glCtx.textures.getTexture3DStates(glCtx.activeTextureUnit.getValue()).enable();
+            case GL13.GL_TEXTURE_CUBE_MAP -> glCtx.textures.getTextureCubeMapStates(glCtx.activeTextureUnit.getValue()).enable();
             case GL11.GL_TEXTURE_GEN_S -> glCtx.textures.getTexGenSStates(glCtx.activeTextureUnit.getValue()).enable();
             case GL11.GL_TEXTURE_GEN_T -> glCtx.textures.getTexGenTStates(glCtx.activeTextureUnit.getValue()).enable();
             case GL11.GL_TEXTURE_GEN_R -> glCtx.textures.getTexGenRStates(glCtx.activeTextureUnit.getValue()).enable();
             case GL11.GL_TEXTURE_GEN_Q -> glCtx.textures.getTexGenQStates(glCtx.activeTextureUnit.getValue()).enable();
-            default -> RENDER_BACKEND.enable(cap);
+            default -> {
+                if (!setClientArrayCap(glCtx, cap, true)) RENDER_BACKEND.enable(cap);
+            }
         }
     }
 
@@ -914,6 +934,8 @@ public class GLStateManager {
             case GL13.GL_MULTISAMPLE -> glCtx.multisampleState.disable();
             case GL11.GL_NORMALIZE -> glCtx.normalizeState.disable();
             case GL11.GL_POINT_SMOOTH -> glCtx.pointSmoothState.disable();
+            case GL20.GL_POINT_SPRITE -> glCtx.pointSpriteState.disable();
+            case GL20.GL_VERTEX_PROGRAM_TWO_SIDE -> glCtx.vertexProgramTwoSideState.disable();
             case GL11.GL_POLYGON_OFFSET_POINT -> glCtx.polygonOffsetPointState.disable();
             case GL11.GL_POLYGON_OFFSET_LINE -> glCtx.polygonOffsetLineState.disable();
             case GL11.GL_POLYGON_OFFSET_FILL -> glCtx.polygonOffsetFillState.disable();
@@ -929,11 +951,14 @@ public class GLStateManager {
             case GL11.GL_TEXTURE_1D -> glCtx.textures.getTexture1DStates(glCtx.activeTextureUnit.getValue()).disable();
             case GL11.GL_TEXTURE_2D -> disableTexture(glCtx);
             case GL12.GL_TEXTURE_3D -> glCtx.textures.getTexture3DStates(glCtx.activeTextureUnit.getValue()).disable();
+            case GL13.GL_TEXTURE_CUBE_MAP -> glCtx.textures.getTextureCubeMapStates(glCtx.activeTextureUnit.getValue()).disable();
             case GL11.GL_TEXTURE_GEN_S -> glCtx.textures.getTexGenSStates(glCtx.activeTextureUnit.getValue()).disable();
             case GL11.GL_TEXTURE_GEN_T -> glCtx.textures.getTexGenTStates(glCtx.activeTextureUnit.getValue()).disable();
             case GL11.GL_TEXTURE_GEN_R -> glCtx.textures.getTexGenRStates(glCtx.activeTextureUnit.getValue()).disable();
             case GL11.GL_TEXTURE_GEN_Q -> glCtx.textures.getTexGenQStates(glCtx.activeTextureUnit.getValue()).disable();
-            default -> RENDER_BACKEND.disable(cap);
+            default -> {
+                if (!setClientArrayCap(glCtx, cap, false)) RENDER_BACKEND.disable(cap);
+            }
         }
     }
 
@@ -991,6 +1016,8 @@ public class GLStateManager {
             case GL13.GL_MULTISAMPLE -> glCtx.multisampleState.isEnabled();
             case GL11.GL_NORMALIZE -> glCtx.normalizeState.isEnabled();
             case GL11.GL_POINT_SMOOTH -> glCtx.pointSmoothState.isEnabled();
+            case GL20.GL_POINT_SPRITE -> glCtx.pointSpriteState.isEnabled();
+            case GL20.GL_VERTEX_PROGRAM_TWO_SIDE -> glCtx.vertexProgramTwoSideState.isEnabled();
             case GL11.GL_POLYGON_OFFSET_POINT -> glCtx.polygonOffsetPointState.isEnabled();
             case GL11.GL_POLYGON_OFFSET_LINE -> glCtx.polygonOffsetLineState.isEnabled();
             case GL11.GL_POLYGON_OFFSET_FILL -> glCtx.polygonOffsetFillState.isEnabled();
@@ -1006,16 +1033,23 @@ public class GLStateManager {
             case GL11.GL_TEXTURE_1D -> glCtx.textures.getTexture1DStates(glCtx.activeTextureUnit.getValue()).isEnabled();
             case GL11.GL_TEXTURE_2D -> glCtx.textures.getTextureUnitStates(glCtx.activeTextureUnit.getValue()).isEnabled();
             case GL12.GL_TEXTURE_3D -> glCtx.textures.getTexture3DStates(glCtx.activeTextureUnit.getValue()).isEnabled();
+            case GL13.GL_TEXTURE_CUBE_MAP -> glCtx.textures.getTextureCubeMapStates(glCtx.activeTextureUnit.getValue()).isEnabled();
             case GL11.GL_TEXTURE_GEN_S -> glCtx.textures.getTexGenSStates(glCtx.activeTextureUnit.getValue()).isEnabled();
             case GL11.GL_TEXTURE_GEN_T -> glCtx.textures.getTexGenTStates(glCtx.activeTextureUnit.getValue()).isEnabled();
             case GL11.GL_TEXTURE_GEN_R -> glCtx.textures.getTexGenRStates(glCtx.activeTextureUnit.getValue()).isEnabled();
             case GL11.GL_TEXTURE_GEN_Q -> glCtx.textures.getTexGenQStates(glCtx.activeTextureUnit.getValue()).isEnabled();
-            default -> RENDER_BACKEND.getBoolean(cap);
+            default -> {
+                final int conv = clientStateToConventional(glCtx, cap);
+                yield conv >= 0 ? glCtx.vaos.isConventionalEnabled(conv) : LegacyQueries.desc(cap) == 0 && RENDER_BACKEND.getBoolean(cap);
+            }
         };
     }
 
     public static boolean glGetBoolean(int pname) {
-        final GLContextState glCtx = ctx();
+        return glGetBoolean(ctx(), pname);
+    }
+
+    static boolean glGetBoolean(GLContextState glCtx, int pname) {
         if (!isCachingEnabled()) {
             return RENDER_BACKEND.getBoolean(pname);
         }
@@ -1069,6 +1103,8 @@ public class GLStateManager {
             case GL13.GL_MULTISAMPLE -> glCtx.multisampleState.isEnabled();
             case GL11.GL_NORMALIZE -> glCtx.normalizeState.isEnabled();
             case GL11.GL_POINT_SMOOTH -> glCtx.pointSmoothState.isEnabled();
+            case GL20.GL_POINT_SPRITE -> glCtx.pointSpriteState.isEnabled();
+            case GL20.GL_VERTEX_PROGRAM_TWO_SIDE -> glCtx.vertexProgramTwoSideState.isEnabled();
             case GL11.GL_POLYGON_OFFSET_POINT -> glCtx.polygonOffsetPointState.isEnabled();
             case GL11.GL_POLYGON_OFFSET_LINE -> glCtx.polygonOffsetLineState.isEnabled();
             case GL11.GL_POLYGON_OFFSET_FILL -> glCtx.polygonOffsetFillState.isEnabled();
@@ -1084,13 +1120,20 @@ public class GLStateManager {
             case GL11.GL_TEXTURE_1D -> glCtx.textures.getTexture1DStates(glCtx.activeTextureUnit.getValue()).isEnabled();
             case GL11.GL_TEXTURE_2D -> glCtx.textures.getTextureUnitStates(glCtx.activeTextureUnit.getValue()).isEnabled();
             case GL12.GL_TEXTURE_3D -> glCtx.textures.getTexture3DStates(glCtx.activeTextureUnit.getValue()).isEnabled();
+            case GL13.GL_TEXTURE_CUBE_MAP -> glCtx.textures.getTextureCubeMapStates(glCtx.activeTextureUnit.getValue()).isEnabled();
             case GL11.GL_TEXTURE_GEN_S -> glCtx.textures.getTexGenSStates(glCtx.activeTextureUnit.getValue()).isEnabled();
             case GL11.GL_TEXTURE_GEN_T -> glCtx.textures.getTexGenTStates(glCtx.activeTextureUnit.getValue()).isEnabled();
             case GL11.GL_TEXTURE_GEN_R -> glCtx.textures.getTexGenRStates(glCtx.activeTextureUnit.getValue()).isEnabled();
             case GL11.GL_TEXTURE_GEN_Q -> glCtx.textures.getTexGenQStates(glCtx.activeTextureUnit.getValue()).isEnabled();
             case GL11.GL_LIGHT_MODEL_LOCAL_VIEWER -> glCtx.lightModel.localViewer != 0.0f;
             case GL11.GL_LIGHT_MODEL_TWO_SIDE -> glCtx.lightModel.twoSide != 0.0f;
-            default -> RENDER_BACKEND.getBoolean(pname);
+            case GL11.GL_EDGE_FLAG -> glCtx.edgeFlagState.isEnabled();
+            default -> {
+                final int conv = clientStateToConventional(glCtx, pname);
+                if (conv >= 0) yield glCtx.vaos.isConventionalEnabled(conv);
+                final int desc = LegacyQueries.desc(pname);
+                yield desc != 0 ? LegacyQueries.getBoolean(glCtx, pname, desc) : RENDER_BACKEND.getBoolean(pname);
+            }
         };
     }
 
@@ -1111,8 +1154,8 @@ public class GLStateManager {
             }
             default -> {
                 if (!HAS_MULTIPLE_SET.contains(pname)) {
-                    params.put(0, (byte) (glGetBoolean(pname) ? GL11.GL_TRUE : GL11.GL_FALSE));
-                } else {
+                    params.put(params.position(), (byte) (glGetBoolean(glCtx, pname) ? GL11.GL_TRUE : GL11.GL_FALSE));
+                } else if (!LegacyQueries.getBooleanv(glCtx, pname, params)) {
                     RENDER_BACKEND.getBoolean(pname, params);
                 }
             }
@@ -1126,7 +1169,10 @@ public class GLStateManager {
     }
 
     public static int glGetInteger(int pname) {
-        final GLContextState glCtx = ctx();
+        return glGetInteger(ctx(), pname);
+    }
+
+    static int glGetInteger(GLContextState glCtx, int pname) {
         if (!isCachingEnabled()) {
             return RENDER_BACKEND.getInteger(pname);
         }
@@ -1141,6 +1187,7 @@ public class GLStateManager {
             // GL_TEXTURE_2D makes no sense here, but some mod still queries it...
             case GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_BINDING_2D -> getBoundTextureForServerState();
             case GL13.GL_ACTIVE_TEXTURE -> GL13.GL_TEXTURE0 + getActiveTextureUnitForServerState();
+            case GL13.GL_CLIENT_ACTIVE_TEXTURE -> GL13.GL_TEXTURE0 + glCtx.clientActiveTextureUnit;
             case GL11.GL_COLOR_MATERIAL_FACE -> glCtx.colorMaterialFace.getValue();
             case GL11.GL_COLOR_MATERIAL_PARAMETER -> glCtx.colorMaterialParameter.getValue();
             case GL11.GL_MODELVIEW_STACK_DEPTH -> getMatrixStackDepth(glCtx.modelViewMatrix);
@@ -1206,7 +1253,17 @@ public class GLStateManager {
                 case GL11.GL_MAX_LIGHTS -> glCtx.lightStates.length;
                 case GL11.GL_STENCIL_BITS -> drawFramebufferBits(glCtx, true);
                 case GL11.GL_DEPTH_BITS -> drawFramebufferBits(glCtx, false);
-                default -> RENDER_BACKEND.getInteger(pname);
+                case GL20.GL_MAX_TEXTURE_COORDS -> MAX_TEXTURE_COORDS;
+                case GL20.GL_POINT_SPRITE_COORD_ORIGIN -> glCtx.pointState.getSpriteCoordOrigin();
+                case GL11.GL_RENDER_MODE -> FeedbackManager.getRenderMode();
+                default -> {
+                    final int shift = hintShift(pname);
+                    if (shift >= 0) yield hintMode(glCtx.hintState.getValue(), shift);
+                    final int key = clientArrayField(glCtx, pname);
+                    if (key >= 0 && (key & ~0xFF) != FIELD_POINTER) yield clientArrayParam(glCtx, key);
+                    final int desc = LegacyQueries.desc(pname);
+                    yield desc != 0 ? LegacyQueries.getInteger(glCtx, pname, desc) : RENDER_BACKEND.getInteger(pname);
+                }
             };
         };
     }
@@ -1239,9 +1296,10 @@ public class GLStateManager {
                 params.put(pos + 1, polygon.getBackMode());
             }
             default -> {
+                final GLContextState glCtx = ctx();
                 if (!HAS_MULTIPLE_SET.contains(pname)) {
-                    params.put(0, glGetInteger(pname));
-                } else {
+                    params.put(params.position(), glGetInteger(glCtx, pname));
+                } else if (!LegacyQueries.getIntegerv(glCtx, pname, params)) {
                     RENDER_BACKEND.getInteger(pname, params);
                 }
             }
@@ -1260,12 +1318,12 @@ public class GLStateManager {
         }
 
         switch (pname) {
-            case GL11.GL_AMBIENT -> state.ambient.get(0, params);
-            case GL11.GL_DIFFUSE -> state.diffuse.get(0, params);
-            case GL11.GL_SPECULAR -> state.specular.get(0, params);
-            case GL11.GL_EMISSION -> state.emission.get(0, params);
+            case GL11.GL_AMBIENT -> state.ambient.get(params.position(), params);
+            case GL11.GL_DIFFUSE -> state.diffuse.get(params.position(), params);
+            case GL11.GL_SPECULAR -> state.specular.get(params.position(), params);
+            case GL11.GL_EMISSION -> state.emission.get(params.position(), params);
             case GL11.GL_SHININESS -> params.put(params.position(), state.shininess);
-            case GL11.GL_COLOR_INDEXES -> state.colorIndexes.get(0, params);
+            case GL11.GL_COLOR_INDEXES -> state.colorIndexes.get(params.position(), params);
             default -> {
             }
         }
@@ -1289,9 +1347,9 @@ public class GLStateManager {
             final float value = values.get(i);
             final int converted;
             if (color) {
-                converted = (int) (2147483647.0 * value);
+                converted = LegacyQueries.floatToInt(value);
             } else if (material) {
-                converted = value < 0 ? -Math.round(-value) : Math.round(value);
+                converted = LegacyQueries.lround(value);
             } else {
                 converted = (int) value;
             }
@@ -1316,11 +1374,11 @@ public class GLStateManager {
     public static void glGetLight(int light, int pname, FloatBuffer params) {
         final LightStateStack state = ctx().lightDataStates[light - GL11.GL_LIGHT0];
         switch (pname) {
-            case GL11.GL_AMBIENT -> state.ambient.get(0, params);
-            case GL11.GL_DIFFUSE -> state.diffuse.get(0, params);
-            case GL11.GL_SPECULAR -> state.specular.get(0, params);
-            case GL11.GL_POSITION -> state.position.get(0, params);
-            case GL11.GL_SPOT_DIRECTION -> state.spotDirection.get(0, params);
+            case GL11.GL_AMBIENT -> state.ambient.get(params.position(), params);
+            case GL11.GL_DIFFUSE -> state.diffuse.get(params.position(), params);
+            case GL11.GL_SPECULAR -> state.specular.get(params.position(), params);
+            case GL11.GL_POSITION -> state.position.get(params.position(), params);
+            case GL11.GL_SPOT_DIRECTION -> state.spotDirection.get(params.position(), params);
             case GL11.GL_SPOT_EXPONENT -> params.put(params.position(), state.spotExponent);
             case GL11.GL_SPOT_CUTOFF -> params.put(params.position(), state.spotCutoff);
             case GL11.GL_CONSTANT_ATTENUATION -> params.put(params.position(), state.constantAttenuation);
@@ -1339,9 +1397,9 @@ public class GLStateManager {
         }
 
         switch (pname) {
-            case GL11.GL_MODELVIEW_MATRIX -> glCtx.modelViewMatrix.get(0, params);
-            case GL11.GL_PROJECTION_MATRIX -> glCtx.projectionMatrix.get(0, params);
-            case GL11.GL_TEXTURE_MATRIX -> glCtx.textures.getTextureUnitMatrix(getActiveTextureUnit()).get(0, params);
+            case GL11.GL_MODELVIEW_MATRIX -> glCtx.modelViewMatrix.get(params.position(), params);
+            case GL11.GL_PROJECTION_MATRIX -> glCtx.projectionMatrix.get(params.position(), params);
+            case GL11.GL_TEXTURE_MATRIX -> glCtx.textures.getTextureUnitMatrix(getActiveTextureUnit()).get(params.position(), params);
             case GL11.GL_COLOR_CLEAR_VALUE -> glCtx.clearColor.get(params);
             case GL11.GL_CURRENT_COLOR -> glCtx.color.get(params);
             case GL14.GL_CURRENT_SECONDARY_COLOR -> glCtx.secondaryColor.get(params);
@@ -1393,10 +1451,16 @@ public class GLStateManager {
                 params.put(pos + 2, fogBuf.get(2));
                 params.put(pos + 3, fogBuf.get(3));
             }
-            case GL11.GL_LIGHT_MODEL_AMBIENT -> glCtx.lightModel.ambient.get(0, params);
+            case GL11.GL_LIGHT_MODEL_AMBIENT -> glCtx.lightModel.ambient.get(params.position(), params);
+            case GL14.GL_POINT_DISTANCE_ATTENUATION -> {
+                final int pos = params.position();
+                params.put(pos, glCtx.pointState.getAttenuationConstant());
+                params.put(pos + 1, glCtx.pointState.getAttenuationLinear());
+                params.put(pos + 2, glCtx.pointState.getAttenuationQuadratic());
+            }
             default -> {
                 if (!HAS_MULTIPLE_SET.contains(pname)) {
-                    params.put(0, glGetFloat(pname));
+                    params.put(params.position(), glGetFloat(glCtx, pname));
                 } else {
                     RENDER_BACKEND.getFloat(pname, params);
                 }
@@ -1405,7 +1469,10 @@ public class GLStateManager {
     }
 
     public static float glGetFloat(int pname) {
-        final GLContextState glCtx = ctx();
+        return glGetFloat(ctx(), pname);
+    }
+
+    static float glGetFloat(GLContextState glCtx, int pname) {
         return switch (pname) {
             case GL11.GL_ALPHA_TEST_REF -> glCtx.alphaState.getReference();
             case GL11.GL_FOG_DENSITY -> glCtx.fogState.getDensity();
@@ -1414,7 +1481,13 @@ public class GLStateManager {
             case GL11.GL_DEPTH_CLEAR_VALUE -> (float) glCtx.depthState.getClearValue();
             case GL11.GL_LINE_WIDTH -> glCtx.lineState.getWidth();
             case GL11.GL_POINT_SIZE -> glCtx.pointState.getSize();
-            default -> RENDER_BACKEND.getFloat(pname);
+            case GL14.GL_POINT_SIZE_MIN -> glCtx.pointState.getMinSize();
+            case GL14.GL_POINT_SIZE_MAX -> Float.isNaN(glCtx.pointState.getMaxSize()) ? maxPointSize(glCtx) : glCtx.pointState.getMaxSize();
+            case GL14.GL_POINT_FADE_THRESHOLD_SIZE -> glCtx.pointState.getFadeThreshold();
+            default -> {
+                final int desc = isCachingEnabled() ? LegacyQueries.desc(pname) : 0;
+                yield desc != 0 ? LegacyQueries.getFloat(glCtx, pname, desc) : RENDER_BACKEND.getFloat(pname);
+            }
         };
     }
 
@@ -1457,7 +1530,7 @@ public class GLStateManager {
             case GL11.GL_MODELVIEW_MATRIX, GL11.GL_PROJECTION_MATRIX, GL11.GL_TEXTURE_MATRIX -> widenFromFloat(pname, params, 16);
             case GL11.GL_COLOR_CLEAR_VALUE, GL11.GL_CURRENT_COLOR, GL11.GL_CURRENT_TEXTURE_COORDS, GL11.GL_FOG_COLOR,
                 GL11.GL_LIGHT_MODEL_AMBIENT, GL14.GL_BLEND_COLOR, GL14.GL_CURRENT_SECONDARY_COLOR -> widenFromFloat(pname, params, 4);
-            case GL11.GL_CURRENT_NORMAL -> widenFromFloat(pname, params, 3);
+            case GL11.GL_CURRENT_NORMAL, GL14.GL_POINT_DISTANCE_ATTENUATION -> widenFromFloat(pname, params, 3);
             default -> {
                 if (!HAS_MULTIPLE_SET.contains(pname)) {
                     params.put(pos, glGetDouble(pname));
@@ -1885,7 +1958,12 @@ public class GLStateManager {
     }
 
     public static void glEdgeFlag(boolean flag) {
-        // No-op: edge flags are removed in GL 3.3 core profile and have no equivalent
+        final RecordMode mode = DisplayListManager.getRecordMode();
+        if (mode != RecordMode.NONE) {
+            DisplayListManager.recordStateCommand(() -> glEdgeFlag(flag));
+            if (mode == RecordMode.COMPILE) return;
+        }
+        ctx().edgeFlagState.setEnabled(flag);
     }
 
     public static void glColor4f(float red, float green, float blue, float alpha) {
@@ -2214,7 +2292,7 @@ public class GLStateManager {
             }
         }
         final int newTexture = texture - GL13.GL_TEXTURE0;
-        if (!isValidTextureUnit(newTexture, texture)) {
+        if (!isValidTextureUnit(newTexture, texture, "glActiveTexture")) {
             return;
         }
         final boolean caching = isCachingEnabled();
@@ -2224,52 +2302,38 @@ public class GLStateManager {
         }
     }
 
-    private static boolean isValidTextureUnit(int unit, int rawEnum) {
-        if (unit >= 0 && unit < MAX_TEXTURE_UNITS) {
+    private static boolean isValidTextureUnit(int unit, int rawEnum, String function) {
+        return isValidTextureUnit(unit, MAX_TEXTURE_UNITS, rawEnum, function);
+    }
+
+    private static boolean isValidTextureUnit(int unit, int limit, int rawEnum, String function) {
+        if (unit >= 0 && unit < limit) {
             return true;
         }
-        if (!warnedInvalidTextureUnit) {
-            warnedInvalidTextureUnit = true;
-            LOGGER.warn("glActiveTexture({}) is not a valid texture unit enum (expected GL_TEXTURE0..GL_TEXTURE{}); ignoring", rawEnum, MAX_TEXTURE_UNITS - 1, new Throwable("call site"));
+        if (WARN_ONCE.add(function)) {
+            LOGGER.warn("{}({}) is not a valid texture unit enum (expected GL_TEXTURE0..GL_TEXTURE{}); ignoring", function, rawEnum, limit - 1, new Throwable("call site"));
         }
         return false;
     }
 
-    private static boolean warnedInvalidTextureUnit = false;
-
     public static void glActiveTextureARB(int texture) {
-        final RecordMode mode = DisplayListManager.getRecordMode();
-        if (mode != RecordMode.NONE) {
-            DisplayListManager.recordActiveTexture(texture);
-            if (mode == RecordMode.COMPILE) {
-                return;
-            }
-        }
-        final int newTexture = texture - GL13.GL_TEXTURE0;
-        if (!isValidTextureUnit(newTexture, texture)) {
-            return;
-        }
-        final boolean caching = isCachingEnabled();
-        if (!caching || getActiveTextureUnit() != newTexture) {
-            mod(ctx().activeTextureUnit).setValue(newTexture);
-            RENDER_BACKEND.activeTexture(texture);
-        }
+        glActiveTexture(texture);
     }
 
     public static void glClientActiveTexture(int texture) {
-        ctx().clientActiveTextureUnit = texture - GL13.GL_TEXTURE0;
+        final int unit = texture - GL13.GL_TEXTURE0;
+        if (!isValidTextureUnit(unit, MAX_TEXTURE_COORDS, texture, "glClientActiveTexture")) {
+            return;
+        }
+        ctx().clientActiveTextureUnit = unit;
     }
 
     public static int getClientActiveTextureUnit() {
         return ctx().clientActiveTextureUnit;
     }
 
-    private static int texCoordAttributeLocation() {
-        return switch (ctx().clientActiveTextureUnit) {
-            case 0 -> Usage.PRIMARY_UV.getAttributeLocation();
-            case 1 -> Usage.SECONDARY_UV.getAttributeLocation();
-            default -> -1;
-        };
+    private static int texCoordConventional(GLContextState glCtx) {
+        return VAOManager.CONV_TEX0 + glCtx.clientActiveTextureUnit;
     }
 
     private static int getBoundTexture() {
@@ -2295,6 +2359,7 @@ public class GLStateManager {
             final boolean locked = acquireDrawLock();
             try {
                 deferredDeleteTextures.remove(texture);
+                if (target != GL11.GL_TEXTURE_2D) unshrinkableTextures.add(texture);
             } finally {
                 if (locked) releaseDrawLock();
             }
@@ -2559,17 +2624,21 @@ public class GLStateManager {
         if (id == 0) return;
 
         final int savedUnit = glCtx.activeTextureUnit.getValue();
-        final int savedBinding = glCtx.textures.getTextureUnitBindings(savedUnit).getBinding();
+        final TextureBindingStack savedUnitBindings = glCtx.textures.getTextureUnitBindings(savedUnit);
+        final int savedBinding = savedUnitBindings.getBinding();
+        final int savedTarget = savedUnitBindings.getTarget();
         boolean changedUnit = false;
 
         // Unbind from all units that have this texture
         for (int i = 0; i <= glCtx.maxBoundTextureUnit; i++) {
-            if (glCtx.textures.getTextureUnitBindings(i).getBinding() == id) {
+            final TextureBindingStack unitBindings = glCtx.textures.getTextureUnitBindings(i);
+            if (unitBindings.getBinding() == id) {
                 if (i != savedUnit) {
                     RENDER_BACKEND.activeTexture(GL13.GL_TEXTURE0 + i);
                     changedUnit = true;
                 }
-                RENDER_BACKEND.bindTexture(GL11.GL_TEXTURE_2D, 0);
+                final int unitTarget = unitBindings.getTarget();
+                RENDER_BACKEND.bindTexture(unitTarget == 0 ? GL11.GL_TEXTURE_2D : unitTarget, 0);
             }
         }
 
@@ -2577,6 +2646,17 @@ public class GLStateManager {
         if (changedUnit) {
             RENDER_BACKEND.activeTexture(GL13.GL_TEXTURE0 + savedUnit);
         }
+
+        final boolean shrinkable;
+        final boolean locked = acquireDrawLock();
+        try {
+            shrinkable = !unshrinkableTextures.contains(id);
+            deferredDeleteTextures.add(id);
+        } finally {
+            if (locked) releaseDrawLock();
+        }
+        if (!shrinkable) return;
+
         RENDER_BACKEND.bindTexture(GL11.GL_TEXTURE_2D, id);
         RENDER_BACKEND.texParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 0);
         suspendPixelUnpackBuffer();
@@ -2584,14 +2664,8 @@ public class GLStateManager {
         restorePixelUnpackBuffer();
 
         // Restore previous binding on active unit
-        RENDER_BACKEND.bindTexture(GL11.GL_TEXTURE_2D, savedBinding == id ? 0 : savedBinding);
-
-        final boolean locked = acquireDrawLock();
-        try {
-            deferredDeleteTextures.add(id);
-        } finally {
-            if (locked) releaseDrawLock();
-        }
+        final boolean savedIs2D = savedTarget == GL11.GL_TEXTURE_2D || savedTarget == 0;
+        RENDER_BACKEND.bindTexture(GL11.GL_TEXTURE_2D, savedBinding == id || !savedIs2D ? 0 : savedBinding);
     }
 
     /** Flush deferred deletes so the driver can recycle names. */
@@ -2603,6 +2677,7 @@ public class GLStateManager {
         while (it.hasNext()) {
             final int id = it.nextInt();
             RENDER_BACKEND.deleteTextures(id);
+            unshrinkableTextures.remove(id);
             clearTextureBindings(primary, id);
             for (int i = 0; i < drawables.length; i++) {
                 clearTextureBindings(drawables[i], id);
@@ -3040,11 +3115,104 @@ public class GLStateManager {
     }
 
     public static void glPointParameterf(int pname, float param) {
-        RENDER_BACKEND.pointParameterf(pname, param);
+        pointParameter(pname, param, 0.0f, 0.0f);
     }
 
     public static void glPointParameteri(int pname, int param) {
-        RENDER_BACKEND.pointParameteri(pname, param);
+        pointParameter(pname, param, 0.0f, 0.0f);
+    }
+
+    public static void glPointParameter(int pname, FloatBuffer params) {
+        final int pos = params.position();
+        final boolean attenuation = pname == GL14.GL_POINT_DISTANCE_ATTENUATION;
+        pointParameter(pname, params.get(pos), attenuation ? params.get(pos + 1) : 0.0f, attenuation ? params.get(pos + 2) : 0.0f);
+    }
+
+    public static void glPointParameter(int pname, IntBuffer params) {
+        final int pos = params.position();
+        final boolean attenuation = pname == GL14.GL_POINT_DISTANCE_ATTENUATION;
+        pointParameter(pname, params.get(pos), attenuation ? params.get(pos + 1) : 0.0f, attenuation ? params.get(pos + 2) : 0.0f);
+    }
+
+    private static void pointParameter(int pname, float v0, float v1, float v2) {
+        final GLContextState glCtx = ctx();
+        final PointStateStack point = glCtx.pointState;
+        switch (pname) {
+            case GL14.GL_POINT_SIZE_MIN -> {
+                if (!(v0 < 0.0f) && point.getMinSize() != v0) mod(point).setMinSize(v0);
+            }
+            case GL14.GL_POINT_SIZE_MAX -> {
+                if (!(v0 < 0.0f) && point.getMaxSize() != v0) mod(point).setMaxSize(v0);
+            }
+            case GL14.GL_POINT_FADE_THRESHOLD_SIZE -> {
+                if (!(v0 < 0.0f) && point.getFadeThreshold() != v0) {
+                    mod(point).setFadeThreshold(v0);
+                    RENDER_BACKEND.pointParameterf(pname, v0);
+                }
+            }
+            case GL14.GL_POINT_DISTANCE_ATTENUATION -> {
+                if (point.getAttenuationConstant() == v0 && point.getAttenuationLinear() == v1 && point.getAttenuationQuadratic() == v2) return;
+                mod(point);
+                point.setAttenuationConstant(v0);
+                point.setAttenuationLinear(v1);
+                point.setAttenuationQuadratic(v2);
+            }
+            case GL20.GL_POINT_SPRITE_COORD_ORIGIN -> {
+                final int origin = (int) v0;
+                if ((origin == GL20.GL_LOWER_LEFT || origin == GL20.GL_UPPER_LEFT) && point.getSpriteCoordOrigin() != origin) {
+                    mod(point).setSpriteCoordOrigin(origin);
+                    RENDER_BACKEND.pointParameteri(pname, origin);
+                }
+            }
+            default -> RENDER_BACKEND.pointParameterf(pname, v0);
+        }
+    }
+
+    private static void applyPointState(GLContextState glCtx) {
+        final PointStateStack point = glCtx.pointState;
+        RENDER_BACKEND.pointSize(point.getSize());
+        RENDER_BACKEND.pointParameterf(GL14.GL_POINT_FADE_THRESHOLD_SIZE, point.getFadeThreshold());
+        RENDER_BACKEND.pointParameteri(GL20.GL_POINT_SPRITE_COORD_ORIGIN, point.getSpriteCoordOrigin());
+    }
+
+    private static boolean isLegacyHint(int target) {
+        return switch (target) {
+            case GL11.GL_PERSPECTIVE_CORRECTION_HINT, GL11.GL_POINT_SMOOTH_HINT, GL11.GL_FOG_HINT, GL14.GL_GENERATE_MIPMAP_HINT -> true;
+            default -> false;
+        };
+    }
+
+    private static int hintShift(int target) {
+        return switch (target) {
+            case GL11.GL_PERSPECTIVE_CORRECTION_HINT -> 0;
+            case GL11.GL_POINT_SMOOTH_HINT -> 2;
+            case GL11.GL_LINE_SMOOTH_HINT -> 4;
+            case GL11.GL_POLYGON_SMOOTH_HINT -> 6;
+            case GL11.GL_FOG_HINT -> 8;
+            case GL13.GL_TEXTURE_COMPRESSION_HINT -> 10;
+            case GL14.GL_GENERATE_MIPMAP_HINT -> 12;
+            case GL20.GL_FRAGMENT_SHADER_DERIVATIVE_HINT -> 14;
+            default -> -1;
+        };
+    }
+
+    private static int hintMode(int packed, int shift) {
+        return switch (packed >>> shift & 3) {
+            case 1 -> GL11.GL_FASTEST;
+            case 2 -> GL11.GL_NICEST;
+            default -> GL11.GL_DONT_CARE;
+        };
+    }
+
+    private static final int[] DRIVER_HINTS = {
+        GL11.GL_LINE_SMOOTH_HINT, GL11.GL_POLYGON_SMOOTH_HINT, GL13.GL_TEXTURE_COMPRESSION_HINT, GL20.GL_FRAGMENT_SHADER_DERIVATIVE_HINT
+    };
+
+    private static void applyHintState(GLContextState glCtx) {
+        final int packed = glCtx.hintState.getValue();
+        for (final int target : DRIVER_HINTS) {
+            RENDER_BACKEND.hint(target, hintMode(packed, hintShift(target)));
+        }
     }
 
     private static void prepareClientArrays(GLContextState glCtx) {
@@ -3101,19 +3269,167 @@ public class GLStateManager {
         }
     }
 
-    private static void ffpClientArrayPointer(int index, int size, int type, boolean normalized, int stride, long offset) {
-        final GLContextState glCtx = ctx();
-        if (glCtx.vaos.isGenericPointerEnabled(index)) return;
-        glCtx.vaos.setAttribute(index, size, type, normalized, stride, offset, glCtx.boundVBO);
-        glCtx.vaos.markConventional(index);
-        RENDER_BACKEND.vertexAttribPointer(index, size, type, normalized, stride, offset);
+    private static boolean isLegalClientArray(int conv, int size, int type, int stride) {
+        return isLegalPointer(VAOManager.isLegalConventional(conv, size, type), "client-array", "client array", conv, size, type, stride);
     }
 
-    private static void ffpClientArrayPointer(int index, int size, int type, boolean normalized, int stride, ByteBuffer pointer) {
-        final VAOManager vaos = ctx().vaos;
-        if (vaos.isGenericPointerEnabled(index)) return;
-        vaos.setAttribute(index, size, type, normalized, stride, pointer);
-        vaos.markConventional(index);
+    private static boolean isLegalVertexAttrib(int index, int size, int type, int stride, boolean integer) {
+        return isLegalPointer(VAOManager.isLegalGeneric(index, size, type, integer), "vertex-attrib", "vertex attribute", index, size, type, stride);
+    }
+
+    // The WARN_ONCE check comes first so a caller repeating the mistake every frame does not capture a stack each time.
+    private static boolean isLegalPointer(boolean legal, String key, String what, int slot, int size, int type, int stride) {
+        if (stride < 0 && WARN_ONCE.add(key + "-stride")) {
+            LOGGER.warn("Negative {} stride {}", what, stride, new Throwable("call site"));
+        }
+        if (legal) return true;
+        if (WARN_ONCE.add(key + "-" + slot)) {
+            LOGGER.warn("Ignoring {} {} with illegal size {} / type 0x{}", what, slot, size, Integer.toHexString(type), new Throwable("call site"));
+        }
+        return false;
+    }
+
+    private static boolean isValidVertexAttribIndex(int index, String function) {
+        if (index >= 0 && index < VAOManager.MAX_ATTRIBS) return true;
+        if (WARN_ONCE.add(function)) {
+            LOGGER.warn("{}({}) is outside the {} supported vertex attributes; ignoring", function, index, VAOManager.MAX_ATTRIBS, new Throwable("call site"));
+        }
+        return false;
+    }
+
+    private static void ffpClientArrayPointer(int conv, int size, int type, boolean normalized, int stride, long offset) {
+        if (!isLegalClientArray(conv, size, type, stride)) return;
+        final GLContextState glCtx = ctx();
+        if (glCtx.vaos.setConventional(conv, size, type, normalized, stride, offset, glCtx.boundVBO)) {
+            RENDER_BACKEND.vertexAttribPointer(VAOManager.conventionalLocation(conv), size, type, normalized, stride, offset);
+        }
+    }
+
+    private static void ffpClientArrayPointer(int conv, int size, int type, boolean normalized, int stride, ByteBuffer pointer) {
+        if (!isLegalClientArray(conv, size, type, stride)) return;
+        ctx().vaos.setConventional(conv, size, type, normalized, stride, pointer);
+    }
+
+    private static final int FIELD_SIZE = 0, FIELD_TYPE = 1 << 8, FIELD_STRIDE = 2 << 8, FIELD_BINDING = 3 << 8, FIELD_POINTER = 4 << 8;
+
+    private static int clientArrayField(GLContextState glCtx, int pname) {
+        return switch (pname) {
+            case GL11.GL_VERTEX_ARRAY_SIZE -> VAOManager.CONV_POSITION | FIELD_SIZE;
+            case GL11.GL_VERTEX_ARRAY_TYPE -> VAOManager.CONV_POSITION | FIELD_TYPE;
+            case GL11.GL_VERTEX_ARRAY_STRIDE -> VAOManager.CONV_POSITION | FIELD_STRIDE;
+            case GL15.GL_VERTEX_ARRAY_BUFFER_BINDING -> VAOManager.CONV_POSITION | FIELD_BINDING;
+            case GL11.GL_VERTEX_ARRAY_POINTER -> VAOManager.CONV_POSITION | FIELD_POINTER;
+            case GL11.GL_NORMAL_ARRAY_TYPE -> VAOManager.CONV_NORMAL | FIELD_TYPE;
+            case GL11.GL_NORMAL_ARRAY_STRIDE -> VAOManager.CONV_NORMAL | FIELD_STRIDE;
+            case GL15.GL_NORMAL_ARRAY_BUFFER_BINDING -> VAOManager.CONV_NORMAL | FIELD_BINDING;
+            case GL11.GL_NORMAL_ARRAY_POINTER -> VAOManager.CONV_NORMAL | FIELD_POINTER;
+            case GL11.GL_COLOR_ARRAY_SIZE -> VAOManager.CONV_COLOR | FIELD_SIZE;
+            case GL11.GL_COLOR_ARRAY_TYPE -> VAOManager.CONV_COLOR | FIELD_TYPE;
+            case GL11.GL_COLOR_ARRAY_STRIDE -> VAOManager.CONV_COLOR | FIELD_STRIDE;
+            case GL15.GL_COLOR_ARRAY_BUFFER_BINDING -> VAOManager.CONV_COLOR | FIELD_BINDING;
+            case GL11.GL_COLOR_ARRAY_POINTER -> VAOManager.CONV_COLOR | FIELD_POINTER;
+            case GL11.GL_INDEX_ARRAY_TYPE -> VAOManager.CONV_INDEX | FIELD_TYPE;
+            case GL11.GL_INDEX_ARRAY_STRIDE -> VAOManager.CONV_INDEX | FIELD_STRIDE;
+            case GL15.GL_INDEX_ARRAY_BUFFER_BINDING -> VAOManager.CONV_INDEX | FIELD_BINDING;
+            case GL11.GL_INDEX_ARRAY_POINTER -> VAOManager.CONV_INDEX | FIELD_POINTER;
+            case GL11.GL_EDGE_FLAG_ARRAY_STRIDE -> VAOManager.CONV_EDGE_FLAG | FIELD_STRIDE;
+            case GL15.GL_EDGE_FLAG_ARRAY_BUFFER_BINDING -> VAOManager.CONV_EDGE_FLAG | FIELD_BINDING;
+            case GL11.GL_EDGE_FLAG_ARRAY_POINTER -> VAOManager.CONV_EDGE_FLAG | FIELD_POINTER;
+            case GL14.GL_SECONDARY_COLOR_ARRAY_SIZE -> VAOManager.CONV_SECONDARY_COLOR | FIELD_SIZE;
+            case GL14.GL_SECONDARY_COLOR_ARRAY_TYPE -> VAOManager.CONV_SECONDARY_COLOR | FIELD_TYPE;
+            case GL14.GL_SECONDARY_COLOR_ARRAY_STRIDE -> VAOManager.CONV_SECONDARY_COLOR | FIELD_STRIDE;
+            case GL15.GL_SECONDARY_COLOR_ARRAY_BUFFER_BINDING -> VAOManager.CONV_SECONDARY_COLOR | FIELD_BINDING;
+            case GL14.GL_SECONDARY_COLOR_ARRAY_POINTER -> VAOManager.CONV_SECONDARY_COLOR | FIELD_POINTER;
+            case GL14.GL_FOG_COORDINATE_ARRAY_TYPE -> VAOManager.CONV_FOG_COORD | FIELD_TYPE;
+            case GL14.GL_FOG_COORDINATE_ARRAY_STRIDE -> VAOManager.CONV_FOG_COORD | FIELD_STRIDE;
+            case GL15.GL_FOG_COORDINATE_ARRAY_BUFFER_BINDING -> VAOManager.CONV_FOG_COORD | FIELD_BINDING;
+            case GL14.GL_FOG_COORDINATE_ARRAY_POINTER -> VAOManager.CONV_FOG_COORD | FIELD_POINTER;
+            case GL11.GL_TEXTURE_COORD_ARRAY_SIZE -> texCoordConventional(glCtx) | FIELD_SIZE;
+            case GL11.GL_TEXTURE_COORD_ARRAY_TYPE -> texCoordConventional(glCtx) | FIELD_TYPE;
+            case GL11.GL_TEXTURE_COORD_ARRAY_STRIDE -> texCoordConventional(glCtx) | FIELD_STRIDE;
+            case GL15.GL_TEXTURE_COORD_ARRAY_BUFFER_BINDING -> texCoordConventional(glCtx) | FIELD_BINDING;
+            case GL11.GL_TEXTURE_COORD_ARRAY_POINTER -> texCoordConventional(glCtx) | FIELD_POINTER;
+            default -> -1;
+        };
+    }
+
+    private static int clientArrayParam(GLContextState glCtx, int key) {
+        final int conv = key & 0xFF;
+        final VAOManager.Attrib a = glCtx.vaos.conventional(conv);
+        final boolean specified = a != null && a.size != 0;
+        return switch (key & ~0xFF) {
+            case FIELD_SIZE -> specified ? a.size : conv == VAOManager.CONV_SECONDARY_COLOR ? 3 : 4;
+            case FIELD_TYPE -> specified ? a.type : GL11.GL_FLOAT;
+            case FIELD_STRIDE -> specified ? a.stride : 0;
+            default -> specified ? a.vboId : 0;
+        };
+    }
+
+    public static ByteBuffer glGetPointer(int pname, long result_size) {
+        final GLContextState glCtx = ctx();
+        final int key = clientArrayField(glCtx, pname);
+        if ((key & ~0xFF) != FIELD_POINTER) return null;
+        final VAOManager.Attrib a = glCtx.vaos.conventional(key & 0xFF);
+        if (a == null) return null;
+        final long address = a.clientPointer != null ? MemoryUtilities.memAddress(a.clientPointer) : a.offset;
+        return address == 0 ? null : MemoryUtilities.memByteBuffer(address, (int) result_size);
+    }
+
+    public static void glEdgeFlagPointer(int stride, ByteBuffer pointer) {
+        ffpClientArrayPointer(VAOManager.CONV_EDGE_FLAG, 1, GL11.GL_UNSIGNED_BYTE, false, stride, pointer);
+    }
+
+    public static void glEdgeFlagPointer(int stride, long pointer_buffer_offset) {
+        ffpClientArrayPointer(VAOManager.CONV_EDGE_FLAG, 1, GL11.GL_UNSIGNED_BYTE, false, stride, pointer_buffer_offset);
+    }
+
+    public static void glFogCoordPointer(int stride, FloatBuffer data) {
+        ffpClientArrayPointer(VAOManager.CONV_FOG_COORD, 1, GL11.GL_FLOAT, false, stride, MemoryUtilities.memByteBuffer(data));
+    }
+
+    public static void glFogCoordPointer(int stride, DoubleBuffer data) {
+        ffpClientArrayPointer(VAOManager.CONV_FOG_COORD, 1, GL11.GL_DOUBLE, false, stride, MemoryUtilities.memByteBuffer(data));
+    }
+
+    public static void glFogCoordPointer(int type, int stride, long data_buffer_offset) {
+        ffpClientArrayPointer(VAOManager.CONV_FOG_COORD, 1, type, false, stride, data_buffer_offset);
+    }
+
+    public static void glSecondaryColorPointer(int size, int stride, FloatBuffer data) {
+        ffpClientArrayPointer(VAOManager.CONV_SECONDARY_COLOR, size, GL11.GL_FLOAT, true, stride, MemoryUtilities.memByteBuffer(data));
+    }
+
+    public static void glSecondaryColorPointer(int size, int stride, DoubleBuffer data) {
+        ffpClientArrayPointer(VAOManager.CONV_SECONDARY_COLOR, size, GL11.GL_DOUBLE, true, stride, MemoryUtilities.memByteBuffer(data));
+    }
+
+    public static void glSecondaryColorPointer(int size, boolean unsigned, int stride, ByteBuffer data) {
+        final int type = unsigned ? GL11.GL_UNSIGNED_BYTE : GL11.GL_BYTE;
+        ffpClientArrayPointer(VAOManager.CONV_SECONDARY_COLOR, size, type, true, stride, data);
+    }
+
+    public static void glSecondaryColorPointer(int size, int type, int stride, long data_buffer_offset) {
+        ffpClientArrayPointer(VAOManager.CONV_SECONDARY_COLOR, size, type, true, stride, data_buffer_offset);
+    }
+
+    private static void pointAttrib(GLContextState glCtx, int index) {
+        final VAOManager vaos = glCtx.vaos;
+        final VAOManager.Attrib a = vaos.attrib(index);
+        if (a == null) return;
+        RENDER_BACKEND.vertexAttribDivisor(index, a.divisor);
+        if (a.size == 0 || a.vboId == 0 || !vaos.isBufferLive(a)) return;
+        if (glCtx.boundVBO != a.vboId) glBindBuffer(GL15.GL_ARRAY_BUFFER, a.vboId);
+        if (a.integer) {
+            RENDER_BACKEND.vertexAttribIPointer(index, a.size, a.type, a.stride, a.offset);
+        } else {
+            RENDER_BACKEND.vertexAttribPointer(index, a.size, a.type, a.normalized, a.stride, a.offset);
+        }
+    }
+
+    private static void repointAttrib(GLContextState glCtx, int index) {
+        final int savedVBO = glCtx.boundVBO;
+        pointAttrib(glCtx, index);
+        if (glCtx.boundVBO != savedVBO) glBindBuffer(GL15.GL_ARRAY_BUFFER, savedVBO);
     }
 
     public static void glVertexPointer(int size, int stride, IntBuffer pointer) {
@@ -3125,40 +3441,40 @@ public class GLStateManager {
     }
 
     public static void glVertexPointer(int size, int stride, FloatBuffer pointer) {
-        ffpClientArrayPointer(Usage.POSITION.getAttributeLocation(), size, GL11.GL_FLOAT, false, stride, MemoryUtilities.memByteBuffer(pointer));
+        ffpClientArrayPointer(VAOManager.CONV_POSITION, size, GL11.GL_FLOAT, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glVertexPointer(int size, int stride, DoubleBuffer pointer) {
-        ffpClientArrayPointer(Usage.POSITION.getAttributeLocation(), size, GL11.GL_DOUBLE, false, stride, MemoryUtilities.memByteBuffer(pointer));
+        ffpClientArrayPointer(VAOManager.CONV_POSITION, size, GL11.GL_DOUBLE, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glVertexPointer(int size, int type, int stride, ByteBuffer pointer) {
-        ffpClientArrayPointer(Usage.POSITION.getAttributeLocation(), size, type, false, stride, pointer);
+        ffpClientArrayPointer(VAOManager.CONV_POSITION, size, type, false, stride, pointer);
     }
 
     public static void glVertexPointer(int size, int type, int stride, long pointer_buffer_offset) {
-        ffpClientArrayPointer(Usage.POSITION.getAttributeLocation(), size, type, false, stride, pointer_buffer_offset);
+        ffpClientArrayPointer(VAOManager.CONV_POSITION, size, type, false, stride, pointer_buffer_offset);
     }
 
     public static void glColorPointer(int size, int stride, FloatBuffer pointer) {
-        ffpClientArrayPointer(Usage.COLOR.getAttributeLocation(), size, GL11.GL_FLOAT, Usage.COLOR.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
+        ffpClientArrayPointer(VAOManager.CONV_COLOR, size, GL11.GL_FLOAT, Usage.COLOR.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glColorPointer(int size, int stride, DoubleBuffer pointer) {
-        ffpClientArrayPointer(Usage.COLOR.getAttributeLocation(), size, GL11.GL_DOUBLE, Usage.COLOR.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
+        ffpClientArrayPointer(VAOManager.CONV_COLOR, size, GL11.GL_DOUBLE, Usage.COLOR.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glColorPointer(int size, int type, int stride, ByteBuffer pointer) {
-        ffpClientArrayPointer(Usage.COLOR.getAttributeLocation(), size, type, Usage.COLOR.isNormalized(), stride, pointer);
+        ffpClientArrayPointer(VAOManager.CONV_COLOR, size, type, Usage.COLOR.isNormalized(), stride, pointer);
     }
 
     public static void glColorPointer(int size, boolean unsigned, int stride, ByteBuffer pointer) {
         final int type = unsigned ? GL11.GL_UNSIGNED_BYTE : GL11.GL_BYTE;
-        ffpClientArrayPointer(Usage.COLOR.getAttributeLocation(), size, type, Usage.COLOR.isNormalized(), stride, pointer);
+        ffpClientArrayPointer(VAOManager.CONV_COLOR, size, type, Usage.COLOR.isNormalized(), stride, pointer);
     }
 
     public static void glColorPointer(int size, int type, int stride, long pointer_buffer_offset) {
-        ffpClientArrayPointer(Usage.COLOR.getAttributeLocation(), size, type, Usage.COLOR.isNormalized(), stride, pointer_buffer_offset);
+        ffpClientArrayPointer(VAOManager.CONV_COLOR, size, type, Usage.COLOR.isNormalized(), stride, pointer_buffer_offset);
     }
 
     public static void glNormalPointer(int stride, FloatBuffer pointer) {
@@ -3178,33 +3494,31 @@ public class GLStateManager {
     }
 
     public static void glNormalPointer(int type, int stride, ByteBuffer pointer) {
-        ffpClientArrayPointer(Usage.NORMAL.getAttributeLocation(), 3, type, Usage.NORMAL.isNormalized(), stride, pointer);
+        ffpClientArrayPointer(VAOManager.CONV_NORMAL, 3, type, Usage.NORMAL.isNormalized(), stride, pointer);
     }
 
     public static void glNormalPointer(int type, int stride, FloatBuffer pointer) {
-        ffpClientArrayPointer(Usage.NORMAL.getAttributeLocation(), 3, GL11.GL_FLOAT, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
+        ffpClientArrayPointer(VAOManager.CONV_NORMAL, 3, GL11.GL_FLOAT, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glNormalPointer(int type, int stride, ShortBuffer pointer) {
-        ffpClientArrayPointer(Usage.NORMAL.getAttributeLocation(), 3, GL11.GL_SHORT, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
+        ffpClientArrayPointer(VAOManager.CONV_NORMAL, 3, GL11.GL_SHORT, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glNormalPointer(int type, int stride, IntBuffer pointer) {
-        ffpClientArrayPointer(Usage.NORMAL.getAttributeLocation(), 3, GL11.GL_INT, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
+        ffpClientArrayPointer(VAOManager.CONV_NORMAL, 3, GL11.GL_INT, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glNormalPointer(int type, int stride, DoubleBuffer pointer) {
-        ffpClientArrayPointer(Usage.NORMAL.getAttributeLocation(), 3, GL11.GL_DOUBLE, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
+        ffpClientArrayPointer(VAOManager.CONV_NORMAL, 3, GL11.GL_DOUBLE, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glNormalPointer(int type, int stride, long pointer_buffer_offset) {
-        ffpClientArrayPointer(Usage.NORMAL.getAttributeLocation(), 3, type, Usage.NORMAL.isNormalized(), stride, pointer_buffer_offset);
+        ffpClientArrayPointer(VAOManager.CONV_NORMAL, 3, type, Usage.NORMAL.isNormalized(), stride, pointer_buffer_offset);
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, ByteBuffer pointer) {
-        final int loc = texCoordAttributeLocation();
-        if (loc < 0) return;
-        ffpClientArrayPointer(loc, size, type, false, stride, pointer);
+        ffpClientArrayPointer(texCoordConventional(ctx()), size, type, false, stride, pointer);
     }
 
     public static void glTexCoordPointer(int size, int stride, FloatBuffer pointer) {
@@ -3224,47 +3538,63 @@ public class GLStateManager {
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, FloatBuffer pointer) {
-        final int loc = texCoordAttributeLocation();
-        if (loc < 0) return;
-        ffpClientArrayPointer(loc, size, GL11.GL_FLOAT, false, stride, MemoryUtilities.memByteBuffer(pointer));
+        ffpClientArrayPointer(texCoordConventional(ctx()), size, GL11.GL_FLOAT, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, ShortBuffer pointer) {
-        final int loc = texCoordAttributeLocation();
-        if (loc < 0) return;
-        ffpClientArrayPointer(loc, size, GL11.GL_SHORT, false, stride, MemoryUtilities.memByteBuffer(pointer));
+        ffpClientArrayPointer(texCoordConventional(ctx()), size, GL11.GL_SHORT, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, IntBuffer pointer) {
-        final int loc = texCoordAttributeLocation();
-        if (loc < 0) return;
-        ffpClientArrayPointer(loc, size, GL11.GL_INT, false, stride, MemoryUtilities.memByteBuffer(pointer));
+        ffpClientArrayPointer(texCoordConventional(ctx()), size, GL11.GL_INT, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, DoubleBuffer pointer) {
-        final int loc = texCoordAttributeLocation();
-        if (loc < 0) return;
-        ffpClientArrayPointer(loc, size, GL11.GL_DOUBLE, false, stride, MemoryUtilities.memByteBuffer(pointer));
+        ffpClientArrayPointer(texCoordConventional(ctx()), size, GL11.GL_DOUBLE, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, long pointer_buffer_offset) {
-        final int loc = texCoordAttributeLocation();
-        if (loc < 0) return;
-        ffpClientArrayPointer(loc, size, type, false, stride, pointer_buffer_offset);
+        ffpClientArrayPointer(texCoordConventional(ctx()), size, type, false, stride, pointer_buffer_offset);
     }
 
     public static void glEnableClientState(int cap) {
-        final int location = clientStateToAttributeLocation(cap);
-        if (location >= 0) glEnableVertexAttribArray(location);
-        final int flag = clientStateToVertexFlag(cap);
-        if (flag != 0) ctx().vaos.enableClientVertexFlag(flag);
+        setClientArrayCap(ctx(), cap, true);
     }
 
     public static void glDisableClientState(int cap) {
-        final int location = clientStateToAttributeLocation(cap);
-        if (location >= 0) glDisableVertexAttribArray(location);
-        final int flag = clientStateToVertexFlag(cap);
-        if (flag != 0) ctx().vaos.disableClientVertexFlag(flag);
+        setClientArrayCap(ctx(), cap, false);
+    }
+
+    private static boolean setClientArrayCap(GLContextState glCtx, int cap, boolean enabled) {
+        final int conv = clientStateToConventional(glCtx, cap);
+        if (conv < 0) return false;
+        setClientArrayEnabled(glCtx, conv, enabled);
+        return true;
+    }
+
+    private static void setClientArrayEnabled(GLContextState glCtx, int conv, boolean enabled) {
+        final VAOManager vaos = glCtx.vaos;
+        final boolean repoint = vaos.setConventionalEnabled(conv, enabled);
+        final int index = VAOManager.conventionalLocation(conv);
+        if (index >= 0) {
+            if (repoint) repointAttrib(glCtx, index);
+            syncAttribEnable(glCtx, index);
+        }
+        final int flag = conventionalVertexFlag(conv);
+        if (flag == 0) return;
+        if (enabled) {
+            vaos.enableClientVertexFlag(flag);
+        } else {
+            vaos.disableClientVertexFlag(flag);
+        }
+    }
+
+    private static void syncAttribEnable(GLContextState glCtx, int index) {
+        if (glCtx.vaos.isAttribEnabled(index)) {
+            RENDER_BACKEND.enableVertexAttribArray(index);
+        } else {
+            RENDER_BACKEND.disableVertexAttribArray(index);
+        }
     }
 
     public static void glVertexAttrib2f(int index, float v0, float v1) {
@@ -3290,9 +3620,11 @@ public class GLStateManager {
     }
 
     public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, long offset) {
+        if (!isLegalVertexAttrib(index, size, type, stride, false)) return;
         final GLContextState glCtx = ctx();
-        glCtx.vaos.setAttribute(index, size, type, normalized, stride, offset, glCtx.boundVBO);
-        RENDER_BACKEND.vertexAttribPointer(index, size, type, normalized, stride, offset);
+        if (glCtx.vaos.setAttribute(index, size, type, normalized, stride, offset, glCtx.boundVBO)) {
+            RENDER_BACKEND.vertexAttribPointer(index, size, type, normalized, stride, offset);
+        }
     }
 
     public static void glVertexAttribPointer(int index, int size, boolean normalized, int stride, FloatBuffer pointer) {
@@ -3300,86 +3632,93 @@ public class GLStateManager {
     }
 
     public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, FloatBuffer pointer) {
-        ctx().vaos.setAttribute(index, size, type, normalized, stride, MemoryUtilities.memByteBuffer(pointer));
+        glVertexAttribPointer(index, size, type, normalized, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, DoubleBuffer pointer) {
-        ctx().vaos.setAttribute(index, size, type, normalized, stride, MemoryUtilities.memByteBuffer(pointer));
+        glVertexAttribPointer(index, size, type, normalized, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, IntBuffer pointer) {
-        ctx().vaos.setAttribute(index, size, type, normalized, stride, MemoryUtilities.memByteBuffer(pointer));
+        glVertexAttribPointer(index, size, type, normalized, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, ShortBuffer pointer) {
-        ctx().vaos.setAttribute(index, size, type, normalized, stride, MemoryUtilities.memByteBuffer(pointer));
+        glVertexAttribPointer(index, size, type, normalized, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, ByteBuffer pointer) {
+        if (!isLegalVertexAttrib(index, size, type, stride, false)) return;
         ctx().vaos.setAttribute(index, size, type, normalized, stride, pointer);
     }
 
     public static void glVertexAttribIPointer(int index, int size, int type, int stride, long offset) {
+        if (!isLegalVertexAttrib(index, size, type, stride, true)) return;
         final GLContextState glCtx = ctx();
-        glCtx.vaos.setAttribute(index, size, type, false, stride, offset, glCtx.boundVBO);
-        RENDER_BACKEND.vertexAttribIPointer(index, size, type, stride, offset);
+        if (glCtx.vaos.setIntegerAttribute(index, size, type, stride, offset, glCtx.boundVBO)) {
+            RENDER_BACKEND.vertexAttribIPointer(index, size, type, stride, offset);
+        }
     }
 
     public static void glVertexAttribIPointer(int index, int size, int type, int stride, ByteBuffer pointer) {
-        ctx().vaos.setAttribute(index, size, type, false, stride, pointer);
+        if (!isLegalVertexAttrib(index, size, type, stride, true)) return;
+        ctx().vaos.setIntegerAttribute(index, size, type, stride, pointer);
     }
 
     public static void glVertexAttribIPointer(int index, int size, int type, int stride, IntBuffer pointer) {
-        ctx().vaos.setAttribute(index, size, type, false, stride, MemoryUtilities.memByteBuffer(pointer));
+        glVertexAttribIPointer(index, size, type, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glVertexAttribIPointer(int index, int size, int type, int stride, ShortBuffer pointer) {
-        ctx().vaos.setAttribute(index, size, type, false, stride, MemoryUtilities.memByteBuffer(pointer));
+        glVertexAttribIPointer(index, size, type, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
-    public static void glVertexAttribDivisor(int index, int divisor) { RENDER_BACKEND.vertexAttribDivisor(index, divisor); }
-    public static void glVertexAttribDivisorARB(int index, int divisor) { RENDER_BACKEND.vertexAttribDivisor(index, divisor); }
+    public static void glVertexAttribDivisor(int index, int divisor) {
+        if (ctx().vaos.setDivisor(index, divisor)) RENDER_BACKEND.vertexAttribDivisor(index, divisor);
+    }
+
+    public static void glVertexAttribDivisorARB(int index, int divisor) { glVertexAttribDivisor(index, divisor); }
     public static void glBindVertexBuffer(int bindingindex, int buffer, long offset, int stride) { RENDER_BACKEND.bindVertexBuffer(bindingindex, buffer, offset, stride); }
     public static void glVertexAttribFormat(int attribindex, int size, int type, boolean normalized, int relativeoffset) { RENDER_BACKEND.vertexAttribFormat(attribindex, size, type, normalized, relativeoffset); }
     public static void glVertexAttribIFormat(int attribindex, int size, int type, int relativeoffset) { RENDER_BACKEND.vertexAttribIFormat(attribindex, size, type, relativeoffset); }
     public static void glVertexAttribBinding(int attribindex, int bindingindex) { RENDER_BACKEND.vertexAttribBinding(attribindex, bindingindex); }
 
     public static void glEnableVertexAttribArray(int index) {
-        ctx().vaos.enableAttribute(index);
+        if (!isValidVertexAttribIndex(index, "glEnableVertexAttribArray")) return;
+        final GLContextState glCtx = ctx();
+        if (glCtx.vaos.enableAttribute(index)) repointAttrib(glCtx, index);
         RENDER_BACKEND.enableVertexAttribArray(index);
     }
 
     public static void glDisableVertexAttribArray(int index) {
-        ctx().vaos.disableAttribute(index);
-        RENDER_BACKEND.disableVertexAttribArray(index);
+        if (!isValidVertexAttribIndex(index, "glDisableVertexAttribArray")) return;
+        final GLContextState glCtx = ctx();
+        if (glCtx.vaos.disableAttribute(index)) repointAttrib(glCtx, index);
+        if (!glCtx.vaos.isAttribEnabled(index)) RENDER_BACKEND.disableVertexAttribArray(index);
     }
 
-    private static int clientStateToAttributeLocation(int cap) {
+    private static int clientStateToConventional(GLContextState glCtx, int cap) {
         return switch (cap) {
-            case GL11.GL_VERTEX_ARRAY -> Usage.POSITION.getAttributeLocation();
-            case GL11.GL_COLOR_ARRAY -> Usage.COLOR.getAttributeLocation();
-            case GL11.GL_NORMAL_ARRAY -> Usage.NORMAL.getAttributeLocation();
-            case GL11.GL_TEXTURE_COORD_ARRAY -> texCoordAttributeLocation();
+            case GL11.GL_VERTEX_ARRAY -> VAOManager.CONV_POSITION;
+            case GL11.GL_NORMAL_ARRAY -> VAOManager.CONV_NORMAL;
+            case GL11.GL_COLOR_ARRAY -> VAOManager.CONV_COLOR;
+            case GL11.GL_INDEX_ARRAY -> VAOManager.CONV_INDEX;
+            case GL11.GL_EDGE_FLAG_ARRAY -> VAOManager.CONV_EDGE_FLAG;
+            case GL14.GL_SECONDARY_COLOR_ARRAY -> VAOManager.CONV_SECONDARY_COLOR;
+            case GL14.GL_FOG_COORDINATE_ARRAY -> VAOManager.CONV_FOG_COORD;
+            case GL11.GL_TEXTURE_COORD_ARRAY -> texCoordConventional(glCtx);
             default -> -1;
         };
     }
 
-    private static int clientStateToVertexFlag(int cap) {
-        return switch (cap) {
-            case GL11.GL_COLOR_ARRAY -> VertexFlags.COLOR_BIT;
-            case GL11.GL_NORMAL_ARRAY -> VertexFlags.NORMAL_BIT;
-            case GL11.GL_TEXTURE_COORD_ARRAY -> switch (ctx().clientActiveTextureUnit) {
-                case 0 -> VertexFlags.TEXTURE_BIT;
-                case 1 -> VertexFlags.BRIGHTNESS_BIT;
-                default -> 0;
-            };
-            default -> 0; // GL_VERTEX_ARRAY - position is implicit
+    private static int conventionalVertexFlag(int conv) {
+        return switch (conv) {
+            case VAOManager.CONV_COLOR -> VertexFlags.COLOR_BIT;
+            case VAOManager.CONV_NORMAL -> VertexFlags.NORMAL_BIT;
+            case VAOManager.CONV_TEX0 -> VertexFlags.TEXTURE_BIT;
+            case VAOManager.CONV_TEX0 + 1 -> VertexFlags.BRIGHTNESS_BIT;
+            default -> 0;
         };
-    }
-
-    private static boolean isPositionArrayEnabled(GLContextState glCtx) {
-        final VAOManager.Attrib position = glCtx.vaos.attrib(Usage.POSITION.getAttributeLocation());
-        return position != null && position.enabled;
     }
 
     static final int CLIENT_ATTRIB_STACK_DEPTH = 16;
@@ -3395,9 +3734,13 @@ public class GLStateManager {
                 glCtx.clientAttribSavedUnpackBuffer[sp] = glCtx.boundPixelUnpackBuffer;
             }
             if ((mask & GL11.GL_CLIENT_VERTEX_ARRAY_BIT) != 0) {
-                glCtx.clientAttribSavedTextureUnit[sp] = glCtx.clientActiveTextureUnit;
-                glCtx.clientAttribSavedVertexFlags[sp] = glCtx.vaos.getVertexFlags();
-                glCtx.clientAttribSavedVertexArray[sp] = isPositionArrayEnabled(glCtx);
+                VAOManager.ClientArrays saved = glCtx.clientAttribSavedArrays[sp];
+                if (saved == null) glCtx.clientAttribSavedArrays[sp] = saved = new VAOManager.ClientArrays();
+                saved.boundVAO = glCtx.boundVAO;
+                saved.boundVBO = glCtx.boundVBO;
+                saved.boundEBO = glCtx.vaos.boundEBO;
+                saved.clientActiveTextureUnit = glCtx.clientActiveTextureUnit;
+                glCtx.vaos.saveClientArrays(saved);
             }
             glCtx.clientAttribStackPointer = sp + 1;
         }
@@ -3423,25 +3766,42 @@ public class GLStateManager {
                 if (glCtx.boundPixelUnpackBuffer != unpackBuffer) glBindBuffer(GL21.GL_PIXEL_UNPACK_BUFFER, unpackBuffer);
             }
             if ((mask & GL11.GL_CLIENT_VERTEX_ARRAY_BIT) != 0) {
-                glCtx.clientActiveTextureUnit = glCtx.clientAttribSavedTextureUnit[sp];
-                glCtx.vaos.setVertexFlags(glCtx.clientAttribSavedVertexFlags[sp]);
-                final boolean vertexArray = glCtx.clientAttribSavedVertexArray[sp];
-                if (isPositionArrayEnabled(glCtx) != vertexArray) {
-                    if (vertexArray) {
-                        glEnableClientState(GL11.GL_VERTEX_ARRAY);
-                    } else {
-                        glDisableClientState(GL11.GL_VERTEX_ARRAY);
-                    }
-                }
+                restoreClientArrays(glCtx, glCtx.clientAttribSavedArrays[sp]);
             }
         }
     }
 
-    public static void glInterleavedArrays(int format, int stride, long pointer) {
-        if (!ctx().ffp.isActive()) {
-            return;
+    private static void restoreClientArrays(GLContextState glCtx, VAOManager.ClientArrays saved) {
+        final VAOManager vaos = glCtx.vaos;
+        if (!vaos.vaoMap.containsKey(saved.boundVAO)) return;
+        bindVertexArrayInternal(glCtx, saved.boundVAO);
+        glCtx.clientActiveTextureUnit = saved.clientActiveTextureUnit;
+        if (vaos.isBufferLive(saved.boundVBO, saved)) {
+            final int changed = vaos.restoreClientArrays(saved);
+            for (int pointers = changed & 0xFFFF; pointers != 0; pointers &= pointers - 1) {
+                pointAttrib(glCtx, Integer.numberOfTrailingZeros(pointers));
+            }
+            for (int enables = changed >>> 16; enables != 0; enables &= enables - 1) {
+                syncAttribEnable(glCtx, Integer.numberOfTrailingZeros(enables));
+            }
+            if (glCtx.boundVBO != saved.boundVBO) glBindBuffer(GL15.GL_ARRAY_BUFFER, saved.boundVBO);
         }
+        if (vaos.boundEBO != saved.boundEBO && vaos.isBufferLive(saved.boundEBO, saved)) glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, saved.boundEBO);
+    }
 
+    public static void glInterleavedArrays(int format, int stride, long pointer) {
+        interleavedArrays(format, stride, pointer, null);
+    }
+
+    private static void interleavedPointer(int conv, int size, int type, boolean normalized, int stride, long pointer, ByteBuffer base, int offset) {
+        if (base == null) {
+            ffpClientArrayPointer(conv, size, type, normalized, stride, pointer + offset);
+        } else {
+            ffpClientArrayPointer(conv, size, type, normalized, stride, MemoryUtilities.memSlice(base, offset, base.remaining() - offset));
+        }
+    }
+
+    private static void interleavedArrays(int format, int stride, long pointer, ByteBuffer base) {
         // Mesa _mesa_get_interleaved_layout decomposition
         final int f = 4; // sizeof(float)
         final int c = f * ((4 + (f - 1)) / f); // 4 ubytes padded to float alignment = 4
@@ -3504,47 +3864,47 @@ public class GLStateManager {
 
         if (tflag) {
             glEnableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
-            glTexCoordPointer(tcomps, GL11.GL_FLOAT, stride, pointer + toffset);
+            interleavedPointer(texCoordConventional(ctx()), tcomps, GL11.GL_FLOAT, false, stride, pointer, base, toffset);
         } else {
             glDisableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
         }
 
         if (cflag) {
             glEnableClientState(GL11.GL_COLOR_ARRAY);
-            glColorPointer(ccomps, ctype, stride, pointer + coffset);
+            interleavedPointer(VAOManager.CONV_COLOR, ccomps, ctype, Usage.COLOR.isNormalized(), stride, pointer, base, coffset);
         } else {
             glDisableClientState(GL11.GL_COLOR_ARRAY);
         }
 
         if (nflag) {
             glEnableClientState(GL11.GL_NORMAL_ARRAY);
-            glNormalPointer(GL11.GL_FLOAT, stride, pointer + noffset);
+            interleavedPointer(VAOManager.CONV_NORMAL, 3, GL11.GL_FLOAT, Usage.NORMAL.isNormalized(), stride, pointer, base, noffset);
         } else {
             glDisableClientState(GL11.GL_NORMAL_ARRAY);
         }
 
         glEnableClientState(GL11.GL_VERTEX_ARRAY);
-        glVertexPointer(vcomps, GL11.GL_FLOAT, stride, pointer + voffset);
+        interleavedPointer(VAOManager.CONV_POSITION, vcomps, GL11.GL_FLOAT, false, stride, pointer, base, voffset);
     }
 
     public static void glInterleavedArrays(int format, int stride, ByteBuffer pointer) {
-        glInterleavedArrays(format, stride, MemoryUtilities.memAddress0(pointer));
+        interleavedArrays(format, stride, 0L, pointer);
     }
 
     public static void glInterleavedArrays(int format, int stride, FloatBuffer pointer) {
-        glInterleavedArrays(format, stride, MemoryUtilities.memAddress0(MemoryUtilities.memByteBuffer(pointer)));
+        interleavedArrays(format, stride, 0L, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glInterleavedArrays(int format, int stride, DoubleBuffer pointer) {
-        glInterleavedArrays(format, stride, MemoryUtilities.memAddress0(MemoryUtilities.memByteBuffer(pointer)));
+        interleavedArrays(format, stride, 0L, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glInterleavedArrays(int format, int stride, IntBuffer pointer) {
-        glInterleavedArrays(format, stride, MemoryUtilities.memAddress0(MemoryUtilities.memByteBuffer(pointer)));
+        interleavedArrays(format, stride, 0L, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glInterleavedArrays(int format, int stride, ShortBuffer pointer) {
-        glInterleavedArrays(format, stride, MemoryUtilities.memAddress0(MemoryUtilities.memByteBuffer(pointer)));
+        interleavedArrays(format, stride, 0L, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glLogicOp(int opcode) {
@@ -4434,7 +4794,8 @@ public class GLStateManager {
         RENDER_BACKEND.depthRange(glCtx.viewportState.depthRangeNear, glCtx.viewportState.depthRangeFar);
         RENDER_BACKEND.scissor(glCtx.scissorState.x, glCtx.scissorState.y, glCtx.scissorState.width, glCtx.scissorState.height);
         RENDER_BACKEND.lineWidth(Math.clamp(glCtx.lineState.getWidth(), lineWidthMin, lineWidthMax));
-        RENDER_BACKEND.pointSize(glCtx.pointState.getSize());
+        applyPointState(glCtx);
+        applyHintState(glCtx);
 
         RENDER_BACKEND.polygonMode(GL11.GL_FRONT_AND_BACK, glCtx.polygonState.getFrontMode());
         applyPolygonOffset(glCtx);
@@ -4556,7 +4917,12 @@ public class GLStateManager {
         }
         if ((restore & StateSet.R_POINT) != 0 && (changed & StateSet.R_POINT) != 0) {
             attribValueRestores++;
-            RENDER_BACKEND.pointSize(glCtx.pointState.getSize());
+            applyPointState(glCtx);
+            attribBackendCalls++;
+        }
+        if ((restore & StateSet.R_HINT) != 0 && (changed & StateSet.R_HINT) != 0) {
+            attribValueRestores++;
+            applyHintState(glCtx);
             attribBackendCalls++;
         }
         if ((restore & StateSet.R_POLYGON) != 0 && (changed & StateSet.R_POLYGON) != 0) {
@@ -5493,6 +5859,14 @@ public class GLStateManager {
     }
     public static void glTexStorage2D(int target, int levels, int internalFormat, int width, int height) {
         RENDER_BACKEND.texStorage2D(target, levels, internalFormat, width, height);
+        if (target == GL11.GL_TEXTURE_2D) {
+            final boolean locked = acquireDrawLock();
+            try {
+                unshrinkableTextures.add(getBoundTextureForServerState());
+            } finally {
+                if (locked) releaseDrawLock();
+            }
+        }
         TextureInfoCache.INSTANCE.onTexStorage2D(target, internalFormat, width, height);
     }
     public static void glClearTexImage(int texture, int level, int format, int type, ByteBuffer data) { RENDER_BACKEND.clearTexImage(texture, level, format, type); }
@@ -6418,11 +6792,8 @@ public class GLStateManager {
     }
 
     public static void glHint(int target, int hint) {
-        // These hint targets are removed in core profile, ignore them
-        switch (target) {
-            case GL11.GL_PERSPECTIVE_CORRECTION_HINT, GL11.GL_POINT_SMOOTH_HINT, GL11.GL_FOG_HINT, GL14.GL_GENERATE_MIPMAP_HINT -> {
-                return;
-            }
+        if (hint != GL11.GL_NICEST && hint != GL11.GL_FASTEST && hint != GL11.GL_DONT_CARE) {
+            return;
         }
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
@@ -6431,7 +6802,16 @@ public class GLStateManager {
                 return;
             }
         }
-        RENDER_BACKEND.hint(target, hint);
+        final int shift = hintShift(target);
+        if (shift >= 0) {
+            final IntegerStateStack hints = ctx().hintState;
+            final int code = hint == GL11.GL_FASTEST ? 1 : hint == GL11.GL_NICEST ? 2 : 0;
+            final int packed = hints.getValue() & ~(3 << shift) | code << shift;
+            if (packed != hints.getValue()) mod(hints).setValue(packed);
+        }
+        if (!isLegacyHint(target)) {
+            RENDER_BACKEND.hint(target, hint);
+        }
     }
 
     public static void glLineStipple(int factor, short pattern) {
@@ -7370,9 +7750,10 @@ public class GLStateManager {
             // Since the vao needs to be bound to do stuff like state setup & data upload, it'll still execute the bind call.
             // This is technically wrong, but I'm not sure if there's a better solution here.
         }
-        if (array == 0) {
-            array = glCtx.defaultVAO;
-        }
+        bindVertexArrayInternal(glCtx, array == 0 ? glCtx.defaultVAO : array);
+    }
+
+    private static void bindVertexArrayInternal(GLContextState glCtx, int array) {
         final boolean locked = acquireDrawLock();
         try {
             if (glCtx.boundVAO != array) {
@@ -7392,9 +7773,7 @@ public class GLStateManager {
             glCtx.vaos.onDeleteVertexArray(array);
             if (array == glCtx.boundVAO) {
                 // Deleting the bound VAO implicitly unbinds it. Rebind the default VAO.
-                glCtx.boundVAO = glCtx.defaultVAO;
-                glCtx.vaos.onBindVertexArrayPre(glCtx.defaultVAO);
-                RENDER_BACKEND.bindVertexArray(glCtx.defaultVAO);
+                bindVertexArrayInternal(glCtx, glCtx.defaultVAO);
             }
             RENDER_BACKEND.deleteVertexArrays(array);
         } finally {
@@ -7554,9 +7933,10 @@ public class GLStateManager {
                 if (params.length > 1) params[1] = polygon.getBackMode();
             }
             default -> {
+                final GLContextState glCtx = ctx();
                 if (!HAS_MULTIPLE_SET.contains(pname)) {
-                    params[0] = glGetInteger(pname);
-                } else {
+                    params[0] = glGetInteger(glCtx, pname);
+                } else if (!LegacyQueries.getIntegerv(glCtx, pname, params)) {
                     RENDER_BACKEND.getInteger(pname, params);
                 }
             }
@@ -8780,6 +9160,22 @@ public class GLStateManager {
 
     public static PointStateStack getPointState() {
         return ctx().pointState;
+    }
+
+    public static IntegerStateStack getHintState() {
+        return ctx().hintState;
+    }
+
+    public static BooleanStateStack getPointSpriteState() {
+        return ctx().pointSpriteState;
+    }
+
+    public static BooleanStateStack getVertexProgramTwoSideState() {
+        return ctx().vertexProgramTwoSideState;
+    }
+
+    public static BooleanStateStack getEdgeFlagState() {
+        return ctx().edgeFlagState;
     }
 
     public static PolygonStateStack getPolygonState() {

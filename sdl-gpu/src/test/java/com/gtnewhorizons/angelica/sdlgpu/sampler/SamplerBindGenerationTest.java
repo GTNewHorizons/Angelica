@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.sdlgpu.sampler;
 
-import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.sdlgpu.SDLGPURenderBackend;
 import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
@@ -9,12 +8,10 @@ import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 class SamplerBindGenerationTest {
-
 
     @Test
     void switchingActiveUnitDoesNotBumpTheGeneration() {
@@ -74,7 +71,7 @@ class SamplerBindGenerationTest {
     void settingAnUnchangedTexParameterOnAResolvedSamplerDoesNotBumpTheGeneration() {
         final SDLGPURenderBackend backend = new SDLGPURenderBackend();
         final ContextState st = SdlTestRig.contextState();
-        final ResourceManager resourceManager = Reflect.get(backend, "resourceManager");
+        final ResourceManager resourceManager = SdlTestRig.resourceManagerOf(backend);
 
         backend.activeTexture(GL13.GL_TEXTURE0);
         backend.bindTexture(GL11.GL_TEXTURE_2D, 42);

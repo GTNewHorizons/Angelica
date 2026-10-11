@@ -1,14 +1,12 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
-import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL14;
 
@@ -19,11 +17,6 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 @ExtendWith(GlsmSdlFrameExtension.class)
 class GlsmSdlBlendConstantsTest {
 
-    @BeforeAll
-    static void boot() {
-        GlsmSdlHeadlessRig.boot();
-    }
-
     @AfterEach
     void restoreBlend() {
         GLStateManager.glDisable(GL11.GL_BLEND);
@@ -31,17 +24,10 @@ class GlsmSdlBlendConstantsTest {
         GLStateManager.glBlendColor(0.0f, 0.0f, 0.0f, 0.0f);
     }
 
-    @Test
-    void pendingConstantsSurviveADrawWithoutConstantBlending() {
-        verifyConstants(false);
-    }
-
-    @Test
-    void constantsChangedWhileBlendingIsDisabledReachTheNextBlendedDraw() {
-        verifyConstants(true);
-    }
-
-    private static void verifyConstants(boolean previouslyEnabled) {
+    /** With blending never enabled before, the pending constants must survive a draw that does not use them. */
+    @ParameterizedTest(name = "blending enabled earlier in the frame: {0}")
+    @ValueSource(booleans = {false, true})
+    void constantsSetWhileBlendingIsDisabledReachTheNextBlendedDraw(boolean previouslyEnabled) {
         GlsmSdlHeadlessRig.bindTarget();
         GLStateManager.glBlendFunc(GL14.GL_CONSTANT_COLOR, GL11.GL_ZERO);
         if (previouslyEnabled) {
@@ -52,8 +38,7 @@ class GlsmSdlBlendConstantsTest {
         GLStateManager.glDisable(GL11.GL_BLEND);
         GLStateManager.glBlendColor(0.0f, 1.0f, 0.0f, 1.0f);
         GlsmSdlHeadlessRig.solidQuad(1.0f, 1.0f, 1.0f);
-        final FrameManager manager = Reflect.get(BackendManager.RENDER_BACKEND, "frameManager");
-        final FrameManager.FrameState frame = manager.frame();
+        final FrameManager.FrameState frame = GlsmSdlHeadlessRig.frameManager().frame();
         final long pass = frame.renderPass;
         final long generation = frame.renderPassGeneration;
         assertNotEquals(0, pass);
@@ -64,6 +49,6 @@ class GlsmSdlBlendConstantsTest {
         assertEquals(generation, frame.renderPassGeneration);
         final int[] pixels = GlsmSdlHeadlessRig.readTarget();
         final int size = GlsmSdlHeadlessRig.SIZE;
-        assertEquals(0xFF00FF00, GlsmSdlHeadlessRig.pixelAt(pixels, size, size / 2, size / 2));
+        assertEquals(GlsmSdlHeadlessRig.GREEN, GlsmSdlHeadlessRig.pixelAt(pixels, size, size / 2, size / 2));
     }
 }

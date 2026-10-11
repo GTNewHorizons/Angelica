@@ -2,7 +2,7 @@ package net.coderbot.iris.pipeline;
 
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.GlTestSupport;
 import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
 import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpFixture;
@@ -21,8 +21,8 @@ import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.batchedentityrendering.impl.AngelicaBufferSource;
 import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline.Pass;
 import net.coderbot.iris.pipeline.transform.PatchShaderType;
-import net.coderbot.iris.pipeline.transform.ShaderTransformer;
 import net.coderbot.iris.pipeline.transform.TransformPatcher;
+import net.coderbot.iris.pipeline.transform.TransformTestSupport;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -42,6 +42,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 
+import static net.coderbot.iris.pipeline.transform.TransformTestSupport.TEX_LM;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -50,8 +51,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @GLCoreTest
 class IrisInstancingGLTest {
-
-    private static final InputAvailability TEX_LM = InputAvailability.of(true, true);
 
     private static final String CUBE_VERTEX = """
         #version 120
@@ -168,21 +167,17 @@ class IrisInstancingGLTest {
 
     @BeforeAll
     static void pinGlslVersion() {
-        previousMaxGlslVersion = RenderSystem.getMaxGlslVersion();
-        Reflect.setStatic(RenderSystem.class, "maxGlslVersion", 330);
-        ShaderTransformer.init();
+        previousMaxGlslVersion = TransformTestSupport.pinGlslVersion(330);
     }
 
     @AfterAll
     static void restoreGlslVersion() {
-        Reflect.setStatic(RenderSystem.class, "maxGlslVersion", previousMaxGlslVersion);
-        ShaderTransformer.init();
+        TransformTestSupport.restoreGlslVersion(previousMaxGlslVersion);
     }
 
     @BeforeEach
     void setUp() {
-        TransformPatcher.clearCache();
-        ShaderTransformer.clearCache();
+        TransformTestSupport.clearCaches();
         GLStateManager.disableBlend();
     }
 
@@ -273,6 +268,8 @@ class IrisInstancingGLTest {
 
         final int program = GLStateManager.glCreateProgram();
         GLStateManager.glUseProgram(program);
+        // Never linked, so the driver rejects the bind; GLSM still tracks it as the active program.
+        assertEquals(GL11.GL_INVALID_OPERATION, GL11.glGetError());
         try {
             final long dc = GLStateManager.drawCalls;
             BatchEligibility.begin(BatchEligibility.SAFE, dc);
@@ -485,10 +482,6 @@ class IrisInstancingGLTest {
     }
 
     private static void compile(int type, String source) {
-        final int shader = GLStateManager.glCreateShader(type);
-        GLStateManager.glShaderSource(shader, source);
-        GLStateManager.glCompileShader(shader);
-        assertEquals(GL11.GL_TRUE, GLStateManager.glGetShaderi(shader, GL20.GL_COMPILE_STATUS), () -> "shader failed to compile:\n" + GLStateManager.glGetShaderInfoLog(shader, 4096) + "\n" + source);
-        GLStateManager.glDeleteShader(shader);
+        GLStateManager.glDeleteShader(GlTestSupport.compile(type, source));
     }
 }

@@ -3,7 +3,6 @@ package com.gtnewhorizons.angelica.sdlgpu.shader;
 import com.gtnewhorizons.angelica.glsm.hooks.PerFrameUniformBlock;
 import com.gtnewhorizons.angelica.glsm.hooks.PerFrameUniformBlock.Member;
 import com.gtnewhorizons.angelica.glsm.shader.ShaderCacheIO;
-import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
 import com.gtnewhorizons.angelica.glsm.shader.UniformType;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL20;
@@ -15,6 +14,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+import static com.gtnewhorizons.angelica.sdlgpu.shader.SpirvTestShaders.compileOrFail;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -65,9 +65,7 @@ class ShaderStageSerializerTest {
     private record Staged(byte[] spirv, ShaderManager.StageReflection reflection, ShaderManager.GraphicsBindingMap map) {}
 
     private static Staged stage(String source, int shaderKind, int glType) {
-        final SpirvCompiler.Result r = SpirvCompiler.compile(source, shaderKind, "codec", SpirvCompiler.Options.vulkanForced460Core());
-        assertNotNull(r.spirv(), () -> "shaderc failed: " + r.error());
-        final ByteBuffer spirv = r.spirv();
+        final ByteBuffer spirv = compileOrFail(source, shaderKind);
         try {
             final ShaderManager.GraphicsBindingMap map = ShaderManager.remapSpirvForSDLGPU(spirv, glType);
             final ShaderManager.StageReflection reflection = ShaderManager.reflectStage(spirv, glType == GL20.GL_VERTEX_SHADER);

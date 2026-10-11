@@ -3,7 +3,6 @@ package com.gtnewhorizons.angelica.sdlgpu.glsm;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,11 +15,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class GlsmSdlVoxelRegionBindTest {
 
     private static final int BOUND_SLOT = 5;
-
-    @BeforeAll
-    static void boot() {
-        GlsmSdlHeadlessRig.boot();
-    }
 
     private static int glsmGenericSsbo() {
         return GlsmSdlHeadlessRig.glsmBufferBinding(GL43.GL_SHADER_STORAGE_BUFFER);

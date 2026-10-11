@@ -9,6 +9,7 @@ import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.sdlgpu.SDLGPUGate;
 import com.gtnewhorizons.angelica.sdlgpu.SDLGPURenderBackend;
 import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
+import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
 import com.gtnewhorizons.angelica.sdlgpu.pipeline.PipelineCache;
 import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
@@ -28,6 +29,14 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 public final class GlsmSdlHeadlessRig {
 
     public static final int SIZE = 64;
+
+    public static final int RED = 0xFFFF0000;
+    public static final int GREEN = 0xFF00FF00;
+    public static final int BLUE = 0xFF0000FF;
+    public static final int BLACK = 0xFF000000;
+
+    public static final int TEXEL = 0xFFFF4020;
+    public static final int LIGHTMAP_SIZE = 16;
 
     private static boolean booted;
     private static int fbo;
@@ -91,9 +100,30 @@ public final class GlsmSdlHeadlessRig {
         return bound.get(target);
     }
 
+    public static FrameManager frameManager() {
+        return Reflect.get(BackendManager.RENDER_BACKEND, "frameManager");
+    }
+
+    public static ResourceManager resourceManager() {
+        return Reflect.get(BackendManager.RENDER_BACKEND, "resourceManager");
+    }
+
+    /** Replaces FBO 0's backing target; pair with {@link #dropFinalTarget()}. */
+    public static void installFinalTarget(int width, int height) {
+        final FrameManager fm = frameManager();
+        final ResourceManager rm = resourceManager();
+        fm.destroyFinalTarget();
+        fm.finalTarget().create(SDLGPUGate.device(), rm, width, height, rm.mapTextureFormat(GL11.GL_RGBA8));
+        assertEquals(height, fm.getFbo0Height());
+    }
+
+    public static void dropFinalTarget() {
+        endFrame();
+        if (booted) frameManager().destroyFinalTarget();
+    }
+
     static int colorTargetSdlFormat() {
-        final ResourceManager rm = Reflect.get(BackendManager.RENDER_BACKEND, "resourceManager");
-        final ResourceManager.TextureMeta meta = rm.getTextureMeta(colorTexture);
+        final ResourceManager.TextureMeta meta = resourceManager().getTextureMeta(colorTexture);
         return meta != null ? meta.sdlFormat() : 0;
     }
 
@@ -229,22 +259,67 @@ public final class GlsmSdlHeadlessRig {
         return fbo;
     }
 
-    public static int createSolidTexture(int argb) {
-        final int id = newNearestTexture();
-        final ByteBuffer texels = MemoryUtil.memAlloc(2 * 2 * 4);
+    public static void putArgb(ByteBuffer texels, int index, int argb) {
+        texels.put(index * 4, (byte) ((argb >> 16) & 0xFF));
+        texels.put(index * 4 + 1, (byte) ((argb >> 8) & 0xFF));
+        texels.put(index * 4 + 2, (byte) (argb & 0xFF));
+        texels.put(index * 4 + 3, (byte) ((argb >>> 24) & 0xFF));
+    }
+
+    /** Uploads one solid RGBA8 level of the GL_TEXTURE_2D bound on the active unit. */
+    public static void uploadSolidLevel(int level, int size, int argb) {
+        final ByteBuffer texels = MemoryUtil.memAlloc(size * size * 4);
         try {
-            for (int i = 0; i < 4; i++) {
-                texels.put((byte) ((argb >> 16) & 0xFF));
-                texels.put((byte) ((argb >> 8) & 0xFF));
-                texels.put((byte) (argb & 0xFF));
-                texels.put((byte) ((argb >>> 24) & 0xFF));
-            }
-            texels.flip();
-            GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, 2, 2, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels);
+            for (int i = 0; i < size * size; i++) putArgb(texels, i, argb);
+            GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, level, GL11.GL_RGBA8, size, size, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels);
         } finally {
             MemoryUtil.memFree(texels);
         }
+    }
+
+    public static int createSolidTexture(int argb) {
+        final int id = newNearestTexture();
+        uploadSolidLevel(0, 2, argb);
         return id;
+    }
+
+    public static int createLightmapTexture(boolean brightCornersOnly) {
+        final int id = GLStateManager.glGenTextures();
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, id);
+        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, LIGHTMAP_SIZE, LIGHTMAP_SIZE, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+        final ByteBuffer texels = MemoryUtil.memAlloc(LIGHTMAP_SIZE * LIGHTMAP_SIZE * 4);
+        try {
+            final int last = LIGHTMAP_SIZE - 1;
+            for (int y = 0; y < LIGHTMAP_SIZE; y++) {
+                for (int x = 0; x < LIGHTMAP_SIZE; x++) {
+                    final boolean bright = !brightCornersOnly || (x == 0 && y == 0) || (x == last && y == last);
+                    putArgb(texels, y * LIGHTMAP_SIZE + x, bright ? 0xFFFFFFFF : GREEN);
+                }
+            }
+            GLStateManager.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, LIGHTMAP_SIZE, LIGHTMAP_SIZE, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels);
+        } finally {
+            MemoryUtil.memFree(texels);
+        }
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        return id;
+    }
+
+    public static void bindBaseTexture(int texture) {
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+    }
+
+    public static void quadTwoUnits(short brightness) {
+        GLStateManager.glBegin(GL11.GL_QUADS);
+        emitVertex(-1.0f, -1.0f, 0.0f, 0.0f, true, brightness);
+        emitVertex(1.0f, -1.0f, 1.0f, 0.0f, true, brightness);
+        emitVertex(1.0f, 1.0f, 1.0f, 1.0f, true, brightness);
+        emitVertex(-1.0f, 1.0f, 0.0f, 1.0f, true, brightness);
+        GLStateManager.glEnd();
     }
 
     public static void enableLightmapUnit(int lightmapTexture, boolean vanillaTextureMatrix) {
@@ -339,19 +414,7 @@ public final class GlsmSdlHeadlessRig {
         GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
         GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, maxLevel);
         for (int level = 0; level <= maxLevel; level++) {
-            final int levelSize = Math.max(1, size >> level);
-            final ByteBuffer texels = MemoryUtil.memAlloc(levelSize * levelSize * 4);
-            try {
-                for (int i = 0; i < levelSize * levelSize; i++) {
-                    texels.put(i * 4, (byte) ((argb >> 16) & 0xFF));
-                    texels.put(i * 4 + 1, (byte) ((argb >> 8) & 0xFF));
-                    texels.put(i * 4 + 2, (byte) (argb & 0xFF));
-                    texels.put(i * 4 + 3, (byte) ((argb >>> 24) & 0xFF));
-                }
-                GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, level, GL11.GL_RGBA8, levelSize, levelSize, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels);
-            } finally {
-                MemoryUtil.memFree(texels);
-            }
+            uploadSolidLevel(level, Math.max(1, size >> level), argb);
         }
         return id;
     }

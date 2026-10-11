@@ -9,6 +9,7 @@ import lombok.Getter;
 import org.joml.Matrix4fStack;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
+import org.lwjgl.opengl.GL13;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +20,7 @@ public class TextureUnitArray {
     private final TextureUnitBooleanStateStack[] states;
     private final TextureUnitBooleanStateStack[] texture1DStates;
     private final TextureUnitBooleanStateStack[] texture3DStates;
+    private final TextureUnitBooleanStateStack[] textureCubeMapStates;
     private final TextureUnitBooleanStateStack[] texGenSStates;
     private final TextureUnitBooleanStateStack[] texGenTStates;
     private final TextureUnitBooleanStateStack[] texGenRStates;
@@ -36,6 +38,7 @@ public class TextureUnitArray {
         states = new TextureUnitBooleanStateStack[GLStateManager.MAX_TEXTURE_UNITS];
         texture1DStates = new TextureUnitBooleanStateStack[GLStateManager.MAX_TEXTURE_UNITS];
         texture3DStates = new TextureUnitBooleanStateStack[GLStateManager.MAX_TEXTURE_UNITS];
+        textureCubeMapStates = new TextureUnitBooleanStateStack[GLStateManager.MAX_TEXTURE_UNITS];
         texGenSStates = new TextureUnitBooleanStateStack[GLStateManager.MAX_TEXTURE_UNITS];
         texGenTStates = new TextureUnitBooleanStateStack[GLStateManager.MAX_TEXTURE_UNITS];
         texGenRStates = new TextureUnitBooleanStateStack[GLStateManager.MAX_TEXTURE_UNITS];
@@ -49,6 +52,7 @@ public class TextureUnitArray {
             states[i] = track(new TextureUnitBooleanStateStack(GL11.GL_TEXTURE_2D, i));
             texture1DStates[i] = track(new TextureUnitBooleanStateStack(GL11.GL_TEXTURE_1D, i));
             texture3DStates[i] = track(new TextureUnitBooleanStateStack(GL12.GL_TEXTURE_3D, i));
+            textureCubeMapStates[i] = track(new TextureUnitBooleanStateStack(GL13.GL_TEXTURE_CUBE_MAP, i));
             texGenSStates[i] = track(new TextureUnitBooleanStateStack(GL11.GL_TEXTURE_GEN_S, i));
             texGenTStates[i] = track(new TextureUnitBooleanStateStack(GL11.GL_TEXTURE_GEN_T, i));
             texGenRStates[i] = track(new TextureUnitBooleanStateStack(GL11.GL_TEXTURE_GEN_R, i));
@@ -90,6 +94,10 @@ public class TextureUnitArray {
         return texture3DStates[index];
     }
 
+    public TextureUnitBooleanStateStack getTextureCubeMapStates(int index) {
+        return textureCubeMapStates[index];
+    }
+
     public TextureUnitBooleanStateStack getTexGenSStates(int index) {
         return texGenSStates[index];
     }
@@ -127,6 +135,7 @@ public class TextureUnitArray {
             if (!states[i].sameAs(textureUnitArray.states[i])) return false;
             if (!texture1DStates[i].sameAs(textureUnitArray.texture1DStates[i])) return false;
             if (!texture3DStates[i].sameAs(textureUnitArray.texture3DStates[i])) return false;
+            if (!textureCubeMapStates[i].sameAs(textureUnitArray.textureCubeMapStates[i])) return false;
             if (!texGenSStates[i].sameAs(textureUnitArray.texGenSStates[i])) return false;
             if (!texGenTStates[i].sameAs(textureUnitArray.texGenTStates[i])) return false;
             if (!texGenRStates[i].sameAs(textureUnitArray.texGenRStates[i])) return false;

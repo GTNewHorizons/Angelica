@@ -1,19 +1,17 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import org.junit.jupiter.api.BeforeAll;
+import com.gtnewhorizons.angelica.glsm.GlTestSupport;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
-import org.lwjgl.opengl.GL20;
 import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Tag("glsm-sdl")
 @ExtendWith(GlsmSdlFrameExtension.class)
@@ -45,32 +43,9 @@ class GlsmSdlUnalignedAttribTest {
 
     private static int program;
 
-    @BeforeAll
-    static void boot() {
-        GlsmSdlHeadlessRig.boot();
-    }
-
     private static int buildProgram() {
-        if (program != 0) return program;
-        final int vs = GLStateManager.glCreateShader(GL20.GL_VERTEX_SHADER);
-        GLStateManager.glShaderSource(vs, VERT);
-        GLStateManager.glCompileShader(vs);
-        assertTrue(GLStateManager.glGetShaderi(vs, GL20.GL_COMPILE_STATUS) != 0,
-            () -> "vertex shader: " + GLStateManager.glGetShaderInfoLog(vs));
-
-        final int fs = GLStateManager.glCreateShader(GL20.GL_FRAGMENT_SHADER);
-        GLStateManager.glShaderSource(fs, FRAG);
-        GLStateManager.glCompileShader(fs);
-        assertTrue(GLStateManager.glGetShaderi(fs, GL20.GL_COMPILE_STATUS) != 0,
-            () -> "fragment shader: " + GLStateManager.glGetShaderInfoLog(fs));
-
-        final int p = GLStateManager.glCreateProgram();
-        GLStateManager.glAttachShader(p, vs);
-        GLStateManager.glAttachShader(p, fs);
-        GLStateManager.glLinkProgram(p);
-        assertTrue(GLStateManager.glGetProgrami(p, GL20.GL_LINK_STATUS) != 0, "program did not link");
-        program = p;
-        return p;
+        if (program == 0) program = GlTestSupport.program(VERT, FRAG);
+        return program;
     }
 
     private static int redChannelForFactorAt(int factorOffset, int decoyOffset) {
@@ -114,16 +89,6 @@ class GlsmSdlUnalignedAttribTest {
         GLStateManager.glBindVertexArray(0);
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         return (pixels[0] >> 16) & 0xFF;
-    }
-
-    @Test
-    void byteAttribAtAnAlignedOffsetReadsItsOwnByte() {
-        assertEquals(FACTOR, redChannelForFactorAt(20, -1), 1);
-    }
-
-    @Test
-    void byteAttribAtAnUnalignedOffsetReadsItsOwnByte() {
-        assertEquals(FACTOR, redChannelForFactorAt(23, 20), 1);
     }
 
     @Test

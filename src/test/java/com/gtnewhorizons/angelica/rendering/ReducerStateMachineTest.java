@@ -4,6 +4,12 @@ import com.gtnewhorizons.angelica.config.SystemProperties.FlybyPacing;
 import com.gtnewhorizons.angelica.rendering.ReducerStateMachine.State;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
+
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -122,42 +128,35 @@ class ReducerStateMachineTest {
     }
 
 
-    @Test
-    void unlimitedUserAndNoStateCapIsUncapped() {
-        assertEquals(0, ReducerStateMachine.mergeCap(0, 0, false, true));
-        assertEquals(0, ReducerStateMachine.mergeCap(260, 0, false, true));
+    @ParameterizedTest(name = "{0}: mergeCap({1}, {2}, {3}, {4}) -> {5}")
+    @CsvSource({
+        "unlimited user and no state cap is uncapped, 0, 0, false, true, 0",
+        "unlimited user and no state cap is uncapped, 260, 0, false, true, 0",
+        "the lower of the user and state cap wins, 120, 10, false, true, 10",
+        "the lower of the user and state cap wins, 30, 60, false, true, 30",
+        "menu cap applies only when the option is on, 0, 0, true, true, 30",
+        "menu cap applies only when the option is on, 0, 0, true, false, 0",
+        "menu cap never raises the user cap, 20, 0, true, true, 20",
+        "menu cap never raises the user cap, 260, 0, true, true, 30",
+        "menu cap never raises the user cap, 260, 10, true, true, 10",
+    })
+    void mergeCap(String name, int userCap, int stateCap, boolean inMenu, boolean menuCapOption, int expected) {
+        assertEquals(expected, ReducerStateMachine.mergeCap(userCap, stateCap, inMenu, menuCapOption));
     }
 
-    @Test
-    void benchmarkCapIsZeroWhenUncapped() {
-        assertEquals(0, ReducerStateMachine.benchmarkCap(FlybyPacing.UNCAPPED, 60));
-        assertEquals(0, ReducerStateMachine.benchmarkCap(FlybyPacing.UNCAPPED, 0));
+    static Stream<Arguments> benchmarkCaps() {
+        return Stream.of(
+            Arguments.of("uncapped ignores the configured cap", FlybyPacing.UNCAPPED, 60, 0),
+            Arguments.of("uncapped ignores the configured cap", FlybyPacing.UNCAPPED, 0, 0),
+            Arguments.of("configured cap is used as is", FlybyPacing.CONFIGURED, 60, 60),
+            Arguments.of("configured zero is uncapped", FlybyPacing.CONFIGURED, 0, 0),
+            Arguments.of("configured max setting is uncapped", FlybyPacing.CONFIGURED, ReducerStateMachine.MAX_FPS_SETTING, 0));
     }
 
-    @Test
-    void configuredBenchmarkCapIgnoresReducerAndMenu() {
-        assertEquals(60, ReducerStateMachine.benchmarkCap(FlybyPacing.CONFIGURED, 60));
-        assertEquals(0, ReducerStateMachine.benchmarkCap(FlybyPacing.CONFIGURED, 0));
-        assertEquals(0, ReducerStateMachine.benchmarkCap(FlybyPacing.CONFIGURED, ReducerStateMachine.MAX_FPS_SETTING));
-    }
-
-    @Test
-    void theLowerOfTheUserAndStateCapWins() {
-        assertEquals(10, ReducerStateMachine.mergeCap(120, 10, false, true));
-        assertEquals(30, ReducerStateMachine.mergeCap(30, 60, false, true));
-    }
-
-    @Test
-    void menuCapAppliesOnlyWhenOptionOn() {
-        assertEquals(30, ReducerStateMachine.mergeCap(0, 0, true, true));
-        assertEquals(0, ReducerStateMachine.mergeCap(0, 0, true, false));
-    }
-
-    @Test
-    void menuCapNeverRaisesUserCap() {
-        assertEquals(20, ReducerStateMachine.mergeCap(20, 0, true, true));
-        assertEquals(30, ReducerStateMachine.mergeCap(260, 0, true, true));
-        assertEquals(10, ReducerStateMachine.mergeCap(260, 10, true, true));
+    @ParameterizedTest(name = "{0}: benchmarkCap({1}, {2}) -> {3}")
+    @MethodSource("benchmarkCaps")
+    void benchmarkCap(String name, FlybyPacing pacing, int configured, int expected) {
+        assertEquals(expected, ReducerStateMachine.benchmarkCap(pacing, configured));
     }
 
     @Test

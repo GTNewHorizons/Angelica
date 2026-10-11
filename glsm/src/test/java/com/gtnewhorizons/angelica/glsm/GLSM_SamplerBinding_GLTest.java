@@ -24,7 +24,6 @@ class GLSM_SamplerBinding_GLTest {
     @BeforeEach
     void requireSamplerObjects() {
         assumeTrue(RenderSystem.supportsSamplerObjects());
-        drainGlErrors();
     }
 
     @AfterEach
@@ -35,11 +34,6 @@ class GLSM_SamplerBinding_GLTest {
             GL33.glBindSampler(unit, 0);
         }
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        drainGlErrors();
-    }
-
-    private static void drainGlErrors() {
-        while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
     }
 
     private static int driverBinding(int unit) {

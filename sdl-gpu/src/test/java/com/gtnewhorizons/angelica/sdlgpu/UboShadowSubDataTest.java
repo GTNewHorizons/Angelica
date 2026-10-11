@@ -9,7 +9,6 @@ import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL31;
 import org.lwjgl.system.MemoryUtil;
 
-import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -20,11 +19,9 @@ class UboShadowSubDataTest {
     private static ResourceManager resourceManager;
 
     @BeforeAll
-    static void createBackend() throws Exception {
+    static void createBackend() {
         backend = new SDLGPURenderBackend();
-        final Field f = SDLGPURenderBackend.class.getDeclaredField("resourceManager");
-        f.setAccessible(true);
-        resourceManager = (ResourceManager) f.get(backend);
+        resourceManager = SdlTestRig.resourceManagerOf(backend);
     }
 
     @ParameterizedTest

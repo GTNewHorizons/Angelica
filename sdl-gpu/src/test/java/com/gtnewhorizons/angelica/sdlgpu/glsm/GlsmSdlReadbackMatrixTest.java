@@ -2,23 +2,22 @@ package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.ReadbackFixture;
-import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
-import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
-import com.gtnewhorizons.angelica.sdlgpu.SDLGPUGate;
-import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
-import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -29,21 +28,14 @@ class GlsmSdlReadbackMatrixTest {
     private static final int FBO0_W = 8;
     private static final int FBO0_H = 6;
 
-    private static FrameManager frameManager;
-
     @BeforeAll
-    static void boot() {
-        GlsmSdlHeadlessRig.boot();
-        frameManager = Reflect.get(BackendManager.RENDER_BACKEND, "frameManager");
-        final ResourceManager resourceManager = Reflect.get(BackendManager.RENDER_BACKEND, "resourceManager");
-        frameManager.destroyFinalTarget();
-        frameManager.finalTarget().create(SDLGPUGate.device(), resourceManager, FBO0_W, FBO0_H, resourceManager.mapTextureFormat(GL11.GL_RGBA8));
+    static void installFinalTarget() {
+        GlsmSdlHeadlessRig.installFinalTarget(FBO0_W, FBO0_H);
     }
 
     @AfterAll
     static void dropFinalTarget() {
-        GlsmSdlHeadlessRig.endFrame();
-        if (frameManager != null) frameManager.destroyFinalTarget();
+        GlsmSdlHeadlessRig.dropFinalTarget();
     }
 
     @AfterEach
@@ -52,59 +44,25 @@ class GlsmSdlReadbackMatrixTest {
         GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
     }
 
-    @Test
-    void rgba8() {
-        ReadbackFixture.rgba8();
+    static Stream<Arguments> fixtureCases() {
+        return Stream.of(
+            Arguments.of("rgba8", (Runnable) ReadbackFixture::rgba8),
+            Arguments.of("packState", (Runnable) ReadbackFixture::packState),
+            Arguments.of("pixelPackBuffer", (Runnable) ReadbackFixture::pixelPackBuffer),
+            Arguments.of("rgb8", (Runnable) ReadbackFixture::rgb8),
+            Arguments.of("rgba16f", (Runnable) ReadbackFixture::rgba16f),
+            Arguments.of("rgba32f", (Runnable) ReadbackFixture::rgba32f),
+            Arguments.of("r8", (Runnable) ReadbackFixture::r8),
+            Arguments.of("rg16f", (Runnable) ReadbackFixture::rg16f),
+            Arguments.of("rgb10a2", (Runnable) ReadbackFixture::rgb10a2),
+            Arguments.of("r11g11b10f", (Runnable) ReadbackFixture::r11g11b10f),
+            Arguments.of("depthStencil", (Runnable) ReadbackFixture::depthStencil));
     }
 
-    @Test
-    void packState() {
-        ReadbackFixture.packState();
-    }
-
-    @Test
-    void pixelPackBuffer() {
-        ReadbackFixture.pixelPackBuffer();
-    }
-
-    @Test
-    void rgb8() {
-        ReadbackFixture.rgb8();
-    }
-
-    @Test
-    void rgba16f() {
-        ReadbackFixture.rgba16f();
-    }
-
-    @Test
-    void rgba32f() {
-        ReadbackFixture.rgba32f();
-    }
-
-    @Test
-    void r8() {
-        ReadbackFixture.r8();
-    }
-
-    @Test
-    void rg16f() {
-        ReadbackFixture.rg16f();
-    }
-
-    @Test
-    void rgb10a2() {
-        ReadbackFixture.rgb10a2();
-    }
-
-    @Test
-    void r11g11b10f() {
-        ReadbackFixture.r11g11b10f();
-    }
-
-    @Test
-    void depthStencil() {
-        ReadbackFixture.depthStencil();
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("fixtureCases")
+    void sharedReadbackFixture(String name, Runnable fixtureCase) {
+        fixtureCase.run();
     }
 
     @Test

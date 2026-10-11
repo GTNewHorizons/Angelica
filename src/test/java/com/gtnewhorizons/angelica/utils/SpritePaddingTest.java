@@ -1,8 +1,8 @@
 package com.gtnewhorizons.angelica.utils;
 
+import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import org.junit.jupiter.api.Test;
 
-import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Random;
@@ -19,13 +19,8 @@ class SpritePaddingTest {
     private static final byte SENTINEL = (byte) 0xCD;
 
     private static int[][] padFrame(int[][] frameData, int width, int height, int gutter) {
-        try {
-            final Method method = SpritePadding.class.getDeclaredMethod("padFrame", int[][].class, int.class, int.class, int.class, int[][].class);
-            method.setAccessible(true);
-            return (int[][]) method.invoke(null, frameData, width, height, gutter, (Object) null);
-        } catch (ReflectiveOperationException e) {
-            throw new RuntimeException(e);
-        }
+        return Reflect.invokeStatic(SpritePadding.class, "padFrame", new Class<?>[] { int[][].class, int.class, int.class, int.class, int[][].class },
+            frameData, width, height, gutter, null);
     }
 
     private static void putLittleEndian(byte[] dst, int offset, int value) {

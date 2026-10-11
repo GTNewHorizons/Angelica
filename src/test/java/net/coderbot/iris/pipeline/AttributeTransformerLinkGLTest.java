@@ -2,15 +2,13 @@ package net.coderbot.iris.pipeline;
 
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.shader.ShaderType;
-import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.gl.shader.GlShader;
 import net.coderbot.iris.gl.shader.ProgramCreator;
 import net.coderbot.iris.pipeline.transform.PatchShaderType;
-import net.coderbot.iris.pipeline.transform.ShaderTransformer;
 import net.coderbot.iris.pipeline.transform.TransformPatcher;
+import net.coderbot.iris.pipeline.transform.TransformTestSupport;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -74,21 +72,17 @@ class AttributeTransformerLinkGLTest {
 
     @BeforeAll
     static void pinGlslVersion() {
-        previousMaxGlslVersion = RenderSystem.getMaxGlslVersion();
-        Reflect.setStatic(RenderSystem.class, "maxGlslVersion", 330);
-        ShaderTransformer.init();
+        previousMaxGlslVersion = TransformTestSupport.pinGlslVersion(330);
     }
 
     @AfterAll
     static void restoreGlslVersion() {
-        Reflect.setStatic(RenderSystem.class, "maxGlslVersion", previousMaxGlslVersion);
-        ShaderTransformer.init();
+        TransformTestSupport.restoreGlslVersion(previousMaxGlslVersion);
     }
 
     @BeforeEach
     void clearCaches() {
-        TransformPatcher.clearCache();
-        ShaderTransformer.clearCache();
+        TransformTestSupport.clearCaches();
     }
 
     private static int link(String name, Map<PatchShaderType, String> result) {

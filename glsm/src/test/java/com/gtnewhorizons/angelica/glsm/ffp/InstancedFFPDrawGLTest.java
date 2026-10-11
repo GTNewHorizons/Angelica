@@ -21,6 +21,7 @@ import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress0;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutFloat;
 import static com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags.COLOR_BIT;
 import static com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags.NORMAL_BIT;
+import static com.gtnewhorizons.angelica.glsm.GlTestSupport.drainErrors;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -100,7 +101,7 @@ class InstancedFFPDrawGLTest {
         GLSMHooks.blendHandler = new LoggingBlendHandler();
 
         GLStateManager.glDrawArrays(GL11.GL_TRIANGLES, 0, 0);
-        while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
+        drainErrors();
 
         assertEquals(List.of("resolve", "flush"), log);
     }

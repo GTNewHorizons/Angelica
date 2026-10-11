@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu.shader;
 
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess;
-import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.opengl.GL20;
@@ -19,10 +18,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static com.gtnewhorizons.angelica.sdlgpu.shader.SpirvTestShaders.compileOrFail;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 import static org.lwjgl.system.MemoryStack.stackPush;
 
 class ReadOnlyStorageTextureDescriptorTest {
@@ -45,9 +44,7 @@ class ReadOnlyStorageTextureDescriptorTest {
 
     private static ByteBuffer compileRewritten() {
         final String source = preprocess(FRAGMENT_READONLY_IMAGE, GL20.GL_FRAGMENT_SHADER);
-        final SpirvCompiler.Result r = SpirvCompiler.compile(source, Shaderc.shaderc_fragment_shader, "readonly-storage-test", SpirvCompiler.Options.vulkanForced460Core());
-        if (r.spirv() == null) fail("compile failed: " + r.error() + "\nsource:\n" + source);
-        return r.spirv();
+        return compileOrFail(source, Shaderc.shaderc_fragment_shader);
     }
 
     private static Map<String, Integer> bindingsOf(ByteBuffer spirv, int resourceType) {

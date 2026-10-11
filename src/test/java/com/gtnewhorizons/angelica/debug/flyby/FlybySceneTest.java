@@ -2,12 +2,16 @@ package com.gtnewhorizons.angelica.debug.flyby;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -26,41 +30,20 @@ class FlybySceneTest {
         return path.toString();
     }
 
-    @Test
-    void dropsCommentsAndBlankLines() throws IOException {
-        final String path = writeFile("scene.txt", "# comment\n\ntime set day\n   \nweather clear\n");
-        assertArrayEquals(new String[] { "time set day", "weather clear" }, FlybyScene.load(path));
+    static Stream<Arguments> sceneFiles() {
+        return Stream.of(
+            Arguments.of("drops comments and blank lines", "# comment\n\ntime set day\n   \nweather clear\n", new String[] { "time set day", "weather clear" }),
+            Arguments.of("strips one leading slash", "//foo\n/bar\n", new String[] { "/foo", "bar" }),
+            Arguments.of("trims surrounding whitespace", "   time set day   \n", new String[] { "time set day" }),
+            Arguments.of("handles CRLF line endings", "time set day\r\nweather clear\r\n", new String[] { "time set day", "weather clear" }),
+            Arguments.of("drops a bare slash line", "time set day\n/\nweather clear\n", new String[] { "time set day", "weather clear" }),
+            Arguments.of("preserves order", "one\ntwo\nthree\n", new String[] { "one", "two", "three" }));
     }
 
-    @Test
-    void stripsOneLeadingSlash() throws IOException {
-        final String path = writeFile("scene.txt", "//foo\n/bar\n");
-        assertArrayEquals(new String[] { "/foo", "bar" }, FlybyScene.load(path));
-    }
-
-    @Test
-    void trimsSurroundingWhitespace() throws IOException {
-        final String path = writeFile("scene.txt", "   time set day   \n");
-        assertArrayEquals(new String[] { "time set day" }, FlybyScene.load(path));
-    }
-
-    @Test
-    void handlesCrlfLineEndings() throws IOException {
-        final Path path = tempDir.resolve("scene.txt");
-        Files.write(path, "time set day\r\nweather clear\r\n".getBytes(StandardCharsets.UTF_8));
-        assertArrayEquals(new String[] { "time set day", "weather clear" }, FlybyScene.load(path.toString()));
-    }
-
-    @Test
-    void dropsBareSlashLine() throws IOException {
-        final String path = writeFile("scene.txt", "time set day\n/\nweather clear\n");
-        assertArrayEquals(new String[] { "time set day", "weather clear" }, FlybyScene.load(path));
-    }
-
-    @Test
-    void preservesOrder() throws IOException {
-        final String path = writeFile("scene.txt", "one\ntwo\nthree\n");
-        assertArrayEquals(new String[] { "one", "two", "three" }, FlybyScene.load(path));
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("sceneFiles")
+    void loadsCommands(String name, String content, String[] expected) throws IOException {
+        assertArrayEquals(expected, FlybyScene.load(writeFile("scene.txt", content)));
     }
 
     @Test

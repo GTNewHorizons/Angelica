@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.rendering.tesr;
 
 import com.gtnewhorizons.angelica.glsm.ffp.CubeParams;
 import com.gtnewhorizons.angelica.glsm.ffp.UnitCubeMesh;
+import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import net.coderbot.iris.vertices.IrisQuadView;
 import net.coderbot.iris.vertices.NormalHelper;
 import net.minecraft.client.model.ModelBase;
@@ -14,7 +15,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,13 +53,7 @@ class ModelBoxCaptureTest {
     }
 
     private static TexturedQuad[] quadsOf(ModelBox box) {
-        try {
-            final Field field = ModelBox.class.getDeclaredField("quadList");
-            field.setAccessible(true);
-            return (TexturedQuad[]) field.get(box);
-        } catch (ReflectiveOperationException e) {
-            throw new AssertionError(e);
-        }
+        return Reflect.get(box, "quadList");
     }
 
     private static CubeParams capture(ModelRenderer part, int texU, int texV, float x, float y, float z, int sizeX, int sizeY, int sizeZ, float inflate) {

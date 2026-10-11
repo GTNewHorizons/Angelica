@@ -2,12 +2,10 @@ package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
-import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
-import com.gtnewhorizons.angelica.sdlgpu.SDLGPURenderBackend;
 import com.gtnewhorizons.angelica.sdlgpu.SdlAsserts;
+import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import com.gtnewhorizons.angelica.sdlgpu.pipeline.PipelineCache;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,14 +20,8 @@ import static org.lwjgl.sdl.SDLGPU.SDL_GPU_BLENDFACTOR_SRC_ALPHA;
 @ExtendWith(GlsmSdlFrameExtension.class)
 class GlsmSdlIndexedBlendRestoreTest {
 
-    @BeforeAll
-    static void boot() {
-        GlsmSdlHeadlessRig.boot();
-    }
-
     private static PipelineCache pipeline() {
-        final ContextState st = Reflect.invokeStatic(SDLGPURenderBackend.class, "s", new Class<?>[0]);
-        return st.pipeline;
+        return SdlTestRig.contextState().pipeline;
     }
 
     private static void vanillaBlendFunc() {

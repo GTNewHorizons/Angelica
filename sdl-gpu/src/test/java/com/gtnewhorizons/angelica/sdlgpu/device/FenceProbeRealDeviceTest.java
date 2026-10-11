@@ -1,9 +1,9 @@
 package com.gtnewhorizons.angelica.sdlgpu.device;
 
+import com.gtnewhorizons.angelica.sdlgpu.RealDeviceExtension;
 import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.system.MemoryStack;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -17,22 +17,12 @@ import static org.lwjgl.sdl.SDLGPU.SDL_WaitForGPUFences;
 import static org.lwjgl.sdl.SDLVersion.SDL_GetVersion;
 import static org.lwjgl.sdl.SDLVersion.SDL_VERSIONNUM;
 
+@ExtendWith(RealDeviceExtension.class)
 class FenceProbeRealDeviceTest {
-
-    private static SdlTestRig rig;
-
-    @BeforeAll
-    static void setUp() throws Exception {
-        rig = SdlTestRig.acquireRealDevice();
-    }
-
-    @AfterAll
-    static void tearDown() {
-        SdlTestRig.releaseRealDevice();
-    }
 
     @Test
     void probeMatchesVersionTableAndCorrectedQueryReadsSignaled() {
+        final SdlTestRig rig = RealDeviceExtension.rig();
         final String driver = SDL_GetGPUDeviceDriver(rig.sdlHandle);
         assertEquals("metal".equalsIgnoreCase(driver) && SDL_GetVersion() == SDL_VERSIONNUM(3, 4, 14), rig.device.isFenceQueryInverted(), "driver=" + driver + " sdl=" + SDL_GetVersion());
 

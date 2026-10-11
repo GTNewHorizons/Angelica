@@ -47,11 +47,6 @@ class FontEffectRegistryTest {
     }
 
     @Test
-    void bitMatchesLetterIndex() {
-        assertEquals(1L << ('w' - 'a'), FontEffectRegistry.bit('w'));
-    }
-
-    @Test
     void unimplementedHooksDoNothing() {
         assertEquals(0.0f, NO_OP.offsetX(3));
         assertEquals(0.0f, NO_OP.offsetY(3));

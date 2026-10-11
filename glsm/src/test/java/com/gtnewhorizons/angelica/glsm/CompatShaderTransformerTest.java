@@ -5,9 +5,12 @@ import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.nio.file.Path;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -17,66 +20,104 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CompatShaderTransformerTest {
 
-    @Test
-    void testModelViewMatrixReplacement() {
-        String src = """
-            #version 120
-            void main() {
-                vec4 pos = gl_ModelViewMatrix * gl_Vertex;
-                gl_Position = gl_ProjectionMatrix * pos;
-            }
-            """;
-
-        String result = CompatShaderTransformer.transform(src, false);
-        assertTrue(result.contains("angelica_ModelViewMatrix"));
-        assertTrue(result.contains("angelica_ProjectionMatrix"));
-        assertFalse(result.contains("gl_ModelViewMatrix"));
-        assertFalse(result.contains("gl_ProjectionMatrix"));
-        assertTrue(result.contains("#version 330 core"));
+    private static String[] strings(String... values) {
+        return values;
     }
 
-    @Test
-    void testNormalMatrixReplacement() {
-        String src = """
-            #version 120
-            void main() {
-                vec3 n = gl_NormalMatrix * gl_Normal;
-            }
-            """;
-
-        String result = CompatShaderTransformer.transform(src, false);
-        assertTrue(result.contains("uniform mat3 angelica_NormalMatrix"));
-        assertFalse(result.contains("gl_NormalMatrix"));
+    private static void assertRewrite(boolean fragment, String src, String[] present, String[] absent) {
+        final String result = CompatShaderTransformer.transform(src, fragment);
+        for (final String s : present) {
+            assertTrue(result.contains(s), () -> "expected '" + s + "' in\n\n" + result);
+        }
+        for (final String s : absent) {
+            assertFalse(result.contains(s), () -> "'" + s + "' must not remain in\n\n" + result);
+        }
     }
 
-    @Test
-    void testModelViewProjectionMatrixExpression() {
-        String src = """
-            #version 120
-            void main() {
-                gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-            }
-            """;
-
-        String result = CompatShaderTransformer.transform(src, false);
-        assertFalse(result.contains("gl_ModelViewProjectionMatrix"));
-        assertTrue(result.contains("angelica_ProjectionMatrix"));
+    static Stream<Arguments> matrixBuiltins() {
+        return Stream.of(
+            Arguments.of("modelview and projection matrices", false, """
+                #version 120
+                void main() {
+                    vec4 pos = gl_ModelViewMatrix * gl_Vertex;
+                    gl_Position = gl_ProjectionMatrix * pos;
+                }
+                """, strings("angelica_ModelViewMatrix", "angelica_ProjectionMatrix", "#version 330 core"), strings("gl_ModelViewMatrix", "gl_ProjectionMatrix")),
+            Arguments.of("normal matrix", false, """
+                #version 120
+                void main() {
+                    vec3 n = gl_NormalMatrix * gl_Normal;
+                }
+                """, strings("uniform mat3 angelica_NormalMatrix"), strings("gl_NormalMatrix")),
+            Arguments.of("modelview-projection matrix", false, """
+                #version 120
+                void main() {
+                    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+                }
+                """, strings("angelica_ProjectionMatrix"), strings("gl_ModelViewProjectionMatrix")),
+            Arguments.of("inverse matrices", false, """
+                #version 120
+                void main() {
+                    vec4 pos = gl_ModelViewMatrixInverse * vec4(0.0, 0.0, 0.0, 1.0);
+                    vec4 proj = gl_ProjectionMatrixInverse * vec4(0.0, 0.0, -1.0, 1.0);
+                }
+                """, strings(), strings("gl_ModelViewMatrixInverse", "gl_ProjectionMatrixInverse")),
+            Arguments.of("texture matrix", false, """
+                #version 120
+                void main() {
+                    vec4 lmCoord = gl_TextureMatrix[1] * gl_MultiTexCoord1;
+                }
+                """, strings(), strings("gl_TextureMatrix")),
+            Arguments.of("several builtins in one fragment shader", true, """
+                #version 120
+                uniform sampler2D tex;
+                void main() {
+                    vec3 n = gl_NormalMatrix * gl_Normal;
+                    vec4 pos = gl_ModelViewMatrix * gl_Vertex;
+                    gl_Position = gl_ProjectionMatrix * pos;
+                    vec4 color = texture2D(tex, vec2(0.0));
+                    gl_FragColor = color;
+                }
+                """, strings("angelica_ModelViewMatrix", "angelica_ProjectionMatrix", "angelica_NormalMatrix", "#version 330 core"), strings("gl_ModelViewMatrix", "gl_ProjectionMatrix", "gl_NormalMatrix", "texture2D", "gl_FragColor")));
     }
 
-    @Test
-    void testTextureFunctionRenames() {
-        String src = """
-            #version 120
-            uniform sampler2D tex;
-            void main() {
-                vec4 color = texture2D(tex, vec2(0.0));
-            }
-            """;
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("matrixBuiltins")
+    void matrixBuiltinsAreRewritten(String name, boolean fragment, String src, String[] present, String[] absent) {
+        assertRewrite(fragment, src, present, absent);
+    }
 
-        String result = CompatShaderTransformer.transform(src, false);
-        // texture2D -> texture
-        assertFalse(result.contains("texture2D"));
-        assertTrue(result.contains("texture"));
+    static Stream<Arguments> textureFunctions() {
+        return Stream.of(
+            Arguments.of("texture2D", false, """
+                #version 120
+                uniform sampler2D tex;
+                void main() {
+                    vec4 color = texture2D(tex, vec2(0.0));
+                }
+                """, strings("texture"), strings("texture2D")),
+            Arguments.of("shadow2D", true, """
+                #version 120
+                uniform sampler2DShadow shadowMap;
+                void main() {
+                    float s = shadow2D(shadowMap, vec3(0.0)).r;
+                    gl_FragColor = vec4(s);
+                }
+                """, strings("texture"), strings("shadow2D(")),
+            Arguments.of("texelFetch3D", true, """
+                #version 120
+                uniform sampler3D vol;
+                void main() {
+                    vec4 v = texelFetch3D(vol, ivec3(0), 0);
+                    gl_FragColor = v;
+                }
+                """, strings("texelFetch"), strings("texelFetch3D")));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("textureFunctions")
+    void legacyTextureFunctionsAreRenamed(String name, boolean fragment, String src, String[] present, String[] absent) {
+        assertRewrite(fragment, src, present, absent);
     }
 
     @Test
@@ -95,32 +136,26 @@ class CompatShaderTransformerTest {
         assertTrue(result.contains("layout"));
     }
 
-    @Test
-    void testVersionUpgradeTo330() {
-        String src = """
-            #version 110
-            void main() {
-                gl_FragColor = vec4(1.0);
-            }
-            """;
-
-        String result = CompatShaderTransformer.transform(src, true);
-        assertTrue(result.contains("#version 330 core"));
-        assertFalse(result.contains("#version 110"));
+    static Stream<Arguments> versionDirectives() {
+        return Stream.of(
+            Arguments.of("110 becomes 330 core", true, """
+                #version 110
+                void main() {
+                    gl_FragColor = vec4(1.0);
+                }
+                """, strings("#version 330 core"), strings("#version 110")),
+            Arguments.of("compatibility profile is stripped", false, """
+                #version 330 compatibility
+                void main() {
+                    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+                }
+                """, strings("#version 330 core"), strings("compatibility")));
     }
 
-    @Test
-    void testCompatibilityProfileStripped() {
-        String src = """
-            #version 330 compatibility
-            void main() {
-                gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-            }
-            """;
-
-        String result = CompatShaderTransformer.transform(src, false);
-        assertTrue(result.contains("#version 330 core"));
-        assertFalse(result.contains("compatibility"));
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("versionDirectives")
+    void versionIsUpgradedToCore(String name, boolean fragment, String src, String[] present, String[] absent) {
+        assertRewrite(fragment, src, present, absent);
     }
 
     @Test
@@ -137,60 +172,6 @@ class CompatShaderTransformerTest {
         String result = CompatShaderTransformer.transform(src, false);
         // Source should be returned as-is (passthrough)
         assertEquals(src, result);
-    }
-
-    @Test
-    void testCombinedBuiltinsInSingleShader() {
-        String src = """
-            #version 120
-            uniform sampler2D tex;
-            void main() {
-                vec3 n = gl_NormalMatrix * gl_Normal;
-                vec4 pos = gl_ModelViewMatrix * gl_Vertex;
-                gl_Position = gl_ProjectionMatrix * pos;
-                vec4 color = texture2D(tex, vec2(0.0));
-                gl_FragColor = color;
-            }
-            """;
-
-        String result = CompatShaderTransformer.transform(src, true);
-        assertTrue(result.contains("angelica_ModelViewMatrix"));
-        assertTrue(result.contains("angelica_ProjectionMatrix"));
-        assertTrue(result.contains("angelica_NormalMatrix"));
-        assertFalse(result.contains("gl_ModelViewMatrix"));
-        assertFalse(result.contains("gl_ProjectionMatrix"));
-        assertFalse(result.contains("gl_NormalMatrix"));
-        assertFalse(result.contains("texture2D"));
-        assertFalse(result.contains("gl_FragColor"));
-        assertTrue(result.contains("#version 330 core"));
-    }
-
-    @Test
-    void testInverseMatrixReplacement() {
-        String src = """
-            #version 120
-            void main() {
-                vec4 pos = gl_ModelViewMatrixInverse * vec4(0.0, 0.0, 0.0, 1.0);
-                vec4 proj = gl_ProjectionMatrixInverse * vec4(0.0, 0.0, -1.0, 1.0);
-            }
-            """;
-
-        String result = CompatShaderTransformer.transform(src, false);
-        assertFalse(result.contains("gl_ModelViewMatrixInverse"));
-        assertFalse(result.contains("gl_ProjectionMatrixInverse"));
-    }
-
-    @Test
-    void testTextureMatrixReplacement() {
-        String src = """
-            #version 120
-            void main() {
-                vec4 lmCoord = gl_TextureMatrix[1] * gl_MultiTexCoord1;
-            }
-            """;
-
-        String result = CompatShaderTransformer.transform(src, false);
-        assertFalse(result.contains("gl_TextureMatrix"));
     }
 
     @Test
@@ -211,34 +192,27 @@ class CompatShaderTransformerTest {
         assertTrue(result.contains("uniform vec4 angelica_FogColor"), "Fog color uniform should be injected");
     }
 
-    @Test
-    void testFogFragCoordVertex() {
-        String src = """
-            #version 120
-            void main() {
-                gl_FogFragCoord = length(gl_ModelViewMatrix * gl_Vertex);
-            }
-            """;
-
-        String result = CompatShaderTransformer.transform(src, false);
-        assertTrue(result.contains("out float angelica_FogFragCoord"), "Vertex shader should get 'out' declaration");
-        assertTrue(result.contains("angelica_FogFragCoord"), "gl_FogFragCoord should be renamed");
-        assertFalse(result.contains("gl_FogFragCoord"), "gl_FogFragCoord should not remain");
+    static Stream<Arguments> fogFragCoord() {
+        return Stream.of(
+            Arguments.of("vertex shader declares an out", false, """
+                #version 120
+                void main() {
+                    gl_FogFragCoord = length(gl_ModelViewMatrix * gl_Vertex);
+                }
+                """, strings("out float angelica_FogFragCoord"), strings("gl_FogFragCoord")),
+            Arguments.of("fragment shader declares an in", true, """
+                #version 120
+                void main() {
+                    float f = gl_FogFragCoord;
+                    gl_FragColor = vec4(f);
+                }
+                """, strings("in float angelica_FogFragCoord"), strings("gl_FogFragCoord")));
     }
 
-    @Test
-    void testFogFragCoordFragment() {
-        String src = """
-            #version 120
-            void main() {
-                float f = gl_FogFragCoord;
-                gl_FragColor = vec4(f);
-            }
-            """;
-
-        String result = CompatShaderTransformer.transform(src, true);
-        assertTrue(result.contains("in float angelica_FogFragCoord"), "Fragment shader should get 'in' declaration");
-        assertFalse(result.contains("gl_FogFragCoord"), "gl_FogFragCoord should not remain");
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("fogFragCoord")
+    void fogFragCoordBecomesAVarying(String name, boolean fragment, String src, String[] present, String[] absent) {
+        assertRewrite(fragment, src, present, absent);
     }
 
     @Test
@@ -253,23 +227,6 @@ class CompatShaderTransformerTest {
         String result = CompatShaderTransformer.transform(src, false);
         assertTrue(result.contains("vec4 angelica_FrontColor"), "gl_FrontColor should become angelica_FrontColor out varying");
         assertFalse(result.contains("gl_FrontColor"), "gl_FrontColor should not remain");
-    }
-
-    @Test
-    void testShadow2DRename() {
-        String src = """
-            #version 120
-            uniform sampler2DShadow shadowMap;
-            void main() {
-                float s = shadow2D(shadowMap, vec3(0.0)).r;
-                gl_FragColor = vec4(s);
-            }
-            """;
-
-        String result = CompatShaderTransformer.transform(src, true);
-        assertFalse(result.contains("shadow2D("), "shadow2D should be renamed");
-        // shadow2D -> texture with vec4 wrapping
-        assertTrue(result.contains("texture"), "shadow2D should be renamed to texture");
     }
 
     @Test
@@ -321,155 +278,81 @@ class CompatShaderTransformerTest {
             "Alpha test discard should be appended to main()");
     }
 
-    @Test
-    void testTexelFetch3DTriggersTransformation() {
-        String src = """
-            #version 120
-            uniform sampler3D vol;
-            void main() {
-                vec4 v = texelFetch3D(vol, ivec3(0), 0);
-                gl_FragColor = v;
-            }
-            """;
-
-        String result = CompatShaderTransformer.transform(src, true);
-        // texelFetch3D should be renamed to texelFetch
-        assertFalse(result.contains("texelFetch3D"), "texelFetch3D should be renamed");
-        assertTrue(result.contains("texelFetch"), "texelFetch3D should become texelFetch");
+    static Stream<Arguments> vertexAttributes() {
+        return Stream.of(
+            Arguments.of("gl_Vertex at location 0", false, """
+                #version 120
+                void main() {
+                    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+                }
+                """, strings("in vec4 angelica_Vertex", "location = 0"), strings("gl_Vertex")),
+            Arguments.of("gl_Color at location 1", false, """
+                #version 120
+                varying vec4 v_Color;
+                void main() {
+                    v_Color = gl_Color;
+                    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+                }
+                """, strings("in vec4 angelica_Color", "location = 1"), strings("gl_Color")),
+            Arguments.of("gl_MultiTexCoord0 at location 2", false, """
+                #version 120
+                void main() {
+                    gl_TexCoord[0] = gl_MultiTexCoord0;
+                    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+                }
+                """, strings("in vec4 angelica_MultiTexCoord0", "location = 2"), strings("gl_MultiTexCoord0")),
+            Arguments.of("gl_MultiTexCoord1 at location 3", false, """
+                #version 120
+                void main() {
+                    vec4 lm = gl_TextureMatrix[1] * gl_MultiTexCoord1;
+                    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+                }
+                """, strings("angelica_MultiTexCoord1", "location = 3"), strings("gl_MultiTexCoord1")),
+            Arguments.of("gl_Normal at location 4", false, """
+                #version 120
+                void main() {
+                    vec3 n = gl_NormalMatrix * gl_Normal;
+                    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+                }
+                """, strings("in vec3 angelica_Normal", "location = 4"), strings("gl_Normal")));
     }
 
-    @Test
-    void testVertexAttributeGlVertex() {
-        String src = """
-            #version 120
-            void main() {
-                gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-            }
-            """;
-
-        String result = CompatShaderTransformer.transform(src, false);
-        assertFalse(result.contains("gl_Vertex"), "gl_Vertex should be replaced");
-        assertTrue(result.contains("angelica_Vertex"), "should become angelica_Vertex");
-        assertTrue(result.contains("in vec4 angelica_Vertex"), "should have in declaration");
-        assertTrue(result.contains("location = 0"), "should use attribute location 0");
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("vertexAttributes")
+    void vertexAttributeBuiltinsGetFixedLocations(String name, boolean fragment, String src, String[] present, String[] absent) {
+        assertRewrite(fragment, src, present, absent);
     }
 
-    @Test
-    void testVertexAttributeGlColorInVertexShader() {
-        // gl_Color in a vertex shader is the per-vertex color attribute, not the fragment varying
-        String src = """
-            #version 120
-            varying vec4 v_Color;
-            void main() {
-                v_Color = gl_Color;
-                gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-            }
-            """;
-
-        String result = CompatShaderTransformer.transform(src, false);
-        assertTrue(result.contains("angelica_Color"), "gl_Color -> angelica_Color (vertex attribute)");
-        assertTrue(result.contains("in vec4 angelica_Color"), "should have in declaration");
-        assertTrue(result.contains("location = 1"), "should use attribute location 1");
-        assertFalse(result.contains("gl_Color"), "gl_Color should not remain");
+    static Stream<Arguments> texCoordVaryings() {
+        return Stream.of(
+            Arguments.of("vertex shader declares an out", false, """
+                #version 120
+                void main() {
+                    gl_TexCoord[0] = gl_MultiTexCoord0;
+                    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+                }
+                """, strings("out vec4 angelica_TexCoord0"), strings("gl_TexCoord")),
+            Arguments.of("fragment shader declares an in", true, """
+                #version 120
+                void main() {
+                    vec2 uv = gl_TexCoord[0].xy;
+                    gl_FragColor = vec4(uv, 0.0, 1.0);
+                }
+                """, strings("in vec4 angelica_TexCoord0"), strings("gl_TexCoord")),
+            Arguments.of("one varying per index", false, """
+                #version 120
+                void main() {
+                    gl_TexCoord[0] = gl_MultiTexCoord0;
+                    gl_TexCoord[1] = gl_MultiTexCoord1;
+                    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+                }
+                """, strings("out vec4 angelica_TexCoord0", "out vec4 angelica_TexCoord1"), strings("gl_TexCoord")));
     }
 
-    @Test
-    void testVertexAttributeMultiTexCoord0() {
-        String src = """
-            #version 120
-            void main() {
-                gl_TexCoord[0] = gl_MultiTexCoord0;
-                gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-            }
-            """;
-
-        String result = CompatShaderTransformer.transform(src, false);
-        assertFalse(result.contains("gl_MultiTexCoord0"), "gl_MultiTexCoord0 should be replaced");
-        assertTrue(result.contains("angelica_MultiTexCoord0"), "should become angelica_MultiTexCoord0");
-        assertTrue(result.contains("in vec4 angelica_MultiTexCoord0"), "should have in declaration");
-        assertTrue(result.contains("location = 2"), "should use attribute location 2");
-    }
-
-    @Test
-    void testVertexAttributeMultiTexCoord1() {
-        String src = """
-            #version 120
-            void main() {
-                vec4 lm = gl_TextureMatrix[1] * gl_MultiTexCoord1;
-                gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-            }
-            """;
-
-        String result = CompatShaderTransformer.transform(src, false);
-        assertFalse(result.contains("gl_MultiTexCoord1"), "gl_MultiTexCoord1 should be replaced");
-        assertTrue(result.contains("angelica_MultiTexCoord1"), "should become angelica_MultiTexCoord1");
-        assertTrue(result.contains("location = 3"), "should use attribute location 3");
-    }
-
-    @Test
-    void testVertexAttributeGlNormal() {
-        String src = """
-            #version 120
-            void main() {
-                vec3 n = gl_NormalMatrix * gl_Normal;
-                gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-            }
-            """;
-
-        String result = CompatShaderTransformer.transform(src, false);
-        assertFalse(result.contains("gl_Normal"), "gl_Normal should be replaced");
-        assertTrue(result.contains("angelica_Normal"), "should become angelica_Normal");
-        assertTrue(result.contains("in vec3 angelica_Normal"), "should have in vec3 declaration");
-        assertTrue(result.contains("location = 4"), "should use attribute location 4");
-    }
-
-    @Test
-    void testTexCoordVaryingVertexShader() {
-        String src = """
-            #version 120
-            void main() {
-                gl_TexCoord[0] = gl_MultiTexCoord0;
-                gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-            }
-            """;
-
-        String result = CompatShaderTransformer.transform(src, false);
-        assertFalse(result.contains("gl_TexCoord"), "gl_TexCoord should be replaced");
-        assertTrue(result.contains("angelica_TexCoord0"), "should become angelica_TexCoord0");
-        assertTrue(result.contains("out vec4 angelica_TexCoord0"), "vertex shader should have 'out' declaration");
-    }
-
-    @Test
-    void testTexCoordVaryingFragmentShader() {
-        String src = """
-            #version 120
-            void main() {
-                vec2 uv = gl_TexCoord[0].xy;
-                gl_FragColor = vec4(uv, 0.0, 1.0);
-            }
-            """;
-
-        String result = CompatShaderTransformer.transform(src, true);
-        assertFalse(result.contains("gl_TexCoord"), "gl_TexCoord should be replaced");
-        assertTrue(result.contains("angelica_TexCoord0"), "should become angelica_TexCoord0");
-        assertTrue(result.contains("in vec4 angelica_TexCoord0"), "fragment shader should have 'in' declaration");
-    }
-
-    @Test
-    void testTexCoordMultipleIndices() {
-        String src = """
-            #version 120
-            void main() {
-                gl_TexCoord[0] = gl_MultiTexCoord0;
-                gl_TexCoord[1] = gl_MultiTexCoord1;
-                gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-            }
-            """;
-
-        String result = CompatShaderTransformer.transform(src, false);
-        assertTrue(result.contains("out vec4 angelica_TexCoord0"), "should have TexCoord0 out");
-        assertTrue(result.contains("out vec4 angelica_TexCoord1"), "should have TexCoord1 out");
-        assertFalse(result.contains("gl_TexCoord"), "no gl_TexCoord should remain");
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("texCoordVaryings")
+    void texCoordBecomesPerIndexVaryings(String name, boolean fragment, String src, String[] present, String[] absent) {
+        assertRewrite(fragment, src, present, absent);
     }
 
     @Test
@@ -533,7 +416,6 @@ class CompatShaderTransformerTest {
         String result = CompatShaderTransformer.transform(src, false);
         assertFalse(result.contains("gl_FrontLightModelProduct"), "gl_FrontLightModelProduct should be replaced");
         assertTrue(result.contains("uniform vec4 angelica_SceneColor"), "angelica_SceneColor uniform should be injected");
-        assertTrue(result.contains("angelica_SceneColor"), "should reference angelica_SceneColor");
     }
 
     @Test

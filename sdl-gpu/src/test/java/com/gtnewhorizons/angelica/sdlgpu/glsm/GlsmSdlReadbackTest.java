@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,11 +23,6 @@ class GlsmSdlReadbackTest {
     private static final int G = 0x34;
     private static final int B = 0x56;
     private static final int A = 0xFF;
-
-    @BeforeAll
-    static void boot() {
-        GlsmSdlHeadlessRig.boot();
-    }
 
     @Test
     void getTexImageSeesDeferredTextureUpload() {

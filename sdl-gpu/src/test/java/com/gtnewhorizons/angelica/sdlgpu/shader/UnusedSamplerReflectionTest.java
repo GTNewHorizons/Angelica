@@ -8,8 +8,8 @@ import org.lwjgl.util.shaderc.Shaderc;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import static com.gtnewhorizons.angelica.sdlgpu.shader.SpirvTestShaders.compileOrFail;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.fail;
 
 class UnusedSamplerReflectionTest {
 
@@ -31,9 +31,7 @@ class UnusedSamplerReflectionTest {
 
     @Test
     void samplersOnlyShadowedOrDeclaredAreUnused() {
-        final SpirvCompiler.Result r = SpirvCompiler.compile(FRAGMENT, Shaderc.shaderc_fragment_shader, "test", SpirvCompiler.Options.vulkanRelaxed());
-        if (r.spirv() == null) fail("Compilation failed: " + r.error());
-        final ByteBuffer spirv = r.spirv();
+        final ByteBuffer spirv = compileOrFail(FRAGMENT, Shaderc.shaderc_fragment_shader, SpirvCompiler.Options.vulkanRelaxed());
         try {
             final ShaderManager.StageReflection refl = ShaderManager.reflectStage(spirv, false);
             assertEquals(List.of("normals", "specular"), refl.unusedSamplerNames().stream().sorted().toList(),

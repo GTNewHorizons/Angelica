@@ -8,6 +8,7 @@ import java.net.ServerSocket;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 class TracyPortsTest {
 
@@ -21,6 +22,7 @@ class TracyPortsTest {
                 return;
             } catch (IOException ignored) {}
         }
+        assumeTrue(false, "no port in 8086..8105 could be bound");
     }
 
     @Test

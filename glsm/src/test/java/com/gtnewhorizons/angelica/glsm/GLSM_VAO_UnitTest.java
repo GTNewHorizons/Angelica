@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.glsm;
 import com.gtnewhorizon.gtnhlib.client.opengl.UniversalVAO;
 import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
 import com.gtnewhorizons.angelica.util.GLSMUtil;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL11;
@@ -14,6 +15,13 @@ import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyState;
 
 @GLCompatTest
 public class GLSM_VAO_UnitTest {
+
+    @AfterEach
+    void resetClientArrayState() {
+        glBindVertexArray(0);
+        GLStateManager.glClientActiveTexture(GL13.GL_TEXTURE0);
+        GLSMUtil.setClientState(GL11.GL_NORMAL_ARRAY, false);
+    }
 
     @Test
     void testDefaultStates() {
@@ -36,14 +44,14 @@ public class GLSM_VAO_UnitTest {
         final int vaoVertexType = GL11.GL_INT;
         final int vaoVertexStride = vaoVertexSize * 4;
 
-        GL13.glClientActiveTexture(GL13.GL_TEXTURE1);
+        GLStateManager.glClientActiveTexture(GL13.GL_TEXTURE1);
         verifyState(GL13.GL_CLIENT_ACTIVE_TEXTURE, GL13.GL_TEXTURE1, "GL_CLIENT_ACTIVE_TEXTURE - Setup");
 
         // Set the vertex attrib to a defined state
         int vbo = GL15.glGenBuffers();
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
 
-        GL11.glVertexPointer(defaultVertexSize, defaultVertexType, defaultVertexStride, 0);
+        GLStateManager.glVertexPointer(defaultVertexSize, defaultVertexType, defaultVertexStride, 0L);
 
         GLSMUtil.setClientState(GL11.GL_NORMAL_ARRAY, true);
         verifyState(GL11.GL_NORMAL_ARRAY, true, "GL_NORMAL_ARRAY - Enabled");
@@ -74,7 +82,7 @@ public class GLSM_VAO_UnitTest {
         GLSMUtil.setClientState(GL11.GL_VERTEX_ARRAY, vaoVertexEnabled);
         verifyState(GL11.GL_VERTEX_ARRAY, vaoVertexEnabled, "GL_VERTEX_ARRAY - Enabled");
 
-        GL11.glVertexPointer(vaoVertexSize, vaoVertexType, vaoVertexStride, 0);
+        GLStateManager.glVertexPointer(vaoVertexSize, vaoVertexType, vaoVertexStride, 0L);
 
         verifyState(GL11.GL_VERTEX_ARRAY_SIZE, vaoVertexSize, "GL_VERTEX_ARRAY_SIZE - Set");
         verifyState(GL11.GL_VERTEX_ARRAY_TYPE, vaoVertexType, "GL_VERTEX_ARRAY_TYPE - Set");
@@ -117,7 +125,7 @@ public class GLSM_VAO_UnitTest {
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
 
-        GL15.glDeleteBuffers(vbo);
+        GLStateManager.glDeleteBuffers(vbo);
         UniversalVAO.deleteVertexArrays(vao);
     }
 
@@ -138,7 +146,7 @@ public class GLSM_VAO_UnitTest {
         GLStateManager.glDisableVertexAttribArray(0);
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
-        GL15.glDeleteBuffers(vbo);
+        GLStateManager.glDeleteBuffers(vbo);
         UniversalVAO.deleteVertexArrays(vao);
     }
 
@@ -159,7 +167,7 @@ public class GLSM_VAO_UnitTest {
         GLStateManager.glDisableVertexAttribArray(0);
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
-        GL15.glDeleteBuffers(vbo);
+        GLStateManager.glDeleteBuffers(vbo);
         UniversalVAO.deleteVertexArrays(vao);
     }
 
@@ -179,7 +187,7 @@ public class GLSM_VAO_UnitTest {
         GLStateManager.glDisableClientState(GL11.GL_VERTEX_ARRAY);
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
-        GL15.glDeleteBuffers(vbo);
+        GLStateManager.glDeleteBuffers(vbo);
         UniversalVAO.deleteVertexArrays(vao);
     }
 

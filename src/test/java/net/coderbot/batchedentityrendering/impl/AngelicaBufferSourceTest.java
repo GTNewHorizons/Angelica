@@ -14,12 +14,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AngelicaBufferSourceTest {
 
-    private static final ModelQuad QUAD = SegmentedBufferBuilderTest.quad();
+    private static final ModelQuad QUAD = BufferSourceProbe.quad();
 
     @Test
     void sameLayerKeepsBuilderAffinity() {
         final AngelicaBufferSource source = new AngelicaBufferSource();
-        final RenderLayer layer = SegmentedBufferBuilderTest.layer("a", TransparencyType.OPAQUE);
+        final RenderLayer layer = BufferSourceProbe.layer("a", TransparencyType.OPAQUE);
         final SegmentedBufferBuilder first = source.getBuffer(layer, 1);
         first.addQuad(QUAD);
         final SegmentedBufferBuilder second = source.getBuffer(layer, 2);
@@ -29,8 +29,8 @@ class AngelicaBufferSourceTest {
     @Test
     void prepareGroupsSegmentsByLayerAndSortsOpaqueById() {
         final AngelicaBufferSource source = new AngelicaBufferSource();
-        final RenderLayer opaque = SegmentedBufferBuilderTest.layer("opaque", TransparencyType.OPAQUE);
-        final RenderLayer translucent = SegmentedBufferBuilderTest.layer("translucent", TransparencyType.GENERAL_TRANSPARENT);
+        final RenderLayer opaque = BufferSourceProbe.layer("opaque", TransparencyType.OPAQUE);
+        final RenderLayer translucent = BufferSourceProbe.layer("translucent", TransparencyType.GENERAL_TRANSPARENT);
 
         source.getBuffer(opaque, 7).addQuad(QUAD);
         source.getBuffer(translucent, 9).addQuad(QUAD);
@@ -60,7 +60,7 @@ class AngelicaBufferSourceTest {
         final AngelicaBufferSource source = new AngelicaBufferSource();
         final int layers = 40;
         for (int i = 0; i < layers; i++) {
-            source.getBuffer(SegmentedBufferBuilderTest.layer("layer" + i, TransparencyType.OPAQUE), i).addQuad(QUAD);
+            source.getBuffer(BufferSourceProbe.layer("layer" + i, TransparencyType.OPAQUE), i).addQuad(QUAD);
         }
         final List<RenderLayer> order = source.prepare();
         assertEquals(layers, order.size());
@@ -74,9 +74,9 @@ class AngelicaBufferSourceTest {
     @Test
     void endBatchWithTypeCompactsOrder() {
         final AngelicaBufferSource source = new AngelicaBufferSource();
-        final RenderLayer opaqueA = SegmentedBufferBuilderTest.layer("oa", TransparencyType.OPAQUE);
-        final RenderLayer translucent = SegmentedBufferBuilderTest.layer("t", TransparencyType.GENERAL_TRANSPARENT);
-        final RenderLayer opaqueB = SegmentedBufferBuilderTest.layer("ob", TransparencyType.OPAQUE);
+        final RenderLayer opaqueA = BufferSourceProbe.layer("oa", TransparencyType.OPAQUE);
+        final RenderLayer translucent = BufferSourceProbe.layer("t", TransparencyType.GENERAL_TRANSPARENT);
+        final RenderLayer opaqueB = BufferSourceProbe.layer("ob", TransparencyType.OPAQUE);
         source.declareUse(opaqueA);
         source.declareUse(translucent);
         source.declareUse(opaqueB);
@@ -99,7 +99,7 @@ class AngelicaBufferSourceTest {
     @Test
     void declaredLayersAppearInOrderWithoutSegments() {
         final AngelicaBufferSource source = new AngelicaBufferSource();
-        final RenderLayer retainedOnly = SegmentedBufferBuilderTest.layer("retained", TransparencyType.OPAQUE);
+        final RenderLayer retainedOnly = BufferSourceProbe.layer("retained", TransparencyType.OPAQUE);
         source.declareUse(retainedOnly);
         final List<RenderLayer> order = source.prepare();
         assertEquals(1, order.size());

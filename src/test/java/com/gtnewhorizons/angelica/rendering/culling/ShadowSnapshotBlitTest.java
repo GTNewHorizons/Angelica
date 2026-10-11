@@ -3,6 +3,8 @@ package com.gtnewhorizons.angelica.rendering.culling;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
@@ -18,6 +20,28 @@ class ShadowSnapshotBlitTest {
     private static final int SIZE = 256;
     private static final float FAR = 1.0f;
     private static final float NEAR_PATCH = 0.25f;
+
+    private int srcTex;
+    private int srcFbo;
+    private int cacheTex;
+    private int cacheFbo;
+
+    @BeforeEach
+    void createTargets() {
+        srcTex = newDepthTexture();
+        srcFbo = newDepthFbo(srcTex);
+        cacheTex = newDepthTexture();
+        cacheFbo = newDepthFbo(cacheTex);
+    }
+
+    @AfterEach
+    void deleteTargets() {
+        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+        GLStateManager.glDeleteFramebuffers(srcFbo);
+        GLStateManager.glDeleteFramebuffers(cacheFbo);
+        GLStateManager.glDeleteTextures(srcTex);
+        GLStateManager.glDeleteTextures(cacheTex);
+    }
 
     private static int newDepthTexture() {
         final int tex = GLStateManager.glGenTextures();
@@ -59,91 +83,55 @@ class ShadowSnapshotBlitTest {
 
     @Test
     void depthSnapshotRoundTripsThroughBlit() {
-        final int srcTex = newDepthTexture();
-        final int srcFbo = newDepthFbo(srcTex);
-        final int cacheTex = newDepthTexture();
-        final int cacheFbo = newDepthFbo(cacheTex);
-        try {
-            fillPattern(srcFbo);
-            assertEquals(NEAR_PATCH, readDepth(srcFbo, 10, 10), 1e-4f, "source pattern not written");
-            assertEquals(FAR, readDepth(srcFbo, SIZE - 10, SIZE - 10), 1e-4f, "source background not written");
+        fillPattern(srcFbo);
+        assertEquals(NEAR_PATCH, readDepth(srcFbo, 10, 10), 1e-4f, "source pattern not written");
+        assertEquals(FAR, readDepth(srcFbo, SIZE - 10, SIZE - 10), 1e-4f, "source background not written");
 
-            RenderSystem.blitFramebuffer(srcFbo, cacheFbo, 0, 0, SIZE, SIZE, 0, 0, SIZE, SIZE, GL11.GL_DEPTH_BUFFER_BIT, GL11.GL_NEAREST);
-            assertEquals(NEAR_PATCH, readDepth(cacheFbo, 10, 10), 1e-4f, "capture blit did not copy the near patch into the cache");
-            assertEquals(FAR, readDepth(cacheFbo, SIZE - 10, SIZE - 10), 1e-4f, "capture blit did not copy the far background into the cache");
+        RenderSystem.blitFramebuffer(srcFbo, cacheFbo, 0, 0, SIZE, SIZE, 0, 0, SIZE, SIZE, GL11.GL_DEPTH_BUFFER_BIT, GL11.GL_NEAREST);
+        assertEquals(NEAR_PATCH, readDepth(cacheFbo, 10, 10), 1e-4f, "capture blit did not copy the near patch into the cache");
+        assertEquals(FAR, readDepth(cacheFbo, SIZE - 10, SIZE - 10), 1e-4f, "capture blit did not copy the far background into the cache");
 
-            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, srcFbo);
-            GLStateManager.glDepthMask(true);
-            GLStateManager.glClearDepth(FAR);
-            GLStateManager.glClear(GL11.GL_DEPTH_BUFFER_BIT);
-            assertEquals(FAR, readDepth(srcFbo, 10, 10), 1e-4f, "source not cleared before restore");
+        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, srcFbo);
+        GLStateManager.glDepthMask(true);
+        GLStateManager.glClearDepth(FAR);
+        GLStateManager.glClear(GL11.GL_DEPTH_BUFFER_BIT);
+        assertEquals(FAR, readDepth(srcFbo, 10, 10), 1e-4f, "source not cleared before restore");
 
-            RenderSystem.blitFramebuffer(cacheFbo, srcFbo, 0, 0, SIZE, SIZE, 0, 0, SIZE, SIZE, GL11.GL_DEPTH_BUFFER_BIT, GL11.GL_NEAREST);
-            assertEquals(NEAR_PATCH, readDepth(srcFbo, 10, 10), 1e-4f, "restore blit did not bring the near patch back");
-            assertEquals(FAR, readDepth(srcFbo, SIZE - 10, SIZE - 10), 1e-4f, "restore blit corrupted the far background");
-        } finally {
-            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
-            GLStateManager.glDeleteFramebuffers(srcFbo);
-            GLStateManager.glDeleteFramebuffers(cacheFbo);
-            GLStateManager.glDeleteTextures(srcTex);
-            GLStateManager.glDeleteTextures(cacheTex);
-        }
+        RenderSystem.blitFramebuffer(cacheFbo, srcFbo, 0, 0, SIZE, SIZE, 0, 0, SIZE, SIZE, GL11.GL_DEPTH_BUFFER_BIT, GL11.GL_NEAREST);
+        assertEquals(NEAR_PATCH, readDepth(srcFbo, 10, 10), 1e-4f, "restore blit did not bring the near patch back");
+        assertEquals(FAR, readDepth(srcFbo, SIZE - 10, SIZE - 10), 1e-4f, "restore blit corrupted the far background");
     }
 
     @Test
     void depthBlitIsNotAffectedByScissorState() {
-        final int srcTex = newDepthTexture();
-        final int srcFbo = newDepthFbo(srcTex);
-        final int cacheTex = newDepthTexture();
-        final int cacheFbo = newDepthFbo(cacheTex);
-        try {
-            fillPattern(srcFbo);
-            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, cacheFbo);
-            GLStateManager.glClearDepth(FAR);
-            GLStateManager.glClear(GL11.GL_DEPTH_BUFFER_BIT);
+        fillPattern(srcFbo);
+        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, cacheFbo);
+        GLStateManager.glClearDepth(FAR);
+        GLStateManager.glClear(GL11.GL_DEPTH_BUFFER_BIT);
 
-            GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
-            GLStateManager.glScissor(0, 0, 4, 4);
-            RenderSystem.blitFramebuffer(srcFbo, cacheFbo, 0, 0, SIZE, SIZE, 0, 0, SIZE, SIZE, GL11.GL_DEPTH_BUFFER_BIT, GL11.GL_NEAREST);
-            GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
+        GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
+        GLStateManager.glScissor(0, 0, 4, 4);
+        RenderSystem.blitFramebuffer(srcFbo, cacheFbo, 0, 0, SIZE, SIZE, 0, 0, SIZE, SIZE, GL11.GL_DEPTH_BUFFER_BIT, GL11.GL_NEAREST);
+        GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
 
-            assertEquals(NEAR_PATCH, readDepth(cacheFbo, 100, 100), 1e-4f, "scissor clipped the snapshot blit; the cache only received the scissor box");
-        } finally {
-            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
-            GLStateManager.glDeleteFramebuffers(srcFbo);
-            GLStateManager.glDeleteFramebuffers(cacheFbo);
-            GLStateManager.glDeleteTextures(srcTex);
-            GLStateManager.glDeleteTextures(cacheTex);
-        }
+        assertEquals(NEAR_PATCH, readDepth(cacheFbo, 100, 100), 1e-4f, "scissor clipped the snapshot blit; the cache only received the scissor box");
     }
 
     @Test
     void rawBlitStaysScissorClipped() {
-        final int srcTex = newDepthTexture();
-        final int srcFbo = newDepthFbo(srcTex);
-        final int cacheTex = newDepthTexture();
-        final int cacheFbo = newDepthFbo(cacheTex);
-        try {
-            fillPattern(srcFbo);
-            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, cacheFbo);
-            GLStateManager.glClearDepth(FAR);
-            GLStateManager.glClear(GL11.GL_DEPTH_BUFFER_BIT);
+        fillPattern(srcFbo);
+        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, cacheFbo);
+        GLStateManager.glClearDepth(FAR);
+        GLStateManager.glClear(GL11.GL_DEPTH_BUFFER_BIT);
 
-            GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, srcFbo);
-            GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, cacheFbo);
-            GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
-            GLStateManager.glScissor(0, 0, 4, 4);
-            GLStateManager.glBlitFramebuffer(0, 0, SIZE, SIZE, 0, 0, SIZE, SIZE, GL11.GL_DEPTH_BUFFER_BIT, GL11.GL_NEAREST);
-            GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
+        GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, srcFbo);
+        GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, cacheFbo);
+        GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
+        GLStateManager.glScissor(0, 0, 4, 4);
+        GLStateManager.glBlitFramebuffer(0, 0, SIZE, SIZE, 0, 0, SIZE, SIZE, GL11.GL_DEPTH_BUFFER_BIT, GL11.GL_NEAREST);
+        GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
 
-            assertEquals(NEAR_PATCH, readDepth(cacheFbo, 1, 1), 1e-4f, "raw blit copied nothing inside the scissor box");
-            assertEquals(FAR, readDepth(cacheFbo, 100, 100), 1e-4f, "raw glBlitFramebuffer ignored scissor");
-        } finally {
-            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
-            GLStateManager.glDeleteFramebuffers(srcFbo);
-            GLStateManager.glDeleteFramebuffers(cacheFbo);
-            GLStateManager.glDeleteTextures(srcTex);
-            GLStateManager.glDeleteTextures(cacheTex);
-        }
+        assertEquals(NEAR_PATCH, readDepth(cacheFbo, 1, 1), 1e-4f, "raw blit copied nothing inside the scissor box");
+        assertEquals(FAR, readDepth(cacheFbo, 100, 100), 1e-4f, "raw glBlitFramebuffer ignored scissor");
     }
 }

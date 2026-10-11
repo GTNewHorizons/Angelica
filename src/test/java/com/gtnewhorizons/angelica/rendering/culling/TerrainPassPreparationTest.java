@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.rendering.culling;
 
 import com.gtnewhorizons.angelica.config.GpuCullingMode;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
+import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.mixins.interfaces.SectionRenderDataStorageRegionAccessor;
 import com.gtnewhorizons.angelica.rendering.RenderRegionKeys;
 import com.gtnewhorizons.angelica.rendering.celeritas.AngelicaRenderPassConfiguration;
@@ -24,7 +25,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import java.lang.reflect.Field;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -53,7 +53,7 @@ class TerrainPassPreparationTest {
         Storage(boolean sorted) {
             super(QuadPrimitiveType.TRIANGULATED, sorted, 1);
             final SectionRenderDataUnsafe.Strategy layout = sorted ? SectionRenderDataUnsafe.Strategy.FULL : SectionRenderDataUnsafe.Strategy.COMPACT;
-            layout.writeMeshesAndSliceMask((long) field(this, SectionRenderDataStorage.class, "pMeshDataArray"), 0, 0, 0,
+            layout.writeMeshesAndSliceMask((long) Reflect.get(this, "pMeshDataArray"), 0, 0, 0,
                 Map.of(ModelQuadFacing.VALUES[0], new VertexRange(0, 4)), QuadPrimitiveType.TRIANGULATED);
         }
 
@@ -64,28 +64,8 @@ class TerrainPassPreparationTest {
         @Override public int[] angelica$getSlotCache() { return slots; }
     }
 
-    private static Object field(Object target, Class<?> owner, String name) {
-        try {
-            final Field field = owner.getDeclaredField(name);
-            field.setAccessible(true);
-            return field.get(target);
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
-    private static void set(Object target, Class<?> owner, String name, Object value) {
-        try {
-            final Field field = owner.getDeclaredField(name);
-            field.setAccessible(true);
-            field.set(target, value);
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
     private Object state(String name) {
-        return field(gpu, GpuTerrainCuller.class, name);
+        return Reflect.get(gpu, name);
     }
 
     @BeforeEach
@@ -103,18 +83,18 @@ class TerrainPassPreparationTest {
         AngelicaRenderPassConfiguration.TRANSLUCENT_PASS = passes[2];
         GpuCulling.setMode(GpuCullingMode.COMPUTE);
         nativeCuller = new GpuDrivenChunkCuller();
-        set(nativeCuller, GpuDrivenChunkCuller.class, "disabled", true);
+        Reflect.setDeclared(GpuDrivenChunkCuller.class, nativeCuller, "disabled", true);
         meta = new SectionMetaBuffer();
         gpu = new GpuTerrainCuller(nativeCuller, meta);
         region = RenderRegionKeys.create(0, 0, 0, 0);
-        final Map<TerrainRenderPass, SectionRenderDataStorage> attached = (Map<TerrainRenderPass, SectionRenderDataStorage>) field(region, RenderRegion.class, "sectionRenderData");
+        final Map<TerrainRenderPass, SectionRenderDataStorage> attached = (Map<TerrainRenderPass, SectionRenderDataStorage>) Reflect.get(region, "sectionRenderData");
         for (int i = 0; i < 3; i++) {
             storage[i] = new Storage(i == 2);
             attached.put(passes[i], storage[i]);
         }
         list = new ChunkRenderList(region);
-        set(list, ChunkRenderList.class, "sectionsWithGeometry", new byte[]{0});
-        set(list, ChunkRenderList.class, "sectionsWithGeometryCount", 1);
+        Reflect.setDeclared(ChunkRenderList.class, list, "sectionsWithGeometry", new byte[]{0});
+        Reflect.setDeclared(ChunkRenderList.class, list, "sectionsWithGeometryCount", 1);
     }
 
     @AfterEach
@@ -154,14 +134,14 @@ class TerrainPassPreparationTest {
     private void assertRange(String pass, int base) {
         final Object expected = state(pass);
         assertSame(expected, state("current"));
-        assertEquals(base, field(expected, expected.getClass(), "entryBase"));
-        assertEquals(1, field(expected, expected.getClass(), "entryCount"));
-        assertEquals(((long) base << 32) | 1L, ((long[]) field(expected, expected.getClass(), "regionRanges"))[0]);
+        assertEquals(base, Reflect.<Integer>get(expected, "entryBase"));
+        assertEquals(1, Reflect.<Integer>get(expected, "entryCount"));
+        assertEquals(((long) base << 32) | 1L, ((long[]) Reflect.get(expected, "regionRanges"))[0]);
     }
 
     private int indexPointerMaskOf(String pass) {
         final Object state = state(pass);
-        return (int) field(state, state.getClass(), "indexPointerMask");
+        return (int) Reflect.get(state, "indexPointerMask");
     }
 
     @SuppressWarnings("unchecked")
@@ -172,7 +152,7 @@ class TerrainPassPreparationTest {
         passes[2] = pass;
         storage[2] = newStorage;
         AngelicaRenderPassConfiguration.TRANSLUCENT_PASS = pass;
-        final Map<TerrainRenderPass, SectionRenderDataStorage> attached = (Map<TerrainRenderPass, SectionRenderDataStorage>) field(region, RenderRegion.class, "sectionRenderData");
+        final Map<TerrainRenderPass, SectionRenderDataStorage> attached = (Map<TerrainRenderPass, SectionRenderDataStorage>) Reflect.get(region, "sectionRenderData");
         attached.put(pass, newStorage);
     }
 

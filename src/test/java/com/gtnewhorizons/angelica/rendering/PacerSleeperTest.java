@@ -3,52 +3,21 @@ package com.gtnewhorizons.angelica.rendering;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import org.junit.jupiter.api.Test;
 
-import java.util.function.LongConsumer;
-import java.util.function.LongSupplier;
-
+import static com.gtnewhorizons.angelica.rendering.PacerTestClock.MS;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PacerSleeperTest {
 
-    private static final long MS = 1_000_000L;
     private static final long COLD_FLOOR = PacerSleeper.MIN_SPIN_FLOOR_NANOS;
 
-    private static final class FakeTime {
-        long now;
-        long lag;
-        long granularity;
-        long nextParkActual = -1;
-        int parks;
-        long lastRequest;
-
-        LongSupplier clock() {
-            return () -> now;
-        }
-
-        LongConsumer parker() {
-            return nanos -> {
-                parks++;
-                lastRequest = nanos;
-                final long actual;
-                if (nextParkActual >= 0) {
-                    actual = nextParkActual;
-                    nextParkActual = -1;
-                } else {
-                    actual = Math.max(nanos + lag, granularity);
-                }
-                now += actual;
-            };
-        }
-    }
-
-    private static PacerSleeper sleeper(FakeTime time) {
+    private static PacerSleeper sleeper(PacerTestClock time) {
         return new PacerSleeper(time.clock(), time.parker(), false);
     }
 
     @Test
     void aLongWaitCostsOneParkNotAChunkPerMillisecond() {
-        final FakeTime time = new FakeTime();
+        final PacerTestClock time = new PacerTestClock();
         final PacerSleeper s = sleeper(time);
 
         s.sleepUntil(10 * MS, 0L);
@@ -59,7 +28,7 @@ class PacerSleeperTest {
 
     @Test
     void aWellBehavedTimerLeavesNoMoreThanTheFloorToSpin() {
-        final FakeTime time = new FakeTime();
+        final PacerTestClock time = new PacerTestClock();
         time.lag = 20_000L;
         final PacerSleeper s = sleeper(time);
 
@@ -73,7 +42,7 @@ class PacerSleeperTest {
 
     @Test
     void theLagEstimateConvergesSoTheDeadlineIsNotOvershot() {
-        final FakeTime time = new FakeTime();
+        final PacerTestClock time = new PacerTestClock();
         time.lag = 300_000L;
         final PacerSleeper s = sleeper(time);
 
@@ -89,7 +58,7 @@ class PacerSleeperTest {
 
     @Test
     void anEarlyWakeReParksInsteadOfSpinningTheRemainder() {
-        final FakeTime time = new FakeTime();
+        final PacerTestClock time = new PacerTestClock();
         final PacerSleeper s = sleeper(time);
         time.nextParkActual = 2 * MS;
 
@@ -101,7 +70,7 @@ class PacerSleeperTest {
 
     @Test
     void aCoarseTimerParksLateRatherThanSpinningOutTheFrame() {
-        final FakeTime time = new FakeTime();
+        final PacerTestClock time = new PacerTestClock();
         time.granularity = 15_600_000L;
         final PacerSleeper s = sleeper(time);
 
@@ -126,7 +95,7 @@ class PacerSleeperTest {
 
     @Test
     void aOneOffStallDoesNotPoisonTheEstimate() {
-        final FakeTime time = new FakeTime();
+        final PacerTestClock time = new PacerTestClock();
         final PacerSleeper s = sleeper(time);
 
         time.nextParkActual = 500 * MS;
@@ -137,7 +106,7 @@ class PacerSleeperTest {
 
     @Test
     void eachParkEvictsExactlyOneSlotFromTheEstimate() {
-        final FakeTime time = new FakeTime();
+        final PacerTestClock time = new PacerTestClock();
         time.lag = MS;
         final PacerSleeper s = sleeper(time);
 
@@ -153,7 +122,7 @@ class PacerSleeperTest {
 
     @Test
     void interruptionAbandonsTheWait() {
-        final FakeTime time = new FakeTime();
+        final PacerTestClock time = new PacerTestClock();
         final PacerSleeper s = sleeper(time);
 
         Thread.currentThread().interrupt();
@@ -212,7 +181,7 @@ class PacerSleeperTest {
 
     @Test
     void aSteadyPlatformNeedsOnlyTheMinimumSpinFloor() {
-        final FakeTime time = new FakeTime();
+        final PacerTestClock time = new PacerTestClock();
         time.lag = 300_000L;
         final PacerSleeper s = sleeper(time);
 
@@ -225,7 +194,7 @@ class PacerSleeperTest {
 
     @Test
     void aJitteryPlatformWidensTheSpinFloorToCoverTheWorstPark() {
-        final FakeTime time = new FakeTime();
+        final PacerTestClock time = new PacerTestClock();
         time.lag = 100_000L;
         final PacerSleeper s = sleeper(time);
 
@@ -241,7 +210,7 @@ class PacerSleeperTest {
 
     @Test
     void aDeadlineInsideTheFloorParksNotAtAll() {
-        final FakeTime time = new FakeTime();
+        final PacerTestClock time = new PacerTestClock();
         final PacerSleeper s = sleeper(time);
 
         final long woke = s.sleepUntil(COLD_FLOOR, 0L);
@@ -252,7 +221,7 @@ class PacerSleeperTest {
 
     @Test
     void everyWaitInAFrameLandsOnTheOneFrameOfBookkeeping() {
-        final FakeTime time = new FakeTime();
+        final PacerTestClock time = new PacerTestClock();
         final PacerSleeper s = sleeper(time);
 
         s.sleepUntil(10 * MS, 0L);
@@ -275,7 +244,7 @@ class PacerSleeperTest {
 
     @Test
     void aWakeInsideTheToleranceIsNotLate() {
-        final FakeTime time = new FakeTime();
+        final PacerTestClock time = new PacerTestClock();
         final PacerSleeper s = sleeper(time);
 
         s.noteFrame(0L, PacerSleeper.LATE_TOL_NANOS);

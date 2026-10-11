@@ -47,6 +47,7 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL14;
+import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 
 import java.nio.DoubleBuffer;
@@ -169,6 +170,9 @@ public class GLContextState {
     public final BooleanStateStack lineSmoothState = track(new BooleanStateStack(GL11.GL_LINE_SMOOTH));
     public final BooleanStateStack lineStippleState = track(new BooleanStateStack(GL11.GL_LINE_STIPPLE, false, true));
     public final BooleanStateStack pointSmoothState = track(new BooleanStateStack(GL11.GL_POINT_SMOOTH, false, true));
+    public final BooleanStateStack pointSpriteState = track(new BooleanStateStack(GL20.GL_POINT_SPRITE, false, true));
+    public final BooleanStateStack vertexProgramTwoSideState = track(new BooleanStateStack(GL20.GL_VERTEX_PROGRAM_TWO_SIDE, false, true));
+    public final BooleanStateStack edgeFlagState = track(new BooleanStateStack(GL11.GL_EDGE_FLAG, true, true));
     public final BooleanStateStack polygonSmoothState = track(new BooleanStateStack(GL11.GL_POLYGON_SMOOTH));
     public final BooleanStateStack polygonStippleState = track(new BooleanStateStack(GL11.GL_POLYGON_STIPPLE, false, true));
     public final BooleanStateStack multisampleState = track(new BooleanStateStack(GL13.GL_MULTISAMPLE, true));
@@ -182,6 +186,7 @@ public class GLContextState {
     public final BooleanStateStack polygonOffsetFillState = track(new BooleanStateStack(GL11.GL_POLYGON_OFFSET_FILL));
     public final LineStateStack lineState = member(new LineStateStack(StackIdAllocator.nextId()));
     public final PointStateStack pointState = member(new PointStateStack(StackIdAllocator.nextId()));
+    public final IntegerStateStack hintState = member(new IntegerStateStack(0, StackIdAllocator.nextId()).restoreBit(StateSet.R_HINT));
     public final PolygonStateStack polygonState = member(new PolygonStateStack(StackIdAllocator.nextId()));
     public final StencilStateStack stencilState = member(new StencilStateStack(StackIdAllocator.nextId()));
     public int stencilBitMask = 0xFFFFFFFF;
@@ -238,10 +243,9 @@ public class GLContextState {
     public final PixelStoreState[] clientAttribSavedPixelPack = new PixelStoreState[GLStateManager.CLIENT_ATTRIB_STACK_DEPTH];
     public final int[] clientAttribSavedUnpackBuffer = new int[GLStateManager.CLIENT_ATTRIB_STACK_DEPTH];
     public final int[] clientAttribSavedPackBuffer = new int[GLStateManager.CLIENT_ATTRIB_STACK_DEPTH];
-    public final int[] clientAttribSavedTextureUnit = new int[GLStateManager.CLIENT_ATTRIB_STACK_DEPTH];
-    public final int[] clientAttribSavedVertexFlags = new int[GLStateManager.CLIENT_ATTRIB_STACK_DEPTH];
-    public final boolean[] clientAttribSavedVertexArray = new boolean[GLStateManager.CLIENT_ATTRIB_STACK_DEPTH];
+    public final VAOManager.ClientArrays[] clientAttribSavedArrays = new VAOManager.ClientArrays[GLStateManager.CLIENT_ATTRIB_STACK_DEPTH];
     public int clientAttribStackPointer = 0;
+    public float maxPointSize = Float.NaN;
     public int restoreChangedMask;
     public long restoreUnitChangedMask;
     public final BlendState vanillaBlendBefore = new BlendState();

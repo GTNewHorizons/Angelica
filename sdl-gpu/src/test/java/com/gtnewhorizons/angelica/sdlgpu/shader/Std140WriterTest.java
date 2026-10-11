@@ -1,10 +1,14 @@
 package com.gtnewhorizons.angelica.sdlgpu.shader;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.util.spvc.Spvc;
 
 import java.nio.FloatBuffer;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -32,14 +36,26 @@ class Std140WriterTest {
         assertEquals(expected, actual, 1e-6f);
     }
 
-    @Test
-    void scalar_writesOneFloatAtOffset() {
-        final FloatBuffer ubo = outBuf(8);
+    private static Arguments nonArray(String name, int byteOffset, int vectorSize, float[] values, float... expectedUbo) {
+        return Arguments.of(name, byteOffset, vectorSize, values, expectedUbo);
+    }
+
+    /** Expected is the whole 8-float UBO, so slots the write must not touch are checked too. */
+    static Stream<Arguments> nonArrays() {
+        return Stream.of(
+            nonArray("scalar at byte offset 4", 4, 1, new float[]{42f}, 0, 42, 0, 0, 0, 0, 0, 0),
+            nonArray("vec2", 0, 2, new float[]{1f, 2f}, 1, 2, 0, 0, 0, 0, 0, 0),
+            nonArray("vec3 leaves the fourth lane alone", 0, 3, new float[]{1f, 2f, 3f}, 1, 2, 3, 0, 0, 0, 0, 0),
+            nonArray("vec4", 0, 4, new float[]{1f, 2f, 3f, 4f}, 1, 2, 3, 4, 0, 0, 0, 0));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("nonArrays")
+    void nonArray_writesPackedComponentsAtOffset(String name, int byteOffset, int vectorSize, float[] values, float[] expectedUbo) {
+        final FloatBuffer ubo = outBuf(expectedUbo.length);
         try {
-            Std140Writer.write(ubo, single(/*off*/ 4, /*size*/ 4, 1, 1), new float[]{42f}, 1);
-            assertEq(0f, ubo.get(0), "[0] before offset");
-            assertEq(42f, ubo.get(1), "[1] = scalar");
-            assertEq(0f, ubo.get(2), "[2] untouched");
+            Std140Writer.write(ubo, single(byteOffset, vectorSize * 4, vectorSize, 1), values, 1);
+            for (int i = 0; i < expectedUbo.length; i++) assertEq(expectedUbo[i], ubo.get(i), "[" + i + "]");
         } finally {
             MemoryUtil.memFree(ubo);
         }
@@ -55,47 +71,6 @@ class Std140WriterTest {
             assertEq(2f, ubo.get(4), "elem1");
             assertEq(3f, ubo.get(8), "elem2");
             assertEq(4f, ubo.get(12), "elem3");
-        } finally {
-            MemoryUtil.memFree(ubo);
-        }
-    }
-
-    @Test
-    void vec2_writesTwoFloatsPacked() {
-        final FloatBuffer ubo = outBuf(8);
-        try {
-            Std140Writer.write(ubo, single(/*off*/ 0, /*size*/ 8, 2, 1), new float[]{1f, 2f}, 1);
-            assertEq(1f, ubo.get(0), "x");
-            assertEq(2f, ubo.get(1), "y");
-            assertEq(0f, ubo.get(2), "after vec2");
-        } finally {
-            MemoryUtil.memFree(ubo);
-        }
-    }
-
-    @Test
-    void vec3_writesThreeFloatsPacked_noTrailingPaddingTouched() {
-        final FloatBuffer ubo = outBuf(8);
-        try {
-            Std140Writer.write(ubo, single(/*off*/ 0, /*size*/ 12, 3, 1), new float[]{1f, 2f, 3f}, 1);
-            assertEq(1f, ubo.get(0), "x");
-            assertEq(2f, ubo.get(1), "y");
-            assertEq(3f, ubo.get(2), "z");
-            assertEq(0f, ubo.get(3), "no spurious write past vec3");
-        } finally {
-            MemoryUtil.memFree(ubo);
-        }
-    }
-
-    @Test
-    void vec4_writesFourFloatsPacked() {
-        final FloatBuffer ubo = outBuf(8);
-        try {
-            Std140Writer.write(ubo, single(/*off*/ 0, /*size*/ 16, 4, 1), new float[]{1f, 2f, 3f, 4f}, 1);
-            assertEq(1f, ubo.get(0), "x");
-            assertEq(2f, ubo.get(1), "y");
-            assertEq(3f, ubo.get(2), "z");
-            assertEq(4f, ubo.get(3), "w");
         } finally {
             MemoryUtil.memFree(ubo);
         }

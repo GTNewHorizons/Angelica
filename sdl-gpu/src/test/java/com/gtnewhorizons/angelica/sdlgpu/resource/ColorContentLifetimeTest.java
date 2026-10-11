@@ -17,12 +17,11 @@ class ColorContentLifetimeTest {
     }
 
     @Test
-    void definedContentsSurviveAcrossFrames() {
+    void markedTextureHasDefinedContents() {
         final ResourceManager rm = SdlTestRig.resourceManager();
         rm.markTextureContentDefined(TEX);
         assertTrue(rm.isTextureContentDefined(TEX));
 
-        assertTrue(rm.isTextureContentDefined(TEX), "contents outlive the frame that produced them");
     }
 
     @Test

@@ -8,18 +8,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BufferContentsDefinedTest {
 
-    private static ResourceManager newResourceManager() {
-        return SdlTestRig.resourceManager();
-    }
-
     @Test
     void unknownBuffer_isNotUndefined() {
-        assertFalse(newResourceManager().hasUndefinedContents(4242));
+        assertFalse(SdlTestRig.resourceManager().hasUndefinedContents(4242));
     }
 
     @Test
     void markDefined_clearsTheFlag() {
-        final ResourceManager rm = newResourceManager();
+        final ResourceManager rm = SdlTestRig.resourceManager();
         SdlReflect.markUndefined(rm, 7);
         assertTrue(rm.hasUndefinedContents(7));
 
@@ -29,7 +25,7 @@ class BufferContentsDefinedTest {
 
     @Test
     void markDefined_isIdempotentAndIgnoresZero() {
-        final ResourceManager rm = newResourceManager();
+        final ResourceManager rm = SdlTestRig.resourceManager();
         rm.markBufferContentsDefined(0);
         rm.markBufferContentsDefined(9);
         rm.markBufferContentsDefined(9);
@@ -38,7 +34,7 @@ class BufferContentsDefinedTest {
 
     @Test
     void deleteBuffer_clearsTheFlag() {
-        final ResourceManager rm = newResourceManager();
+        final ResourceManager rm = SdlTestRig.resourceManager();
         SdlReflect.markUndefined(rm, 5);
         rm.recordBufferSizeOnly(5, 1000);
 

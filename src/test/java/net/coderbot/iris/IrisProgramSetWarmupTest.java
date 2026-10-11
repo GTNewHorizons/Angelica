@@ -1,6 +1,7 @@
 package net.coderbot.iris;
 
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
+import com.gtnewhorizons.angelica.glsm.testutil.TestThreads;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -34,11 +35,10 @@ class IrisProgramSetWarmupTest {
         final CompletableFuture<Void> warmup = new CompletableFuture<>();
         Reflect.setStatic(Iris.class, "programSetWarmup", warmup);
         final CountDownLatch done = new CountDownLatch(1);
-        final Thread joiner = new Thread(() -> {
+        final TestThreads.Worker joiner = TestThreads.start("warmup-joiner", () -> {
             await();
             done.countDown();
         });
-        joiner.start();
         assertFalse(done.await(200, TimeUnit.MILLISECONDS));
         warmup.complete(null);
         assertTrue(done.await(5, TimeUnit.SECONDS));

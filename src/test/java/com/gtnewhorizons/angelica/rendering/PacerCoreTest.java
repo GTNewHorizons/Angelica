@@ -1,39 +1,40 @@
 package com.gtnewhorizons.angelica.rendering;
 
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
-import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
+import static com.gtnewhorizons.angelica.rendering.PacerTestClock.MS;
+import static com.gtnewhorizons.angelica.rendering.PacerTestClock.P144;
+import static com.gtnewhorizons.angelica.rendering.PacerTestClock.P5994;
+import static com.gtnewhorizons.angelica.rendering.PacerTestClock.P60;
+import static com.gtnewhorizons.angelica.rendering.PacerTestClock.cadenceNanos;
+import static com.gtnewhorizons.angelica.rendering.PacerTestClock.cpuHighNanos;
+import static com.gtnewhorizons.angelica.rendering.PacerTestClock.driverPaced;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PacerCoreTest {
 
-    private static final long MS = 1_000_000L;
-    private static final long P60 = 1_000_000_000L / 60;
-    private static final long P5994 = 1_000_000_000L * 1001 / 60_000;
-    private static final long P144 = 1_000_000_000L / 144;
-
     private static final class Rig {
-        final long[] now = { 0L };
+        final PacerTestClock time = new PacerTestClock();
         final PacerCore core;
         final List<Long> presents = new ArrayList<>();
-        int parks;
 
         Rig(long refreshPeriodNanos, boolean tearFree, int capHz) {
             this(refreshPeriodNanos, tearFree, tearFree, capHz);
         }
 
         Rig(long refreshPeriodNanos, boolean tearFree, boolean vsyncOn, int capHz) {
-            final PacerSleeper sleeper = new PacerSleeper(() -> now[0], nanos -> {
-                parks++;
-                now[0] += nanos;
-            }, false);
-            core = new PacerCore(() -> now[0], sleeper);
+            final PacerSleeper sleeper = new PacerSleeper(time.clock(), time.parker(), false);
+            core = new PacerCore(time.clock(), sleeper);
             core.setRefreshPeriodNanos(refreshPeriodNanos);
             core.setTearFree(tearFree);
             core.setVsyncOn(vsyncOn);
@@ -42,31 +43,31 @@ class PacerCoreTest {
 
         long frameWithFirstClear(long blockNanos, long workNanos) {
             if (blockNanos > 0L) {
-                core.onGateSample(blockNanos, now[0]);
+                core.onGateSample(blockNanos, time.now);
             }
-            now[0] = core.beginFrame(now[0]);
-            core.markFrameStart(now[0]);
-            now[0] += blockNanos + workNanos;
-            final long present = core.beforePresent(now[0], blockNanos);
-            now[0] = present;
+            time.now = core.beginFrame(time.now);
+            core.markFrameStart(time.now);
+            time.now += blockNanos + workNanos;
+            final long present = core.beforePresent(time.now, blockNanos);
+            time.now = present;
             presents.add(present);
             return present;
         }
 
         long frame(long workNanos) {
-            now[0] = core.beginFrame(now[0]);
-            core.markFrameStart(now[0]);
-            now[0] += workNanos;
-            final long present = core.beforePresent(now[0], 0L);
-            now[0] = present;
+            time.now = core.beginFrame(time.now);
+            core.markFrameStart(time.now);
+            time.now += workNanos;
+            final long present = core.beforePresent(time.now, 0L);
+            time.now = present;
             presents.add(present);
             return present;
         }
 
         void feed(long gateEndNanos, long durationNanos, long atNanos) {
             if (durationNanos > 0L) core.onGateSample(durationNanos, gateEndNanos);
-            now[0] = Math.max(now[0], atNanos);
-            now[0] = core.beginFrame(now[0]);
+            time.now = Math.max(time.now, atNanos);
+            time.now = core.beginFrame(time.now);
         }
 
         void feedRun(int count, long firstEndNanos, long durationNanos, long strideNanos) {
@@ -79,18 +80,30 @@ class PacerCoreTest {
 
         void idleFrames(int count, long atNanos) {
             for (int i = 0; i < count; i++) {
-                now[0] = Math.max(now[0], atNanos + i);
-                core.beginFrame(now[0]);
+                time.now = Math.max(time.now, atNanos + i);
+                core.beginFrame(time.now);
             }
         }
     }
 
-    @Test
-    void aCapAtOrAboveTheRefreshRateCollapsesOntoTheRefreshPeriod() {
-        assertEquals(P5994, PacerCore.cadencePeriodNanos(60, P5994, true));
-        assertEquals(P60, PacerCore.cadencePeriodNanos(58, P60, true));
-        assertEquals(P60, PacerCore.cadencePeriodNanos(0, P60, true));
-        assertEquals(P60, PacerCore.cadencePeriodNanos(240, P60, true));
+    static Stream<Arguments> cadencePeriods() {
+        return Stream.of(
+            Arguments.of("a cap at the refresh rate collapses onto the refresh period", 60, P5994, true, P5994),
+            Arguments.of("a cap near the refresh rate collapses onto the refresh period", 58, P60, true, P60),
+            Arguments.of("no cap uses the refresh period when tear free", 0, P60, true, P60),
+            Arguments.of("a cap above the refresh rate collapses onto the refresh period", 240, P60, true, P60),
+            Arguments.of("a cap far from every multiple keeps its literal period", 45, P60, true, 1_000_000_000L / 45),
+            Arguments.of("a cap far from every multiple keeps its literal period", 100, P144, true, 1_000_000_000L / 100),
+            Arguments.of("a tearing mode ignores the refresh period", 100, P60, false, 10 * MS),
+            Arguments.of("a tearing mode with no cap is unpaced", 0, P60, false, 0L),
+            Arguments.of("a zero refresh period with no cap is unpaced", 0, 0L, true, 0L),
+            Arguments.of("a zero refresh period keeps the literal cap", 100, 0L, true, 10 * MS));
+    }
+
+    @ParameterizedTest(name = "{0}: cadencePeriodNanos({1}, {2}, {3}) -> {4}")
+    @MethodSource("cadencePeriods")
+    void cadencePeriodNanos(String name, int capHz, long refreshPeriodNanos, boolean tearFree, long expected) {
+        assertEquals(expected, PacerCore.cadencePeriodNanos(capHz, refreshPeriodNanos, tearFree));
     }
 
     @Test
@@ -98,26 +111,6 @@ class PacerCoreTest {
         assertEquals(2 * P60, PacerCore.cadencePeriodNanos(30, P60, true));
         assertEquals(3 * P144, PacerCore.cadencePeriodNanos(50, P144, true));
         assertEquals(48, RenderBackend.hzFromPeriod(3 * P144));
-    }
-
-    @Test
-    void aCapFarFromEveryMultipleKeepsItsLiteralPeriod() {
-        assertEquals(1_000_000_000L / 45, PacerCore.cadencePeriodNanos(45, P60, true));
-        assertEquals(1_000_000_000L / 100, PacerCore.cadencePeriodNanos(100, P144, true));
-    }
-
-    @Test
-    void aTearingModeIgnoresTheRefreshPeriodEntirely() {
-        assertEquals(10 * MS, PacerCore.cadencePeriodNanos(100, P60, false));
-        assertEquals(0L, PacerCore.cadencePeriodNanos(0, P60, false));
-        assertEquals(0L, PacerCore.cadencePeriodNanos(0, 0L, true));
-        assertEquals(10 * MS, PacerCore.cadencePeriodNanos(100, 0L, true));
-    }
-
-    @Test
-    void aZeroCapUsesTheRefreshPeriodOnlyWhenTearFree() {
-        assertEquals(P60, PacerCore.cadencePeriodNanos(0, P60, true));
-        assertEquals(0L, PacerCore.cadencePeriodNanos(0, P60, false));
     }
 
     @Test
@@ -129,7 +122,7 @@ class PacerCoreTest {
 
         rig.feed(20 * MS + PacerCore.LOCK_PAIRS * P60, 5 * MS, 20 * MS + PacerCore.LOCK_PAIRS * P60);
         assertTrue(rig.core.locked());
-        assertTrue(Reflect.<Boolean>invoke(rig.core, "driverPaced", new Class<?>[0]));
+        assertTrue(driverPaced(rig.core));
         assertFalse(rig.core.probing());
     }
 
@@ -254,8 +247,8 @@ class PacerCoreTest {
         final Rig rig = new Rig(P60, true, 30);
         rig.feedRun(PacerCore.LOCK_PAIRS + 1, 20 * MS, 5 * MS, P60);
         assertTrue(rig.core.locked());
-        assertEquals(2 * P60, Reflect.<Long>get(rig.core, "cadenceNanos"));
-        assertFalse(Reflect.<Boolean>invoke(rig.core, "driverPaced", new Class<?>[0]));
+        assertEquals(2 * P60, cadenceNanos(rig.core));
+        assertFalse(driverPaced(rig.core));
     }
 
     @Test
@@ -272,13 +265,13 @@ class PacerCoreTest {
         blocked.frameWithFirstClear(5 * MS, 7 * MS);
         blocked.frame(4 * MS);
 
-        assertEquals(7 * MS, Reflect.<Long>get(blocked.core, "cpuHighNanos"));
+        assertEquals(7 * MS, cpuHighNanos(blocked.core));
 
         final Rig plain = new Rig(P60, false, 60);
         plain.frame(12 * MS);
         plain.frame(4 * MS);
 
-        assertEquals(12 * MS, Reflect.<Long>get(plain.core, "cpuHighNanos"));
+        assertEquals(12 * MS, cpuHighNanos(plain.core));
     }
 
     @Test
@@ -304,17 +297,17 @@ class PacerCoreTest {
         final Rig rig = new Rig(P60, false, 60);
         for (int i = 0; i < 200; i++) rig.frame(4 * MS);
         final long before = rig.core.marginNanos();
-        final long cpuBefore = Reflect.<Long>get(rig.core, "cpuHighNanos");
+        final long cpuBefore = cpuHighNanos(rig.core);
         assertEquals(4 * MS, cpuBefore);
 
         rig.frame(208 * MS);
         rig.frame(4 * MS);
         assertEquals(before, rig.core.marginNanos());
-        assertEquals(cpuBefore, Reflect.<Long>get(rig.core, "cpuHighNanos"));
+        assertEquals(cpuBefore, cpuHighNanos(rig.core));
 
         rig.frame(4 * MS);
         assertEquals(before, rig.core.marginNanos());
-        assertEquals(cpuBefore, Reflect.<Long>get(rig.core, "cpuHighNanos"));
+        assertEquals(cpuBefore, cpuHighNanos(rig.core));
     }
 
     @Test
@@ -338,33 +331,33 @@ class PacerCoreTest {
     void idleWorkStillRunsWhenTheDriverPaces() {
         final Rig rig = new Rig(P60, true, 0);
         rig.feedRun(PacerCore.LOCK_PAIRS + 1, 20 * MS, 5 * MS, P60);
-        assertTrue(Reflect.<Boolean>invoke(rig.core, "driverPaced", new Class<?>[0]));
+        assertTrue(driverPaced(rig.core));
 
         final int[] runs = { 0 };
         rig.core.setIdleWork(deadline -> {
             runs[0]++;
-            rig.now[0] += MS;
+            rig.time.now += MS;
         });
-        final int parksBefore = rig.parks;
+        final int parksBefore = rig.time.parks;
         for (int i = 0; i < 10; i++) rig.frame(2 * MS);
 
         assertEquals(10, runs[0], "a driver-paced frame still has idle time before the present target");
-        assertEquals(parksBefore, rig.parks, "but it must never sleep");
+        assertEquals(parksBefore, rig.time.parks, "but it must never sleep");
     }
 
     @Test
     void theFirstPacedFrameAfterAnUnpacedStretchIsAnchoredWithoutSleeping() {
         final Rig rig = new Rig(P60, false, 0);
         for (int i = 0; i < 5; i++) rig.frame(4 * MS);
-        assertEquals(0, rig.parks);
+        assertEquals(0, rig.time.parks);
 
         rig.core.setCap(60);
         rig.frame(4 * MS);
-        assertEquals(0, rig.parks, "the anchor frame must not stall the loop");
+        assertEquals(0, rig.time.parks, "the anchor frame must not stall the loop");
         assertEquals(0L, rig.core.slackNanos());
 
         rig.frame(4 * MS);
-        assertTrue(rig.parks > 0, "the cadence resumes on the frame after the anchor");
+        assertTrue(rig.time.parks > 0, "the cadence resumes on the frame after the anchor");
     }
 
     @Test
@@ -372,8 +365,8 @@ class PacerCoreTest {
         final Rig rig = new Rig(P60, false, 60);
         for (int i = 0; i < 20; i++) rig.frame(4 * MS);
 
-        rig.now[0] -= 500 * MS;
-        rig.core.beginFrame(rig.now[0]);
+        rig.time.now -= 500 * MS;
+        rig.core.beginFrame(rig.time.now);
 
         assertTrue(rig.core.slackNanos() <= P60, "a backward clock step must not park for half a second: " + rig.core.slackNanos());
     }
@@ -395,7 +388,7 @@ class PacerCoreTest {
     void anUnpacedFrameNeverSleeps() {
         final Rig rig = new Rig(P60, false, 0);
         for (int i = 0; i < 50; i++) rig.frame(4 * MS);
-        assertEquals(0, rig.parks);
+        assertEquals(0, rig.time.parks);
         assertEquals(0L, rig.core.slackNanos());
     }
 
@@ -438,7 +431,7 @@ class PacerCoreTest {
             assertFalse(rig.core.probing());
         }
         assertFalse(rig.core.locked());
-        assertEquals(P60, Reflect.<Long>get(rig.core, "cadenceNanos"));
+        assertEquals(P60, cadenceNanos(rig.core));
     }
 
     @Test
@@ -476,7 +469,7 @@ class PacerCoreTest {
             blocked.frameWithFirstClear(5 * MS, 4 * MS);
         }
 
-        assertEquals(Reflect.<Long>get(plain.core, "cpuHighNanos"), Reflect.<Long>get(blocked.core, "cpuHighNanos"));
+        assertEquals(cpuHighNanos(plain.core), cpuHighNanos(blocked.core));
         assertEquals(plain.core.marginNanos(), blocked.core.marginNanos());
         assertTrue(blocked.core.marginNanos() < PacerCore.MARGIN_CEILING_NANOS, "the driver block must not saturate the margin");
     }

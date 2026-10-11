@@ -2,11 +2,8 @@ package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
 import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
-import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
 import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -21,6 +18,8 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import sun.misc.Unsafe;
 
+import static com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig.BLACK;
+import static com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig.RED;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -30,22 +29,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class GlsmSdlAttachmentClearTest {
 
     private static final int SIZE = GlsmSdlHeadlessRig.SIZE;
-    private static final int RED = 0xFFFF0000;
-    private static final int BLACK = 0xFF000000;
-
-    @BeforeAll
-    static void boot() {
-        GlsmSdlHeadlessRig.boot();
-    }
-
-    private static FrameManager frameManager() {
-        return Reflect.get(BackendManager.RENDER_BACKEND, "frameManager");
-    }
 
     private static FrameManager.FrameState frame() {
-        return frameManager().frame();
+        return GlsmSdlHeadlessRig.frameManager().frame();
     }
 
+    // Reflect.setStaticFinal rejects primitive fields.
     private static void setDisableInPassClear(boolean value) {
         try {
             final Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
@@ -56,6 +45,27 @@ class GlsmSdlAttachmentClearTest {
         } catch (ReflectiveOperationException e) {
             throw new AssertionError(e);
         }
+    }
+
+    /** Clears colour to black and depth to 0.9, then draws a quad so a render pass is open. */
+    private static void primeTarget(float r, float g, float b) {
+        GlsmSdlHeadlessRig.bindTarget();
+        GLStateManager.glDepthMask(true);
+        GLStateManager.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        GLStateManager.glClearDepth(0.9);
+        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
+        GlsmSdlHeadlessRig.solidQuad(r, g, b);
+    }
+
+    private static void primeTargetWithStencil(int stencil) {
+        GlsmSdlHeadlessRig.bindTarget();
+        GLStateManager.glDepthMask(true);
+        GLStateManager.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        GLStateManager.glClearDepth(1.0);
+        GLStateManager.glClearStencil(stencil);
+        GLStateManager.glStencilMask(0xFF);
+        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT);
+        GlsmSdlHeadlessRig.solidQuad(0.1f, 0.1f, 0.1f);
     }
 
     private static void drawFullQuadAtZ(float z, float r, float g, float b) {
@@ -93,12 +103,7 @@ class GlsmSdlAttachmentClearTest {
 
     @Test
     void depthMaskOffSuppressesTheClearAndBreaksNoPass() {
-        GlsmSdlHeadlessRig.bindTarget();
-        GLStateManager.glDepthMask(true);
-        GLStateManager.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        GLStateManager.glClearDepth(0.9);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
-        GlsmSdlHeadlessRig.solidQuad(0.1f, 0.1f, 0.1f);
+        primeTarget(0.1f, 0.1f, 0.1f);
 
         final FrameManager.FrameState f = frame();
         final long passBefore = f.renderPass;
@@ -119,12 +124,7 @@ class GlsmSdlAttachmentClearTest {
 
     @Test
     void inPassPathIsTakenForACompatibleActivePass() {
-        GlsmSdlHeadlessRig.bindTarget();
-        GLStateManager.glDepthMask(true);
-        GLStateManager.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        GLStateManager.glClearDepth(0.9);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
-        GlsmSdlHeadlessRig.solidQuad(0.1f, 0.1f, 0.1f);
+        primeTarget(0.1f, 0.1f, 0.1f);
 
         final FrameManager.FrameState f = frame();
         final long passBefore = f.renderPass;
@@ -142,12 +142,7 @@ class GlsmSdlAttachmentClearTest {
 
     @Test
     void disableInPassClearFlagForcesTheLegacyPath() {
-        GlsmSdlHeadlessRig.bindTarget();
-        GLStateManager.glDepthMask(true);
-        GLStateManager.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        GLStateManager.glClearDepth(0.9);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
-        GlsmSdlHeadlessRig.solidQuad(0.1f, 0.1f, 0.1f);
+        primeTarget(0.1f, 0.1f, 0.1f);
 
         final FrameManager.FrameState f = frame();
         assertTrue(f.renderPass != 0, "expected an active render pass before the clear");
@@ -177,12 +172,7 @@ class GlsmSdlAttachmentClearTest {
         try {
             GlsmSdlHeadlessRig.beginFrame();
             GlsmSdlHeadlessRig.resetState();
-            GlsmSdlHeadlessRig.bindTarget();
-            GLStateManager.glDepthMask(true);
-            GLStateManager.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-            GLStateManager.glClearDepth(0.9);
-            GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
-            GlsmSdlHeadlessRig.solidQuad(0.1f, 0.1f, 0.1f);
+            primeTarget(0.1f, 0.1f, 0.1f);
 
             GLStateManager.glDepthMask(true);
             GLStateManager.glClearDepth(depthValue);
@@ -196,12 +186,7 @@ class GlsmSdlAttachmentClearTest {
 
     @Test
     void scissoredClearOnlyAffectsTheScissorRect() {
-        GlsmSdlHeadlessRig.bindTarget();
-        GLStateManager.glDepthMask(true);
-        GLStateManager.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        GLStateManager.glClearDepth(0.9);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
-        GlsmSdlHeadlessRig.solidQuad(0.1f, 0.1f, 0.1f);
+        primeTarget(0.1f, 0.1f, 0.1f);
 
         GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
         GLStateManager.glScissor(0, 0, SIZE / 2, SIZE);
@@ -229,14 +214,7 @@ class GlsmSdlAttachmentClearTest {
 
     @Test
     void stencilWriteMaskIsHonored() {
-        GlsmSdlHeadlessRig.bindTarget();
-        GLStateManager.glDepthMask(true);
-        GLStateManager.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        GLStateManager.glClearDepth(1.0);
-        GLStateManager.glClearStencil(0xA5);
-        GLStateManager.glStencilMask(0xFF);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT);
-        GlsmSdlHeadlessRig.solidQuad(0.1f, 0.1f, 0.1f);
+        primeTargetWithStencil(0xA5);
 
         final FrameManager.FrameState f = frame();
         final long passBefore = f.renderPass;
@@ -258,14 +236,7 @@ class GlsmSdlAttachmentClearTest {
     @Test
     @Disabled("stencil reference >= 0x80 compares as 0xFF on this backend; see stencil reference finding")
     void stencilReferenceAtOrAbove0x80ComparesExactly() {
-        GlsmSdlHeadlessRig.bindTarget();
-        GLStateManager.glDepthMask(true);
-        GLStateManager.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        GLStateManager.glClearDepth(1.0);
-        GLStateManager.glClearStencil(0xAF);
-        GLStateManager.glStencilMask(0xFF);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT);
-        GlsmSdlHeadlessRig.solidQuad(0.1f, 0.1f, 0.1f);
+        primeTargetWithStencil(0xAF);
 
         final StencilProbeResult result = probeStencilReconcile();
         assertEquals(0xAF, result.bitPlaneValue(), "bit-plane read of a plain 0xAF stencil clear");
@@ -274,14 +245,7 @@ class GlsmSdlAttachmentClearTest {
 
     @Test
     void baselineStencilClearReadsBackExactly() {
-        GlsmSdlHeadlessRig.bindTarget();
-        GLStateManager.glDepthMask(true);
-        GLStateManager.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        GLStateManager.glClearDepth(1.0);
-        GLStateManager.glClearStencil(0xA5);
-        GLStateManager.glStencilMask(0xFF);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT);
-        GlsmSdlHeadlessRig.solidQuad(0.1f, 0.1f, 0.1f);
+        primeTargetWithStencil(0xA5);
 
         assertEquals(0xA5, readStencilByteSameFrame(), "a full-write-mask clear (the legacy load-op path) must read back exactly what was cleared");
     }
@@ -375,12 +339,7 @@ class GlsmSdlAttachmentClearTest {
 
     @Test
     void scissoredColorAndDepthClearStaysInTheRect() {
-        GlsmSdlHeadlessRig.bindTarget();
-        GLStateManager.glDepthMask(true);
-        GLStateManager.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        GLStateManager.glClearDepth(0.9);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
-        GlsmSdlHeadlessRig.solidQuad(0.0f, 0.0f, 1.0f);
+        primeTarget(0.0f, 0.0f, 1.0f);
 
         final FrameManager.FrameState f = frame();
         final long passBefore = f.renderPass;
@@ -594,7 +553,7 @@ class GlsmSdlAttachmentClearTest {
         GLStateManager.glDepthMask(true);
         GLStateManager.glClear(GL11.GL_DEPTH_BUFFER_BIT);
 
-        final ResourceManager resourceManager = Reflect.get(BackendManager.RENDER_BACKEND, "resourceManager");
+        final ResourceManager resourceManager = GlsmSdlHeadlessRig.resourceManager();
         final long depthTexture = resourceManager.getFbo(fbo).depthTexture;
         GlsmSdlHeadlessRig.endFrame();
 

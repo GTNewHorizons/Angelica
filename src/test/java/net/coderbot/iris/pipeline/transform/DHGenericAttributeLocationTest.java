@@ -1,8 +1,7 @@
 package net.coderbot.iris.pipeline.transform;
 
-import com.gtnewhorizons.angelica.glsm.RenderSystem;
-import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,16 +44,21 @@ class DHGenericAttributeLocationTest {
         }
         """;
 
+    private static int previousMaxGlslVersion;
+
     @BeforeAll
-    static void initShaderTransformer() throws Exception {
-        Reflect.setStatic(RenderSystem.class, "maxGlslVersion", 460);
-        ShaderTransformer.init();
+    static void pinGlslVersion() {
+        previousMaxGlslVersion = TransformTestSupport.pinGlslVersion(460);
+    }
+
+    @AfterAll
+    static void restoreGlslVersion() {
+        TransformTestSupport.restoreGlslVersion(previousMaxGlslVersion);
     }
 
     @BeforeEach
     void clearCaches() {
-        TransformPatcher.clearCache();
-        ShaderTransformer.clearCache();
+        TransformTestSupport.clearCaches();
     }
 
     private static String patchedVertex() {

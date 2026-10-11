@@ -3,6 +3,8 @@ package com.gtnewhorizons.angelica.glsm;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.lwjgl.LWJGLException;
 import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.GL11;
@@ -12,6 +14,7 @@ import org.lwjgl.opengl.SharedDrawable;
 import java.nio.ByteBuffer;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -43,21 +46,13 @@ public class GLSM_ServerSideState_UnitTest {
     private boolean originalSplashComplete;
     private Thread originalDrawableGLHolder;
 
-    private static void setSplashComplete(boolean value) {
-        SplashWindow.setSplashComplete(value);
-    }
-
-    private static boolean getSplashComplete() {
-        return SplashWindow.isSplashComplete();
-    }
-
     @BeforeEach
     void setupSharedDrawable() throws Exception {
-        originalSplashComplete = getSplashComplete();
+        originalSplashComplete = SplashWindow.isSplashComplete();
         originalDrawableGLHolder = GLStateManager.getDrawableGLHolder();
 
         // Reset splash state to simulate splash screen scenario
-        setSplashComplete(false);
+        SplashWindow.setSplashComplete(false);
 
         sharedDrawable = new SharedDrawable(Display.getDrawable());
 
@@ -149,7 +144,7 @@ public class GLSM_ServerSideState_UnitTest {
         // Restore original state
         GLStateManager.setDrawableGL(null);
         GLStateManager.setDrawableGLHolder(originalDrawableGLHolder);
-        setSplashComplete(originalSplashComplete);
+        SplashWindow.setSplashComplete(originalSplashComplete);
         if (originalSplashComplete) {
             GLStateManager.markSplashComplete("test");
         }
@@ -214,46 +209,81 @@ public class GLSM_ServerSideState_UnitTest {
         GL11.glDeleteTextures(texShared[0]);
     }
 
+    /** One texture parameter through its typed GLSM setter and getter, plus the raw driver read. Values travel as float. */
+    private static final class TexParam {
+        final String name;
+        final float initial;
+        final float changed;
+        final FloatConsumer set;
+        final FloatSupplier glsm;
+        final FloatSupplier driver;
+
+        TexParam(String name, float initial, float changed, FloatConsumer set, FloatSupplier glsm, FloatSupplier driver) {
+            this.name = name;
+            this.initial = initial;
+            this.changed = changed;
+            this.set = set;
+            this.glsm = glsm;
+            this.driver = driver;
+        }
+
+        @Override
+        public String toString() {
+            return name;
+        }
+    }
+
+    private interface FloatConsumer {
+        void accept(float value);
+    }
+
+    private interface FloatSupplier {
+        float get();
+    }
+
+    static Stream<TexParam> texParams() {
+        return Stream.of(
+            new TexParam("glTexParameteri MIN_FILTER", GL11.GL_LINEAR, GL11.GL_NEAREST,
+                v -> GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, (int) v),
+                () -> GLStateManager.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER),
+                () -> GL11.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER)),
+            new TexParam("glTexParameterf LOD_BIAS", 0.0f, 1.5f,
+                v -> GLStateManager.glTexParameterf(GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_LOD_BIAS, v),
+                () -> GLStateManager.glGetTexParameterf(GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_LOD_BIAS),
+                () -> GL11.glGetTexParameterf(GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_LOD_BIAS)));
+    }
+
     /**
-     * Test: SharedDrawable sets texture MIN_FILTER, verify both GLSM and actual GL state are correct on both contexts.
+     * Test: SharedDrawable sets a texture parameter, verify both GLSM and actual GL state are correct on both contexts.
      */
-    @Test
-    void testTexParameterFromSharedDrawable() throws InterruptedException {
+    @ParameterizedTest
+    @MethodSource("texParams")
+    void testTexParameterFromSharedDrawable(TexParam param) throws InterruptedException {
         int texId = GL11.glGenTextures();
 
         try {
             GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texId);
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+            param.set.accept(param.initial);
 
-            int initialGLSM = GLStateManager.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER);
-            assertEquals(GL11.GL_LINEAR, initialGLSM, "Initial GLSM should be GL_LINEAR");
+            assertEquals(param.initial, param.glsm.get(), 0.001f, "Initial GLSM value");
+            assertEquals(param.initial, param.driver.get(), 0.001f, "Initial GL value");
 
-            int initialGL = GL11.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER);
-            assertEquals(GL11.GL_LINEAR, initialGL, "Initial GL should be GL_LINEAR");
-
-            // SharedDrawable: bind and change params to GL_NEAREST via GLSM
             executeOnSharedDrawable(() -> {
                 GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texId);
 
                 int boundTex = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
                 assertEquals(texId, boundTex, "SharedDrawable should have texId bound");
 
-                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+                param.set.accept(param.changed);
 
-                int glsmValue = GLStateManager.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER);
-                assertEquals(GL11.GL_NEAREST, glsmValue, "SharedDrawable GLSM should return GL_NEAREST");
-
-                int glValue = GL11.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER);
-                assertEquals(GL11.GL_NEAREST, glValue, "SharedDrawable GL should be GL_NEAREST");
+                assertEquals(param.changed, param.glsm.get(), 0.001f, "SharedDrawable GLSM value");
+                assertEquals(param.changed, param.driver.get(), 0.001f, "SharedDrawable GL value");
             });
 
             GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texId);
 
-            int mainGLSM = GLStateManager.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER);
-            assertEquals(GL11.GL_NEAREST, mainGLSM, "Main thread GLSM should return GL_NEAREST");
-
-            int mainGL = GL11.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER);
-            assertEquals(GL11.GL_NEAREST, mainGL, "Main thread GL should be GL_NEAREST");
+            assertEquals(param.changed, param.glsm.get(), 0.001f, "Main thread GLSM value");
+            assertEquals(param.changed, param.driver.get(), 0.001f, "Main thread GL value");
 
         } finally {
             GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
@@ -359,50 +389,6 @@ public class GLSM_ServerSideState_UnitTest {
     }
 
     /**
-     * Test glTexParameterf (float parameters like LOD_BIAS).
-     */
-    @Test
-    void testTexParameterfFromSharedDrawable() throws InterruptedException {
-        int texId = GL11.glGenTextures();
-
-        try {
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texId);
-            GLStateManager.glTexParameterf(GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_LOD_BIAS, 0.0f);
-
-            float initialGLSM = GLStateManager.glGetTexParameterf(GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_LOD_BIAS);
-            float initialGL = GL11.glGetTexParameterf(GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_LOD_BIAS);
-            assertEquals(0.0f, initialGLSM, 0.001f, "Initial GLSM LOD_BIAS should be 0.0");
-            assertEquals(0.0f, initialGL, 0.001f, "Initial GL LOD_BIAS should be 0.0");
-
-            // SharedDrawable: change LOD_BIAS
-            executeOnSharedDrawable(() -> {
-                GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texId);
-
-                int bound = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
-                assertEquals(texId, bound, "SharedDrawable should have texId bound");
-
-                GLStateManager.glTexParameterf(GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_LOD_BIAS, 1.5f);
-
-                float glsmValue = GLStateManager.glGetTexParameterf(GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_LOD_BIAS);
-                assertEquals(1.5f, glsmValue, 0.001f, "SharedDrawable GLSM should return 1.5");
-                float glValue = GL11.glGetTexParameterf(GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_LOD_BIAS);
-                assertEquals(1.5f, glValue, 0.001f, "SharedDrawable GL should be 1.5");
-            });
-
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texId);
-
-            float finalGLSM = GLStateManager.glGetTexParameterf(GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_LOD_BIAS);
-            float finalGL = GL11.glGetTexParameterf(GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_LOD_BIAS);
-            assertEquals(1.5f, finalGLSM, 0.001f, "Main thread GLSM should return 1.5");
-            assertEquals(1.5f, finalGL, 0.001f, "Main thread GL should be 1.5");
-
-        } finally {
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-            GLStateManager.glDeleteTextures(texId);
-        }
-    }
-
-    /**
      * Test glTexImage2D: SharedDrawable uploads texture data, verify dimensions cached correctly.
      */
     @Test
@@ -478,7 +464,7 @@ public class GLSM_ServerSideState_UnitTest {
             GL11.glDeleteTextures(deferredGen);
             assertTrue(GL11.glIsTexture(texId), "Delete should stay deferred while the splash is not complete");
 
-            setSplashComplete(true);
+            SplashWindow.setSplashComplete(true);
             flushGen = GLStateManager.glGenTextures();
             assertFalse(GL11.glIsTexture(texId), "Texture should be gone after the post-splash flush");
             assertEquals(0, GLStateManager.getBoundTextureForServerState(), "Flush should scrub the main thread binding");

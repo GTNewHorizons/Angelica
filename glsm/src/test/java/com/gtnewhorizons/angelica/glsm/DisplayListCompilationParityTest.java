@@ -9,6 +9,7 @@ import org.lwjgl.opengl.GL11;
 
 import java.nio.FloatBuffer;
 
+import static com.gtnewhorizons.angelica.glsm.GlTestSupport.assertMatrixEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -62,12 +63,6 @@ class DisplayListCompilationParityTest {
         final FloatBuffer buf = BufferUtils.createFloatBuffer(16);
         c.getFloat(pname, buf);
         return buf;
-    }
-
-    private static void assertMatrixEquals(FloatBuffer expected, FloatBuffer actual, String message) {
-        for (int i = 0; i < 16; i++) {
-            assertEquals(expected.get(i), actual.get(i), 0.001f, message + " (element " + i + ")");
-        }
     }
 
     @BeforeEach

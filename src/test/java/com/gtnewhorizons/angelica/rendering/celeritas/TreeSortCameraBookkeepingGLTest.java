@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
+import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import org.embeddedt.embeddium.impl.gl.device.CommandList;
 import org.embeddedt.embeddium.impl.gl.device.RenderDevice;
 import org.embeddedt.embeddium.impl.render.chunk.ChunkRenderMatrices;
@@ -32,8 +33,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.lang.reflect.Field;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -109,10 +108,7 @@ class TreeSortCameraBookkeepingGLTest {
         rsm.onSectionAdded(0, 0, 0);
         section = rsm.getAllRenderSections().iterator().next();
 
-        final Field f = RenderSectionManager.class.getDeclaredField("cutPlaneIndex");
-        f.setAccessible(true);
-        @SuppressWarnings("unchecked")
-        final CutPlaneIndex<RenderSection> index = (CutPlaneIndex<RenderSection>) f.get(rsm);
+        final CutPlaneIndex<RenderSection> index = Reflect.get(rsm, "cutPlaneIndex");
         index.put(section, new float[][] { { 8f }, {}, {} }, section.getOriginX(), section.getOriginY(), section.getOriginZ());
         assertEquals(1, index.size());
     }

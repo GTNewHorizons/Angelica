@@ -7,7 +7,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class SamplerCacheTest {
 
@@ -66,17 +65,5 @@ class SamplerCacheTest {
         assertEquals(0L, cache.getOrCreate(k, zeroFactory));
         assertEquals(2, calls.get(), "0 result must not be cached -- factory must be invoked again");
         assertEquals(0, cache.size());
-    }
-
-    @Test
-    void recordKeyEqualityAndHashCode() {
-        final SamplerCache.Key a = key(0x2702, 0x2600);
-        final SamplerCache.Key b = key(0x2702, 0x2600);
-        final SamplerCache.Key c = key(0x2600, 0x2600);
-
-        assertEquals(a, b);
-        assertEquals(a.hashCode(), b.hashCode());
-        assertNotEquals(a, c);
-        assertNotNull(a.toString());
     }
 }

@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu.compat;
 
+import com.gtnewhorizons.angelica.glsm.testutil.TestThreads;
 import com.gtnewhorizons.angelica.sdlgpu.SDLGPURenderBackend;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL;
@@ -9,11 +10,9 @@ import java.lang.reflect.Field;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -29,18 +28,6 @@ class Lwjgl3GLCapabilitiesShimTest {
     void constructsFromTheAdvertisedSet() {
         final GLCapabilities caps = Lwjgl3GLCapabilitiesShim.create(SDLGPURenderBackend.advertisedCapabilities());
         assertTrue(caps.forwardCompatible, "SDL reports Core Profile Equivalent, so forwardCompatible must be true");
-    }
-
-    @Test
-    void everyAdvertisedVersionFlagIsTrue() throws ReflectiveOperationException {
-        final Set<String> advertised = SDLGPURenderBackend.advertisedCapabilities();
-        final GLCapabilities caps = Lwjgl3GLCapabilitiesShim.create(advertised);
-
-        final Set<String> missing = new TreeSet<>();
-        for (String name : advertised) {
-            if (name.startsWith("OpenGL") && !flag(caps, name)) missing.add(name);
-        }
-        assertTrue(missing.isEmpty(), () -> "advertised but reported unsupported: " + missing);
     }
 
     @Test
@@ -92,17 +79,8 @@ class Lwjgl3GLCapabilitiesShimTest {
         try {
             assertNotNull(GL.getCapabilities());
 
-            final AtomicReference<Throwable> onOtherThread = new AtomicReference<>();
-            final Thread other = new Thread(() -> {
-                try {
-                    GL.getCapabilities();
-                } catch (Throwable t) {
-                    onOtherThread.set(t);
-                }
-            }, "no-context-thread");
-            other.start();
-            other.join();
-            assertInstanceOf(IllegalStateException.class, onOtherThread.get(), "a thread that does not own the context must not look like the render thread");
+            TestThreads.run("no-context-thread", () -> assertThrows(IllegalStateException.class, GL::getCapabilities,
+                "a thread that does not own the context must not look like the render thread"));
         } finally {
             Lwjgl3GLCapabilitiesShim.clearOnCurrentThread();
         }

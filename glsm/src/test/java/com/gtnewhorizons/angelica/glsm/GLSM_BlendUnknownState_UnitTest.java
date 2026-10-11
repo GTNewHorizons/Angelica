@@ -3,11 +3,13 @@ package com.gtnewhorizons.angelica.glsm;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 
 import static com.gtnewhorizons.angelica.util.GLSMUtil.resetGLState;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -51,46 +53,28 @@ class GLSM_BlendUnknownState_UnitTest {
         assertTrue(GL11.glIsEnabled(GL11.GL_BLEND), "GL blend should be re-enabled after setUnknownState");
     }
 
-    @Test
-    void testDisableBufferBlendInvalidatesCache() {
-        GLStateManager.enableBlend();
-        assertTrue(GL11.glIsEnabled(GL11.GL_BLEND));
+    @ParameterizedTest(name = "global blend enabled={0}")
+    @ValueSource(booleans = {true, false})
+    void perBufferBlendToggleInvalidatesCache(boolean enabled) {
+        setBlend(enabled);
+        assertEquals(enabled, GL11.glIsEnabled(GL11.GL_BLEND));
 
-        // Use RenderSystem which should call setUnknownState internally
-        RenderSystem.disableBufferBlend(0);
+        // Flips buffer 0 behind the cache and marks it unknown, so the repeated global call must reach the driver
+        if (enabled) {
+            RenderSystem.disableBufferBlend(0);
+        } else {
+            RenderSystem.enableBufferBlend(0);
+        }
 
-        // Now re-enable via GLSM — should issue the GL call
-        GLStateManager.enableBlend();
-        assertTrue(GL11.glIsEnabled(GL11.GL_BLEND), "Blend should be re-enabled after disableBufferBlend");
+        setBlend(enabled);
+        assertEquals(enabled, GL11.glIsEnabled(GL11.GL_BLEND), "global blend state must be re-issued after a per-buffer toggle");
     }
 
-    @Test
-    void testEnableBufferBlendInvalidatesCache() {
-        // Start with blend disabled
-        GLStateManager.disableBlend();
-        assertFalse(GL11.glIsEnabled(GL11.GL_BLEND));
-
-        // Per-buffer enable bypasses cache
-        RenderSystem.enableBufferBlend(0);
-
-        // Disable via GLSM — should issue the GL call despite cache saying disabled
-        GLStateManager.disableBlend();
-        assertFalse(GL11.glIsEnabled(GL11.GL_BLEND), "Blend should be disabled after enableBufferBlend + disableBlend");
-    }
-
-    @Test
-    void testUnknownStateClearedAfterSetEnabled() {
-        GLStateManager.enableBlend();
-
-        // Mark unknown
-        GLStateManager.getBlendMode().setUnknownState();
-
-        // First setEnabled clears the unknown flag
-        GLStateManager.enableBlend();
-
-        // Second setEnabled should use normal caching (no redundant GL call)
-        // Verify state is consistent
-        assertTrue(GL11.glIsEnabled(GL11.GL_BLEND));
-        assertTrue(GLStateManager.getBlendMode().isEnabled());
+    private static void setBlend(boolean enabled) {
+        if (enabled) {
+            GLStateManager.enableBlend();
+        } else {
+            GLStateManager.disableBlend();
+        }
     }
 }

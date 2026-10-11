@@ -1,10 +1,11 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -19,11 +20,6 @@ class GlsmSdlOutOfFrameReadbackTest {
 
     private static final int TEX_SIZE = 64;
 
-    @BeforeAll
-    static void boot() {
-        GlsmSdlHeadlessRig.boot();
-    }
-
     @Test
     void outOfFrameTexImageReadback() {
         final ByteBuffer pattern = pattern(TEX_SIZE, TEX_SIZE, 1);
@@ -33,15 +29,11 @@ class GlsmSdlOutOfFrameReadbackTest {
         GLStateManager.glDeleteTextures(tex);
     }
 
-    @Test
-    void inFrameCopyImageSubDataReadback() {
-        GlsmSdlHeadlessRig.beginFrame();
-        copyAndReadBack(3);
-    }
-
-    @Test
-    void outOfFrameCopyImageSubDataReadback() {
-        copyAndReadBack(4);
+    @ParameterizedTest(name = "in frame: {0}")
+    @ValueSource(booleans = {true, false})
+    void copyImageSubDataReadback(boolean inFrame) {
+        if (inFrame) GlsmSdlHeadlessRig.beginFrame();
+        copyAndReadBack(inFrame ? 3 : 4);
     }
 
     private static void copyAndReadBack(int seed) {

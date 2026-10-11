@@ -4,16 +4,13 @@ import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.glsm.ffp.CubeParams;
 import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
-import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
-import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import net.coderbot.batchedentityrendering.impl.AngelicaBufferSource;
 import net.coderbot.batchedentityrendering.impl.BufferSegment;
 import net.coderbot.batchedentityrendering.impl.BufferSourceProbe;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
-import net.coderbot.iris.layer.PassOverride;
 import org.joml.Matrix4f;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,9 +18,12 @@ import org.lwjgl.opengl.GL11;
 
 import java.util.List;
 
-import static com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil.COLOR_INDEX;
 import static com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil.VERTEX_SIZE;
-import static com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil.X_INDEX;
+import static com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrTestSupport.STREAM;
+import static com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrTestSupport.cubes;
+import static com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrTestSupport.onlyGroup;
+import static com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrTestSupport.template;
+import static com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrTestSupport.testLayer;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -37,10 +37,6 @@ class RetainedTesrGroupsTest {
     private AngelicaBufferSource source;
     private RetainedTesrGroups groups;
     private RenderLayer layer;
-
-    static RenderLayer testLayer() {
-        return RenderLayer.tesr(null, TesrMaterial.CURRENT_STATE, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.DISABLED, false, true);
-    }
 
     @BeforeEach
     void freshGroups() {
@@ -90,7 +86,7 @@ class RetainedTesrGroupsTest {
     void instancedGroupsKeepItemIdsPerInstanceWithoutSplitting() {
         int previous = CapturedRenderingState.INSTANCE.getCurrentRenderedItem();
         try {
-            groups.beginPass(new Matrix4f(), 0, 0, 0, new InstancedTemplateRenderer(ring), new CountingPipeline(true, true));
+            groups.beginPass(new Matrix4f(), 0, 0, 0, new InstancedTemplateRenderer(ring), new RetainedTesrTestSupport.CountingPipeline(true, true));
             for (int item : new int[] {42, 43}) {
                 CapturedRenderingState.INSTANCE.setCurrentRenderedItem(item);
                 long info = InstancedAttribs.packEntityInfo(-1, 5, item);
@@ -140,7 +136,7 @@ class RetainedTesrGroupsTest {
         state.pushCurrentBlockEntity();
         state.pushCurrentEntityColor();
         try {
-            groups.beginPass(new Matrix4f(), 0, 0, 0, new InstancedTemplateRenderer(ring), new CountingPipeline(true, true));
+            groups.beginPass(new Matrix4f(), 0, 0, 0, new InstancedTemplateRenderer(ring), new RetainedTesrTestSupport.CountingPipeline(true, true));
             for (int i = 0; i < 100; i++) {
                 state.setCurrentEntityAndItem(i, i + 200);
                 state.setCurrentBlockEntity(i + 100);
@@ -389,27 +385,6 @@ class RetainedTesrGroupsTest {
         assertTrue(groups.hasDraws(layer));
     }
 
-    static TemplateBuffer template() {
-        final int[] data = new int[4 * VERTEX_SIZE];
-        for (int v = 0; v < 4; v++) {
-            final int base = v * VERTEX_SIZE;
-            data[base + X_INDEX] = Float.floatToRawIntBits(v);
-            data[base + COLOR_INDEX] = 0xFFFFFFFF;
-        }
-        return new TemplateBuffer(data, 4, GL11.GL_QUADS);
-    }
-
-    static final TesrMaterial STREAM = TesrMaterial.builder().stream().build();
-
-    static CubeParams[] cubes(int count) {
-        final CubeParams[] params = new CubeParams[count];
-        for (int i = 0; i < count; i++) {
-            params[i] = CubeParams.of(64f, 32f, i % 2 == 1, i * 8, 0, -4f, -4f, -2f, 8, 8, 4, 0f);
-            assertNotNull(params[i], "cube " + i + " must pack");
-        }
-        return params;
-    }
-
     private static int cubeInstances(RetainedTesrGroups groups) {
         final Reference2ObjectOpenHashMap<RenderLayer, ObjectArrayList<RetainedTesrGroups.Group>> byLayer = Reflect.get(groups, "byLayer");
         int total = 0;
@@ -420,14 +395,6 @@ class RetainedTesrGroupsTest {
             }
         }
         return total;
-    }
-
-    static RetainedTesrGroups.Group onlyGroup(RetainedTesrGroups groups) {
-        final Reference2ObjectOpenHashMap<RenderLayer, ObjectArrayList<RetainedTesrGroups.Group>> byLayer = Reflect.get(groups, "byLayer");
-        assertEquals(1, byLayer.size());
-        final ObjectArrayList<RetainedTesrGroups.Group> list = byLayer.values().iterator().next();
-        assertEquals(1, list.size());
-        return list.get(0);
     }
 
     @Test
@@ -448,50 +415,13 @@ class RetainedTesrGroupsTest {
         assertTrue(group.cubeColumns.templates.isEmpty(), "the FFP cube path has no fallback that needs the template");
 
         final RetainedTesrGroups piped = new RetainedTesrGroups(source);
-        piped.beginPass(new Matrix4f(), 0, 0, 0, new InstancedTemplateRenderer(ring), new CountingPipeline(false, false));
+        piped.beginPass(new Matrix4f(), 0, 0, 0, new InstancedTemplateRenderer(ring), new RetainedTesrTestSupport.CountingPipeline(false, false));
         piped.queue(template, cubes(3), 0.0625f, layer, STREAM, mv, 7, -1, 0, 0L, 5, null);
         piped.queue(template, cubes(2), 0.0625f, layer, STREAM, new Matrix4f(), 7, -1, 0, 0L, 5, null);
 
         final RetainedTesrGroups.Group pipedGroup = onlyGroup(piped);
         assertEquals(2, pipedGroup.cubeColumns.templates.size(), "a pipeline can fall back to the per-part template");
         assertSame(template, pipedGroup.cubeColumns.templates.get(0));
-    }
-
-    static final class CountingPipeline implements TesrInstancingPipeline {
-
-        private final boolean matrixVariant;
-        private final boolean cubeVariant;
-        int rebinds;
-        int matrixBinds;
-        int cubeBinds;
-
-        CountingPipeline(boolean matrixVariant, boolean cubeVariant) {
-            this.matrixVariant = matrixVariant;
-            this.cubeVariant = cubeVariant;
-        }
-
-        @Override
-        public void rebindCurrentPass() {
-            rebinds++;
-        }
-
-        @Override
-        public boolean hasInstancedVariant(Instancing kind) {
-            return switch (kind) {
-                case TEMPLATE -> matrixVariant;
-                case CUBE -> cubeVariant;
-                default -> false;
-            };
-        }
-
-        @Override
-        public void bindInstancedVariant(Instancing kind) {
-            switch (kind) {
-                case TEMPLATE -> matrixBinds++;
-                case CUBE -> cubeBinds++;
-                default -> throw new AssertionError(kind);
-            }
-        }
     }
 
     @Test

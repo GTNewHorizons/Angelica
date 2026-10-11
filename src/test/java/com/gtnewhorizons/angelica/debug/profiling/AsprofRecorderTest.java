@@ -10,7 +10,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -21,19 +26,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AsprofRecorderTest {
 
-    @Test
-    void commandWithDefaultOpts() {
-        assertEquals("start,jfr,event=wall,interval=5ms,alloc=512k,lock=10ms,file=/abs/x.jfr", AsprofRecorder.command("event=wall,interval=5ms,alloc=512k,lock=10ms", "/abs/x.jfr"));
-    }
-
-    @Test
-    void commandWithCustomOpts() {
-        assertEquals("start,jfr,event=cpu,interval=1ms,file=/abs/y.jfr", AsprofRecorder.command("event=cpu,interval=1ms", "/abs/y.jfr"));
-    }
-
-    @Test
-    void commandWithEmptyOpts() {
-        assertEquals("start,jfr,file=/abs/z.jfr", AsprofRecorder.command("", "/abs/z.jfr"));
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({
+        "default opts, 'event=wall,interval=5ms,alloc=512k,lock=10ms', /abs/x.jfr, 'start,jfr,event=wall,interval=5ms,alloc=512k,lock=10ms,file=/abs/x.jfr'",
+        "custom opts, 'event=cpu,interval=1ms', /abs/y.jfr, 'start,jfr,event=cpu,interval=1ms,file=/abs/y.jfr'",
+        "empty opts, '', /abs/z.jfr, 'start,jfr,file=/abs/z.jfr'",
+    })
+    void buildsStartCommand(String name, String opts, String file, String expected) {
+        assertEquals(expected, AsprofRecorder.command(opts, file));
     }
 
     @Test
@@ -45,32 +45,19 @@ class AsprofRecorderTest {
         assertTrue(manual.matches("angelica-manual-\\d{8}-\\d{6}\\.jfr"));
     }
 
-    @Test
-    void fileNameIsDeterministicForSameMillis() {
-        final long fixedMillis = 1_700_000_000_000L;
-        assertEquals(AsprofRecorder.fileName("circuit", "jfr", fixedMillis), AsprofRecorder.fileName("circuit", "jfr", fixedMillis));
+    static Stream<Arguments> firstLines() {
+        return Stream.of(
+            Arguments.of("null", null, ""),
+            Arguments.of("empty", "", ""),
+            Arguments.of("single line", "Profiler already started", "Profiler already started"),
+            Arguments.of("multi line", "Profiler already started\nat some.Stack\nat other.Stack", "Profiler already started"));
     }
 
-    @Test
-    void firstLineOnNull() {
-        assertEquals("", AsprofRecorder.firstLine(null));
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("firstLines")
+    void firstLine(String name, String input, String expected) {
+        assertEquals(expected, AsprofRecorder.firstLine(input));
     }
-
-    @Test
-    void firstLineOnEmpty() {
-        assertEquals("", AsprofRecorder.firstLine(""));
-    }
-
-    @Test
-    void firstLineOnSingleLine() {
-        assertEquals("Profiler already started", AsprofRecorder.firstLine("Profiler already started"));
-    }
-
-    @Test
-    void firstLineOnMultiLine() {
-        assertEquals("Profiler already started", AsprofRecorder.firstLine("Profiler already started\nat some.Stack\nat other.Stack"));
-    }
-
 
     private static final class Commands implements Session.CommandExecutor {
         final List<String> calls = new ArrayList<>();

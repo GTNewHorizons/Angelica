@@ -1,19 +1,23 @@
 package com.gtnewhorizons.angelica.sdlgpu.shader.dxbc;
 
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
-import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
 import com.gtnewhorizons.angelica.sdlgpu.shader.SpirvTestShaders;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL43;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.util.shaderc.Shaderc;
 
 import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.stream.Stream;
 
+import static com.gtnewhorizons.angelica.sdlgpu.shader.SpirvTestShaders.compileOrFail;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 class DxbcHlslSpacesTest {
 
@@ -43,40 +47,31 @@ class DxbcHlslSpacesTest {
         }
         """;
 
-    @Test
-    void vsSpaceMapping_ubosAtSpace1_samplersAtSpace0() {
-        final ByteBuffer spirv = compile(VS_WITH_UBO_AND_SAMPLER, Shaderc.shaderc_vertex_shader);
-        try {
-            ShaderManager.remapSpirvForSDLGPU(spirv, GL20.GL_VERTEX_SHADER);
-            final String hlsl = DxbcCrossCompile.compileToHlsl(spirv, GL20.GL_VERTEX_SHADER);
+    static Stream<Arguments> stages() {
+        return Stream.of(
+            Arguments.of("VS: UBO at space1", VS_WITH_UBO_AND_SAMPLER, Shaderc.shaderc_vertex_shader, GL20.GL_VERTEX_SHADER,
+                List.of("space1"), List.of("space2", "space3")),
+            Arguments.of("FS: sampler at space2, UBO at space3", FS_WITH_UBO_AND_SAMPLER, Shaderc.shaderc_fragment_shader, GL20.GL_FRAGMENT_SHADER,
+                List.of("space2", "space3"), List.of("space1")));
+    }
 
-            assertTrue(hlsl.contains("space1"), "VS HLSL must reference space1 for the UBO. HLSL:\n" + hlsl);
-            assertFalse(hlsl.contains("space2"), "VS HLSL must not reference space2. HLSL:\n" + hlsl);
-            assertFalse(hlsl.contains("space3"), "VS HLSL must not reference space3. HLSL:\n" + hlsl);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("stages")
+    void stageUsesOnlyItsOwnRegisterSpaces(String name, String glsl, int shadercKind, int glStage, List<String> present, List<String> absent) {
+        final ByteBuffer spirv = compileOrFail(glsl, shadercKind);
+        try {
+            ShaderManager.remapSpirvForSDLGPU(spirv, glStage);
+            final String hlsl = DxbcCrossCompile.compileToHlsl(spirv, glStage);
+            for (String space : present) assertTrue(hlsl.contains(space), name + ": HLSL must reference " + space + ". HLSL:\n" + hlsl);
+            for (String space : absent) assertFalse(hlsl.contains(space), name + ": HLSL must not reference " + space + ". HLSL:\n" + hlsl);
         } finally {
             MemoryUtil.memFree(spirv);
         }
     }
-
-    @Test
-    void fsSpaceMapping_ubosAtSpace3_samplersAtSpace2() {
-        final ByteBuffer spirv = compile(FS_WITH_UBO_AND_SAMPLER, Shaderc.shaderc_fragment_shader);
-        try {
-            ShaderManager.remapSpirvForSDLGPU(spirv, GL20.GL_FRAGMENT_SHADER);
-            final String hlsl = DxbcCrossCompile.compileToHlsl(spirv, GL20.GL_FRAGMENT_SHADER);
-
-            assertTrue(hlsl.contains("space2"), "FS HLSL must reference space2 for the sampler/SRV. HLSL:\n" + hlsl);
-            assertTrue(hlsl.contains("space3"), "FS HLSL must reference space3 for the UBO. HLSL:\n" + hlsl);
-            assertFalse(hlsl.contains("space1"), "FS HLSL must not reference space1. HLSL:\n" + hlsl);
-        } finally {
-            MemoryUtil.memFree(spirv);
-        }
-    }
-
 
     @Test
     void ldsMultiMipCompute_hlslHasGroupsharedAndBarrier() {
-        final ByteBuffer spirv = compile(SpirvTestShaders.LDS_MULTI_MIP_GLSL, Shaderc.shaderc_compute_shader);
+        final ByteBuffer spirv = compileOrFail(SpirvTestShaders.LDS_MULTI_MIP_GLSL, Shaderc.shaderc_compute_shader);
         try {
             ShaderManager.remapSpirvForComputeSDLGPU(spirv);
             final String hlsl = DxbcCrossCompile.compileToHlsl(spirv, GL43.GL_COMPUTE_SHADER);
@@ -85,14 +80,5 @@ class DxbcHlslSpacesTest {
         } finally {
             MemoryUtil.memFree(spirv);
         }
-    }
-
-    private static ByteBuffer compile(String source, int shaderKind) {
-        final SpirvCompiler.Result r = SpirvCompiler.compile(source, shaderKind, "hlsl_spaces_test",
-            SpirvCompiler.Options.vulkanForced460Core());
-        if (r.spirv() == null) {
-            fail("shader compile failed: " + r.error());
-        }
-        return r.spirv();
     }
 }

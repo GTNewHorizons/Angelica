@@ -1,23 +1,22 @@
 package com.gtnewhorizons.angelica.commands;
 
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class AngelicaCommandTest {
 
-    @Test
-    void worldAlteringViewsNeedCheats() {
-        assertTrue(AngelicaCommand.requiresCheats("wireframe"));
-        assertTrue(AngelicaCommand.requiresCheats("flyby"));
-    }
-
-    @Test
-    void diagnosticsNeverNeedCheats() {
-        assertFalse(AngelicaCommand.requiresCheats("profile"));
-        assertFalse(AngelicaCommand.requiresCheats("fog"));
-        assertFalse(AngelicaCommand.requiresCheats("minimap"));
-        assertFalse(AngelicaCommand.requiresCheats("help"));
+    @ParameterizedTest(name = "{0} needs cheats: {1}")
+    @CsvSource({
+        "wireframe, true",
+        "flyby, true",
+        "profile, false",
+        "fog, false",
+        "minimap, false",
+        "help, false",
+    })
+    void onlyWorldAlteringViewsNeedCheats(String subcommand, boolean expected) {
+        assertEquals(expected, AngelicaCommand.requiresCheats(subcommand));
     }
 }

@@ -3,7 +3,6 @@ package net.coderbot.iris.shadows.frustum;
 import net.coderbot.iris.shadows.frustum.advanced.AdvancedShadowCullingFrustum;
 import net.coderbot.iris.shadows.frustum.advanced.SafeZoneCullingFrustum;
 import net.coderbot.iris.shadows.frustum.fallback.BoxCullingFrustum;
-import net.minecraft.client.renderer.culling.Frustrum;
 import org.embeddedt.embeddium.impl.render.viewport.frustum.Frustum;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -17,7 +16,6 @@ import static net.coderbot.iris.shadows.frustum.ShadowFrustumTestSupport.forEach
 import static net.coderbot.iris.shadows.frustum.ShadowFrustumTestSupport.projection;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ShadowFrustumIntersectAabTest {
@@ -33,12 +31,6 @@ class ShadowFrustumIntersectAabTest {
         frustum.init(new Matrix4f(), projection(), SUN_UP, voxelCuller, distanceCuller);
         frustum.setPosition(8.0, 8.0, 8.0);
         return frustum;
-    }
-
-    @Test
-    void frustrumStubIsActive() {
-        assertThrows(NoSuchFieldException.class, () -> Frustrum.class.getDeclaredField("clippingHelper"),
-            "the real Frustrum's GL-touching clippingHelper field is on the classpath; the test stub did not win");
     }
 
     @Test

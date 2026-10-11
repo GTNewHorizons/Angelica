@@ -2,17 +2,19 @@ package com.gtnewhorizons.angelica.glsm;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
-import org.lwjgl.opengl.GL20;
 
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.util.function.IntConsumer;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 @GLCoreTest
 class InstancedQuadDrawGLTest {
@@ -26,7 +28,7 @@ class InstancedQuadDrawGLTest {
 
     @BeforeEach
     void setup() {
-        program = buildProgram();
+        program = GlTestSupport.program(VS, FS);
         GLStateManager.glUseProgram(program);
 
         final FloatBuffer verts = BufferUtils.createFloatBuffer(8);
@@ -42,63 +44,39 @@ class InstancedQuadDrawGLTest {
         ebo = GLStateManager.glGenBuffers();
         GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
         GLStateManager.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, idx, GL15.GL_STATIC_DRAW);
-
-        drainErrors();
     }
 
     @AfterEach
     void cleanup() {
         GLStateManager.glUseProgram(0);
-        if (program != 0) GL20.glDeleteProgram(program);
+        if (program != 0) GLStateManager.glDeleteProgram(program);
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
         if (vbo != 0) GLStateManager.glDeleteBuffers(vbo);
         if (ebo != 0) GLStateManager.glDeleteBuffers(ebo);
-        drainErrors();
     }
 
-    @Test
-    void drawArraysInstanced_quads_noInvalidEnum() {
-        GLStateManager.glDrawArraysInstanced(GL11.GL_QUADS, 0, 4, 3);
-        assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "GL_QUADS instanced array draw must be emulated, not rejected");
+    static Stream<Arguments> draws() {
+        return Stream.of(
+            draw("GL_QUADS instanced array draw must be emulated, not rejected", ebo -> GLStateManager.glDrawArraysInstanced(GL11.GL_QUADS, 0, 4, 3)),
+            draw("non-quad instanced array draw passes through cleanly", ebo -> {
+                GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
+                GLStateManager.glDrawArraysInstanced(GL11.GL_TRIANGLES, 0, 3, 3);
+            }),
+            draw("GL_QUADS instanced element draw must be emulated, not rejected", ebo -> {
+                GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
+                GLStateManager.glDrawElementsInstanced(GL11.GL_QUADS, 4, GL11.GL_UNSIGNED_INT, 0L, 3);
+            }));
     }
 
-    @Test
-    void drawArraysInstanced_triangles_fastPathClean() {
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
-        GLStateManager.glDrawArraysInstanced(GL11.GL_TRIANGLES, 0, 3, 3);
-        assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "non-quad instanced array draw passes through cleanly");
+    private static Arguments draw(String name, IntConsumer body) {
+        return Arguments.of(name, body);
     }
 
-    @Test
-    void drawElementsInstanced_quads_noInvalidEnum() {
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
-        GLStateManager.glDrawElementsInstanced(GL11.GL_QUADS, 4, GL11.GL_UNSIGNED_INT, 0L, 3);
-        assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "GL_QUADS instanced element draw must be emulated, not rejected");
-    }
-
-    private static int buildProgram() {
-        final int vs = compile(GL20.GL_VERTEX_SHADER, VS);
-        final int fs = compile(GL20.GL_FRAGMENT_SHADER, FS);
-        final int p = GL20.glCreateProgram();
-        GL20.glAttachShader(p, vs);
-        GL20.glAttachShader(p, fs);
-        GL20.glLinkProgram(p);
-        assertNotEquals(0, GL20.glGetProgrami(p, GL20.GL_LINK_STATUS), "test shader must link: " + GL20.glGetProgramInfoLog(p, 1024));
-        GL20.glDeleteShader(vs);
-        GL20.glDeleteShader(fs);
-        return p;
-    }
-
-    private static int compile(int type, String src) {
-        final int s = GL20.glCreateShader(type);
-        GL20.glShaderSource(s, src);
-        GL20.glCompileShader(s);
-        assertNotEquals(0, GL20.glGetShaderi(s, GL20.GL_COMPILE_STATUS), "test shader must compile: " + GL20.glGetShaderInfoLog(s, 1024));
-        return s;
-    }
-
-    private static void drainErrors() {
-        while (GL11.glGetError() != GL11.GL_NO_ERROR) { /* clear */ }
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("draws")
+    void instancedDrawRaisesNoGlError(String name, IntConsumer draw) {
+        draw.accept(ebo);
+        assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), name);
     }
 }

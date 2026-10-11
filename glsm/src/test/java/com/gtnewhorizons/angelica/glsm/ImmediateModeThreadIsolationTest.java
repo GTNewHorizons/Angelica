@@ -4,12 +4,12 @@ import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
 import com.gtnewhorizons.angelica.glsm.recording.GLCommand;
 import com.gtnewhorizons.angelica.glsm.recording.ImmediateModeRecorder;
+import com.gtnewhorizons.angelica.glsm.testutil.TestThreads;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -29,10 +29,10 @@ class ImmediateModeThreadIsolationTest {
         final AtomicReference<DirectTessellator> bg1 = new AtomicReference<>();
         final AtomicReference<DirectTessellator> bg2 = new AtomicReference<>();
 
-        final Thread t1 = new Thread(() -> bg1.set(ImmediateModeRecorder.getInternalTessellator()), "iso-test-1");
-        final Thread t2 = new Thread(() -> bg2.set(ImmediateModeRecorder.getInternalTessellator()), "iso-test-2");
-        t1.start(); t2.start();
-        t1.join(); t2.join();
+        final TestThreads.Worker t1 = TestThreads.start("iso-test-1", () -> bg1.set(ImmediateModeRecorder.getInternalTessellator()));
+        final TestThreads.Worker t2 = TestThreads.start("iso-test-2", () -> bg2.set(ImmediateModeRecorder.getInternalTessellator()));
+        t1.join();
+        t2.join();
 
         assertNotNull(bg1.get());
         assertNotNull(bg2.get());
@@ -43,28 +43,22 @@ class ImmediateModeThreadIsolationTest {
 
     @Test
     void concurrentImmediateModeDoesNotCorruptRecording() throws Exception {
-        final List<Throwable> failures = new CopyOnWriteArrayList<>();
         final CountDownLatch start = new CountDownLatch(1);
         final AtomicBoolean stop = new AtomicBoolean(false);
 
-        final Runnable spam = () -> {
-            try {
-                start.await();
-                while (!stop.get()) {
-                    GLStateManager.glBegin(GL11.GL_QUADS);
-                    GLStateManager.glVertex3f(0, 0, 0);
-                    GLStateManager.glVertex3f(1, 0, 0);
-                    GLStateManager.glVertex3f(1, 1, 0);
-                    GLStateManager.glVertex3f(0, 1, 0);
-                    GLStateManager.glEnd();
-                }
-            } catch (Throwable t) {
-                failures.add(t);
+        final TestThreads.Body spam = () -> {
+            start.await();
+            while (!stop.get()) {
+                GLStateManager.glBegin(GL11.GL_QUADS);
+                GLStateManager.glVertex3f(0, 0, 0);
+                GLStateManager.glVertex3f(1, 0, 0);
+                GLStateManager.glVertex3f(1, 1, 0);
+                GLStateManager.glVertex3f(0, 1, 0);
+                GLStateManager.glEnd();
             }
         };
-        final Thread t1 = new Thread(spam, "iso-spam-1");
-        final Thread t2 = new Thread(spam, "iso-spam-2");
-        t1.start(); t2.start();
+        final TestThreads.Worker t1 = TestThreads.start("iso-spam-1", spam);
+        final TestThreads.Worker t2 = TestThreads.start("iso-spam-2", spam);
         start.countDown();
 
         final List<Integer> lists = new ArrayList<>();
@@ -83,10 +77,10 @@ class ImmediateModeThreadIsolationTest {
             }
         } finally {
             stop.set(true);
-            t1.join(5000); t2.join(5000);
         }
+        t1.join();
+        t2.join();
 
-        assertTrue(failures.isEmpty(), "background immediate mode threw: " + failures);
         for (int list : lists) {
             final CompiledDisplayList compiled = DisplayListManager.getDisplayList(list);
             assertNotNull(compiled, "list " + list + " should be compiled");
@@ -97,9 +91,7 @@ class ImmediateModeThreadIsolationTest {
 
     @Test
     void sweepFreesDeadThreadTessellators() throws Exception {
-        final Thread t = new Thread(() -> ImmediateModeRecorder.getInternalTessellator(), "iso-sweep");
-        t.start();
-        t.join();
+        TestThreads.run("iso-sweep", ImmediateModeRecorder::getInternalTessellator);
         final int before = ImmediateModeRecorder.getThreadTessellatorCount();
         assertTrue(before >= 1);
         ImmediateModeRecorder.cleanupOrphanTessellators();

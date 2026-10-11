@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.rendering.tesr;
 
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GlTestSupport;
 import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.states.AlphaState;
@@ -23,6 +24,9 @@ import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
@@ -31,6 +35,7 @@ import java.lang.reflect.Constructor;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.function.IntSupplier;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -71,14 +76,27 @@ class StateSetOverrideGLTest {
         if (otherProgram != 0) GLStateManager.glDeleteProgram(otherProgram);
     }
 
-    @Test
-    void blendBracketUnderOverrideRestoresVanillaShadowAndLeavesLiveStateUntouched() {
+    /** Vanilla blend is enabled SRC_ALPHA/ONE_MINUS_SRC_ALPHA/ONE/ZERO under an Iris override. */
+    private static void overrideVanillaBlend() {
         VanillaLayerRig.installBlend();
 
         GLStateManager.enableBlend();
         GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
-
         BlendModeStorage.overrideBlend(new BlendState(GL11.GL_ONE, GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE));
+    }
+
+    /** Vanilla alpha test is enabled GREATER 0.5 under an Iris override. */
+    private static void overrideVanillaAlpha() {
+        VanillaLayerRig.installAlpha();
+
+        GLStateManager.enableAlphaTest();
+        GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.5f);
+        AlphaTestStorage.overrideAlphaTest(new AlphaTest(AlphaTestFunction.LEQUAL, 0.25f));
+    }
+
+    @Test
+    void blendBracketUnderOverrideRestoresVanillaShadowAndLeavesLiveStateUntouched() {
+        overrideVanillaBlend();
 
         final boolean liveEnabledBefore = GLStateManager.getBlendMode().isEnabled();
         final BlendState liveBefore = new BlendState().set(GLStateManager.getBlendState());
@@ -105,12 +123,7 @@ class StateSetOverrideGLTest {
 
     @Test
     void alphaBracketUnderOverrideRestoresVanillaShadowAndLeavesLiveStateUntouched() {
-        VanillaLayerRig.installAlpha();
-
-        GLStateManager.enableAlphaTest();
-        GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.5f);
-
-        AlphaTestStorage.overrideAlphaTest(new AlphaTest(AlphaTestFunction.LEQUAL, 0.25f));
+        overrideVanillaAlpha();
 
         final boolean liveEnabledBefore = GLStateManager.getAlphaTest().isEnabled();
         final int liveFuncBefore = GLStateManager.getAlphaState().getFunction();
@@ -169,12 +182,7 @@ class StateSetOverrideGLTest {
 
     @Test
     void untouchedBracketUnderOverrideLeavesVanillaShadowIntact() {
-        VanillaLayerRig.installBlend();
-
-        GLStateManager.enableBlend();
-        GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
-
-        BlendModeStorage.overrideBlend(new BlendState(GL11.GL_ONE, GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE));
+        overrideVanillaBlend();
 
         final boolean vanillaEnabledBefore = BlendModeStorage.ENABLE_LAYER.getVanilla();
         final BlendState vanillaBefore = new BlendState();
@@ -217,11 +225,7 @@ class StateSetOverrideGLTest {
 
     @Test
     void overrideReleasedMidBracket() {
-        VanillaLayerRig.installAlpha();
-
-        GLStateManager.enableAlphaTest();
-        GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.5f);
-        AlphaTestStorage.overrideAlphaTest(new AlphaTest(AlphaTestFunction.LEQUAL, 0.25f));
+        overrideVanillaAlpha();
 
         assertEquals(GL11.GL_LEQUAL, GLStateManager.getAlphaState().getFunction(), "the override value is visible live before the bracket opens");
 
@@ -280,11 +284,7 @@ class StateSetOverrideGLTest {
 
     @Test
     void glAlphaFuncDeferBranchInsideBracketRestoredAtPop() {
-        VanillaLayerRig.installAlpha();
-
-        GLStateManager.enableAlphaTest();
-        GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.5f);
-        AlphaTestStorage.overrideAlphaTest(new AlphaTest(AlphaTestFunction.LEQUAL, 0.25f));
+        overrideVanillaAlpha();
 
         final int d = GLStateManager.pushState(StateSet.ALPHA);
         final int liveFuncBefore = GLStateManager.getAlphaState().getFunction();
@@ -300,39 +300,21 @@ class StateSetOverrideGLTest {
         assertEquals(0.5f, vanillaAfter.getReference(), 0.0001f, "the bracket pop reverts the vanilla alpha-ref shadow to the pre-bracket baseline");
     }
 
-    @Test
-    void glBlendFuncDeferBranchInsideBracketRestoredAtPop() {
-        VanillaLayerRig.installBlend();
-
-        GLStateManager.enableBlend();
-        GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
-        BlendModeStorage.overrideBlend(new BlendState(GL11.GL_ONE, GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE));
-
-        final int d = GLStateManager.pushState(StateSet.BLEND);
-        final int liveSrcBefore = GLStateManager.getBlendState().getSrcRgb();
-
-        GLStateManager.glBlendFunc(GL11.GL_DST_COLOR, GL11.GL_ZERO);
-
-        GLStateManager.popStateTo(d);
-
-        assertEquals(liveSrcBefore, GLStateManager.getBlendState().getSrcRgb(), "GLSM's own blend-func cache is untouched by the defer branch, so the bracket pop leaves it exactly as it was");
-        final BlendState vanillaAfter = new BlendState();
-        BlendModeStorage.FUNC_LAYER.readVanilla(vanillaAfter);
-        assertEquals(GL11.GL_SRC_ALPHA, vanillaAfter.getSrcRgb(), "the bracket pop reverts the vanilla blend-func shadow to the pre-bracket baseline, undoing the defer branch's write");
+    static Stream<Arguments> blendFuncSetters() {
+        return Stream.of(
+            Arguments.of("glBlendFunc", (Runnable) () -> GLStateManager.glBlendFunc(GL11.GL_DST_COLOR, GL11.GL_ZERO)),
+            Arguments.of("tryBlendFuncSeparate", (Runnable) () -> GLStateManager.tryBlendFuncSeparate(GL11.GL_DST_COLOR, GL11.GL_ZERO, GL11.GL_DST_COLOR, GL11.GL_ZERO)));
     }
 
-    @Test
-    void tryBlendFuncSeparateDeferBranchInsideBracketRestoredAtPop() {
-        VanillaLayerRig.installBlend();
-
-        GLStateManager.enableBlend();
-        GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
-        BlendModeStorage.overrideBlend(new BlendState(GL11.GL_ONE, GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE));
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("blendFuncSetters")
+    void blendFuncDeferBranchInsideBracketRestoredAtPop(String name, Runnable setBlendFunc) {
+        overrideVanillaBlend();
 
         final int d = GLStateManager.pushState(StateSet.BLEND);
         final int liveSrcBefore = GLStateManager.getBlendState().getSrcRgb();
 
-        GLStateManager.tryBlendFuncSeparate(GL11.GL_DST_COLOR, GL11.GL_ZERO, GL11.GL_DST_COLOR, GL11.GL_ZERO);
+        setBlendFunc.run();
 
         GLStateManager.popStateTo(d);
 
@@ -344,11 +326,7 @@ class StateSetOverrideGLTest {
 
     @Test
     void enableBlendDeferBranchInsideBracketRestoredAtPop() {
-        VanillaLayerRig.installBlend();
-
-        GLStateManager.enableBlend();
-        GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
-        BlendModeStorage.overrideBlend(new BlendState(GL11.GL_ONE, GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE));
+        overrideVanillaBlend();
 
         final int d = GLStateManager.pushState(StateSet.BLEND);
         final boolean vanillaBefore = BlendModeStorage.ENABLE_LAYER.getVanilla();
@@ -363,11 +341,7 @@ class StateSetOverrideGLTest {
 
     @Test
     void enableAlphaTestDeferBranchInsideBracketRestoredAtPop() {
-        VanillaLayerRig.installAlpha();
-
-        GLStateManager.enableAlphaTest();
-        GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.5f);
-        AlphaTestStorage.overrideAlphaTest(new AlphaTest(AlphaTestFunction.LEQUAL, 0.25f));
+        overrideVanillaAlpha();
 
         final int d = GLStateManager.pushState(StateSet.ALPHA);
         final boolean vanillaBefore = AlphaTestStorage.ENABLE_LAYER.getVanilla();
@@ -381,11 +355,7 @@ class StateSetOverrideGLTest {
 
     @Test
     void nonMemberBracketUnderOverrideCarriesToParent() {
-        VanillaLayerRig.installBlend();
-
-        GLStateManager.enableBlend();
-        GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
-        BlendModeStorage.overrideBlend(new BlendState(GL11.GL_ONE, GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE));
+        overrideVanillaBlend();
 
         final boolean vanillaBefore = BlendModeStorage.ENABLE_LAYER.getVanilla();
 
@@ -540,23 +510,6 @@ class StateSetOverrideGLTest {
     }
 
     private static int createProgram() {
-        final int vertex = compile(GL20.GL_VERTEX_SHADER, "alphaRestoreTest.vsh");
-        final int fragment = compile(GL20.GL_FRAGMENT_SHADER, "alphaRestoreTest.fsh");
-        final int result = GLStateManager.glCreateProgram();
-        GLStateManager.glAttachShader(result, vertex);
-        GLStateManager.glAttachShader(result, fragment);
-        GLStateManager.glLinkProgram(result);
-        assertEquals(GL11.GL_TRUE, GLStateManager.glGetProgrami(result, GL20.GL_LINK_STATUS));
-        GLStateManager.glDeleteShader(vertex);
-        GLStateManager.glDeleteShader(fragment);
-        return result;
-    }
-
-    private static int compile(int type, String name) {
-        final int shader = GLStateManager.glCreateShader(type);
-        GLStateManager.glShaderSource(shader, ShaderLoader.getShaderSource("angelica:" + name));
-        GLStateManager.glCompileShader(shader);
-        assertEquals(GL11.GL_TRUE, GLStateManager.glGetShaderi(shader, GL20.GL_COMPILE_STATUS));
-        return shader;
+        return GlTestSupport.program(ShaderLoader.getShaderSource("angelica:alphaRestoreTest.vsh"), ShaderLoader.getShaderSource("angelica:alphaRestoreTest.fsh"));
     }
 }

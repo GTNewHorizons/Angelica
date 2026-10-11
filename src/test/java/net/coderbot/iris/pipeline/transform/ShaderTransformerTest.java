@@ -7,7 +7,9 @@ import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import net.coderbot.iris.pipeline.transform.parameter.TextureStageParameters;
 import net.coderbot.iris.shaderpack.texture.TextureStage;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.taumc.glsl.ShaderParser;
 
@@ -33,32 +35,30 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 class ShaderTransformerTest {
 
     private static boolean savedImageLoadStore;
-
-    private static void setImageLoadStore(boolean value) throws Exception {
-        Reflect.setStatic(RenderSystem.class, "supportsImageLoadStore", value);
-    }
-
-    private static boolean getImageLoadStore() throws Exception {
-        return Reflect.getStatic(RenderSystem.class, "supportsImageLoadStore");
-    }
+    private static int savedMaxGlsl;
 
     @BeforeAll
-    static void initShaderTransformer() throws Exception {
-        Reflect.setStatic(RenderSystem.class, "maxGlslVersion", 460);
-
-        savedImageLoadStore = getImageLoadStore();
-        setImageLoadStore(true);
-
+    static void initShaderTransformer() {
+        savedImageLoadStore = Reflect.getStatic(RenderSystem.class, "supportsImageLoadStore");
+        Reflect.setStatic(RenderSystem.class, "supportsImageLoadStore", true);
         ShaderTransformer.clearCache();
-        ShaderTransformer.init();
+        savedMaxGlsl = TransformTestSupport.pinGlslVersion(460);
     }
 
     @AfterAll
-    static void restoreCapabilities() throws Exception {
-        setImageLoadStore(savedImageLoadStore);
-        ShaderTransformer.clearCache();
-        TransformPatcher.clearCache();
-        ShaderTransformer.init();
+    static void restoreCapabilities() {
+        Reflect.setStatic(RenderSystem.class, "supportsImageLoadStore", savedImageLoadStore);
+        TransformTestSupport.restoreGlslVersion(savedMaxGlsl);
+    }
+
+    @BeforeEach
+    void clearCaches() {
+        TransformTestSupport.clearCaches();
+    }
+
+    @AfterEach
+    void clearCandidates() {
+        SamplerToStorageImageRewriter.setActiveCandidates(Set.of());
     }
 
     private static int versionOf(String shader) {
@@ -69,61 +69,47 @@ class ShaderTransformerTest {
 
     @Test
     void storageImageRewrite_hoistsEmittedVersion() {
-        TransformPatcher.clearCache();
-        ShaderTransformer.clearCache();
         SamplerToStorageImageRewriter.setActiveCandidates(Set.of(new SamplerToStorageImageRewriter.Candidate("voxel_sampler", "voxel_img", "r16ui", 3, false)));
-        try {
-            final String vertex = "#version 330 core\nvoid main(){ gl_Position = vec4(0.0); }";
-            final String fragment = String.join("\n",
-                "#version 330 core",
-                "uniform usampler3D voxel_sampler;",
-                "void main(){ gl_FragColor = vec4(float(texelFetch(voxel_sampler, ivec3(0), 0).r)); }",
-                "");
+        final String vertex = "#version 330 core\nvoid main(){ gl_Position = vec4(0.0); }";
+        final String fragment = String.join("\n",
+            "#version 330 core",
+            "uniform usampler3D voxel_sampler;",
+            "void main(){ gl_FragColor = vec4(float(texelFetch(voxel_sampler, ivec3(0), 0).r)); }",
+            "");
 
-            final Map<PatchShaderType, String> out = TransformPatcher.patchComposite(vertex, null, fragment);
-            assertNotNull(out);
-            final String fsh = out.get(PatchShaderType.FRAGMENT);
-            final String vsh = out.get(PatchShaderType.VERTEX);
+        final Map<PatchShaderType, String> out = TransformPatcher.patchComposite(vertex, null, fragment);
+        assertNotNull(out);
+        final String fsh = out.get(PatchShaderType.FRAGMENT);
+        final String vsh = out.get(PatchShaderType.VERTEX);
 
-            assertTrue(fsh.contains("imageLoad"), "fixture must actually exercise the rewrite\n\n" + fsh);
-            assertFalse(fsh.contains("usampler3D voxel_sampler"), fsh);
+        assertTrue(fsh.contains("imageLoad"), "fixture must actually exercise the rewrite\n\n" + fsh);
+        assertFalse(fsh.contains("usampler3D voxel_sampler"), fsh);
 
-            assertTrue(versionOf(fsh) >= 420, "injected imageLoad needs GLSL 420\n\n" + fsh);
-            assertEquals(330, versionOf(vsh), "the vertex declares no candidate sampler and must not be inflated\n\n" + vsh);
-        } finally {
-            SamplerToStorageImageRewriter.setActiveCandidates(Set.of());
-        }
+        assertTrue(versionOf(fsh) >= 420, "injected imageLoad needs GLSL 420\n\n" + fsh);
+        assertEquals(330, versionOf(vsh), "the vertex declares no candidate sampler and must not be inflated\n\n" + vsh);
     }
 
     @Test
     void filteredRead_doesNotHoistVersion() {
-        TransformPatcher.clearCache();
-        ShaderTransformer.clearCache();
         SamplerToStorageImageRewriter.setActiveCandidates(Set.of(new SamplerToStorageImageRewriter.Candidate("voxel_sampler", "voxel_img", "r16ui", 3, false)));
-        try {
-            final String vertex = "#version 330 core\nvoid main(){ gl_Position = vec4(0.0); }";
-            final String fragment = String.join("\n",
-                "#version 330 core",
-                "uniform usampler3D voxel_sampler;",
-                "void main(){ gl_FragColor = vec4(float(texture(voxel_sampler, vec3(0.5)).r)); }",
-                "");
+        final String vertex = "#version 330 core\nvoid main(){ gl_Position = vec4(0.0); }";
+        final String fragment = String.join("\n",
+            "#version 330 core",
+            "uniform usampler3D voxel_sampler;",
+            "void main(){ gl_FragColor = vec4(float(texture(voxel_sampler, vec3(0.5)).r)); }",
+            "");
 
-            final Map<PatchShaderType, String> out = TransformPatcher.patchComposite(vertex, null, fragment);
-            assertNotNull(out);
-            final String fsh = out.get(PatchShaderType.FRAGMENT);
+        final Map<PatchShaderType, String> out = TransformPatcher.patchComposite(vertex, null, fragment);
+        assertNotNull(out);
+        final String fsh = out.get(PatchShaderType.FRAGMENT);
 
-            assertTrue(fsh.contains("usampler3D voxel_sampler"), "rewrite must abort on a filtered read\n\n" + fsh);
-            assertFalse(fsh.contains("imageLoad"), fsh);
-            assertEquals(330, versionOf(fsh), fsh);
-        } finally {
-            SamplerToStorageImageRewriter.setActiveCandidates(Set.of());
-        }
+        assertTrue(fsh.contains("usampler3D voxel_sampler"), "rewrite must abort on a filtered read\n\n" + fsh);
+        assertFalse(fsh.contains("imageLoad"), fsh);
+        assertEquals(330, versionOf(fsh), fsh);
     }
 
     @Test
     void noCandidates_versionUnchanged() {
-        TransformPatcher.clearCache();
-        ShaderTransformer.clearCache();
         final String vertex = "#version 330 core\nvoid main(){ gl_Position = vec4(0.0); }";
         final String fragment = "#version 330 core\nvoid main(){ gl_FragColor = vec4(1.0); }";
 
@@ -135,31 +121,23 @@ class ShaderTransformerTest {
 
     @Test
     void computeStorageImageRewrite_hoistsEmittedVersion() {
-        TransformPatcher.clearCache();
-        ShaderTransformer.clearCache();
         SamplerToStorageImageRewriter.setActiveCandidates(Set.of(new SamplerToStorageImageRewriter.Candidate("voxel_sampler", "voxel_img", "r16ui", 3, false)));
-        try {
-            final String compute = String.join("\n",
-                "#version 330 core",
-                "layout(local_size_x = 8) in;",
-                "uniform usampler3D voxel_sampler;",
-                "out vec4 unused;",
-                "void main(){ unused = vec4(float(texelFetch(voxel_sampler, ivec3(gl_GlobalInvocationID), 0).x)); }",
-                "");
+        final String compute = String.join("\n",
+            "#version 330 core",
+            "layout(local_size_x = 8) in;",
+            "uniform usampler3D voxel_sampler;",
+            "out vec4 unused;",
+            "void main(){ unused = vec4(float(texelFetch(voxel_sampler, ivec3(gl_GlobalInvocationID), 0).x)); }",
+            "");
 
-            final String out = TransformPatcher.patchCompute("shadowcomp", compute, null, null);
-            assertNotNull(out);
-            assertTrue(out.contains("imageLoad"), "fixture must actually exercise the rewrite\n\n" + out);
-            assertTrue(versionOf(out) >= 420, "injected imageLoad needs GLSL 420\n\n" + out);
-        } finally {
-            SamplerToStorageImageRewriter.setActiveCandidates(Set.of());
-        }
+        final String out = TransformPatcher.patchCompute("shadowcomp", compute, null, null);
+        assertNotNull(out);
+        assertTrue(out.contains("imageLoad"), "fixture must actually exercise the rewrite\n\n" + out);
+        assertTrue(versionOf(out) >= 420, "injected imageLoad needs GLSL 420\n\n" + out);
     }
 
     @Test
     void packDeclaredImageTypeHoistsWithoutImageLoad() {
-        TransformPatcher.clearCache();
-        ShaderTransformer.clearCache();
         final String vertex = "#version 330 core\nvoid main(){ gl_Position = vec4(0.0); }";
         final String fragment = String.join("\n",
             "#version 330 core",
@@ -175,39 +153,30 @@ class ShaderTransformerTest {
 
     @Test
     void computeIntegerSamplerBecomesStorageImage() {
-        TransformPatcher.clearCache();
-        ShaderTransformer.clearCache();
         SamplerToStorageImageRewriter.setActiveCandidates(Set.of(
             new SamplerToStorageImageRewriter.Candidate("voxel_sampler", "voxel_img", "r16ui", 3, false)));
-        try {
-            final String compute = String.join("\n",
-                "#version 460 core",
-                "layout(local_size_x = 8) in;",
-                "uniform usampler3D voxel_sampler;",
-                "layout(r16ui) writeonly uniform uimage3D floodfill_img;",
-                "void main() {",
-                "    uint v = texelFetch(voxel_sampler, ivec3(gl_GlobalInvocationID), 0).x;",
-                "    imageStore(floodfill_img, ivec3(gl_GlobalInvocationID), uvec4(v, 0u, 0u, 0u));",
-                "}",
-                "");
-            final String out = TransformPatcher.patchCompute("shadowcomp", compute, null, null);
-            assertNotNull(out);
-            final String norm = out.replaceAll("\\s+", " ");
-            assertFalse(norm.contains("usampler3D voxel_sampler"),
-                "an integer sampler cannot be bound on SDL_GPU and must become a storage image\n\n" + out);
-            assertTrue(norm.contains("uimage3D voxel_img"), "expected the rewritten storage image\n\n" + out);
-            assertTrue(norm.contains("imageLoad ( voxel_img"), "texelFetch must become imageLoad\n\n" + out);
-        } finally {
-            SamplerToStorageImageRewriter.setActiveCandidates(Set.of());
-        }
+        final String compute = String.join("\n",
+            "#version 460 core",
+            "layout(local_size_x = 8) in;",
+            "uniform usampler3D voxel_sampler;",
+            "layout(r16ui) writeonly uniform uimage3D floodfill_img;",
+            "void main() {",
+            "    uint v = texelFetch(voxel_sampler, ivec3(gl_GlobalInvocationID), 0).x;",
+            "    imageStore(floodfill_img, ivec3(gl_GlobalInvocationID), uvec4(v, 0u, 0u, 0u));",
+            "}",
+            "");
+        final String out = TransformPatcher.patchCompute("shadowcomp", compute, null, null);
+        assertNotNull(out);
+        final String norm = TransformTestSupport.norm(out);
+        assertFalse(norm.contains("usampler3D voxel_sampler"),
+            "an integer sampler cannot be bound on SDL_GPU and must become a storage image\n\n" + out);
+        assertTrue(norm.contains("uimage3D voxel_img"), "expected the rewritten storage image\n\n" + out);
+        assertTrue(norm.contains("imageLoad ( voxel_img"), "texelFetch must become imageLoad\n\n" + out);
     }
 
     @Test
     void samplerAliasesSurvive_onNonSdlBackend() {
         assertFalse(BackendManager.RENDER_BACKEND.isSDLGPU(), "test backend must not be SDL-GPU for this to mean anything");
-        TransformPatcher.clearCache();
-        ShaderTransformer.clearCache();
-
         final String vertex = "#version 330 core\nvoid main(){gl_Position = vec4(0.0);}";
         final String fragment = String.join("\n",
             "#version 330 core",
@@ -237,8 +206,6 @@ class ShaderTransformerTest {
 
     @Test
     void extractedStageDropsItsArtifact() {
-        TransformPatcher.clearCache();
-        ShaderTransformer.clearCache();
         final EnumMap<PatchShaderType, ShaderTransformer.StageArtifact> artifacts = new EnumMap<>(PatchShaderType.class);
         final Map<PatchShaderType, String> out = ShaderTransformer.transform(PLAIN_VERTEX, null, null, null, IMAGE_STORE_FRAGMENT, new TextureStageParameters(Patch.COMPOSITE, TextureStage.COMPOSITE_AND_FINAL, null), artifacts);
         assertNotNull(out);
@@ -256,8 +223,6 @@ class ShaderTransformerTest {
 
     @Test
     void survivingArtifactsMatchTheirSource() {
-        TransformPatcher.clearCache();
-        ShaderTransformer.clearCache();
         final EnumMap<PatchShaderType, ShaderTransformer.StageArtifact> artifacts = new EnumMap<>(PatchShaderType.class);
         final Map<PatchShaderType, String> out = ShaderTransformer.transform(PLAIN_VERTEX, null, null, null, IMAGE_STORE_FRAGMENT, new TextureStageParameters(Patch.COMPOSITE, TextureStage.COMPOSITE_AND_FINAL, null), artifacts);
         assertNotNull(out);
@@ -274,9 +239,6 @@ class ShaderTransformerTest {
 
     @Test
     void transformIsDeterministicUnderConcurrency() throws ExecutionException, InterruptedException {
-        TransformPatcher.clearCache();
-        ShaderTransformer.clearCache();
-
         final String vertex = "#version 120\nvoid main(){gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;}";
         final String fragment = "#version 120\nvoid main(){gl_FragColor = vec4(1.0);}";
 
@@ -302,9 +264,6 @@ class ShaderTransformerTest {
 
     @Test
     void formattedShaderIsParseable() {
-        TransformPatcher.clearCache();
-        ShaderTransformer.clearCache();
-
         final String vertex = "#version 120\nvoid main(){gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;}";
         final String fragment = "#version 120\nvoid main(){gl_FragColor = vec4(1.0);}";
 

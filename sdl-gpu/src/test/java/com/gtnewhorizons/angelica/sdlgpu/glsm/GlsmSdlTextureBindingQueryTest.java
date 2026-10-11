@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,11 +17,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @Tag("glsm-sdl")
 @ExtendWith(GlsmSdlFrameExtension.class)
 class GlsmSdlTextureBindingQueryTest {
-
-    @BeforeAll
-    static void boot() {
-        GlsmSdlHeadlessRig.boot();
-    }
 
     @Test
     void everyBindingQueryReadsThePerUnitSlot() {

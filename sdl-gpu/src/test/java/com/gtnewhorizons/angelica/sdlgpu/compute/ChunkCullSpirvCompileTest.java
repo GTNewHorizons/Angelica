@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.sdlgpu.compute;
 
-import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
 import com.gtnewhorizons.angelica.glsm.testutil.TestPaths;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
 import org.junit.jupiter.api.Test;
@@ -11,9 +10,9 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.stream.IntStream;
 
+import static com.gtnewhorizons.angelica.sdlgpu.shader.SpirvTestShaders.compileOrFail;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 class ChunkCullSpirvCompileTest {
 
@@ -25,9 +24,7 @@ class ChunkCullSpirvCompileTest {
 
     @Test
     void chunkCullReflectsExpectedBindings() {
-        final SpirvCompiler.Result r = SpirvCompiler.compile(source(), Shaderc.shaderc_compute_shader, SHADER, SpirvCompiler.Options.vulkanForced460Core());
-        if (r.spirv() == null) fail(SHADER + " failed to compile: " + r.error());
-        final ByteBuffer spirv = r.spirv();
+        final ByteBuffer spirv = compileOrFail(source(), Shaderc.shaderc_compute_shader);
         try {
             final ShaderManager.ComputeBindingMap map = ShaderManager.remapSpirvForComputeSDLGPU(spirv);
             assertEquals(0, map.samplerGlSlots().length, "the frustum cull samples no textures");

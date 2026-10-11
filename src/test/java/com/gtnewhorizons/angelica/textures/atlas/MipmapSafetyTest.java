@@ -2,12 +2,14 @@ package com.gtnewhorizons.angelica.textures.atlas;
 
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
+import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class MipmapSafetyTest {
 
@@ -38,23 +40,17 @@ class MipmapSafetyTest {
         public void setFramesTextureData(List<int[][]> data) {}
     }
 
-    @Test
-    void baseSpriteIsSafe() {
-        assertTrue(MipmapSafety.isSafe(TextureAtlasSprite.class));
+    static Stream<Arguments> spriteClasses() {
+        return Stream.of(
+            Arguments.of("base sprite", TextureAtlasSprite.class, true),
+            Arguments.of("plain subclass", PlainSprite.class, true),
+            Arguments.of("generateMipmaps override", MipmapOverrideSprite.class, false),
+            Arguments.of("setFramesTextureData override", SetFramesOverrideSprite.class, false));
     }
 
-    @Test
-    void plainSubclassIsSafe() {
-        assertTrue(MipmapSafety.isSafe(PlainSprite.class));
-    }
-
-    @Test
-    void generateMipmapsOverrideIsUnsafe() {
-        assertFalse(MipmapSafety.isSafe(MipmapOverrideSprite.class));
-    }
-
-    @Test
-    void setFramesTextureDataOverrideIsUnsafe() {
-        assertFalse(MipmapSafety.isSafe(SetFramesOverrideSprite.class));
+    @ParameterizedTest(name = "{0} -> safe={2}")
+    @MethodSource("spriteClasses")
+    void isSafe(String name, Class<? extends TextureAtlasSprite> spriteClass, boolean expected) {
+        assertEquals(expected, MipmapSafety.isSafe(spriteClass));
     }
 }

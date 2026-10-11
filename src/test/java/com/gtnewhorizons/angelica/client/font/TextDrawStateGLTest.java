@@ -5,12 +5,16 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.StateSet;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.lwjgl.opengl.GL11;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -116,17 +120,13 @@ class TextDrawStateGLTest {
         assertTrue(GL11.glIsEnabled(GL11.GL_POLYGON_OFFSET_FILL), "driver polygon offset fill");
     }
 
-    @Test
-    void fontStateSetRestoresEverythingApplyTouches() throws IllegalAccessException {
-        assertApplyDoesNotLeak(StateSet.FONT);
+    static Stream<Arguments> fontStateSets() {
+        return Stream.of(Arguments.of("FONT", StateSet.FONT), Arguments.of("FONT_PIPELINE", StateSet.FONT_PIPELINE));
     }
 
-    @Test
-    void fontPipelineStateSetRestoresEverythingApplyTouches() throws IllegalAccessException {
-        assertApplyDoesNotLeak(StateSet.FONT_PIPELINE);
-    }
-
-    private static void assertApplyDoesNotLeak(StateSet set) throws IllegalAccessException {
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("fontStateSets")
+    void fontStateSetRestoresEverythingApplyTouches(String name, StateSet set) throws IllegalAccessException {
         setNonDefaults();
         final TextDrawState moved = capture();
         setDefaults();

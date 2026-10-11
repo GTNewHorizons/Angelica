@@ -9,7 +9,6 @@ import com.gtnewhorizons.angelica.sdlgpu.device.Device;
 import com.gtnewhorizons.angelica.sdlgpu.frame.OffscreenTarget;
 import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
 import com.gtnewhorizons.angelica.sdlgpu.splash.SplashDispatcher;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,11 +17,6 @@ import org.lwjgl.opengl.GL30;
 @Tag("glsm-sdl")
 @ExtendWith(GlsmSdlFrameExtension.class)
 class GlsmSdlSplashTargetTest {
-
-    @BeforeAll
-    static void boot() {
-        GlsmSdlHeadlessRig.boot();
-    }
 
     @Test
     void seededSplashContextDrawsIntoSplashTarget() throws Exception {
@@ -39,7 +33,7 @@ class GlsmSdlSplashTargetTest {
             });
 
             GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, target.fboId());
-            GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTarget(), 0xFF00FF00, "splash target");
+            GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTarget(), GlsmSdlHeadlessRig.GREEN, "splash target");
         } finally {
             releaseSplashTarget(backend, target);
         }
@@ -64,10 +58,10 @@ class GlsmSdlSplashTargetTest {
             });
 
             GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, target.fboId());
-            GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTarget(), 0xFF00FF00, "splash target");
+            GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTarget(), GlsmSdlHeadlessRig.GREEN, "splash target");
 
             GlsmSdlHeadlessRig.bindTarget();
-            GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTarget(), 0xFF0000FF, "rig target");
+            GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTarget(), GlsmSdlHeadlessRig.BLUE, "rig target");
         } finally {
             releaseSplashTarget(backend, target);
         }
@@ -75,7 +69,7 @@ class GlsmSdlSplashTargetTest {
 
     private static OffscreenTarget createSplashTarget(SDLGPURenderBackend backend) {
         final Device device = Reflect.get(backend, "device");
-        final ResourceManager resourceManager = Reflect.get(backend, "resourceManager");
+        final ResourceManager resourceManager = GlsmSdlHeadlessRig.resourceManager();
         final int sdlFormat = GlsmSdlHeadlessRig.colorTargetSdlFormat();
         final OffscreenTarget target = new OffscreenTarget();
         target.create(device, resourceManager, GlsmSdlHeadlessRig.SIZE, GlsmSdlHeadlessRig.SIZE, sdlFormat);
@@ -86,7 +80,6 @@ class GlsmSdlSplashTargetTest {
         Reflect.set(backend, "splashTarget", null);
         SplashDispatcher.reset();
         GlsmSdlHeadlessRig.bindTarget();
-        final ResourceManager resourceManager = Reflect.get(backend, "resourceManager");
-        target.destroy(resourceManager);
+        target.destroy(GlsmSdlHeadlessRig.resourceManager());
     }
 }

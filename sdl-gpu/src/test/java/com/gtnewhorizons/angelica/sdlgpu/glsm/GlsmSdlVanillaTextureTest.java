@@ -44,7 +44,6 @@ class GlsmSdlVanillaTextureTest {
 
     @BeforeAll
     static void boot() {
-        GlsmSdlHeadlessRig.boot();
         GlsmSdlHeadlessRig.beginFrame();
         atlasTexture = createMipmappedAtlas();
         lightmapTexture = allocateDynamicLightmap();
@@ -213,8 +212,7 @@ class GlsmSdlVanillaTextureTest {
         }
     }
 
-    @Test
-    void pushAttribWrappedCulledDrawKeepsFrontFace() {
+    private static int centerAfterPushAttribWrappedCulledQuad(boolean frontFacing) {
         uploadLightmapFrame(0xFFFFFFFF);
         bindAtlasUnit0();
         enableLightmap();
@@ -223,27 +221,20 @@ class GlsmSdlVanillaTextureTest {
         GLStateManager.glEnable(GL11.GL_CULL_FACE);
         GLStateManager.glCullFace(GL11.GL_BACK);
         GLStateManager.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-        quad(1.0f, true, true);
+        quad(1.0f, true, frontFacing);
         GLStateManager.glPopAttrib();
 
-        final int actual = center();
-        assertColorNear(LEVEL_COLORS[0], actual, 2, "front-face winding kept");
+        return center();
+    }
+
+    @Test
+    void pushAttribWrappedCulledDrawKeepsFrontFace() {
+        assertColorNear(LEVEL_COLORS[0], centerAfterPushAttribWrappedCulledQuad(true), 2, "front-face winding kept");
     }
 
     @Test
     void pushAttribWrappedCulledDrawDropsBackFace() {
-        uploadLightmapFrame(0xFFFFFFFF);
-        bindAtlasUnit0();
-        enableLightmap();
-        GlsmSdlHeadlessRig.terrainRenderState();
-
-        GLStateManager.glEnable(GL11.GL_CULL_FACE);
-        GLStateManager.glCullFace(GL11.GL_BACK);
-        GLStateManager.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-        quad(1.0f, true, false);
-        GLStateManager.glPopAttrib();
-
-        final int actual = center();
+        final int actual = centerAfterPushAttribWrappedCulledQuad(false);
         assertEquals(CLEAR_COLOR, actual, () -> "back-face winding was not culled: " + describe(actual));
     }
 

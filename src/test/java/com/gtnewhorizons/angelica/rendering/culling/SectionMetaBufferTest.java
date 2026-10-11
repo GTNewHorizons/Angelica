@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.rendering.culling;
 
+import com.gtnewhorizons.angelica.glsm.testutil.TestThreads;
 import org.embeddedt.embeddium.impl.render.chunk.data.SectionRenderDataUnsafe;
 import org.embeddedt.embeddium.impl.render.chunk.compile.sorting.QuadPrimitiveType;
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
@@ -236,45 +237,37 @@ class SectionMetaBufferTest {
         final int[] zeros = { 0, 0, 0, 0, 0, 0, 0 };
         final ByteBuffer src = SyntheticSectionData.row(0, 0, zeros, zeros, zeros);
         final AtomicBoolean stop = new AtomicBoolean(false);
-        final AtomicReference<Throwable> error = new AtomicReference<>();
         final long srcAddr = MemoryUtilities.memAddress(src);
 
-        final Thread writer = new Thread(() -> {
-            try {
-                int x = 0, y = 0, z = 0;
-                while (!stop.get()) {
-                    meta.update(0, x << 4, y << 4, z << 4, 0, srcAddr, 0, SectionRenderDataUnsafe.Strategy.FULL, QuadPrimitiveType.TRIANGULATED);
-                    x++;
-                    if (x > 63) { x = 0; y++; }
-                    if (y > 63) { y = 0; z++; }
-                    if (z > 63) z = 0;
-                }
-            } catch (Throwable t) { error.set(t); }
-        }, "section-writer");
+        final TestThreads.Worker writer = TestThreads.start("section-writer", () -> {
+            int x = 0, y = 0, z = 0;
+            while (!stop.get()) {
+                meta.update(0, x << 4, y << 4, z << 4, 0, srcAddr, 0, SectionRenderDataUnsafe.Strategy.FULL, QuadPrimitiveType.TRIANGULATED);
+                x++;
+                if (x > 63) { x = 0; y++; }
+                if (y > 63) { y = 0; z++; }
+                if (z > 63) z = 0;
+            }
+        });
 
-        final Thread reader = new Thread(() -> {
-            try {
-                byte[] sink = new byte[1024 * 1024];
-                while (!stop.get()) {
-                    meta.syncIfDirty(b -> {
-                        final int n = Math.min(b.remaining(), sink.length);
-                        for (int i = 0; i < n; i++) sink[i] = b.get(i);
-                        return true;
-                    });
-                }
-            } catch (Throwable t) { error.set(t); }
-        }, "section-reader");
-
-        writer.start();
-        reader.start();
-        Thread.sleep(2000);
-        stop.set(true);
-        writer.join(5000);
-        reader.join(5000);
+        final TestThreads.Worker reader = TestThreads.start("section-reader", () -> {
+            byte[] sink = new byte[1024 * 1024];
+            while (!stop.get()) {
+                meta.syncIfDirty(b -> {
+                    final int n = Math.min(b.remaining(), sink.length);
+                    for (int i = 0; i < n; i++) sink[i] = b.get(i);
+                    return true;
+                });
+            }
+        });
 
         try {
-            if (error.get() != null) throw new AssertionError("worker crashed", error.get());
+            Thread.sleep(2000);
+            stop.set(true);
+            writer.join();
+            reader.join();
         } finally {
+            stop.set(true);
             MemoryUtilities.memFree(src);
             meta.reset();
         }

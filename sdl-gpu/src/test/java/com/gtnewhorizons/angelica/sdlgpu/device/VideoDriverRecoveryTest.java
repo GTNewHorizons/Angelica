@@ -1,34 +1,31 @@
 package com.gtnewhorizons.angelica.sdlgpu.device;
 
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+
+import java.util.stream.Stream;
 
 import static com.gtnewhorizons.angelica.sdlgpu.device.VideoDriverRecovery.shouldRetryOnX11;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class VideoDriverRecoveryTest {
 
-    @Test
-    void waylandWithoutVulkanSurfaceRetries() {
-        assertTrue(shouldRetryOnX11("wayland", false, ":0"));
+    static Stream<Arguments> sessions() {
+        return Stream.of(
+            Arguments.of("wayland without a Vulkan loader, XWayland present", "wayland", false, ":0", true),
+            Arguments.of("wayland with a Vulkan loader", "wayland", true, ":0", false),
+            Arguments.of("wayland, DISPLAY unset", "wayland", false, null, false),
+            Arguments.of("wayland, DISPLAY empty", "wayland", false, "", false),
+            Arguments.of("x11", "x11", false, ":0", false),
+            Arguments.of("cocoa", "cocoa", false, ":0", false),
+            Arguments.of("windows", "windows", false, ":0", false),
+            Arguments.of("no video driver", null, false, ":0", false));
     }
 
-    @Test
-    void waylandWithVulkanStays() {
-        assertFalse(shouldRetryOnX11("wayland", true, ":0"));
-    }
-
-    @Test
-    void noXWaylandMeansNoRetry() {
-        assertFalse(shouldRetryOnX11("wayland", false, null));
-        assertFalse(shouldRetryOnX11("wayland", false, ""));
-    }
-
-    @Test
-    void otherVideoDriversAreLeftAlone() {
-        assertFalse(shouldRetryOnX11("x11", false, ":0"));
-        assertFalse(shouldRetryOnX11("cocoa", false, ":0"));
-        assertFalse(shouldRetryOnX11("windows", false, ":0"));
-        assertFalse(shouldRetryOnX11(null, false, ":0"));
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("sessions")
+    void retriesOnX11OnlyForWaylandWithoutVulkan(String name, String videoDriver, boolean vulkanLoaderAvailable, String display, boolean retry) {
+        assertEquals(retry, shouldRetryOnX11(videoDriver, vulkanLoaderAvailable, display));
     }
 }

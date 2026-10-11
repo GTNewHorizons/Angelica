@@ -2,11 +2,13 @@ package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizons.angelica.glsm.states.ImageUnitBinding;
 import org.junit.jupiter.api.Test;
+import org.lwjgl.opengl.ContextCapabilities;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL42;
 
+import static com.gtnewhorizons.angelica.glsm.GlTestSupport.drainErrors;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -16,17 +18,12 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 @GLCoreTest
 public class GLSM_ImageUnitBindingCache_UnitTest {
 
-    private static void drainErrors() {
-        while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
-    }
-
     private static void unbind(int unit) {
-        GLStateManager.glBindImageTexture(unit, 0, 0, false, 0, GL15.GL_READ_ONLY, 0);
+        GLStateManager.glBindImageTexture(unit, 0, 0, false, 0, GL15.GL_READ_ONLY, GL30.GL_R8);
     }
 
     @Test
     void bindThenQueryReturnsFullTuple() {
-        drainErrors();
         final int tex = GL11.glGenTextures();
         try {
             GLStateManager.glBindImageTexture(2, tex, 1, false, 3, GL15.GL_READ_ONLY, GL30.GL_RGBA32UI);
@@ -40,13 +37,11 @@ public class GLSM_ImageUnitBindingCache_UnitTest {
         } finally {
             unbind(2);
             GLStateManager.glDeleteTextures(tex);
-            drainErrors();
         }
     }
 
     @Test
     void saveRestoreRoundTripsTheWholeTuple() {
-        drainErrors();
         final int a = GL11.glGenTextures();
         final int b = GL11.glGenTextures();
         try {
@@ -55,7 +50,7 @@ public class GLSM_ImageUnitBindingCache_UnitTest {
             assertNotNull(live);
             final ImageUnitBinding saved = live.copy();
 
-            GLStateManager.glBindImageTexture(0, b, 0, true, 0, GL15.GL_WRITE_ONLY, 0);
+            GLStateManager.glBindImageTexture(0, b, 0, true, 0, GL15.GL_WRITE_ONLY, GL30.GL_R8);
             assertEquals(b, GLStateManager.glGetInteger(GL42.GL_IMAGE_BINDING_NAME, 0));
 
             GLStateManager.glBindImageTexture(0, saved.getTexture(), saved.getLevel(), saved.isLayered(), saved.getLayer(), saved.getAccess(), saved.getFormat());
@@ -68,30 +63,26 @@ public class GLSM_ImageUnitBindingCache_UnitTest {
             unbind(0);
             GLStateManager.glDeleteTextures(a);
             GLStateManager.glDeleteTextures(b);
-            drainErrors();
         }
     }
 
     @Test
     void resetToZeroIsNotARestore() {
-        drainErrors();
         final int tex = GL11.glGenTextures();
         try {
             GLStateManager.glBindImageTexture(0, tex, 1, true, 0, GL15.GL_READ_WRITE, GL30.GL_R32UI);
-            GLStateManager.glBindImageTexture(0, 0, 0, true, 0, GL15.GL_WRITE_ONLY, 0);
+            GLStateManager.glBindImageTexture(0, 0, 0, true, 0, GL15.GL_WRITE_ONLY, GL30.GL_R8);
 
             assertEquals(0, GLStateManager.glGetInteger(GL42.GL_IMAGE_BINDING_NAME, 0));
             assertEquals(0, GLStateManager.glGetInteger(GL42.GL_IMAGE_BINDING_LEVEL, 0));
         } finally {
             unbind(0);
             GLStateManager.glDeleteTextures(tex);
-            drainErrors();
         }
     }
 
     @Test
     void deletingTheBoundTextureClearsTheImageUnit() {
-        drainErrors();
         final int tex = GL11.glGenTextures();
         try {
             GLStateManager.glBindImageTexture(1, tex, 0, true, 0, GL15.GL_READ_WRITE, GL30.GL_R32UI);
@@ -101,13 +92,11 @@ public class GLSM_ImageUnitBindingCache_UnitTest {
             assertEquals(0, GLStateManager.glGetInteger(GL42.GL_IMAGE_BINDING_NAME, 1), "GL unbinds a deleted texture from every image unit");
         } finally {
             unbind(1);
-            drainErrors();
         }
     }
 
     @Test
     void unitsAreIndependentAndUnitZeroIsNotSpecial() {
-        drainErrors();
         final int a = GL11.glGenTextures();
         final int b = GL11.glGenTextures();
         try {
@@ -123,13 +112,11 @@ public class GLSM_ImageUnitBindingCache_UnitTest {
             unbind(3);
             GLStateManager.glDeleteTextures(a);
             GLStateManager.glDeleteTextures(b);
-            drainErrors();
         }
     }
 
     @Test
     void outOfRangeUnitDoesNotCorruptNeighbours() {
-        drainErrors();
         final int tex = GL11.glGenTextures();
         try {
             GLStateManager.glBindImageTexture(0, tex, 0, true, 0, GL15.GL_READ_ONLY, GL30.GL_R32UI);
@@ -137,11 +124,14 @@ public class GLSM_ImageUnitBindingCache_UnitTest {
             assertFalse(beyond == 0, "unit 0 must resolve for this test to mean anything");
 
             GLStateManager.glBindImageTexture(beyond, tex, 0, true, 0, GL15.GL_READ_ONLY, GL30.GL_R32UI);
+            // Without image load/store the backend drops the call, so the driver never sees the unit.
+            final ContextCapabilities caps = GLStateManager.capabilities;
+            final boolean reachesDriver = caps.OpenGL42 || caps.GL_ARB_shader_image_load_store || caps.GL_EXT_shader_image_load_store;
+            assertEquals(reachesDriver ? GL11.GL_INVALID_VALUE : GL11.GL_NO_ERROR, GL11.glGetError(), "driver must reject the out-of-range unit");
             assertEquals(tex, GLStateManager.glGetInteger(GL42.GL_IMAGE_BINDING_NAME, 0));
         } finally {
             unbind(0);
             GLStateManager.glDeleteTextures(tex);
-            drainErrors();
         }
     }
 
@@ -151,9 +141,9 @@ public class GLSM_ImageUnitBindingCache_UnitTest {
         drainErrors();
         final int tex = GL11.glGenTextures();
         try {
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, tex);
-            GL42.glTexStorage2D(GL11.GL_TEXTURE_2D, 1, GL30.GL_R32UI, 4, 4);
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex);
+            GLStateManager.glTexStorage2D(GL11.GL_TEXTURE_2D, 1, GL30.GL_R32UI, 4, 4);
+            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
 
             GLStateManager.glBindImageTexture(1, tex, 0, false, 0, GL15.GL_READ_ONLY, GL30.GL_R32UI);
             drainErrors();
@@ -164,7 +154,6 @@ public class GLSM_ImageUnitBindingCache_UnitTest {
         } finally {
             unbind(1);
             GLStateManager.glDeleteTextures(tex);
-            drainErrors();
         }
     }
 }

@@ -31,6 +31,9 @@ public class GLSM_ValueStackCow_GLTest {
         if (fixtureTexA == -1) {
             fixtureTexA = GLStateManager.glGenTextures();
             fixtureTexB = GLStateManager.glGenTextures();
+            final int bound = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, fixtureTexB);
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, bound);
         }
     }
 

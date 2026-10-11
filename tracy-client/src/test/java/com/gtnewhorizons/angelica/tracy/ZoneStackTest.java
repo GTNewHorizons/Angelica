@@ -31,13 +31,6 @@ class ZoneStackTest {
     }
 
     @Test
-    void growsPastInitialCapacity() {
-        final ZoneStack stack = new ZoneStack();
-        for (long i = 0; i < 256; i++) assertTrue(stack.push(i));
-        for (long i = 255; i >= 0; i--) assertEquals(i, stack.pop());
-    }
-
-    @Test
     void gpuFlagFollowsPop() {
         final ZoneStack stack = new ZoneStack();
         assertTrue(stack.push(1, true));

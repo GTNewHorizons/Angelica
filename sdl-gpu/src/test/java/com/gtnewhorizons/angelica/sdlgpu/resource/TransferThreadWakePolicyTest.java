@@ -3,6 +3,8 @@ package com.gtnewhorizons.angelica.sdlgpu.resource;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.concurrent.locks.LockSupport;
 
@@ -13,10 +15,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TransferThreadWakePolicyTest {
 
-    @Test
-    void wakesOnceEveryCoalesceWindow() {
+    @ParameterizedTest(name = "from seq {0}")
+    @ValueSource(longs = {1L, 1L << 40})
+    void wakesOnceEveryCoalesceWindow(long base) {
         int woken = 0;
-        for (long seq = 1; seq <= 1600; seq++) {
+        for (long seq = base; seq < base + 1600; seq++) {
             if (TransferThread.shouldWakeOnEnqueue(seq)) woken++;
         }
         assertEquals(100, woken, "1600 enqueues must produce 100 unparks, not 1600");
@@ -39,26 +42,10 @@ class TransferThreadWakePolicyTest {
         assertFalse(TransferThread.shouldWakeOnEnqueue(17));
     }
 
-    @Test
-    void policyHoldsAtLargeSequenceNumbers() {
-        final long base = 1L << 40;
-        int woken = 0;
-        for (long seq = base; seq < base + 1600; seq++) {
-            if (TransferThread.shouldWakeOnEnqueue(seq)) woken++;
-        }
-        assertEquals(100, woken);
-    }
-
     private static TransferThread stoppedThread(long submittedSeq) {
         final SdlTestRig rig = SdlTestRig.create();
-        final TransferThread tt = new TransferThread(rig.device, rig.resourceManager);
-        tt.shutdown();
-        try {
-            tt.getThread().join(5_000L);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new AssertionError(e);
-        }
+        final TransferThread tt = rig.newTransferThread();
+        SdlTestRig.shutdown(tt);
         assertFalse(tt.getThread().isAlive());
         Reflect.set(tt, "submittedSeq", submittedSeq);
         return tt;

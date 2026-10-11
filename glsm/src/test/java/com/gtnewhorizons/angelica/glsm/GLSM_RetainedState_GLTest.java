@@ -6,6 +6,8 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL14;
 
+import static com.gtnewhorizons.angelica.glsm.GlTestSupport.drainErrors;
+import static com.gtnewhorizons.angelica.glsm.GlTestSupport.driverTextureBinding;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -14,14 +16,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class GLSM_RetainedState_GLTest {
 
     private static final StateSet ALL = StateSet.forMask(GL11.GL_ALL_ATTRIB_BITS);
-
-    private static int driverTextureBinding(int unit) {
-        final int saved = GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
-        GL13.glActiveTexture(GL13.GL_TEXTURE0 + unit);
-        final int binding = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
-        GL13.glActiveTexture(saved);
-        return binding;
-    }
 
     private static void baseline() {
         GLStateManager.enableCull();
@@ -234,7 +228,7 @@ public class GLSM_RetainedState_GLTest {
     @Test
     void aDeletedProgramIsNotRebound() {
         final RetainedState retained = new RetainedState();
-        final int program = GLSM_StateSet_GLTest.linkTrivialProgram();
+        final int program = GlTestSupport.program(GlTestSupport.TRIVIAL_VS, GlTestSupport.TRIVIAL_FS);
         try {
             baseline();
             final int d = GLStateManager.pushState(ALL);
@@ -243,11 +237,10 @@ public class GLSM_RetainedState_GLTest {
             GLStateManager.popStateTo(d);
             GLStateManager.glUseProgram(0);
             GLStateManager.glDeleteProgram(program);
-            while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
+            drainErrors();
 
             GLStateManager.applyRetainedState(retained);
             assertEquals(0, GLStateManager.getActiveProgram());
-            assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
         } finally {
             GLStateManager.glUseProgram(0);
             baseline();

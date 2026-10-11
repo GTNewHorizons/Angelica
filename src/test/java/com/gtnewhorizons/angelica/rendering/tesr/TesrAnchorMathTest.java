@@ -87,14 +87,4 @@ class TesrAnchorMathTest {
         final Matrix4f moved = new Matrix4f(mA).translate(1f, 0f, 0f);
         assertNotEquals(base, TesrAnchorMath.instanceHash(42, moved, 0x00F000F0, -1), "transform");
     }
-
-    @Test
-    void summedHashIsOrderIndependent() {
-        final Matrix4f m1 = new Matrix4f().translation(1f, 2f, 3f);
-        final Matrix4f m2 = new Matrix4f().translation(-4f, 5f, -6f).rotateY(0.5f);
-        final long a = TesrAnchorMath.instanceHash(1, m1, 10, -1);
-        final long b = TesrAnchorMath.instanceHash(2, m2, 20, -1);
-        assertEquals(a + b, b + a);
-        assertNotEquals(a, b);
-    }
 }

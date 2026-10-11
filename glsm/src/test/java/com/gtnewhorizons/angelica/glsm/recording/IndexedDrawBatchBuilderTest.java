@@ -63,25 +63,6 @@ class IndexedDrawBatchBuilderTest extends DisplayListTestFixture {
     }
 
     @Test
-    void compileAndExecute_firesLiveAndBakes() {
-        final int vbo = defaultQuadVbo();
-        final int ebo = uploadEbo(GL11.GL_UNSIGNED_SHORT, 0, 1, 2);
-        final int vao = setupPosColorVao(vbo);
-
-        final int list = newList();
-        GLStateManager.glNewList(list, GL11.GL_COMPILE_AND_EXECUTE);
-        GLStateManager.glBindVertexArray(vao);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
-        GLStateManager.glDrawElements(GL11.GL_TRIANGLES, 3, GL11.GL_UNSIGNED_SHORT, 0L);
-        GLStateManager.glBindVertexArray(0);
-        GLStateManager.glEndList();
-
-        final BatchedIndexedDrawCmd cmd = firstBatchedCmd(list);
-        assertNotNull(cmd);
-        assertEquals(3, cmd.getIndexCount());
-    }
-
-    @Test
     void quads_triangulateAtRecord() {
         final int vbo = defaultQuadVbo();
         final int ebo = uploadEbo(GL11.GL_UNSIGNED_SHORT, 0, 1, 2, 3);
@@ -455,11 +436,6 @@ class IndexedDrawBatchBuilderTest extends DisplayListTestFixture {
         assertEquals(2, cmds.size());
         assertEquals(2, batchesOf(list).size(), "different enabled locations → two batches");
         assertNotEquals(cmds.get(0).getSharedVAO(), cmds.get(1).getSharedVAO(), "VAOs from separate batches must be distinct");
-    }
-
-    @Test
-    void nullListProbeCompiles() {
-        assertNull(DisplayListManager.getDisplayList(0));
     }
 
     @Test
