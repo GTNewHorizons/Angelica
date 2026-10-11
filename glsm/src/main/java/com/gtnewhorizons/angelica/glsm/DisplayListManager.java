@@ -1025,7 +1025,7 @@ public class DisplayListManager {
                 }
 
                 final DisplayListCommand[] complexObjects = commandBuffer.getComplexObjects();
-                compiled = new CompiledDisplayList(commandBuffer.finish(), complexObjects, compiledBuffers, indexedBatches);
+                compiled = new CompiledDisplayList(commandBuffer.finish(), complexObjects, compiledBuffers, indexedBatches, GLStateManager.ctx());
                 currentRecorder = null;
             } catch (Exception e) {
                 GLStateManager.LOGGER.error("Encountered a fatal issue while trying to compile a display list.");

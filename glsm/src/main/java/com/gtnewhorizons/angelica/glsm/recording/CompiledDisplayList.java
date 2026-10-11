@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
+import com.gtnewhorizons.angelica.glsm.GLContextState;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
 import com.gtnewhorizons.angelica.glsm.recording.commands.IndexedDrawBatch;
@@ -30,12 +31,13 @@ public final class CompiledDisplayList {
      * Empty display list singleton. Per OpenGL spec, an empty list is still valid.
      * This instance does nothing when rendered and is never deleted (shared singleton).
      */
-    public static final CompiledDisplayList EMPTY = new CompiledDisplayList(null, null, null, Collections.emptyList());
+    public static final CompiledDisplayList EMPTY = new CompiledDisplayList(null, null, null, Collections.emptyList(), null);
 
     private final ByteBuffer commandBuffer;     // Off-heap command storage, must be freed
     private final DisplayListCommand[] complexObjects;      // Complex commands (TexImage2D, etc.)
     private final DisplayListVBO ownedVbos;     // GPU resources referenced by index
     private final List<IndexedDrawBatch> indexedBatches; // Shared VAO/VBO/EBO triples per layout group
+    private GLContextState compileCtx;
     private Int2IntMap replayPrograms;
     private long programLifetimeGeneration = -1;
 
@@ -55,11 +57,16 @@ public final class CompiledDisplayList {
         return valid ? program : 0;
     }
 
-    public CompiledDisplayList(ByteBuffer commandBuffer, DisplayListCommand[] complexObjects, DisplayListVBO ownedVbos, List<IndexedDrawBatch> indexedBatches) {
+    public CompiledDisplayList(ByteBuffer commandBuffer, DisplayListCommand[] complexObjects, DisplayListVBO ownedVbos, List<IndexedDrawBatch> indexedBatches, GLContextState compileCtx) {
         this.commandBuffer = commandBuffer;
         this.complexObjects = complexObjects;
         this.ownedVbos = ownedVbos;
         this.indexedBatches = indexedBatches;
+        this.compileCtx = compileCtx;
+    }
+
+    boolean replaysVertexArrayBind(int vao) {
+        return vao == 0 || compileCtx == GLStateManager.ctx();
     }
 
     /**
@@ -101,6 +108,7 @@ public final class CompiledDisplayList {
         if (commandBuffer != null) {
             memFree(commandBuffer);
         }
+        compileCtx = null;
     }
 
     /**

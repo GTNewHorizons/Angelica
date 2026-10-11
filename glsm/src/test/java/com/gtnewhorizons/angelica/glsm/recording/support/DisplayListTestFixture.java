@@ -8,6 +8,7 @@ import com.gtnewhorizons.angelica.glsm.GLTypes;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
 import com.gtnewhorizons.angelica.glsm.recording.commands.BatchedIndexedDrawCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.IndexedDrawBatch;
+import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import org.junit.jupiter.api.AfterEach;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
@@ -174,6 +175,19 @@ public abstract class DisplayListTestFixture {
 
     protected static IndexedDrawBatch firstBatch(int listId) {
         return batchesOf(listId).getFirst();
+    }
+
+    protected static void replay(int listId) {
+        compiledOf(listId).render();
+        GLStateManager.glBindVertexArray(0);
+    }
+
+    protected static IndexedDrawBatch batchOf(BatchedIndexedDrawCmd cmd) {
+        return Reflect.get(cmd, "batch");
+    }
+
+    protected static int vaoOf(IndexedDrawBatch batch) {
+        return Reflect.<Integer>get(batch, "vao");
     }
 
     protected static ByteBuffer readBufferBytes(int target, int bufferId, int size) {

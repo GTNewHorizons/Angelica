@@ -525,8 +525,9 @@ public final class CommandBufferExecutor {
                     ptr += 4;
                 }
                 case GLCommand.BIND_VAO -> {
-                    GLStateManager.glBindVertexArray(memGetInt(ptr));
+                    final int vao = memGetInt(ptr);
                     ptr += 4;
+                    if (compiledDisplayList.replaysVertexArrayBind(vao)) GLStateManager.glBindVertexArray(vao);
                 }
 
                 // === Complex object reference ===
