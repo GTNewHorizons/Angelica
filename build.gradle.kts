@@ -190,6 +190,13 @@ tasks.test {
 val downgradeRootMainClasses = tasks.named<DowngradeFiles>("downgradeMainClasses")
 val downgradeRootTestClasses = tasks.named<DowngradeFiles>("downgradeTestClasses")
 
+// JVMDowngrader only declares outputs for inputs that exist at configuration, so a clean tree has none.
+for (name in listOf("main", "mixin", "test")) {
+    tasks.named<DowngradeFiles>("downgrade${name.replaceFirstChar { it.uppercase() }}Classes") {
+        sourceSets[name].output.classesDirs.files.forEach { outputs.dir(temporaryDir.resolve(it.name)) }
+    }
+}
+
 val glCoreTest by tasks.registering(Test::class) {
     description = "Runs the gl-core tests in their own JVM with a real GL context."
     group = "verification"
@@ -208,7 +215,21 @@ val glCoreTest by tasks.registering(Test::class) {
     configureAngelicaJava8()
 }
 
-tasks.check { dependsOn(glCoreTest) }
+val verifyTestsRan by tasks.registering
+listOf(tasks.test, glCoreTest).forEach { testTask ->
+    val name = testTask.name
+    val verify = tasks.register("verify${name.replaceFirstChar { it.uppercase() }}Ran") {
+        val resultsDir = layout.buildDirectory.dir("test-results/$name")
+        dependsOn(testTask)
+        doLast {
+            val dir = resultsDir.get().asFile
+            val xmls = dir.listFiles { f -> f.name.startsWith("TEST-") && f.name.endsWith(".xml") } ?: emptyArray()
+            check(xmls.isNotEmpty()) { ":$name produced no TEST-*.xml in $dir - test task likely went NO-SOURCE" }
+        }
+    }
+    verifyTestsRan.configure { dependsOn(verify) }
+}
+tasks.check { dependsOn(verifyTestsRan) }
 
 apply(from = "gradle/angelica-shadow-common.gradle.kts")
 apply(from = "experimental-surround/surround.root.gradle.kts")
