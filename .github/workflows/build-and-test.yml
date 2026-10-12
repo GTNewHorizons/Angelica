@@ -9,7 +9,7 @@ on:
 
 jobs:
   build-and-test:
-    uses: GTNewHorizons/GTNH-Actions-Workflows/.github/workflows/build-and-test.yml@opt-in-ci-speedups
+    uses: GTNewHorizons/GTNH-Actions-Workflows/.github/workflows/build-and-test.yml@05e7cd7ce0ea015acda8c10c1c39fb3a20a49e60
     with:
       disable-spotless-pr: true
       java-distribution: temurin
