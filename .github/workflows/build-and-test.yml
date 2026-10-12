@@ -9,7 +9,7 @@ on:
 
 jobs:
   build-and-test:
-    uses: GTNewHorizons/GTNH-Actions-Workflows/.github/workflows/build-and-test.yml@30d03306cd2dbfade5083f5c6552afad5321d2bb
+    uses: ./.github/workflows/build-and-test-local.yml
     with:
       disable-spotless-pr: true
     secrets: inherit
@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-java@v5
         with:
-          distribution: zulu
+          distribution: temurin
           java-version: |
             21
             25
