@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.arch;
 
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.Handle;
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.ClassRemapper;
 import org.objectweb.asm.commons.Remapper;
@@ -46,7 +47,7 @@ final class ArchScan {
         }
     }
 
-    enum Kind { FIELD, CALL, REFERENCE }
+    enum Kind { FIELD, CALL }
 
     record Access(String method, Kind kind, String owner, String name, String desc) {
 
@@ -55,8 +56,7 @@ final class ArchScan {
         }
 
         List<String> descriptorTypes() {
-            if (kind == Kind.FIELD) return Collections.singletonList(Type.getType(desc).getClassName());
-            return kind == Kind.CALL ? signatureTypes(desc) : Collections.emptyList();
+            return kind == Kind.FIELD ? Collections.singletonList(Type.getType(desc).getClassName()) : signatureTypes(desc);
         }
     }
 
@@ -165,7 +165,7 @@ final class ArchScan {
                     accesses.add(new Access(origin, Kind.CALL, className(call.owner), call.name, call.desc));
                 } else if (insn instanceof InvokeDynamicInsnNode dynamic) {
                     for (Object argument : dynamic.bsmArgs) {
-                        if (argument instanceof Handle handle) accesses.add(new Access(origin, Kind.REFERENCE, className(handle.getOwner()), handle.getName(), handle.getDesc()));
+                        if (argument instanceof Handle handle) accesses.add(new Access(origin, handle.getTag() <= Opcodes.H_PUTSTATIC ? Kind.FIELD : Kind.CALL, className(handle.getOwner()), handle.getName(), handle.getDesc()));
                     }
                 } else if (insn instanceof LdcInsnNode ldc && ldc.cst instanceof Type type && (type.getSort() == Type.OBJECT || type.getSort() == Type.ARRAY)) {
                     classConstants.add(new ClassConstant(origin, type.getClassName()));

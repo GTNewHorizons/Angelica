@@ -32,7 +32,7 @@ class NoWildcardImportsTest {
             }
             assertFalse(sources.isEmpty(), dir + " has no Java sources");
             for (Path source : sources) {
-                final String[] lines = new String(Files.readAllBytes(source), StandardCharsets.ISO_8859_1).split("\n");
+                final String[] lines = new String(Files.readAllBytes(source), StandardCharsets.ISO_8859_1).split("\r?\n");
                 for (int i = 0; i < lines.length; i++) {
                     if (WILDCARD_IMPORT.matcher(lines[i]).matches()) violations.add("  " + source + ":" + (i + 1));
                 }
