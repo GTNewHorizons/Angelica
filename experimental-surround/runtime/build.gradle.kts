@@ -48,6 +48,7 @@ repositories {
 }
 
 tasks.withType<DowngradeFiles>().configureEach {
+    outputs.cacheIf { true }
     downgradeTo.set(JavaVersion.VERSION_1_8)
     multiReleaseOriginal.set(false)
     multiReleaseVersions.set(emptySet())

@@ -6,7 +6,10 @@ import xyz.wagyourtail.jvmdg.gradle.task.files.DowngradeFiles
 val libs = the<LibrariesForLibs>()
 
 tasks.withType<DowngradeJar>().configureEach { logLevel.set("FATAL") }
-tasks.withType<DowngradeFiles>().configureEach { logLevel.set("FATAL") }
+tasks.withType<DowngradeFiles>().configureEach {
+    logLevel.set("FATAL")
+    outputs.cacheIf { true }
+}
 
 configurations.all {
     resolutionStrategy.dependencySubstitution {

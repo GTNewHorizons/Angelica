@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.sdlgpu.device;
 
 import com.gtnewhorizons.angelica.sdlgpu.RealDeviceExtension;
 import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.system.MemoryStack;
@@ -18,6 +19,7 @@ import static org.lwjgl.sdl.SDLVersion.SDL_GetVersion;
 import static org.lwjgl.sdl.SDLVersion.SDL_VERSIONNUM;
 
 @ExtendWith(RealDeviceExtension.class)
+@Tag("sdl-gpu-device")
 class FenceProbeRealDeviceTest {
 
     @Test

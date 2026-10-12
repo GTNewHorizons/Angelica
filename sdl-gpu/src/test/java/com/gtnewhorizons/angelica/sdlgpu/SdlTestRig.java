@@ -10,7 +10,7 @@ import org.lwjgl.sdl.SDLError;
 import org.lwjgl.sdl.SDLHints;
 import org.lwjgl.sdl.SDLInit;
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.lwjgl.sdl.SDLGPU.SDL_CreateGPUDevice;
 import static org.lwjgl.sdl.SDLGPU.SDL_DestroyGPUDevice;
 import static org.lwjgl.sdl.SDLGPU.SDL_GetGPUDeviceDriver;
@@ -90,13 +90,13 @@ public final class SdlTestRig {
 
     public static void initSdlVideo() {
         SDLHints.SDL_SetHint(SDLHints.SDL_HINT_MAC_BACKGROUND_APP, "1");
-        assumeTrue(SDLInit.SDL_Init(SDL_INIT_VIDEO), () -> "SDL_Init failed: " + SDLError.SDL_GetError());
+        assertTrue(SDLInit.SDL_Init(SDL_INIT_VIDEO), () -> "SDL_Init failed: " + SDLError.SDL_GetError());
     }
 
     public static SdlTestRig acquireRealDevice() {
         initSdlVideo();
         realSdlDevice = SDL_CreateGPUDevice(SHADER_FORMATS, true, (CharSequence) null);
-        assumeTrue(realSdlDevice != 0, "No SDL GPU device: " + SDLError.SDL_GetError());
+        assertTrue(realSdlDevice != 0, "No SDL GPU device: " + SDLError.SDL_GetError());
 
         final SdlTestRig rig = new SdlTestRig(realSdlDevice);
         rig.frameManager.setResourceManager(rig.resourceManager);

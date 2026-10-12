@@ -8,6 +8,7 @@ import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,6 +29,7 @@ import static org.lwjgl.system.MemoryStack.stackPush;
 
 @ExtendWith(RealDeviceExtension.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@Tag("sdl-gpu-device")
 class UploadArenaGpuRoundTripTest {
 
     private static Device device;

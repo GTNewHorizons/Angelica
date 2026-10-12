@@ -204,7 +204,6 @@ afterEvaluate {
         testImplementation(libs.junit.platform.reporting)
         testImplementation(libs.junit.platform.launcher)
 
-        testImplementation(libs.archunit.junit5)
         testImplementation(libs.retrofuturabootstrap) { isTransitive = false }
 
         glsmTestFixtures(testFixtures(project(":glsm")) as ModuleDependency) { isTransitive = false }

@@ -1,3 +1,5 @@
+import java.time.Duration
+
 plugins {
     `java-library`
     `maven-publish`
@@ -94,6 +96,7 @@ dependencies {
 }
 
 val glsmSdlTag = "glsm-sdl"
+val sdlGpuDeviceTag = "sdl-gpu-device"
 
 val glsmSdlStubs = sourceSets.create("glsmSdlStubs") {
     java.srcDir("src/glsmSdlStubs/java")
@@ -109,13 +112,27 @@ dependencies {
     testImplementation(glsmSdlAgent.output)
 }
 
-tasks.test {
-    useJUnitPlatform {
-        excludeTags(glsmSdlTag)
-    }
+tasks.withType<Test>().configureEach {
     if (System.getProperty("os.name").startsWith("Mac")) {
         jvmArgs("-XstartOnFirstThread")
     }
+}
+
+tasks.test {
+    useJUnitPlatform {
+        excludeTags(glsmSdlTag, sdlGpuDeviceTag)
+    }
+}
+
+val sdlGpuDeviceTest by tasks.registering(Test::class) {
+    description = "Runs the tests that need a real SDL GPU device."
+    group = "verification"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    useJUnitPlatform {
+        includeTags(sdlGpuDeviceTag)
+    }
+    mustRunAfter(tasks.test)
 }
 
 val glsmSdlRedirectAgentJar by tasks.registering(Jar::class) {
@@ -146,9 +163,6 @@ val glsmSdlTest by tasks.registering(Test::class) {
         "-Dangelica.sdlgpu.disablePresenterThread=true",
         "-Dceleritas.lwjglService=com.gtnewhorizons.angelica.sdlgpu.SDLGPULWJGLService",
     )
-    if (System.getProperty("os.name").startsWith("Mac")) {
-        jvmArgs("-XstartOnFirstThread")
-    }
     testLogging {
         events("passed", "skipped", "failed")
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
@@ -156,7 +170,23 @@ val glsmSdlTest by tasks.registering(Test::class) {
     mustRunAfter(tasks.test)
 }
 
-tasks.check { dependsOn(glsmSdlTest) }
+val deviceTests = listOf(glsmSdlTest, sdlGpuDeviceTest)
+
+deviceTests.forEach {
+    it.configure {
+        outputs.cacheIf { false }
+        timeout = Duration.ofMinutes(5)
+        systemProperty("junit.jupiter.execution.timeout.default", "60s")
+        systemProperty("junit.jupiter.execution.timeout.threaddump.enabled", "true")
+    }
+}
+
+val unpackLwjgl3Natives = registerLwjgl3NativesUnpack()
+(deviceTests + tasks.test).forEach { it.configure { loadLwjgl3NativesFrom(unpackLwjgl3Natives) } }
+
+if (!providers.environmentVariable("CI").isPresent) {
+    tasks.check { dependsOn(deviceTests) }
+}
 
 tasks.named<JavaCompile>("compileJava") {
     val classesDir = destinationDirectory

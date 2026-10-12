@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager.ProgramObject;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager.UniformMemberInfo;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.util.spvc.Spvc;
 
@@ -97,6 +98,7 @@ class PerFrameBlockDedupTest {
     }
 
     @Test
+    @Tag("sdl-gpu-device")
     void flushUniformBlocksEndsTheCopyPassOnceForTwoDirtyBlocks() throws Exception {
         final SdlTestRig rig = SdlTestRig.acquireRealDevice();
         try {
