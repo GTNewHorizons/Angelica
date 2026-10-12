@@ -9,9 +9,11 @@ on:
 
 jobs:
   build-and-test:
-    uses: ./.github/workflows/build-and-test-local.yml
+    uses: GTNewHorizons/GTNH-Actions-Workflows/.github/workflows/build-and-test.yml@opt-in-ci-speedups
     with:
       disable-spotless-pr: true
+      java-distribution: temurin
+      cache-rfg: true
     secrets: inherit
 
   sdl-gpu-tests:
