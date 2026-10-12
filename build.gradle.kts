@@ -178,6 +178,7 @@ tasks.test {
     useJUnitPlatform { excludeTags = setOf("gl-core") }
     configureAngelicaJava8()
     classpath = archScanAsm + classpath
+    maxParallelForks = 2
     jvmArgs("-Dceleritas.lwjglService=org.taumc.celeritas.lwjgl.HeadlessTestLWJGLService")
     dependsOn(":glsm:classes", ":lwjgl3-backend:classes", ":sdl-gpu:classes")
 }
@@ -201,10 +202,9 @@ val glCoreTest by tasks.registering(Test::class) {
         .plus(sourceSets["test"].runtimeClasspath.minus(rawMain).minus(rawTest))
 
     configureAngelicaJava8()
-    mustRunAfter(tasks.test)
 }
 
-tasks.test { finalizedBy(glCoreTest) }
+tasks.check { dependsOn(glCoreTest) }
 
 apply(from = "gradle/angelica-shadow-common.gradle.kts")
 apply(from = "experimental-surround/surround.root.gradle.kts")

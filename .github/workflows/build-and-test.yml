@@ -21,7 +21,7 @@ jobs:
       - name: Install a software Vulkan driver
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y xvfb mesa-vulkan-drivers libvulkan1
+          sudo apt-get install -y xvfb mesa-vulkan-drivers
       - uses: actions/checkout@v5
       - uses: actions/setup-java@v5
         with:
