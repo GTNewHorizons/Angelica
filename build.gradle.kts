@@ -89,8 +89,11 @@ tasks.register<Copy>("copyDependencies") {
 val embedOnly: Configuration by configurations
 val shadowImplementation: Configuration by configurations
 
+val dependencyClasspath: FileCollection = sourceSets.main.get().runtimeClasspath - sourceSets.main.get().output
+
 val downgradeEmbedOnlyForTest by tasks.registering(DowngradeFiles::class) {
     inputCollection = embedOnly
+    classpath = dependencyClasspath
     outputs.dir(temporaryDir)
 }
 
@@ -104,6 +107,7 @@ val stripModuleInfoFromShadow by tasks.registering(Jar::class) {
 
 val downgradeShadowImplForTest by tasks.registering(DowngradeFiles::class) {
     inputCollection = files(stripModuleInfoFromShadow.map { it.archiveFile })
+    classpath = dependencyClasspath
     outputs.dir(temporaryDir)
 }
 
@@ -118,6 +122,7 @@ val glsmTestFixtures: Configuration by configurations.creating {
 
 val downgradeGlsmTestFixturesForTest by tasks.registering(DowngradeFiles::class) {
     inputCollection = glsmTestFixtures
+    classpath = dependencyClasspath
     outputs.dir(temporaryDir)
 }
 
@@ -178,7 +183,6 @@ tasks.test {
     useJUnitPlatform { excludeTags = setOf("gl-core") }
     configureAngelicaJava8()
     classpath = archScanAsm + classpath
-    maxParallelForks = 2
     jvmArgs("-Dceleritas.lwjglService=org.taumc.celeritas.lwjgl.HeadlessTestLWJGLService")
     dependsOn(":glsm:classes", ":lwjgl3-backend:classes", ":sdl-gpu:classes")
 }
