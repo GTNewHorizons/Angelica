@@ -161,10 +161,7 @@ jobs:
     - name: Setup the workspace
       run: ./gradlew --build-cache --info --stacktrace ${{ inputs.workspace }}
 
-    - name: Compile the mod
-      run: ./gradlew --build-cache --info --stacktrace assemble
-
-    - name: Run post-build checks
+    - name: Compile the mod and run checks
       id: build_mod
       run: xvfb-run --server-args="-screen 0 1366x768x24" ./gradlew --build-cache --info --stacktrace build
 
