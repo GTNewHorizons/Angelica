@@ -181,6 +181,9 @@ deviceTests.forEach {
     }
 }
 
+val unpackLwjgl3Natives = registerLwjgl3NativesUnpack()
+(deviceTests + tasks.test).forEach { it.configure { loadLwjgl3NativesFrom(unpackLwjgl3Natives) } }
+
 if (!providers.environmentVariable("CI").isPresent) {
     tasks.check { dependsOn(deviceTests) }
 }

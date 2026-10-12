@@ -37,6 +37,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v5
       - name: Run SDL-GPU tests
         run: xvfb-run -a --server-args="-screen 0 1366x768x24" ./gradlew --build-cache --stacktrace --continue :sdl-gpu:glsmSdlTest :sdl-gpu:sdlGpuDeviceTest
+      - name: Check LWJGL did not extract natives to the shared temp dir
+        run: test ! -e "/tmp/lwjgl_$USER"
       - name: Attach SDL-GPU test results
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
@@ -45,3 +47,4 @@ jobs:
           path: |
             sdl-gpu/build/test-results/
             sdl-gpu/build/reports/tests/
+            sdl-gpu/hs_err_pid*.log

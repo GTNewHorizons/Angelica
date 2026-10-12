@@ -303,6 +303,8 @@ val verifyTestsRan by tasks.registering {
 }
 tasks.check { dependsOn(verifyTestsRan) }
 
+val unpackLwjgl3Natives = registerLwjgl3NativesUnpack()
+
 val spirvTest by tasks.registering(Test::class) {
     description = "Runs SpirvShaderTranslator* tests against native shaderc + spvc on Java 21."
     group = "verification"
@@ -331,6 +333,7 @@ val spirvTest by tasks.registering(Test::class) {
         "-Djava.library.path=${extractNatives3.get().property("destinationFolder").let { (it as DirectoryProperty).asFile.get().path }}",
         "--enable-native-access=ALL-UNNAMED"
     )
+    loadLwjgl3NativesFrom(unpackLwjgl3Natives)
 
     testLogging {
         showStandardStreams = true
