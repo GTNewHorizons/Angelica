@@ -30,10 +30,9 @@ joml = "1.10.8"
 commonsLang3 = "3.17.0"
 jvmDowngrader = "1.3.5"
 junit = "5.14.1"
-asmTest = "9.7"
+asmTest = "9.9.1"
 asmBuild = "9.7"
 mockito = "3.12.4"
-archunit = "1.4.1"
 ant = "1.8.2"
 distantHorizonsApi = "5.1.0"
 
@@ -64,11 +63,11 @@ junit-platform-engine = { module = "org.junit.platform:junit-platform-engine" }
 junit-platform-reporting = { module = "org.junit.platform:junit-platform-reporting" }
 
 mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
-archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
 ant = { module = "org.apache.ant:ant", version.ref = "ant" }
 distant-horizons-api = { module = "maven.modrinth:DistantHorizonsApi", version.ref = "distantHorizonsApi" }
 asm-tree-compile = { module = "org.ow2.asm:asm-tree", version.ref = "asmCompile" }
 asm-tree-test = { module = "org.ow2.asm:asm-tree", version.ref = "asmTest" }
+asm-commons-test = { module = "org.ow2.asm:asm-commons", version.ref = "asmTest" }
 asm-build = { module = "org.ow2.asm:asm", version.ref = "asmBuild" }
 lwjgl2 = { module = "org.lwjgl.lwjgl:lwjgl", version.ref = "lwjgl2" }
 lwjgl2-util = { module = "org.lwjgl.lwjgl:lwjgl_util", version.ref = "lwjgl2" }

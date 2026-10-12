@@ -24,7 +24,6 @@ import java.nio.ByteBuffer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 public final class GlsmSdlHeadlessRig {
 
@@ -48,7 +47,7 @@ public final class GlsmSdlHeadlessRig {
     public static void boot() {
         if (booted) return;
         SdlTestRig.initSdlVideo();
-        assumeTrue(SDLGPUGate.device().createDevice(), () -> "no SDL GPU device: " + SDLError.SDL_GetError());
+        assertTrue(SDLGPUGate.device().createDevice(), () -> "no SDL GPU device: " + SDLError.SDL_GetError());
         Reflect.setStatic(SDLGPUGate.class, "engaged", true);
 
         final RenderBackend backend = BackendManager.RENDER_BACKEND;

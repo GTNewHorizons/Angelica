@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.opengl.GL20;
@@ -21,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.lwjgl.sdl.SDLGPU.*;
 
 @ExtendWith(RealDeviceExtension.class)
+@Tag("sdl-gpu-device")
 class StencilMaskGpuTest {
 
     private static SdlTestRig rig;

@@ -1,9 +1,8 @@
 package com.gtnewhorizons.angelica.arch;
 
-import com.tngtech.archunit.core.domain.JavaAccess;
-import com.tngtech.archunit.core.domain.JavaClass;
-import com.tngtech.archunit.core.domain.JavaClasses;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
+import com.gtnewhorizons.angelica.arch.ArchScan.Access;
+import com.gtnewhorizons.angelica.arch.ArchScan.Dir;
+import com.gtnewhorizons.angelica.arch.ArchScan.ScannedClass;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -18,23 +17,20 @@ class EarlyLoadingBoundaryTest {
     private static final String TRACY = "com.gtnewhorizons.angelica.glsm.profiling.Tracy";
 
     private static final Pattern GUARDED = Pattern.compile(
-        ".*/com/gtnewhorizons/angelica/(loading/[^/]+|mixins/Mixins(\\$[^/]*)?|AngelicaMod(\\$[^/]*)?|config/AngelicaConfig(\\$[^/]*)?)\\.class$");
-
-    private static final JavaClasses classes = new ClassFileImporter()
-        .withImportOption(location -> location.matches(GUARDED))
-        .importPaths("build/classes/java/main");
+        "com\\.gtnewhorizons\\.angelica\\.(loading\\.[^.]+|mixins\\.Mixins(\\$[^.]*)?|AngelicaMod(\\$[^.]*)?|config\\.AngelicaConfig(\\$[^.]*)?)");
 
     @Test
     void earlyLoadingClassesDoNotAccessTracy() {
-        assertFalse(classes.isEmpty(), "no guarded classes imported");
+        int guarded = 0;
         final List<String> violations = new ArrayList<>();
-        for (JavaClass origin : classes) {
-            for (JavaAccess<?> access : origin.getAccessesFromSelf()) {
-                if (access.getTargetOwner().getName().equals(TRACY)) {
-                    violations.add(origin.getFullName() + " -> " + access.getTarget().getFullName());
-                }
+        for (ScannedClass origin : ArchScan.in(Dir.MAIN)) {
+            if (!GUARDED.matcher(origin.name()).matches()) continue;
+            guarded++;
+            for (Access access : origin.accesses()) {
+                if (access.owner().equals(TRACY)) violations.add(origin.name() + "." + access.method() + " -> " + access.target());
             }
         }
+        assertFalse(guarded == 0, "no guarded classes scanned");
         assertTrue(violations.isEmpty(), "Coremod-phase code must not touch glsm.profiling.Tracy:\n" + String.join("\n", violations));
     }
 }

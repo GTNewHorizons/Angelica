@@ -5,12 +5,12 @@ import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraft.world.chunk.IChunkProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 import java.util.function.IntBinaryOperator;
 
 import com.gtnewhorizons.angelica.compat.bop.BopFogTestSupport.BopFog;
 
+import static com.gtnewhorizons.angelica.compat.bop.BopFogTestSupport.stub;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.times;
@@ -25,8 +25,8 @@ class FogColourGridTest {
     }
 
     private static World mockWorld(boolean chunksLoaded) {
-        final World world = Mockito.mock(World.class);
-        final IChunkProvider provider = Mockito.mock(IChunkProvider.class);
+        final World world = stub(World.class);
+        final IChunkProvider provider = stub(IChunkProvider.class);
         when(world.getChunkProvider()).thenReturn(provider);
         when(provider.chunkExists(anyInt(), anyInt())).thenReturn(chunksLoaded);
         return world;

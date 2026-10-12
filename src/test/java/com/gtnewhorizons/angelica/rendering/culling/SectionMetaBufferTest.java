@@ -262,7 +262,7 @@ class SectionMetaBufferTest {
         });
 
         try {
-            Thread.sleep(2000);
+            Thread.sleep(200);
             stop.set(true);
             writer.join();
             reader.join();

@@ -1,15 +1,16 @@
 package com.gtnewhorizons.angelica.arch;
 
-import com.tngtech.archunit.core.domain.JavaClasses;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
-import com.tngtech.archunit.lang.ArchRule;
+import com.gtnewhorizons.angelica.arch.ArchScan.Access;
+import com.gtnewhorizons.angelica.arch.ArchScan.Dir;
+import com.gtnewhorizons.angelica.arch.ArchScan.Kind;
+import com.gtnewhorizons.angelica.arch.ArchScan.ScannedClass;
 import org.junit.jupiter.api.Test;
 
-import static com.tngtech.archunit.core.domain.JavaCall.Predicates.target;
-import static com.tngtech.archunit.core.domain.properties.HasName.Predicates.nameMatching;
-import static com.tngtech.archunit.core.domain.properties.HasOwner.Predicates.With.owner;
-import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Pattern;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Enforces that all GL calls go through GLStateManager / RENDER_BACKEND. Direct method calls on org.lwjgl.opengl GL command classes are banned outside
@@ -23,27 +24,22 @@ class NoDirectGLCallsTest {
 
     // Matches GL command classes but not LWJGL infrastructure (Display, etc.)
     // Covers: GL11-GL44, ARB*, EXT*, NV*, AMD*, ATI*, KHR*, INTEL*, GLContext, plus OpenGlHelper
-    private static final String GL_COMMAND_CLASSES = "org\\.lwjgl\\.opengl\\.(?!Display|ContextAttribs|PixelFormat|Drawable|SharedDrawable).*";
+    private static final Pattern GL_COMMAND_CLASSES = Pattern.compile("org\\.lwjgl\\.opengl\\.(?!Display|ContextAttribs|PixelFormat|Drawable|SharedDrawable).*");
 
-    private static final JavaClasses classes = new ClassFileImporter()
-        .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-        .importPaths(
-            "build/classes/java/main",
-            "build/classes/java/mixin"
-        );
-
-    private static final ArchRule NO_DIRECT_GL_CALLS = noClasses()
-        .that().resideOutsideOfPackages(
-            "com.gtnewhorizons.angelica.glsm.backend..",
-            "com.gtnewhorizons.angelica.loading.."
-        )
-        .should().callMethodWhere(
-            target(owner(nameMatching(GL_COMMAND_CLASSES)))
-        )
-        .because("GL calls must go through GLStateManager, not directly to LWJGL or the RENDER_BACKEND");
+    private static final List<String> EXEMPT_PACKAGES = List.of(
+        "com.gtnewhorizons.angelica.glsm.backend.",
+        "com.gtnewhorizons.angelica.loading.");
 
     @Test
     void noDirectGLCalls() {
-        NO_DIRECT_GL_CALLS.check(classes);
+        final List<String> violations = new ArrayList<>();
+        for (ScannedClass origin : ArchScan.in(Dir.MAIN, Dir.MIXIN)) {
+            if (EXEMPT_PACKAGES.stream().anyMatch(origin.name()::startsWith)) continue;
+            for (Access access : origin.accesses()) {
+                if (access.kind() != Kind.CALL || access.name().equals("<init>")) continue;
+                if (GL_COMMAND_CLASSES.matcher(access.owner()).matches()) violations.add("  " + origin.name() + "." + access.method() + " -> " + access.target());
+            }
+        }
+        assertTrue(violations.isEmpty(), "GL calls must go through GLStateManager, not directly to LWJGL or the RENDER_BACKEND:\n" + String.join("\n", violations));
     }
 }

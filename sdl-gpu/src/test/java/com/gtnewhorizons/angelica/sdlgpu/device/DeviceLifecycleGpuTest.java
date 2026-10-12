@@ -3,13 +3,14 @@ package com.gtnewhorizons.angelica.sdlgpu.device;
 import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+@Tag("sdl-gpu-device")
 class DeviceLifecycleGpuTest {
 
     private Device device;
@@ -27,7 +28,7 @@ class DeviceLifecycleGpuTest {
     @Test
     void createsWithoutAWindowAndIsMemoized() {
         device = new Device();
-        assumeTrue(device.createDevice(), "no SDL GPU device on this machine");
+        assertTrue(device.createDevice(), "no SDL GPU device on this machine");
 
         final long handle = device.getDevice();
         assertNotEquals(0L, handle);
@@ -38,7 +39,7 @@ class DeviceLifecycleGpuTest {
     @Test
     void destroyIsIdempotentOnAnUnclaimedDevice() {
         device = new Device();
-        assumeTrue(device.createDevice(), "no SDL GPU device on this machine");
+        assertTrue(device.createDevice(), "no SDL GPU device on this machine");
 
         device.destroyDevice();
         assertEquals(0L, device.getDevice());

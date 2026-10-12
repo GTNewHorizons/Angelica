@@ -81,15 +81,19 @@ final class BopFogTestSupport {
         }
     }
 
+    static <T> T stub(Class<T> type) {
+        return Mockito.mock(type, Mockito.withSettings().stubOnly());
+    }
+
     static World mockWorld(Grid grid) {
-        final World world = Mockito.mock(World.class);
-        final IChunkProvider provider = Mockito.mock(IChunkProvider.class);
+        final World world = stub(World.class);
+        final IChunkProvider provider = stub(IChunkProvider.class);
         when(world.getChunkProvider()).thenReturn(provider);
         when(provider.chunkExists(anyInt(), anyInt())).thenReturn(true);
 
-        final BiomeGenBase fogBiome = BopFog.mockBiome();
+        final BiomeGenBase fogBiome = Mockito.mock(BiomeGenBase.class, Mockito.withSettings().extraInterfaces(BopFog.TYPE).stubOnly());
         when(BopFog.stubCall(fogBiome)).thenAnswer(inv -> grid.colorAt(inv.getArgument(0), inv.getArgument(1), inv.getArgument(2)));
-        final BiomeGenBase plainBiome = Mockito.mock(BiomeGenBase.class);
+        final BiomeGenBase plainBiome = stub(BiomeGenBase.class);
 
         when(world.getBiomeGenForCoords(anyInt(), anyInt())).thenAnswer(inv -> grid.isFog(inv.getArgument(0), inv.getArgument(1)) ? fogBiome : plainBiome);
         return world;

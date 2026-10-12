@@ -12,9 +12,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.gtnewhorizons.angelica.compat.bop.BopFogTestSupport.mockWorld;
+import static com.gtnewhorizons.angelica.compat.bop.BopFogTestSupport.stub;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
@@ -26,8 +26,8 @@ class FogAggregateTest {
     }
 
     private static World world(AtomicBoolean loaded, AtomicInteger color) {
-        final World world = mock(World.class);
-        final IChunkProvider provider = mock(IChunkProvider.class);
+        final World world = stub(World.class);
+        final IChunkProvider provider = stub(IChunkProvider.class);
         when(world.getChunkProvider()).thenReturn(provider);
         when(provider.chunkExists(anyInt(), anyInt())).thenAnswer(inv -> loaded.get());
         final BiomeGenBase biome = BopFog.mockBiome();
@@ -146,7 +146,7 @@ class FogAggregateTest {
         final AtomicBoolean loaded = new AtomicBoolean(false);
         final World world = world(loaded, new AtomicInteger(0x010203));
         final BiomeGenBase fog = world.getBiomeGenForCoords(0, 0);
-        when(world.getBiomeGenForCoords(anyInt(), anyInt())).thenReturn(mock(BiomeGenBase.class));
+        when(world.getBiomeGenForCoords(anyInt(), anyInt())).thenReturn(stub(BiomeGenBase.class));
         final float[] actual = new float[4];
         FogColourGrid.accumulateInterior(world, 0, 64, 0, 1, actual);
         assertBits(new float[4], actual);

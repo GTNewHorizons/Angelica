@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.sdlgpu.shader;
 import com.gtnewhorizons.angelica.sdlgpu.RealDeviceExtension;
 import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -31,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.lwjgl.sdl.SDLGPU.*;
 
 @ExtendWith(RealDeviceExtension.class)
+@Tag("sdl-gpu-device")
 class FragmentStorageTextureReadGpuTest {
 
     private static SdlTestRig rig;

@@ -159,9 +159,25 @@ if (isMacOs && providers.gradleProperty("clientJvmVendor").isPresent) {
     }
 }
 
+// Forge's asm-debug-all 5.0.3 cannot read the Java 25 class files ArchScan walks; this ASM has to resolve first.
+val archScanAsm: Configuration by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
+dependencies {
+    archScanAsm(libs.asm.tree.test)
+    archScanAsm(libs.asm.commons.test)
+}
+
+sourceSets.test {
+    compileClasspath = archScanAsm + compileClasspath
+}
+
 tasks.test {
     useJUnitPlatform { excludeTags = setOf("gl-core") }
     configureAngelicaJava8()
+    classpath = archScanAsm + classpath
     jvmArgs("-Dceleritas.lwjglService=org.taumc.celeritas.lwjgl.HeadlessTestLWJGLService")
     dependsOn(":glsm:classes", ":lwjgl3-backend:classes", ":sdl-gpu:classes")
 }

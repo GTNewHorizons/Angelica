@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 import it.unimi.dsi.fastutil.longs.Long2BooleanOpenHashMap;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -13,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+@Tag("sdl-gpu-device")
 class DeviceImageAtomicsGpuTest {
 
     private Device device;
@@ -34,7 +36,7 @@ class DeviceImageAtomicsGpuTest {
     @Test
     void verdictsAreCachedPerSizeAndDroppedWithTheDevice() {
         device = new Device();
-        assumeTrue(device.createDevice(), "no SDL GPU device on this machine");
+        assertTrue(device.createDevice(), "no SDL GPU device on this machine");
         assumeTrue(device.metalTextureAtomics(), "needs native Metal compiling at MSL 3.1 or newer");
 
         assertFalse(device.supportsImageAtomics(40, 10, 2));
