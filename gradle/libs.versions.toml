@@ -7,7 +7,7 @@ asmCompile = "5.0.3"
 launchwrapper = "1.12"
 # End Frozen
 
-lwjgl3 = "3.4.2-SNAPSHOT"
+lwjgl3 = "3.4.2"
 # Must equal the LWJGL release shipped by lwjgl3ify. Do not bump without bumping lwjgl3ify.
 lwjgl3Release = "3.4.2"
 lwjgl3ify = "3.0.31"
