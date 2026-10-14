@@ -23,6 +23,7 @@ import com.gtnewhorizons.angelica.sdlgpu.resource.PersistentMapping;
 import com.gtnewhorizons.angelica.sdlgpu.resource.PixelOps;
 import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
 import com.gtnewhorizons.angelica.sdlgpu.sampler.SamplerBinder;
+import com.gtnewhorizons.angelica.sdlgpu.sampler.MovedSamplerCopies;
 import com.gtnewhorizons.angelica.sdlgpu.sampler.StorageBufferBinder;
 import com.gtnewhorizons.angelica.sdlgpu.sampler.StorageTextureBinder;
 import com.gtnewhorizons.angelica.sdlgpu.shader.MatrixMarshal;
@@ -57,6 +58,7 @@ public final class PipelineApplier {
     private final PersistentBufferSync persistentSync;
     private final SamplerBinder samplerBinder;
     private final StorageTextureBinder storageTextureBinder;
+    private final MovedSamplerCopies movedSamplerCopies;
     private final StorageBufferBinder storageBufferBinder;
     private final LogicOpEmulator logicOpEmulator;
 
@@ -76,7 +78,7 @@ public final class PipelineApplier {
 
     private final int[] scissorRect = new int[4];
 
-    public PipelineApplier(FrameManager frameManager, ResourceManager resourceManager, ShaderManager shaderManager, PipelineStore pipelineStore, FBOClearTracker fboClearTracker, PersistentBufferSync persistentSync, SamplerBinder samplerBinder, StorageTextureBinder storageTextureBinder, StorageBufferBinder storageBufferBinder) {
+    public PipelineApplier(FrameManager frameManager, ResourceManager resourceManager, ShaderManager shaderManager, PipelineStore pipelineStore, FBOClearTracker fboClearTracker, PersistentBufferSync persistentSync, SamplerBinder samplerBinder, StorageTextureBinder storageTextureBinder, StorageBufferBinder storageBufferBinder, MovedSamplerCopies movedSamplerCopies) {
         this.frameManager = frameManager;
         this.resourceManager = resourceManager;
         this.shaderManager = shaderManager;
@@ -85,6 +87,7 @@ public final class PipelineApplier {
         this.persistentSync = persistentSync;
         this.samplerBinder = samplerBinder;
         this.storageTextureBinder = storageTextureBinder;
+        this.movedSamplerCopies = movedSamplerCopies;
         this.storageBufferBinder = storageBufferBinder;
         this.logicOpEmulator = new LogicOpEmulator(frameManager, resourceManager, shaderManager, this);
         this.instancedConstants = new InstancedConstantBuffers(resourceManager);
@@ -122,7 +125,7 @@ public final class PipelineApplier {
 
     public void ensureDrawRenderPass(ContextState st, FrameState f) {
         logicOpEmulator.beforeDraw(st, f);
-        ensureRenderPass(st, f);
+        ensureRenderPass(st, f, true);
     }
 
     public void ensureRenderPass(ContextState st) {
@@ -130,6 +133,10 @@ public final class PipelineApplier {
     }
 
     public void ensureRenderPass(ContextState st, FrameState f) {
+        ensureRenderPass(st, f, false);
+    }
+
+    private void ensureRenderPass(ContextState st, FrameState f, boolean draw) {
         if (!f.frameActive) return;
 
         fboClearTracker.flushPendingClearsForBoundSamplers(st);
@@ -151,6 +158,7 @@ public final class PipelineApplier {
         }
 
         if (st.boundFboId == 0) {
+            if (draw) movedSamplerCopies.prepare(st, f, FrameManager.fbo0PassStaysOpen(st, f));
             if (frameManager.ensureFbo0RenderPass(f, st)) {
                 st.pipeline.setDepthTargetFormat(resourceManager.getSwapchainDepthStencilFormat());
             }
@@ -167,7 +175,10 @@ public final class PipelineApplier {
         if (!fbo.hasAnyColor && fbo.depthTexture == 0) return;
 
         final long primaryTarget = fbo.primaryTarget;
-        if (f.renderPass != 0 && f.activeLayoutHash == fbo.structuralLayoutHash && f.currentColorTarget == primaryTarget && f.currentDepthTarget == fbo.depthTexture && !FBOClearTracker.fboHasPendingClear(st, fbo)) {
+        final boolean keepsOpenPass = f.renderPass != 0 && f.activeLayoutHash == fbo.structuralLayoutHash && f.currentColorTarget == primaryTarget && f.currentDepthTarget == fbo.depthTexture && !FBOClearTracker.fboHasPendingClear(st, fbo);
+        if (draw) movedSamplerCopies.prepare(st, f, keepsOpenPass);
+        // Preparing a stale sampler copy can end the pass even when the attachments still match.
+        if (keepsOpenPass && f.renderPass != 0) {
             return;
         }
 

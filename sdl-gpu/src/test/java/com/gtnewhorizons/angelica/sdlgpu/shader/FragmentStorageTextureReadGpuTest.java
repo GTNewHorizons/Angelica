@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.sdlgpu.shader;
 
 import com.gtnewhorizons.angelica.sdlgpu.RealDeviceExtension;
 import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
+import com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -46,14 +47,6 @@ class FragmentStorageTextureReadGpuTest {
         rig = RealDeviceExtension.rig();
         sm = new ShaderManager(rig.device);
     }
-
-    private static final String VERTEX = String.join("\n",
-        "#version 460 core",
-        "void main() {",
-        "    vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);",
-        "    gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);",
-        "}",
-        "");
 
     private static String fragment(int samplerCount) {
         final StringBuilder sb = new StringBuilder();
@@ -103,7 +96,7 @@ class FragmentStorageTextureReadGpuTest {
 
     private int linkProgram(int samplerCount) {
         final int vs = sm.createShader(GL20.GL_VERTEX_SHADER);
-        sm.shaderSource(vs, VERTEX);
+        sm.shaderSource(vs, GlsmSdlHeadlessRig.FULLSCREEN_VERTEX);
         sm.compileShader(vs);
         final int fs = sm.createShader(GL20.GL_FRAGMENT_SHADER);
         sm.shaderSource(fs, fragment(samplerCount));

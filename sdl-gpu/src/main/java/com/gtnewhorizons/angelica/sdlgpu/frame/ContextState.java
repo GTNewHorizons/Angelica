@@ -173,6 +173,12 @@ public final class ContextState {
     public int lastAppliedStorageTexBindGen = -1;
     public int lastAppliedStorageTexProgram;
     public long lastAppliedStorageTexCb;
+    public ShaderManager.ProgramObject lastPreparedMovedSamplerProgram;
+    public final int[] lastPreparedVertexMovedSamplerTextures = new int[MAX_IMAGE_UNITS];
+    public final int[] lastPreparedFragmentMovedSamplerTextures = new int[MAX_IMAGE_UNITS];
+    public int lastPreparedMovedSamplerUnitsGen = -1;
+    public long lastPreparedMovedSamplerWriteGen = -1;
+    public long lastPreparedMovedSamplerPass = -1;
     public int ssboBindGen;
     public int lastAppliedStorageBufBindGen = -1;
     public int lastAppliedStorageBufProgram;
@@ -304,6 +310,10 @@ public final class ContextState {
     public final int[] boundStorageTextureAccess = new int[MAX_IMAGE_UNITS];
     public final int[] boundStorageTextureFormat = new int[MAX_IMAGE_UNITS];
     public final int[] boundTextures = new int[32];
+
+    public int boundTexture(int unit) {
+        return unit >= 0 && unit < boundTextures.length ? boundTextures[unit] : 0;
+    }
     public final int[] boundSamplerObjects = new int[32];
 
     public boolean computeBatchRequested;

@@ -23,7 +23,7 @@ class SDLGPUUniformDedupTest {
 
     @BeforeEach
     void setUp() {
-        applier = new PipelineApplier(null, null, null, null, null, null, null, null, null);
+        applier = new PipelineApplier(null, null, null, null, null, null, null, null, null, null);
         st = new ContextState();
         prog = new ShaderManager.ProgramObject();
         prog.linked = true;

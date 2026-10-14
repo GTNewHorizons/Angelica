@@ -361,6 +361,10 @@ public final class Device {
         return isMetal(driverName);
     }
 
+    public boolean isVulkan() {
+        return isVulkan(driverName);
+    }
+
     public boolean isFencePollEnabled() {
         return fencePollEnabled;
     }

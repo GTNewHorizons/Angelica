@@ -75,7 +75,7 @@ public final class LogicOpEmulator {
                 cp = frameManager.ensureCopyPass(FrameManager.PASS_END_LOGIC_OP);
                 resourceManager.flushBatchedUploads(cp);
             }
-            TextureOps.copyTexture(cp, tex, targetLevel(fbo, loc), 0, 0, scratch, 0, 0, 0, w, h);
+            TextureOps.copyTexture(resourceManager, cp, tex, targetLevel(fbo, loc), 0, 0, scratch, 0, 0, 0, w, h);
         }
     }
 

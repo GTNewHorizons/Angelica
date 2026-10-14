@@ -5,18 +5,12 @@ import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
 import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager.FrameState;
 import com.gtnewhorizons.angelica.sdlgpu.resource.FBOClearTracker;
 import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
-import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
 import com.gtnewhorizons.angelica.sdlgpu.util.MemoryAccess;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
-import org.lwjgl.sdl.SDLError;
 import org.lwjgl.sdl.SDL_FColor;
 import org.lwjgl.sdl.SDL_GPUColorTargetDescription;
 import org.lwjgl.sdl.SDL_GPUColorTargetInfo;
 import org.lwjgl.sdl.SDL_GPUDepthStencilState;
 import org.lwjgl.sdl.SDL_GPUDepthStencilTargetInfo;
-import org.lwjgl.sdl.SDL_GPUSamplerCreateInfo;
 import org.lwjgl.sdl.SDL_GPUTextureSamplerBinding;
 import org.lwjgl.system.MemoryStack;
 
@@ -28,8 +22,6 @@ import static org.lwjgl.sdl.SDLGPU.*;
 import static org.lwjgl.system.MemoryStack.stackPush;
 
 public final class DepthStencilReadback {
-
-    private static final Logger LOG = LogManager.getLogger("Angelica-SDLGPU");
 
     private static final String DEPTH_FRAGMENT_SOURCE = "angelica:sdlgpu/readback_depth.fsh";
     private static final String STENCIL_FRAGMENT_SOURCE = "angelica:sdlgpu/readback_stencil.fsh";
@@ -44,11 +36,8 @@ public final class DepthStencilReadback {
     private final FBOClearTracker fboClearTracker;
     private final FullscreenPass fullscreen;
 
-    private long depthFragmentShader;
-    private boolean depthFragmentFailed;
-    private long stencilFragmentShader;
-    private boolean stencilFragmentFailed;
-    private long nearestSampler;
+    private final FullscreenPass.Fragment depthFragment;
+    private final FullscreenPass.Fragment stencilFragment;
 
     private long depthPipeline;
     private final long[] stencilPipelines = new long[STENCIL_BITS];
@@ -58,12 +47,14 @@ public final class DepthStencilReadback {
     private int buildBit;
     private int buildDepthFormat;
 
-    public DepthStencilReadback(FrameManager frameManager, ResourceManager resourceManager, PipelineStore pipelineStore, ShaderManager shaderManager, FBOClearTracker fboClearTracker) {
+    public DepthStencilReadback(FrameManager frameManager, ResourceManager resourceManager, PipelineStore pipelineStore, FullscreenPass fullscreen, FBOClearTracker fboClearTracker) {
         this.frameManager = frameManager;
         this.resourceManager = resourceManager;
         this.pipelineStore = pipelineStore;
         this.fboClearTracker = fboClearTracker;
-        this.fullscreen = new FullscreenPass(shaderManager);
+        this.fullscreen = fullscreen;
+        depthFragment = fullscreen.fragment(DEPTH_FRAGMENT_SOURCE, -1);
+        stencilFragment = fullscreen.fragment(STENCIL_FRAGMENT_SOURCE, 16);
     }
 
     private final class Builder implements LongSupplier {
@@ -75,7 +66,7 @@ public final class DepthStencilReadback {
         if (!canRender(f, depthTexture, width, height)) return 0L;
         if (depthTexture == resourceManager.getSwapchainDepthStencil() && !resourceManager.isSwapchainDepthStencilSampleable()) return 0L;
         final long pipeline = getDepthPipeline();
-        final long sampler = getNearestSampler();
+        final long sampler = fullscreen.getNearestSampler();
         if (pipeline == 0L || sampler == 0L) return 0L;
         applyPendingClears(st, f, depthTexture);
         final long scratch = ensureDepthScratch(st, width, height);
@@ -178,7 +169,7 @@ public final class DepthStencilReadback {
 
     private long getDepthPipeline() {
         if (depthPipeline != 0L) return depthPipeline;
-        if (!ensureDepthShader()) return 0L;
+        if (depthFragment.shader() == 0L) return 0L;
         buildBit = -1;
         buildDepthFormat = 0;
         depthPipeline = pipelineStore.getOrBuild(Hashing.fmix64(KEY_SEED, -1), builder);
@@ -188,7 +179,7 @@ public final class DepthStencilReadback {
     private boolean ensureStencilPipelines(int depthFormat) {
         if (depthFormat == 0) return false;
         if (stencilPipelinesFormat == depthFormat) return true;
-        if (!ensureStencilShader()) return false;
+        if (stencilFragment.shader() == 0L) return false;
         buildDepthFormat = depthFormat;
         final long formatKey = Hashing.fmix64(KEY_SEED, depthFormat);
         for (int b = 0; b < STENCIL_BITS; b++) {
@@ -210,7 +201,7 @@ public final class DepthStencilReadback {
             colorDesc.get(0).format(DEPTH_TARGET_FORMAT).blend_state().enable_blend(false);
             final SDL_GPUDepthStencilState depthStencil = SDL_GPUDepthStencilState.calloc(stack)
                 .compare_op(SDL_GPU_COMPAREOP_ALWAYS);
-            return fullscreen.createPipeline(pipelineStore, stack, depthFragmentShader, colorDesc, 1, depthStencil, 0, "DepthStencilReadback depth");
+            return fullscreen.createPipeline(pipelineStore, stack, depthFragment.shader(), colorDesc, 1, depthStencil, 0, "DepthStencilReadback depth");
         }
     }
 
@@ -242,44 +233,8 @@ public final class DepthStencilReadback {
                 .pass_op(SDL_GPU_STENCILOP_KEEP)
                 .depth_fail_op(SDL_GPU_STENCILOP_KEEP)
                 .compare_op(SDL_GPU_COMPAREOP_EQUAL);
-            return fullscreen.createPipeline(pipelineStore, stack, stencilFragmentShader, colorDesc, 1, depthStencil, depthFormat, "DepthStencilReadback stencil");
+            return fullscreen.createPipeline(pipelineStore, stack, stencilFragment.shader(), colorDesc, 1, depthStencil, depthFormat, "DepthStencilReadback stencil");
         }
-    }
-
-    private boolean ensureDepthShader() {
-        if (depthFragmentShader != 0L) return true;
-        if (depthFragmentFailed) return false;
-        depthFragmentFailed = true;
-        depthFragmentShader = fullscreen.compileFragment(ShaderLoader.getShaderSource(DEPTH_FRAGMENT_SOURCE), -1, "DepthStencilReadback: readback_depth");
-        if (depthFragmentShader == 0L) return false;
-        depthFragmentFailed = false;
-        return true;
-    }
-
-    private boolean ensureStencilShader() {
-        if (stencilFragmentShader != 0L) return true;
-        if (stencilFragmentFailed) return false;
-        stencilFragmentFailed = true;
-        stencilFragmentShader = fullscreen.compileFragment(ShaderLoader.getShaderSource(STENCIL_FRAGMENT_SOURCE), 16, "DepthStencilReadback: readback_stencil");
-        if (stencilFragmentShader == 0L) return false;
-        stencilFragmentFailed = false;
-        return true;
-    }
-
-    private long getNearestSampler() {
-        if (nearestSampler != 0L) return nearestSampler;
-        try (MemoryStack stack = stackPush()) {
-            final SDL_GPUSamplerCreateInfo ci = SDL_GPUSamplerCreateInfo.calloc(stack)
-                .min_filter(SDL_GPU_FILTER_NEAREST)
-                .mag_filter(SDL_GPU_FILTER_NEAREST)
-                .mipmap_mode(SDL_GPU_SAMPLERMIPMAPMODE_NEAREST)
-                .address_mode_u(SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE)
-                .address_mode_v(SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE)
-                .address_mode_w(SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE);
-            nearestSampler = SDL_CreateGPUSampler(pipelineStore.device().getDevice(), ci);
-            if (nearestSampler == 0L) LOG.error("DepthStencilReadback: sampler creation failed: {}", SDLError.SDL_GetError());
-        }
-        return nearestSampler;
     }
 
     public void release(ContextState st) {
@@ -294,19 +249,6 @@ public final class DepthStencilReadback {
     }
 
     public void shutdown() {
-        final long dev = pipelineStore.device().getDevice();
-        if (dev != 0L) {
-            if (depthFragmentShader != 0L) SDL_ReleaseGPUShader(dev, depthFragmentShader);
-            if (stencilFragmentShader != 0L) SDL_ReleaseGPUShader(dev, stencilFragmentShader);
-            if (fullscreen.vertexShader() != 0L) SDL_ReleaseGPUShader(dev, fullscreen.vertexShader());
-            if (nearestSampler != 0L) SDL_ReleaseGPUSampler(dev, nearestSampler);
-        }
-        fullscreen.shutdown();
-        depthFragmentShader = 0L;
-        depthFragmentFailed = false;
-        stencilFragmentShader = 0L;
-        stencilFragmentFailed = false;
-        nearestSampler = 0L;
         depthPipeline = 0L;
         Arrays.fill(stencilPipelines, 0L);
         stencilPipelinesFormat = 0;

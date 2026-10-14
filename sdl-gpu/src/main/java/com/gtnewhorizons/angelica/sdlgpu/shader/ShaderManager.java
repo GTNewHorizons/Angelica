@@ -22,6 +22,7 @@ import com.gtnewhorizons.angelica.sdlgpu.shader.dxbc.DxbcCrossCompile;
 import com.gtnewhorizons.angelica.sdlgpu.shader.msl.MslCrossCompile;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.Nullable;
 import org.lwjgl.sdl.SDL_GPUComputePipelineCreateInfo;
 import org.lwjgl.sdl.SDL_GPUShaderCreateInfo;
 import org.lwjgl.sdl.SDLError;
@@ -335,18 +336,22 @@ public final class ShaderManager {
         if (glShaderType == GL20.GL_VERTEX_SHADER) {
             ClipZRemap.collectEdits(tree, edits);
         }
-        SamplerStripper.collectEdits(index, edits);
+        final List<TextureDeclarations.Declaration> textureDeclarations = TextureDeclarations.collect(index);
+        final Set<String> strippedSamplers = SamplerStripper.collectEdits(index, textureDeclarations, edits);
+        final boolean movedSamplers = isGraphics(glShaderType) && SamplerOverflow.collectEdits(index, textureDeclarations, strippedSamplers, debugName, edits);
         if (glShaderType == GL20.GL_FRAGMENT_SHADER) {
             DerivativeHoisting.collectEdits(index, edits);
         }
+        final boolean needsSamplerless = meta.needsSamplerless() || movedSamplers;
         if (headerLen == 0) {
+            if (movedSamplers && !meta.needsSamplerless()) GlslVulkanPreprocess.addSamplerlessExtension(index, edits);
             return new PrewarmTransformResult(GlslVulkanPreprocess.applyEdits(source, edits), meta.boolUniforms());
         }
-        if (edits.isEmpty() && !meta.needsSamplerless()) {
+        if (edits.isEmpty() && !needsSamplerless) {
             return new PrewarmTransformResult(source, meta.boolUniforms());
         }
         String header = source.substring(0, headerLen);
-        if (meta.needsSamplerless()) {
+        if (needsSamplerless) {
             final int nl = header.indexOf('\n');
             header = header.substring(0, nl) + "\n" + GlslVulkanPreprocess.SAMPLERLESS_EXTENSION + header.substring(nl);
         }
@@ -579,11 +584,10 @@ public final class ShaderManager {
         prog.allSamplerNames.clear();
         prog.allSamplerNames.addAll(prog.vertexSamplerNames);
         prog.allSamplerNames.addAll(prog.fragmentSamplerNames);
-        prog.vertexImageNames = vs.reflection.storageImageNames();
-        prog.fragmentImageNames = fs.reflection.storageImageNames();
         prog.allImageNames.clear();
-        prog.allImageNames.addAll(prog.vertexImageNames);
-        prog.allImageNames.addAll(prog.fragmentImageNames);
+        prog.hasReadMovedSamplers = false;
+        applyStageImages(prog, vs.reflection, true);
+        applyStageImages(prog, fs.reflection, false);
         prog.imageTextureUnits.clear();
         prog.boolUniforms.clear();
         prog.boolUniforms.addAll(vs.boolUniforms);
@@ -601,6 +605,14 @@ public final class ShaderManager {
             prog.infoLog = "graphics-stage RW storage image present";
             return;
         }
+        String overBudget = slotBudgetError("vertex", prog.vertexResources, prog.vertexImageIsMovedSampler);
+        if (overBudget == null) overBudget = slotBudgetError("fragment", prog.fragmentResources, prog.fragmentImageIsMovedSampler);
+        if (overBudget != null) {
+            LOG.error("Program {}: {}. Rejecting link.", program, overBudget);
+            prog.linked = false;
+            prog.infoLog = overBudget;
+            return;
+        }
 
         prog.linked = true;
         prog.infoLog = "";
@@ -614,9 +626,61 @@ public final class ShaderManager {
 
         registerSamplerLocations(prog, vs.reflection, fs.reflection);
         for (final String name : prog.allImageNames) ensureLocation(prog, name);
+        registerMovedSamplerLocations(prog, prog.vertexImageNames, prog.vertexMovedSamplerRead);
+        registerMovedSamplerLocations(prog, prog.fragmentImageNames, prog.fragmentMovedSamplerRead);
 
         prog.buildUniformSlotArrays();
 
+    }
+
+    private static void applyStageImages(ProgramObject prog, StageReflection stage, boolean vertex) {
+        final List<String> reflected = stage.storageImageNames();
+        final List<String> names = new ArrayList<>(reflected.size());
+        final boolean[] moved = new boolean[reflected.size()];
+        final boolean[] read = new boolean[reflected.size()];
+        for (int i = 0; i < reflected.size(); i++) {
+            final String name = reflected.get(i);
+            if (SamplerOverflow.isMoved(name)) {
+                final String original = SamplerOverflow.originalName(name);
+                names.add(original);
+                moved[i] = true;
+                read[i] = !stage.unusedSamplerNames().contains(name);
+                prog.hasReadMovedSamplers |= read[i];
+                prog.allSamplerNames.add(original);
+            } else {
+                names.add(name);
+                prog.allImageNames.add(name);
+            }
+        }
+        if (vertex) {
+            prog.vertexImageNames = names;
+            prog.vertexImageIsMovedSampler = moved;
+            prog.vertexMovedSamplerRead = read;
+        } else {
+            prog.fragmentImageNames = names;
+            prog.fragmentImageIsMovedSampler = moved;
+            prog.fragmentMovedSamplerRead = read;
+        }
+    }
+
+    private static void registerMovedSamplerLocations(ProgramObject prog, List<String> imageNames, boolean[] read) {
+        for (int i = 0; i < read.length; i++) {
+            if (read[i]) ensureLocation(prog, imageNames.get(i));
+        }
+    }
+
+    private static @Nullable String slotBudgetError(String stage, ResourceCounts counts, boolean[] movedSamplers) {
+        if (counts.numSamplers() > SamplerOverflow.SAMPLER_SLOTS) {
+            int moved = 0;
+            for (boolean m : movedSamplers) if (m) moved++;
+            final String limit = "Too many " + stage + " shader texture samplers (" + counts.numSamplers() + ", maximum " + SamplerOverflow.SAMPLER_SLOTS + ")";
+            return moved == 0 ? limit : limit + ", even after moving " + moved + " that are only read through texelFetch/textureSize to texture slots";
+        }
+        if (counts.numStorageTextures() > SamplerOverflow.TEXTURE_SLOTS) {
+            return stage + " shader reads " + counts.numStorageTextures() + " images and textures without a sampler but SDL_GPU binds at most "
+                + SamplerOverflow.TEXTURE_SLOTS + " per stage";
+        }
+        return null;
     }
 
     private void linkComputeProgram(int program, ProgramObject prog) {
@@ -647,9 +711,11 @@ public final class ShaderManager {
         prog.allSamplerNames.clear();
         prog.allSamplerNames.addAll(refl.samplerNames());
         prog.vertexImageNames = List.of();
-        prog.fragmentImageNames = refl.storageImageNames();
+        prog.vertexImageIsMovedSampler = ProgramObject.NO_FLAGS;
+        prog.vertexMovedSamplerRead = ProgramObject.NO_FLAGS;
         prog.allImageNames.clear();
-        prog.allImageNames.addAll(refl.storageImageNames());
+        prog.hasReadMovedSamplers = false;
+        applyStageImages(prog, refl, false);
         prog.imageTextureUnits.clear();
         prog.boolUniforms.clear();
         prog.boolUniforms.addAll(cs.boolUniforms);
@@ -1902,11 +1968,17 @@ public final class ShaderManager {
         }
         final IntOpenHashSet active = new IntOpenHashSet();
         forEachResource(pActiveResources.get(0), Spvc.SPVC_RESOURCE_TYPE_SAMPLED_IMAGE, stack, (i, r) -> active.add(r.id()));
+        forEachResource(pActiveResources.get(0), Spvc.SPVC_RESOURCE_TYPE_SEPARATE_IMAGE, stack, (i, r) -> active.add(r.id()));
         final List<String> unused = new ArrayList<>();
         forEachResource(resources, Spvc.SPVC_RESOURCE_TYPE_SAMPLED_IMAGE, stack, (i, r) -> {
             if (active.contains(r.id())) return;
             final String name = Spvc.spvc_compiler_get_name(compiler, r.id());
             if (name != null && !name.isEmpty()) unused.add(name);
+        });
+        forEachResource(resources, Spvc.SPVC_RESOURCE_TYPE_SEPARATE_IMAGE, stack, (i, r) -> {
+            if (active.contains(r.id())) return;
+            final String name = Spvc.spvc_compiler_get_name(compiler, r.id());
+            if (name != null && SamplerOverflow.isMoved(name)) unused.add(name);
         });
         return unused;
     }
@@ -1962,6 +2034,11 @@ public final class ShaderManager {
         public List<String> vertexSamplerNames = List.of();
         public List<String> fragmentImageNames = List.of();
         public List<String> vertexImageNames = List.of();
+        public boolean[] fragmentImageIsMovedSampler = NO_FLAGS;
+        public boolean[] vertexImageIsMovedSampler = NO_FLAGS;
+        public boolean[] fragmentMovedSamplerRead = NO_FLAGS;
+        public boolean[] vertexMovedSamplerRead = NO_FLAGS;
+        public boolean hasReadMovedSamplers;
         public final HashSet<String> allImageNames = new HashSet<>();
         public ResourceCounts computeResources = ResourceCounts.EMPTY;
         public ResourceCounts fragmentResources = ResourceCounts.EMPTY;
@@ -2009,7 +2086,10 @@ public final class ShaderManager {
 
         public int[] vertexSamplerUnits = EMPTY_UNITS;
         public int[] fragmentSamplerUnits = EMPTY_UNITS;
+        public int[] vertexMovedSamplerUnits = EMPTY_UNITS;
+        public int[] fragmentMovedSamplerUnits = EMPTY_UNITS;
         public boolean samplerUnitsDirty = true;
+        public int samplerUnitsGeneration;
 
         public static final byte LOCATION_KIND_PLAIN = 0;
         public static final byte LOCATION_KIND_SAMPLER = 1;
@@ -2020,6 +2100,7 @@ public final class ShaderManager {
         public int[] locationSamplerUnit = EMPTY_UNITS;
 
         private static final int[] EMPTY_UNITS = new int[0];
+        private static final boolean[] NO_FLAGS = new boolean[0];
         private static final byte[] EMPTY_KIND = new byte[0];
         private static final String[] EMPTY_NAMES = new String[0];
 

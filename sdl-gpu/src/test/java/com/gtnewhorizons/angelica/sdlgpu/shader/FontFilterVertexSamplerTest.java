@@ -62,11 +62,13 @@ class FontFilterVertexSamplerTest {
     }
 
     @Test
-    void samplerNamedLightmapResolvesToTextureUnitOne() {
+    void lightmapStartsOnUnitZeroAndHonorsTheFontsExplicitAssignment() {
         final List<String> samplers = reflect(runSdlPipeline(FONT_FILTER_VSH)).samplerNames();
-        final Object2IntOpenHashMap<String> noExplicitUnits = new Object2IntOpenHashMap<>();
-        noExplicitUnits.defaultReturnValue(-1);
+        final Object2IntOpenHashMap<String> units = new Object2IntOpenHashMap<>();
+        units.defaultReturnValue(-1);
 
-        assertEquals(1, SamplerLookup.getSamplerTextureUnit(samplers, noExplicitUnits, 0), "even without a glUniform1i the SDL fallback must put a sampler named 'lightmap' on unit 1");
+        assertEquals(0, SamplerLookup.getSamplerTextureUnit(samplers, units, 0), "all samplers start on unit 0");
+        units.put("lightmap", 1);
+        assertEquals(1, SamplerLookup.getSamplerTextureUnit(samplers, units, 0), "the font renderer assigns lightmap explicitly");
     }
 }

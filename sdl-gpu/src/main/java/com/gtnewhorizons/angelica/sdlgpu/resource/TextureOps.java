@@ -198,15 +198,16 @@ public final class TextureOps {
         final long cp = frameManager.ensureCopyPass();
         if (cp == 0) return;
         resourceManager.flushBatchedUploads(cp);
-        copyTexture(cp, srcTex, srcLevel, srcX, srcY, dstTex, dstLevel, dstX, dstY, w, h);
+        copyTexture(resourceManager, cp, srcTex, srcLevel, srcX, srcY, dstTex, dstLevel, dstX, dstY, w, h);
     }
 
-    public static void copyTexture(long cp, long srcTex, int srcLevel, int srcX, int srcY, long dstTex, int dstLevel, int dstX, int dstY, int w, int h) {
+    public static void copyTexture(ResourceManager resourceManager, long cp, long srcTex, int srcLevel, int srcX, int srcY, long dstTex, int dstLevel, int dstX, int dstY, int w, int h) {
         if (cp == 0) return;
         try (var stack = MemoryStack.stackPush()) {
             final var src = SDL_GPUTextureLocation.calloc(stack).texture(srcTex).mip_level(srcLevel).x(srcX).y(srcY);
             final var dst = SDL_GPUTextureLocation.calloc(stack).texture(dstTex).mip_level(dstLevel).x(dstX).y(dstY);
             SDL_CopyGPUTextureToTexture(cp, src, dst, w, h, 1, false);
+            resourceManager.markTextureWritten(dstTex);
         }
     }
 
@@ -228,6 +229,7 @@ public final class TextureOps {
             info.flip_mode(flipMode);
             frameManager.noteBlit();
             SDL_BlitGPUTexture(cb, info);
+            resourceManager.markTextureWritten(dstTex);
         }
     }
 
@@ -262,6 +264,7 @@ public final class TextureOps {
             final ResourceManager.TextureMeta meta = resourceManager.getTextureMeta(glId);
             if (meta == null || meta.levels() <= 1) continue;
             SDL_GenerateMipmapsForGPUTexture(uploadCb, handle);
+            resourceManager.markTextureWritten(handle);
         }
 
         if (!Submits.submit(uploadCb)) {

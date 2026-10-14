@@ -8,6 +8,7 @@ import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
 import com.gtnewhorizons.angelica.sdlgpu.sampler.SamplerBinder;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
 import com.gtnewhorizons.angelica.sdlgpu.shader.UniformStaging;
+import com.gtnewhorizons.angelica.sdlgpu.util.MemoryAccess;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.sdl.SDL_GPUStorageBufferReadWriteBinding;
 import org.lwjgl.sdl.SDL_GPUStorageTextureReadWriteBinding;
@@ -251,6 +252,11 @@ public final class ComputeBinder implements ComputeDispatchSink {
             final long pass = SDL_BeginGPUComputePass(cb, rwTex, rwBuf);
             if (pass == 0) return 0;
             frameManager.noteComputePassBegun();
+            if (rwTex != null) {
+                for (int i = 0; i < rwTex.limit(); i++) {
+                    resourceManager.markTextureWritten(MemoryAccess.getAddress(rwTex.address(i) + SDL_GPUStorageTextureReadWriteBinding.TEXTURE));
+                }
+            }
 
             final boolean ok = bindComputeSamplers(st, prog, pass, samplerSlots, map.samplerNames(), stack)
                 && bindRoStorageTextures(st, prog, pass, map, stack)

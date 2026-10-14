@@ -32,6 +32,8 @@ import com.gtnewhorizons.angelica.sdlgpu.pipeline.AttachmentClear;
 import com.gtnewhorizons.angelica.sdlgpu.pipeline.DepthStencilReadback;
 import com.gtnewhorizons.angelica.sdlgpu.pipeline.DrawDispatch;
 import com.gtnewhorizons.angelica.sdlgpu.pipeline.FFPTrace;
+import com.gtnewhorizons.angelica.sdlgpu.pipeline.FullscreenPass;
+import com.gtnewhorizons.angelica.sdlgpu.pipeline.MovedSamplerConversion;
 import com.gtnewhorizons.angelica.sdlgpu.pipeline.PipelineApplier;
 import com.gtnewhorizons.angelica.sdlgpu.pipeline.PipelineCache;
 import com.gtnewhorizons.angelica.sdlgpu.pipeline.PipelineStore;
@@ -54,9 +56,11 @@ import com.gtnewhorizons.angelica.sdlgpu.resource.ReadbackShadows;
 import com.gtnewhorizons.angelica.sdlgpu.resource.TextureOps;
 import com.gtnewhorizons.angelica.sdlgpu.resource.TextureSamplerState;
 import com.gtnewhorizons.angelica.sdlgpu.resource.TransferThread;
+import com.gtnewhorizons.angelica.sdlgpu.sampler.MovedSamplerCopies;
 import com.gtnewhorizons.angelica.sdlgpu.sampler.SamplerBinder;
 import com.gtnewhorizons.angelica.sdlgpu.sampler.StorageBufferBinder;
 import com.gtnewhorizons.angelica.sdlgpu.sampler.StorageTextureBinder;
+import com.gtnewhorizons.angelica.sdlgpu.shader.SamplerOverflow;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
 import com.gtnewhorizons.angelica.sdlgpu.splash.SplashDispatcher;
 import com.gtnewhorizons.angelica.sdlgpu.frame.OffscreenTarget;
@@ -138,6 +142,7 @@ public class SDLGPURenderBackend extends RenderBackend {
     private final Image3DClear image3DClear = new Image3DClear();
     private final ShaderManager shaderManager = new ShaderManager(device);
     private final PipelineStore pipelineStore = new PipelineStore(device);
+    private final FullscreenPass fullscreenPass = new FullscreenPass(shaderManager, device);
 
     private String cachedRenderer;
     private String cachedVendor;
@@ -152,7 +157,9 @@ public class SDLGPURenderBackend extends RenderBackend {
     private final LongArrayFIFOQueue frameSyncs = new LongArrayFIFOQueue();
     private final FBOClearTracker fboClearTracker = new FBOClearTracker(frameManager, resourceManager, shaderManager);
     private final SamplerBinder samplerBinder = new SamplerBinder(device, resourceManager, shaderManager);
-    private final StorageTextureBinder storageTextureBinder = new StorageTextureBinder(resourceManager, shaderManager);
+    private final MovedSamplerConversion movedSamplerConversion = new MovedSamplerConversion(frameManager, pipelineStore, fullscreenPass);
+    private final MovedSamplerCopies movedSamplerCopies = new MovedSamplerCopies(device, frameManager, resourceManager, movedSamplerConversion);
+    private final StorageTextureBinder storageTextureBinder = new StorageTextureBinder(resourceManager, shaderManager, movedSamplerCopies);
     private final StorageBufferBinder storageBufferBinder = new StorageBufferBinder(resourceManager, shaderManager);
     private final ComputeBinder computeBinder = new ComputeBinder(frameManager, resourceManager, shaderManager, samplerBinder);
     private final VoxelizationDispatcher voxelizationDispatcher =
@@ -165,10 +172,10 @@ public class SDLGPURenderBackend extends RenderBackend {
             @Override public void enqueue(TransferThread.DeferredUpload upload) { enqueueUpload(upload); }
             @Override public long nextSeq() { return TransferThread.nextSeq(); }
         });
-    private final PipelineApplier pipelineApplier = new PipelineApplier(frameManager, resourceManager, shaderManager, pipelineStore, fboClearTracker, persistentSync, samplerBinder, storageTextureBinder, storageBufferBinder);
+    private final PipelineApplier pipelineApplier = new PipelineApplier(frameManager, resourceManager, shaderManager, pipelineStore, fboClearTracker, persistentSync, samplerBinder, storageTextureBinder, storageBufferBinder, movedSamplerCopies);
     private final VertexWriteReplayer vertexWriteReplayer = new VertexWriteReplayer(shaderManager, resourceManager, pipelineApplier, computeBinder, SDLGPURenderBackend::s);
-    private final AttachmentClear attachmentClear = new AttachmentClear(frameManager, pipelineStore, shaderManager);
-    private final DepthStencilReadback depthStencilReadback = new DepthStencilReadback(frameManager, resourceManager, pipelineStore, shaderManager, fboClearTracker);
+    private final AttachmentClear attachmentClear = new AttachmentClear(frameManager, pipelineStore, fullscreenPass);
+    private final DepthStencilReadback depthStencilReadback = new DepthStencilReadback(frameManager, resourceManager, pipelineStore, fullscreenPass, fboClearTracker);
     private final DrawDispatch drawDispatch = new DrawDispatch(device, frameManager, resourceManager, pipelineApplier, this::enqueuePreCopied);
     private final FFPTrace ffpTrace = SystemProperties.FFP_TRACE ? new FFPTrace(resourceManager) : null;
 
@@ -306,6 +313,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         pipelineApplier.setDeferredUploadSink(this::enqueuePreCopied);
         frameManager.setRenderPassEndHook(vertexWriteReplayer::flush);
         resourceManager.setTextureReplaceHook(this::flushVertexWritesBeforeTextureChange);
+        resourceManager.setTextureReleaseListener(movedSamplerCopies::releaseCopyOf);
         frameManager.setPreRenderPassHook(() -> {
             final ContextState st = s();
             pipelineApplier.flushUniformBlocks(st);
@@ -534,8 +542,10 @@ public class SDLGPURenderBackend extends RenderBackend {
         }
         attachmentClear.shutdown();
         depthStencilReadback.shutdown();
+        fullscreenPass.shutdown();
         textureOps.shutdown();
         pipelineStore.shutdown();
+        movedSamplerCopies.releaseAll();
         shaderManager.shutdown();
         resourceManager.shutdown();
         device.shutdown();
@@ -671,8 +681,10 @@ public class SDLGPURenderBackend extends RenderBackend {
         if (shutdown) return;
         if (splashTeardownPending) finishSplash();
         if (GLStateManager.isSplashComplete()) applyPendingVSync();
+        final boolean wasActive = frameManager.isFrameActive();
         frameManager.beginFrame();
         beginFrameInit();
+        if (!wasActive) movedSamplerCopies.releaseUnused();
     }
 
     private void beginFrameInit() {
@@ -2632,6 +2644,7 @@ public class SDLGPURenderBackend extends RenderBackend {
                     prog.locationSamplerUnit[location] = v0;
                     prog.samplerTextureUnits.put(prog.locationName[location], v0);
                     prog.samplerUnitsDirty = true;
+                    st.samplerBindGen++;
                 }
                 return;
             }
@@ -3735,7 +3748,9 @@ public class SDLGPURenderBackend extends RenderBackend {
         frameManager.endRenderPassIfActive(FrameManager.PASS_END_COPY);
         frameManager.noteMipGen();
         textureOps.clearPendingMipGen(texture);
-        SDL_GenerateMipmapsForGPUTexture(frameManager.getCommandBuffer(), resourceManager.getTextureHandle(texture));
+        final long texHandle = resourceManager.getTextureHandle(texture);
+        SDL_GenerateMipmapsForGPUTexture(frameManager.getCommandBuffer(), texHandle);
+        resourceManager.markTextureWritten(texHandle);
     }
     @Override public void textureImage2DEXT(int texture, int target, int level, int internalformat, int width, int height, int border, int format, int type, ByteBuffer pixels) {
         if (texture == 0) return;
@@ -4016,8 +4031,8 @@ public class SDLGPURenderBackend extends RenderBackend {
     @Override public int getInteger(int pname) {
         final ContextState cs = s();
         return switch (pname) {
-            case GL20.GL_MAX_TEXTURE_IMAGE_UNITS -> 17;
-            case GL20.GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS -> 17;
+            // Iris budgets unit assignments here; only 16 can be filtered, with up to 8 float 2D fetch-only samplers.
+            case GL20.GL_MAX_TEXTURE_IMAGE_UNITS, GL20.GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS -> SamplerOverflow.SAMPLER_SLOTS + SamplerOverflow.TEXTURE_SLOTS;
             case GL20.GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS -> 32;
             case GL20.GL_MAX_VERTEX_ATTRIBS -> 16;
             case GL20.GL_MAX_DRAW_BUFFERS -> 8;
@@ -4036,7 +4051,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             case GL43.GL_MAX_DEBUG_MESSAGE_LENGTH -> 1024;
             case GL11.GL_DRAW_BUFFER -> drawBufferEnum(cs.boundFboId, cs.defaultFboId);
             case GL11.GL_READ_BUFFER -> readBufferEnum(cs.boundReadFboId, cs.defaultFboId);
-            case GL11.GL_TEXTURE_BINDING_2D, GL11.GL_TEXTURE_BINDING_1D, GL12.GL_TEXTURE_BINDING_3D, GL13.GL_TEXTURE_BINDING_CUBE_MAP, GL30.GL_TEXTURE_BINDING_1D_ARRAY, GL30.GL_TEXTURE_BINDING_2D_ARRAY, GL31.GL_TEXTURE_BINDING_RECTANGLE, GL40.GL_TEXTURE_BINDING_CUBE_MAP_ARRAY -> boundTextureOf(cs.activeTextureUnit, cs.boundTextures);
+            case GL11.GL_TEXTURE_BINDING_2D, GL11.GL_TEXTURE_BINDING_1D, GL12.GL_TEXTURE_BINDING_3D, GL13.GL_TEXTURE_BINDING_CUBE_MAP, GL30.GL_TEXTURE_BINDING_1D_ARRAY, GL30.GL_TEXTURE_BINDING_2D_ARRAY, GL31.GL_TEXTURE_BINDING_RECTANGLE, GL40.GL_TEXTURE_BINDING_CUBE_MAP_ARRAY -> cs.boundTexture(cs.activeTextureUnit);
             case GL11.GL_DEPTH_BITS -> getFramebufferAttachmentParameteri(GL30.GL_DRAW_FRAMEBUFFER, GL11.GL_DEPTH, GL30.GL_FRAMEBUFFER_ATTACHMENT_DEPTH_SIZE);
             case GL11.GL_STENCIL_BITS -> getFramebufferAttachmentParameteri(GL30.GL_DRAW_FRAMEBUFFER, GL11.GL_STENCIL, GL30.GL_FRAMEBUFFER_ATTACHMENT_STENCIL_SIZE);
             case GL11.GL_PACK_ALIGNMENT -> cs.pixelStore.packAlignment;
@@ -4068,10 +4083,6 @@ public class SDLGPURenderBackend extends RenderBackend {
         if (fboId == defaultFboId) return bufferEnum(0, 0);
         final FboState fbo = resourceManager.getFbo(fboId);
         return bufferEnum(fboId, fbo == null ? -1 : fbo.readBufferIndex);
-    }
-
-    static int boundTextureOf(int unit, int[] boundTextures) {
-        return (unit >= 0 && unit < boundTextures.length) ? boundTextures[unit] : 0;
     }
 
     static int deviceLimit(int pname) {
@@ -4320,6 +4331,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             final var dst = SDL_GPUTextureLocation.calloc(stack)
                 .texture(dstTex).mip_level(dstLevel).x(dstX).y(dstY).z(dstZ);
             SDL_CopyGPUTextureToTexture(cp, src, dst, srcWidth, srcHeight, Math.max(1, srcDepth), false);
+            resourceManager.markTextureWritten(dstTex);
         }
     }
 

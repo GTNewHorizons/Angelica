@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 import com.gtnewhorizons.angelica.sdlgpu.resource.FboState;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,6 +21,7 @@ class AttachmentClearTest {
     private static SdlTestRig rig;
     private static ShaderManager sm;
     private static PipelineStore store;
+    private static FullscreenPass fullscreen;
     private static AttachmentClear attachmentClear;
 
     private static final int SIZE = 32;
@@ -34,7 +36,8 @@ class AttachmentClearTest {
         rig = RealDeviceExtension.rig();
         sm = new ShaderManager(rig.device);
         store = new PipelineStore(rig.device);
-        attachmentClear = new AttachmentClear(rig.frameManager, store, sm);
+        fullscreen = new FullscreenPass(sm, rig.device);
+        attachmentClear = new AttachmentClear(rig.frameManager, store, fullscreen);
 
         final RealDeviceExtension.Target color = RealDeviceExtension.colorTarget(9700, SIZE, SIZE);
         colorTexture = color.texture();
@@ -59,6 +62,14 @@ class AttachmentClearTest {
         fbo.height = SIZE;
         fbo.recomputeTargets();
         return fbo;
+    }
+
+    @AfterAll
+    static void tearDown() {
+        if (attachmentClear != null) attachmentClear.shutdown();
+        if (store != null) store.shutdown();
+        if (fullscreen != null) fullscreen.shutdown();
+        if (sm != null) sm.shutdown();
     }
 
     @Test
