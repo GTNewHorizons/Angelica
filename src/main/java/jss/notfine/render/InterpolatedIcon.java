@@ -32,30 +32,47 @@ public class InterpolatedIcon extends TextureAtlasSprite {
 
 	protected void updateAnimationInterpolated() throws IllegalArgumentException, IllegalAccessException {
 
-		double d0 = 1.0D - tickCounter / (double) animationMetadata.getFrameTimeSingle(frameCounter);
-		int i = animationMetadata.getFrameIndex(frameCounter);
-		int j = animationMetadata.getFrameCount() == 0 ? framesTextureData.size() : animationMetadata.getFrameCount();
-		int k = animationMetadata.getFrameIndex((frameCounter + 1) % j);
+        final double dn = tickCounter / (double) animationMetadata.getFrameTimeSingle(frameCounter);
+        final double dc = 1.0D - dn;
+		final int cFrame = animationMetadata.getFrameIndex(frameCounter);
+		final int endFrame = animationMetadata.getFrameCount() == 0 ? framesTextureData.size() : animationMetadata.getFrameCount();
+		final int nFrame = animationMetadata.getFrameIndex((frameCounter + 1) % endFrame);
 
-		if (i != k && k >= 0 && k < framesTextureData.size()) {
-			int[][] aint = (int[][]) framesTextureData.get(i);
-			int[][] aint1 = (int[][]) framesTextureData.get(k);
+		if (cFrame != nFrame && nFrame >= 0 && nFrame < framesTextureData.size()) {
+			final int[][] cARGB = framesTextureData.get(cFrame);
+			final int[][] nARGB = framesTextureData.get(nFrame);
 
-			if (interpolatedFrameData == null || interpolatedFrameData.length != aint.length)
-				interpolatedFrameData = new int[aint.length][];
+			if (interpolatedFrameData == null || interpolatedFrameData.length != cARGB.length)
+				interpolatedFrameData = new int[cARGB.length][];
 
-			for (int l = 0; l < aint.length; l++) {
-				if (interpolatedFrameData[l] == null)
-					interpolatedFrameData[l] = new int[aint[l].length];
+			for (int i = 0; i < cARGB.length; i++) {
+				if (interpolatedFrameData[i] == null)
+					interpolatedFrameData[i] = new int[cARGB[i].length];
 
-				if (l < aint1.length && aint1[l].length == aint[l].length)
-					for (int i1 = 0; i1 < aint[l].length; ++i1) {
-						int j1 = aint[l][i1];
-						int k1 = aint1[l][i1];
-						int l1 = (int) (((j1 & 16711680) >> 16) * d0 + ((k1 & 16711680) >> 16) * (1.0D - d0));
-						int i2 = (int) (((j1 & 65280) >> 8) * d0 + ((k1 & 65280) >> 8) * (1.0D - d0));
-						int j2 = (int) ((j1 & 255) * d0 + (k1 & 255) * (1.0D - d0));
-						interpolatedFrameData[l][i1] = j1 & -16777216 | l1 << 16 | i2 << 8 | j2;
+				if (i < nARGB.length && nARGB[i].length == cARGB[i].length)
+					for (int j = 0; j < cARGB[i].length; ++j) {
+						final int c = cARGB[i][j];
+						final int n = nARGB[i][j];
+
+                        final double ca = (c >>> 24) * dc;
+                        final int cr = (c >>> 16) & 0xFF;
+                        final int cg = (c >>> 8) & 0xFF;
+                        final int cb = c & 0xFF;
+
+                        final double na = (n >>> 24) * dn;
+                        final int nr = (n >>> 16) & 0xFF;
+                        final int ng = (n >>> 8) & 0xFF;
+                        final int nb = n & 0xFF;
+
+                        final double ad = ca + na;
+                        final double wc = ad == 0 ? dc : ca / ad;
+                        final double wn = ad == 0 ? dn : na / ad;
+
+                        final int a = (int) Math.round(ad);
+                        final int r = (int) Math.round(cr * wc + nr * wn);
+                        final int g = (int) Math.round(cg * wc + ng * wn);
+                        final int b = (int) Math.round(cb * wc + nb * wn);
+						interpolatedFrameData[i][j] = a << 24 | r << 16 | g << 8 | b;
 					}
 			}
 
