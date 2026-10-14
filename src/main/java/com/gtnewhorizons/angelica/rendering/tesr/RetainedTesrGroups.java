@@ -470,6 +470,12 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
         promote(groupFor(layer, material, blockEntityId));
     }
 
+    void streamVertices(RenderLayer layer, int id, int[] packed, int vertexCount, Matrix4fc mv) {
+        if (glintCapture != null) glintCapture.invalidate();
+        source.getBuffer(layer, id).addPackedVertices(packed, vertexCount, mv, scratchVec);
+        streamedInstances++;
+    }
+
     void queue(TemplateBuffer template, RenderLayer layer, TesrMaterial material, Matrix4f currentMV, int packedLight, int colorABGR, int overlayABGR, long entityInfo, int id, Matrix4f texMatrix) {
         queue(template, null, 1.0f, layer, material, currentMV, packedLight, colorABGR, overlayABGR, entityInfo, id, texMatrix);
     }
