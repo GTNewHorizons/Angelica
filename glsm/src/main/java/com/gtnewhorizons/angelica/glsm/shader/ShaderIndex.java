@@ -21,8 +21,8 @@ import java.util.Set;
  */
 public final class ShaderIndex {
 
-    public record Directives(Set<String> identifiers, boolean hasConditionalOrMacro, int versionEnd) {
-        private static final Directives NONE = new Directives(Set.of(), false, -1);
+    public record Directives(Set<String> identifiers, Set<String> definedMacros, boolean hasConditionalOrMacro, int versionEnd) {
+        private static final Directives NONE = new Directives(Set.of(), Set.of(), false, -1);
     }
 
     private final GLSLParser.Translation_unitContext root;
@@ -83,6 +83,7 @@ public final class ShaderIndex {
         if (source.indexOf('#') < 0) return Directives.NONE;
         final GLSLLexer lexer = GlslTransformUtils.quietLexer(source);
         final Set<String> names = new HashSet<>();
+        final Set<String> macros = new HashSet<>();
         boolean conditionalOrMacro = false;
         int versionEnd = -1;
         boolean inVersion = false;
@@ -100,11 +101,17 @@ public final class ShaderIndex {
             inVersion = false;
             switch (type) {
                 case GLSLLexer.PROGRAM_TEXT, GLSLLexer.MACRO_TEXT, GLSLLexer.CONSTANT_EXPRESSION -> collectIdentifiers(token.getText(), names);
+                case GLSLLexer.MACRO_NAME -> macros.add(leadingIdentifier(token.getText()));
                 case GLSLLexer.IF_DIRECTIVE, GLSLLexer.IFDEF_DIRECTIVE, GLSLLexer.IFNDEF_DIRECTIVE, GLSLLexer.DEFINE_DIRECTIVE -> conditionalOrMacro = true;
                 default -> { }
             }
         }
-        return new Directives(names, conditionalOrMacro, versionEnd);
+        return new Directives(names, macros, conditionalOrMacro, versionEnd);
+    }
+
+    private static String leadingIdentifier(String text) {
+        final int args = text.indexOf('(');
+        return args < 0 ? text : text.substring(0, args);
     }
 
     private static void collectIdentifiers(String text, Set<String> out) {

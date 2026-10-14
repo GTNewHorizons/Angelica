@@ -6,7 +6,6 @@ import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
 import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager.FrameState;
 import com.gtnewhorizons.angelica.sdlgpu.resource.FboState;
 import com.gtnewhorizons.angelica.sdlgpu.resource.PixelOps;
-import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
 import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
 import org.lwjgl.sdl.SDL_GPUColorTargetDescription;
 import org.lwjgl.sdl.SDL_GPUDepthStencilState;
@@ -48,8 +47,7 @@ public final class AttachmentClear {
     private final Target fbo0Target = new Target();
 
     private final FullscreenPass fullscreen;
-    private final long[] sdlFragmentShaders = new long[MAX_COLOR_TARGETS + 1];
-    private final boolean[] fragmentFailed = new boolean[MAX_COLOR_TARGETS + 1];
+    private final FullscreenPass.Fragment[] fragments = new FullscreenPass.Fragment[MAX_COLOR_TARGETS + 1];
 
     private final long[] cacheKeys = new long[CACHE_SLOTS];
     private final long[] cachePipelines = new long[CACHE_SLOTS];
@@ -65,10 +63,17 @@ public final class AttachmentClear {
     private int buildStencilMask;
     private int buildColorMask;
 
-    public AttachmentClear(FrameManager frameManager, PipelineStore pipelineStore, ShaderManager shaderManager) {
+    public AttachmentClear(FrameManager frameManager, PipelineStore pipelineStore, FullscreenPass fullscreen) {
         this.frameManager = frameManager;
         this.pipelineStore = pipelineStore;
-        this.fullscreen = new FullscreenPass(shaderManager);
+        this.fullscreen = fullscreen;
+        for (int i = 0; i <= MAX_COLOR_TARGETS; i++) {
+            final int count = i;
+            fragments[i] = fullscreen.fragment(FRAGMENT_SOURCE + " COLOR_TARGETS=" + count, count > 0 ? 16 : -1, () -> {
+                final String source = ShaderLoader.getShaderSource(FRAGMENT_SOURCE);
+                return count == 0 ? source : withColorOutputs(source, count);
+            });
+        }
     }
 
     private final class Builder implements LongSupplier {
@@ -171,7 +176,7 @@ public final class AttachmentClear {
     }
 
     long getOrCreatePipeline(Target t, int colorTargets, boolean depth, boolean stencil, int stencilMask, int colorMask) {
-        if (!ensureShaders(colorTargets)) return 0;
+        if (colorTargets < 0 || colorTargets > MAX_COLOR_TARGETS || fragments[colorTargets].shader() == 0) return 0;
 
         final int[] formats = t.colorFormats;
         final int count = formats != null ? formats.length : 0;
@@ -239,24 +244,8 @@ public final class AttachmentClear {
                     .compare_op(SDL_GPU_COMPAREOP_ALWAYS);
             }
 
-            return fullscreen.createPipeline(pipelineStore, stack, sdlFragmentShaders[buildColorTargets], colorDesc, numColorTargets, depthStencil, t.depthFormat, "AttachmentClear");
+            return fullscreen.createPipeline(pipelineStore, stack, fragments[buildColorTargets].shader(), colorDesc, numColorTargets, depthStencil, t.depthFormat, "AttachmentClear");
         }
-    }
-
-    private boolean ensureShaders(int colorTargets) {
-        if (colorTargets < 0 || colorTargets > MAX_COLOR_TARGETS) return false;
-        if (sdlFragmentShaders[colorTargets] != 0) return true;
-        if (fragmentFailed[colorTargets]) return false;
-        fragmentFailed[colorTargets] = true;
-
-        final String baseSource = ShaderLoader.getShaderSource(FRAGMENT_SOURCE);
-        final String fragmentSource = colorTargets == 0 ? baseSource : withColorOutputs(baseSource, colorTargets);
-        final long fragmentShader = fullscreen.compileFragment(fragmentSource, colorTargets > 0 ? 16 : -1, "AttachmentClear: clear_attachment COLOR_TARGETS=" + colorTargets);
-        if (fragmentShader == 0) return false;
-
-        sdlFragmentShaders[colorTargets] = fragmentShader;
-        fragmentFailed[colorTargets] = false;
-        return true;
     }
 
     private static String withColorOutputs(String source, int count) {
@@ -274,9 +263,6 @@ public final class AttachmentClear {
     }
 
     public void shutdown() {
-        fullscreen.shutdown();
-        Arrays.fill(sdlFragmentShaders, 0L);
-        Arrays.fill(fragmentFailed, false);
         Arrays.fill(cacheKeys, 0L);
         Arrays.fill(cachePipelines, 0L);
         cacheNext = 0;

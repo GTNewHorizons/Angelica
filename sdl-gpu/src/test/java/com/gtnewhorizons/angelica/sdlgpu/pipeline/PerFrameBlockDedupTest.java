@@ -27,7 +27,7 @@ class PerFrameBlockDedupTest {
         return prog;
     }
 
-    private final PipelineApplier applier = new PipelineApplier(null, null, null, null, null, null, null, null, null);
+    private final PipelineApplier applier = new PipelineApplier(null, null, null, null, null, null, null, null, null, null);
     private final ContextState st = new ContextState();
 
     @Test
@@ -108,7 +108,7 @@ class PerFrameBlockDedupTest {
             final int[] endCount = { 0 };
             rig.frameManager.setBeforeEndCopyPassCallback(() -> endCount[0]++);
 
-            final PipelineApplier realApplier = new PipelineApplier(rig.frameManager, rig.resourceManager, null, null, null, null, null, null, null);
+            final PipelineApplier realApplier = new PipelineApplier(rig.frameManager, rig.resourceManager, null, null, null, null, null, null, null, null);
             final ContextState cs = new ContextState();
             cs.boundProgramObj = programWithBlockMemberAt(16, ShaderManager.BLOCK_PER_FRAME);
             realApplier.putUniform(cs, 0, new float[]{0.5f});

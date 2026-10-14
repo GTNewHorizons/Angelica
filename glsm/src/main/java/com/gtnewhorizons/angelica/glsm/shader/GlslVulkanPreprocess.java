@@ -34,6 +34,17 @@ public final class GlslVulkanPreprocess {
         "const_cast", "dynamic_cast", "reinterpret_cast", "static_cast", "export",
         "and", "or", "xor", "bitand", "bitor", "compl", "and_eq", "or_eq", "xor_eq", "not_eq");
 
+    private static final Object2ObjectLinkedOpenHashMap<String, String> IDENTIFIER_RENAMES = identifierRenames();
+
+    private static Object2ObjectLinkedOpenHashMap<String, String> identifierRenames() {
+        final Object2ObjectLinkedOpenHashMap<String, String> renames = new Object2ObjectLinkedOpenHashMap<>();
+        renames.put("sampler", SAMPLER_RENAMED);
+        renames.put("gl_VertexID", "gl_VertexIndex");
+        renames.put("gl_InstanceID", "gl_InstanceIndex");
+        for (String reserved : TARGET_RESERVED) renames.put(reserved, RESERVED_RENAMED_PREFIX + reserved);
+        return renames;
+    }
+
     public static final String SAMPLERLESS_EXTENSION = "#extension GL_EXT_samplerless_texture_functions : require";
 
     private static final int MAX_VS_INPUT_LOCATIONS = 16;
@@ -191,14 +202,13 @@ public final class GlslVulkanPreprocess {
             rewriteReadOnlyImageCalls(index.callsTo("imageSize"), "textureSize", readOnlyImages, edits);
         }
         if (needsSamplerless) {
-            final int versionEnd = index.directives().versionEnd();
-            if (versionEnd >= 0) edits.add(new Edit(versionEnd, versionEnd - 1, "\n" + SAMPLERLESS_EXTENSION));
+            addSamplerlessExtension(index, edits);
         }
 
-        rename(index, "sampler", SAMPLER_RENAMED, edits);
-        rename(index, "gl_VertexID", "gl_VertexIndex", edits);
-        rename(index, "gl_InstanceID", "gl_InstanceIndex", edits);
-        for (String reserved : TARGET_RESERVED) rename(index, reserved, RESERVED_RENAMED_PREFIX + reserved, edits);
+        for (var it = IDENTIFIER_RENAMES.object2ObjectEntrySet().fastIterator(); it.hasNext(); ) {
+            final var rename = it.next();
+            rename(index, rename.getKey(), rename.getValue(), edits);
+        }
 
         if (maxExplicitLoc >= 0 && !unlocatedVsInputStarts.isEmpty()) {
             int next = maxExplicitLoc + 1;
@@ -214,6 +224,15 @@ public final class GlslVulkanPreprocess {
         }
 
         return new Metadata(bools, explicitInputs, needsSamplerless);
+    }
+
+    public static boolean renamesIdentifier(String name) {
+        return IDENTIFIER_RENAMES.containsKey(name);
+    }
+
+    public static void addSamplerlessExtension(ShaderIndex index, List<Edit> edits) {
+        final int versionEnd = index.directives().versionEnd();
+        if (versionEnd >= 0) edits.add(new Edit(versionEnd, versionEnd - 1, "\n" + SAMPLERLESS_EXTENSION));
     }
 
     private static void rename(ShaderIndex index, String name, String replacement, List<Edit> edits) {

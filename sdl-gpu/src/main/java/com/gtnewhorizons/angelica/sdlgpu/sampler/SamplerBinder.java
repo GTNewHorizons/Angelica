@@ -149,7 +149,7 @@ public final class SamplerBinder {
                 continue;
             }
             final int glUnit = samplerUnits[i];
-            final int glTexId = (glUnit >= 0 && glUnit < st.boundTextures.length) ? st.boundTextures[glUnit] : 0;
+            final int glTexId = st.boundTexture(glUnit);
             long texHandle = (glTexId != 0) ? resourceManager.getTextureHandle(glTexId) : 0;
             if (texHandle == 0) {
                 texHandle = fallbackTexture;

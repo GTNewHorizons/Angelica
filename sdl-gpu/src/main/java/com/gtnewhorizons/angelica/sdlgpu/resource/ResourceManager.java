@@ -222,7 +222,7 @@ public final class ResourceManager {
     }
 
     private static int defaultUsage(int sdlFormat) {
-        if (isDepthFormat(sdlFormat)) {
+        if (PixelOps.isDepthFormat(sdlFormat)) {
             return SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
         }
         if (isIntegerFormat(sdlFormat)) {
@@ -371,6 +371,7 @@ public final class ResourceManager {
             releaseTextureDeferred(handle);
             return;
         }
+        notifyTextureReleased(handle);
         releaseTextureHandle(handle);
     }
 
@@ -393,6 +394,46 @@ public final class ResourceManager {
     }
 
     private final LongOpenHashSet definedContentTextures = new LongOpenHashSet();
+    private volatile Long2ObjectOpenHashMap<AtomicLong> textureWriteVersions = new Long2ObjectOpenHashMap<>();
+    private final AtomicLong textureWriteGeneration = new AtomicLong();
+
+    public void trackTextureWrites(long handle) {
+        if (handle != 0) setWriteTracking(handle, true);
+    }
+
+    public void stopTrackingTextureWrites(long handle) {
+        if (textureWriteVersions.containsKey(handle)) setWriteTracking(handle, false);
+    }
+
+    private void setWriteTracking(long handle, boolean track) {
+        wLock.lock();
+        try {
+            if (textureWriteVersions.containsKey(handle) == track) return;
+            final Long2ObjectOpenHashMap<AtomicLong> versions = new Long2ObjectOpenHashMap<>(textureWriteVersions);
+            if (track) versions.put(handle, new AtomicLong());
+            else versions.remove(handle);
+            textureWriteVersions = versions;
+            textureWriteGeneration.incrementAndGet();
+        } finally {
+            wLock.unlock();
+        }
+    }
+
+    public long textureWriteGeneration() {
+        return textureWriteGeneration.get();
+    }
+
+    public long textureWriteVersion(long handle) {
+        final AtomicLong version = textureWriteVersions.get(handle);
+        return version == null ? 0 : version.get();
+    }
+
+    public void markTextureWritten(long handle) {
+        final AtomicLong version = textureWriteVersions.get(handle);
+        if (version == null) return;
+        version.incrementAndGet();
+        textureWriteGeneration.incrementAndGet();
+    }
 
     public boolean isTextureContentDefined(long handle) {
         if (handle == 0) return false;
@@ -448,6 +489,7 @@ public final class ResourceManager {
         if (handle == 0) return;
         dropBatchedUploadsTargeting(handle);
         markTextureContentUndefined(handle);
+        stopTrackingTextureWrites(handle);
         final boolean live;
         wLock.lock();
         try {
@@ -605,7 +647,7 @@ public final class ResourceManager {
         return true;
     }
 
-    private boolean copyAllMips(long srcTex, long dstTex, int glTarget, int width, int height, int depth, int levels) {
+    public boolean copyAllMips(long srcTex, long dstTex, int glTarget, int width, int height, int depth, int levels) {
         final long cp = frameManager.ensureCopyPass();
         if (cp == 0) return false;
         flushBatchedUploads(cp);
@@ -625,6 +667,7 @@ public final class ResourceManager {
                 }
             }
         }
+        markTextureWritten(dstTex);
         return true;
     }
 
@@ -838,6 +881,18 @@ public final class ResourceManager {
         } finally {
             wLock.unlock();
         }
+        notifyTextureReleased(handle);
+    }
+
+    private LongConsumer textureReleaseListener;
+
+    public void setTextureReleaseListener(LongConsumer listener) {
+        textureReleaseListener = listener;
+    }
+
+    private void notifyTextureReleased(long handle) {
+        final LongConsumer listener = textureReleaseListener;
+        if (listener != null) listener.accept(handle);
     }
 
     private static volatile boolean singleThreadedReads;
@@ -1781,6 +1836,7 @@ public final class ResourceManager {
                 }
             }
             markTextureContentDefined(gpuTexture);
+            markTextureWritten(gpuTexture);
             frameManager.recordUploadCommands(sliceBytes * d, d);
             return true;
         } finally {
@@ -1834,6 +1890,8 @@ public final class ResourceManager {
         f.pendingTexLevels.add(level);
         f.pendingTexOffsets.add(f.batchOffset);
         f.batchOffset += size;
+        // Mark queued uploads now: sampler copies test freshness before the copy pass flushes them.
+        markTextureWritten(gpuTexture);
     }
 
     public void flushBatchedUploads(long copyPass) {
@@ -1937,6 +1995,7 @@ public final class ResourceManager {
                 SDL_UploadToGPUTexture(copyPass, src, dst, false);
             }
             markTextureContentDefined(tex);
+            markTextureWritten(tex);
             frameManager.recordUploadCommands(size, 1);
         } finally {
             returnTransferBufferThreadSafe(xfer, size);
@@ -1966,6 +2025,7 @@ public final class ResourceManager {
         st.frameHighestEnqueuedSeq = seq;
         lastTextureUploadSeq = seq;
         markTextureContentDefined(tex);
+        markTextureWritten(tex);
         tt.enqueue(TransferThread.TextureRegionUpload.acquire(xfer, tex, x, y, w, h, level, size, seq));
         tt.wake();
     }
@@ -2142,51 +2202,67 @@ public final class ResourceManager {
     }
 
     public long getOrCreateFallbackTexture() {
-        if (fallbackTexture != 0) return fallbackTexture;
+        if (fallbackTexture == 0) {
+            fallbackTexture = createFallback(SDL_GPU_TEXTURETYPE_2D, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+                SDL_GPU_TEXTUREUSAGE_SAMPLER, new byte[] { 0, 0, 0, (byte) 0xFF });
+        }
+        return fallbackTexture;
+    }
 
+    public long createStorageReadTexture(TextureMeta meta, int sdlFormat, int extraUsage) {
+        final int type = mapTextureType(meta.glTarget());
+        final int usage = SDL_GPU_TEXTUREUSAGE_GRAPHICS_STORAGE_READ | extraUsage;
+        if (!SDL_GPUTextureSupportsFormat(device.getDevice(), sdlFormat, type, usage)) return 0;
         try (var stack = stackPush()) {
             final SDL_GPUTextureCreateInfo ci = SDL_GPUTextureCreateInfo.calloc(stack)
-                .type(SDL_GPU_TEXTURETYPE_2D)
-                .format(SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM)
-                .usage(SDL_GPU_TEXTUREUSAGE_SAMPLER)
-                .width(1)
-                .height(1)
-                .layer_count_or_depth(1)
-                .num_levels(1);
-
-            fallbackTexture = SDL_CreateGPUTexture(device.getDevice(), ci);
-            if (fallbackTexture == 0) {
-                LOG.error("Failed to create fallback texture: {}", SDLError.SDL_GetError());
+                .type(type)
+                .format(sdlFormat)
+                .usage(usage)
+                .width(meta.width()).height(meta.height()).layer_count_or_depth(meta.depth()).num_levels(meta.levels());
+            final long handle = SDL_CreateGPUTexture(device.getDevice(), ci);
+            if (handle == 0) {
+                LOG.error("Failed to create storage-read texture {}x{} sdlFmt=0x{}: {}", meta.width(), meta.height(), Integer.toHexString(sdlFormat), SDLError.SDL_GetError());
                 return 0;
             }
-            trackTextureHandle(fallbackTexture);
+            trackTextureHandle(handle);
+            return handle;
         }
-        // GL 4.4 sec 11.1.3.5: sampling an incomplete texture yields (0,0,0,1).
-        final byte[] texel = { 0, 0, 0, (byte) 0xFF };
-        seedOneTexel(fallbackTexture, texel);
-        return fallbackTexture;
+    }
+
+    private long fallbackStorageTexture2D;
+    public long getOrCreateFallbackStorageTexture2D() {
+        if (fallbackStorageTexture2D == 0) {
+            fallbackStorageTexture2D = createFallback(SDL_GPU_TEXTURETYPE_2D, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+                SDL_GPU_TEXTUREUSAGE_GRAPHICS_STORAGE_READ, new byte[] { 0, 0, 0, (byte) 0xFF });
+        }
+        return fallbackStorageTexture2D;
     }
 
     private long fallbackStorageTexture3D;
     public long getOrCreateFallbackStorageTexture3D() {
-        if (fallbackStorageTexture3D != 0) return fallbackStorageTexture3D;
+        if (fallbackStorageTexture3D == 0) {
+            fallbackStorageTexture3D = createFallback(SDL_GPU_TEXTURETYPE_3D, SDL_GPU_TEXTUREFORMAT_R8_UINT,
+                SDL_GPU_TEXTUREUSAGE_GRAPHICS_STORAGE_READ | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_READ
+                    | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE, new byte[1]);
+        }
+        return fallbackStorageTexture3D;
+    }
+
+    private long createFallback(int type, int format, int usage, byte[] texel) {
+        final long texture;
         try (var stack = stackPush()) {
             final SDL_GPUTextureCreateInfo ci = SDL_GPUTextureCreateInfo.calloc(stack)
-                .type(SDL_GPU_TEXTURETYPE_3D)
-                .format(SDL_GPU_TEXTUREFORMAT_R8_UINT)
-                .usage(SDL_GPU_TEXTUREUSAGE_GRAPHICS_STORAGE_READ
-                     | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_READ
-                     | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE)
+                .type(type).format(format).usage(usage)
                 .width(1).height(1).layer_count_or_depth(1).num_levels(1);
-            fallbackStorageTexture3D = SDL_CreateGPUTexture(device.getDevice(), ci);
-            if (fallbackStorageTexture3D == 0) {
-                LOG.error("Failed to create fallback storage 3D texture: {}", SDLError.SDL_GetError());
-                return 0;
-            }
-            trackTextureHandle(fallbackStorageTexture3D);
+            texture = SDL_CreateGPUTexture(device.getDevice(), ci);
         }
-        seedOneTexel(fallbackStorageTexture3D, new byte[1]);
-        return fallbackStorageTexture3D;
+        if (texture == 0) {
+            LOG.error("Failed to create fallback texture (type={} format={} usage={}): {}", type, format, usage, SDLError.SDL_GetError());
+            return 0;
+        }
+        trackTextureHandle(texture);
+        seedOneTexel(texture, texel);
+        return texture;
     }
 
     private long fallbackStorageBuffer;
@@ -2279,6 +2355,7 @@ public final class ResourceManager {
                     .w(1).h(1).d(1);
                 SDL_UploadToGPUTexture(copyPass, src, dst, false);
                 SDL_EndGPUCopyPass(copyPass);
+                markTextureWritten(texture);
             }
             Submits.submit(cb);
         }
@@ -2558,14 +2635,6 @@ public final class ResourceManager {
         };
     }
 
-    private static boolean isDepthFormat(int sdlFormat) {
-        return sdlFormat == SDL_GPU_TEXTUREFORMAT_D16_UNORM
-            || sdlFormat == SDL_GPU_TEXTUREFORMAT_D24_UNORM
-            || sdlFormat == SDL_GPU_TEXTUREFORMAT_D32_FLOAT
-            || sdlFormat == SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT
-            || sdlFormat == SDL_GPU_TEXTUREFORMAT_D32_FLOAT_S8_UINT;
-    }
-
     static boolean isIntegerFormat(int sdlFormat) {
         return sdlFormat == SDL_GPU_TEXTUREFORMAT_R8_UINT
             || sdlFormat == SDL_GPU_TEXTUREFORMAT_R8G8_UINT
@@ -2648,6 +2717,10 @@ public final class ResourceManager {
         if (fallbackStorageTexture3D != 0) {
             releaseTextureHandle(fallbackStorageTexture3D);
             fallbackStorageTexture3D = 0;
+        }
+        if (fallbackStorageTexture2D != 0) {
+            releaseTextureHandle(fallbackStorageTexture2D);
+            fallbackStorageTexture2D = 0;
         }
         synchronized (computeStandInTextures) {
             for (long handle : computeStandInTextures.values()) releaseTextureHandle(handle);
