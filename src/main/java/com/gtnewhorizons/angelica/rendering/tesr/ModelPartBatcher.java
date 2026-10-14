@@ -16,6 +16,7 @@ import com.gtnewhorizons.angelica.glsm.ffp.CubeParams;
 import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
+import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.glsm.states.AlphaState;
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
@@ -622,6 +623,52 @@ public final class ModelPartBatcher {
         activeGroups.queue(template, cubes, scale, layer, material, currentModelView(), packedLight, colorABGR, overlayABGR, entityInfo, entityId, texMatrix);
         parts++;
         return true;
+    }
+
+    private enum TessellatorRoute { DRAW_NOW, DRAW_NOW_EXPECTED, QUEUE }
+
+    public static int drawTessellator(Tessellator tess) {
+        switch (INSTANCE.routeTessellatorDraw(tess)) {
+            case QUEUE -> {
+                tess.isDrawing = false;
+                final int result = tess.rawBufferIndex * 4;
+                tess.reset();
+                return result;
+            }
+            case DRAW_NOW_EXPECTED -> {
+                BatchEligibility.beginExpectedDraws(GLStateManager.drawCalls);
+                try {
+                    return TessellatorStreamingDrawer.draw(tess);
+                } finally {
+                    BatchEligibility.endExpectedDraws(GLStateManager.drawCalls);
+                }
+            }
+            default -> {
+                return TessellatorStreamingDrawer.draw(tess);
+            }
+        }
+    }
+
+    private TessellatorRoute routeTessellatorDraw(Tessellator tess) {
+        if (!active || mode != Mode.BLOCK_ENTITIES || !GLStateManager.isMainThread() || !BatchEligibility.insideRenderer()) return TessellatorRoute.DRAW_NOW;
+        if (!tess.isDrawing || tess.drawMode != GL11.GL_QUADS || tess.vertexCount == 0 || (tess.vertexCount & 3) != 0) return TessellatorRoute.DRAW_NOW;
+        if (DisplayListManager.isRecording() || !GLStateManager.glIsEnabled(GL11.GL_DEPTH_TEST) || !unitTexIdentity()) return TessellatorRoute.DRAW_NOW;
+        if (GLStateManager.getActiveProgram() != (shaderPipeline != null ? shaderPipeline.getActivePassProgramId() : 0)) return TessellatorRoute.DRAW_NOW;
+        final TesrMaterial material = EntityMaterials.fromCurrentState(true);
+        if (material == null || material == EntityMaterials.OVERLAY) return TessellatorRoute.DRAW_NOW;
+        if (lastBoundLocation == null || GLStateManager.getBoundTextureForServerState() != lastBoundGlId) return TessellatorRoute.DRAW_NOW;
+        if (!BatchEligibility.batchingAllowed()) return TessellatorRoute.DRAW_NOW_EXPECTED;
+
+        final PassOverride pass = shaderPipeline != null ? PassOverride.capture() : PassOverride.NONE;
+        final boolean offset = GLStateManager.glIsEnabled(GL11.GL_POLYGON_OFFSET_FILL);
+        final PolygonState polygon = GLStateManager.getPolygonState();
+        final int cullCode = material.isNoCull() ? DrawState.DISABLED : DrawState.liveCull();
+        final RenderLayer layer = layerFor(lastBoundLocation, material, pass, offset ? polygon.getOffsetFactor() : 0.0f, offset ? polygon.getOffsetUnits() : 0.0f,
+            ShaderGlint.NO_TINT, cullCode, DrawState.liveLit(material), DrawState.liveLightmap());
+        final int groupId = groupId(shaderPipeline != null, pass.isEntityPhase(), CapturedRenderingState.INSTANCE.getCurrentRenderedEntity(), CapturedRenderingState.INSTANCE.getCurrentRenderedBlockEntity());
+        TessellatorStreamingDrawer.fillMissingAttributes(tess);
+        activeGroups.streamVertices(layer, groupId, tess.rawBuffer, tess.vertexCount, currentModelView());
+        return TessellatorRoute.QUEUE;
     }
 
     private final ReferenceOpenHashSet<Class<?>> loggedMaterialBails = new ReferenceOpenHashSet<>();
