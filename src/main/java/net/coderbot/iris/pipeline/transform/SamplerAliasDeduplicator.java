@@ -11,7 +11,7 @@ final class SamplerAliasDeduplicator {
     private record AliasGroup(String canonical, List<String> aliases) {}
 
     private static final List<AliasGroup> GROUPS = List.of(
-        new AliasGroup("tex", List.of("texture", "gtexture", "textureAtlas")),
+        new AliasGroup("tex", List.of("texture", "gtexture")),
         new AliasGroup("depthtex0", List.of("gdepthtex")),
         new AliasGroup("dhDepthTex0", List.of("dhDepthTex"))
     );

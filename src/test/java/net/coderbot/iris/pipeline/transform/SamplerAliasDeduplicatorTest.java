@@ -28,16 +28,16 @@ class SamplerAliasDeduplicatorTest {
         String src =
             "#version 330 core\n" +
             "uniform sampler2D tex;\n" +
-            "uniform sampler2D textureAtlas;\n" +
+            "uniform sampler2D gtexture;\n" +
             "out vec4 fragColor;\n" +
             "void main() {\n" +
-            "    fragColor = texture(textureAtlas, vec2(0.5)) + texture(tex, vec2(0.5));\n" +
+            "    fragColor = texture(gtexture, vec2(0.5)) + texture(tex, vec2(0.5));\n" +
             "}\n";
 
         String out = transformFragment(src);
         assertTrue(out.contains("uniform sampler2D tex"), "canonical declaration must remain");
-        assertFalse(out.contains("uniform sampler2D textureAtlas"), "alias declaration must be removed: " + out);
-        assertFalse(out.contains("textureAtlas"), "all references to alias must be rewritten: " + out);
+        assertFalse(out.contains("uniform sampler2D gtexture"), "alias declaration must be removed: " + out);
+        assertFalse(out.contains("gtexture"), "all references to alias must be rewritten: " + out);
         assertEquals(2, occurrences(out, "texture(tex"), "both references should now read from tex");
     }
 
@@ -45,27 +45,27 @@ class SamplerAliasDeduplicatorTest {
     void onlyAliasDeclared_renamedToCanonical() {
         String src =
             "#version 330 core\n" +
-            "uniform sampler2D textureAtlas;\n" +
+            "uniform sampler2D gtexture;\n" +
             "out vec4 fragColor;\n" +
-            "void main() { fragColor = texture(textureAtlas, vec2(0.5)); }\n";
+            "void main() { fragColor = texture(gtexture, vec2(0.5)); }\n";
 
         String out = transformFragment(src);
         assertTrue(out.contains("uniform sampler2D tex"), "alias should be promoted to canonical: " + out);
-        assertFalse(out.contains("textureAtlas"), "no alias should remain: " + out);
+        assertFalse(out.contains("gtexture"), "no alias should remain: " + out);
     }
 
     @Test
     void crossStage_consistentCanonical() {
         String vs =
             "#version 330 core\n" +
-            "uniform sampler2D textureAtlas;\n" +
-            "void main() { gl_Position = vec4(texture(textureAtlas, vec2(0.0)).xyz, 1.0); }\n";
+            "uniform sampler2D gtexture;\n" +
+            "void main() { gl_Position = vec4(texture(gtexture, vec2(0.0)).xyz, 1.0); }\n";
         String fs =
             "#version 330 core\n" +
             "uniform sampler2D tex;\n" +
-            "uniform sampler2D textureAtlas;\n" +
+            "uniform sampler2D gtexture;\n" +
             "out vec4 fragColor;\n" +
-            "void main() { fragColor = texture(textureAtlas, vec2(0.5)) + texture(tex, vec2(0.5)); }\n";
+            "void main() { fragColor = texture(gtexture, vec2(0.5)) + texture(tex, vec2(0.5)); }\n";
 
         Transformer vt = parse(vs);
         Transformer ft = parse(fs);
@@ -78,10 +78,24 @@ class SamplerAliasDeduplicatorTest {
         String foutS = format(ft);
 
         assertTrue(voutS.contains("uniform sampler2D tex"), "vertex must declare tex: " + voutS);
-        assertFalse(voutS.contains("textureAtlas"), "vertex must not reference alias: " + voutS);
+        assertFalse(voutS.contains("gtexture"), "vertex must not reference alias: " + voutS);
         assertTrue(foutS.contains("uniform sampler2D tex"), "fragment must declare tex: " + foutS);
-        assertFalse(foutS.contains("uniform sampler2D textureAtlas"), "fragment alias decl must be gone: " + foutS);
-        assertFalse(foutS.contains("textureAtlas"), "fragment must not reference alias: " + foutS);
+        assertFalse(foutS.contains("uniform sampler2D gtexture"), "fragment alias decl must be gone: " + foutS);
+        assertFalse(foutS.contains("gtexture"), "fragment must not reference alias: " + foutS);
+    }
+
+    @Test
+    void packCustomSamplerIsNotAnAlias() {
+        String src =
+            "#version 330 core\n" +
+            "uniform sampler2D tex;\n" +
+            "uniform sampler2D textureAtlas;\n" +
+            "out vec4 fragColor;\n" +
+            "void main() { fragColor = texture(textureAtlas, vec2(0.5)) + texture(tex, vec2(0.5)); }\n";
+
+        String out = transformFragment(src);
+        assertTrue(out.contains("uniform sampler2D textureAtlas"), "a pack-defined sampler keeps its own binding: " + out);
+        assertTrue(out.contains("texture(textureAtlas"), "its reads must not be redirected to tex: " + out);
     }
 
     @Test
