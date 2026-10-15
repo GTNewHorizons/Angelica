@@ -6,6 +6,7 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL21;
 import org.lwjgl.opengl.GL30;
+import org.lwjgl.opengl.GL31;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -59,6 +60,18 @@ public class GLSM_DeletedBufferBinding_GLTest {
         } finally {
             GL30.glBindVertexArray(prevVao);
         }
+    }
+
+    @Test
+    void deletedIndexedUniformBufferIsNotRestoredFromCache() {
+        final int index = 3;
+        final int ubo = makeBoundBuffer(GL31.GL_UNIFORM_BUFFER);
+        GLStateManager.glBindBufferBase(GL31.GL_UNIFORM_BUFFER, index, ubo);
+        assertEquals(ubo, GLStateManager.getIndexedBufferBinding(GL31.GL_UNIFORM_BUFFER, index));
+
+        GLStateManager.glDeleteBuffers(ubo);
+        assertEquals(0, GL30.glGetInteger(GL31.GL_UNIFORM_BUFFER_BINDING, index));
+        assertEquals(0, GLStateManager.getIndexedBufferBinding(GL31.GL_UNIFORM_BUFFER, index));
     }
 
     @Test

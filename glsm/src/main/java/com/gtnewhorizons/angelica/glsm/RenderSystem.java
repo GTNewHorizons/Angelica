@@ -556,7 +556,7 @@ public class RenderSystem {
     }
 
     public static int getIndexedBufferBinding(int target, int index) {
-        return RENDER_BACKEND.getIndexedBufferBinding(target, index);
+        return GLStateManager.getIndexedBufferBinding(target, index);
     }
 
     public static void bindBufferBase(int target, int index, int buffer) {

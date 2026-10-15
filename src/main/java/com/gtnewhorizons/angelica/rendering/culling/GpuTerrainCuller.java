@@ -261,12 +261,14 @@ public final class GpuTerrainCuller {
         GLStateManager.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, visibleSsboGlId);
         GLStateManager.glBufferSubData(GL43.GL_SHADER_STORAGE_BUFFER, 0L, visibleStagingView);
 
+        culler.beginDispatches(visibleSsboGlId, indirectSsboGlId);
         BackendManager.RENDER_BACKEND.beginComputeDispatchBatch();
         try {
             dispatchPass(primaryPass);
             if (secondPrepared) dispatchPass(secondPass);
             if (translucentReady) dispatchPass(sortedPass);
         } finally {
+            culler.endDispatches();
             BackendManager.RENDER_BACKEND.endComputeDispatchBatch();
         }
     }
@@ -280,7 +282,7 @@ public final class GpuTerrainCuller {
         FrustumExtractor.patchControl(r.entryCount, r.indexPointerMask, frustumUboBytes);
         FrustumExtractor.patchBatchEntryBase(r.entryBase, frustumUboBytes);
         culler.uploadFrustum(frustumUboBytes);
-        culler.dispatch(visibleSsboGlId, indirectSsboGlId, r.entryCount);
+        culler.dispatch(r.entryCount);
         r.dispatched = true;
     }
 

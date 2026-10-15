@@ -93,7 +93,6 @@ import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.Drawable;
 import org.lwjgl.opengl.EXTTextureFilterAnisotropic;
 import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL42;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL14;
@@ -104,6 +103,8 @@ import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL31;
 import org.lwjgl.opengl.GL32;
 import org.lwjgl.opengl.GL33;
+import org.lwjgl.opengl.GL42;
+import org.lwjgl.opengl.GL43;
 import org.lwjgl.opengl.GLContext;
 import org.lwjgl.opengl.KHRDebug;
 import org.lwjgl.opengl.KHRDebugCallback;
@@ -328,6 +329,7 @@ public class GLStateManager {
     public static final int MAX_PROJECTION_STACK_DEPTH = 4;
     public static final int MAX_TEXTURE_STACK_DEPTH = 4;
     public static final int MAX_CLIP_PLANES = 8;
+    public static final int INDEXED_BUFFER_SLOTS = 64;
     public static final int MAX_TEXTURE_UNITS = RENDER_BACKEND.getInteger(GL20.GL_MAX_TEXTURE_IMAGE_UNITS);
     public static final int MAX_LEGACY_TEXTURE_UNITS = Math.min(VertexKey.MAX_UNITS, MAX_TEXTURE_UNITS);
     public static final int MAX_TEXTURE_COORDS = Math.min(VAOManager.TEX_COORD_UNITS, MAX_TEXTURE_UNITS);
@@ -7267,6 +7269,10 @@ public class GLStateManager {
                 e.setValue(0);
                 RENDER_BACKEND.bindBuffer(e.getIntKey(), 0);
             }
+            for (int i = 0; i < INDEXED_BUFFER_SLOTS; i++) {
+                if (glCtx.uniformBufferBindings[i] == buffer) glCtx.uniformBufferBindings[i] = 0;
+                if (glCtx.storageBufferBindings[i] == buffer) glCtx.storageBufferBindings[i] = 0;
+            }
             writeMappedBuffers.remove(buffer);
 
             glCtx.vaos.onDeleteBuffer(buffer);
@@ -7881,7 +7887,9 @@ public class GLStateManager {
     public static void glBindBufferBase(int target, int index, int buffer) {
         final boolean locked = acquireDrawLock();
         try {
-            trackBufferBinding(ctx(), target, buffer);
+            final GLContextState glCtx = ctx();
+            trackBufferBinding(glCtx, target, buffer);
+            trackIndexedBufferBinding(glCtx, target, index, buffer);
             RENDER_BACKEND.bindBufferBase(target, index, buffer);
         } finally {
             if (locked) releaseDrawLock();
@@ -7891,11 +7899,33 @@ public class GLStateManager {
     public static void glBindBufferRange(int target, int index, int buffer, long offset, long size) {
         final boolean locked = acquireDrawLock();
         try {
-            trackBufferBinding(ctx(), target, buffer);
+            final GLContextState glCtx = ctx();
+            trackBufferBinding(glCtx, target, buffer);
+            trackIndexedBufferBinding(glCtx, target, index, buffer);
             RENDER_BACKEND.bindBufferRange(target, index, buffer, offset, size);
         } finally {
             if (locked) releaseDrawLock();
         }
+    }
+
+    private static int[] indexedBufferBindings(GLContextState glCtx, int target, int index) {
+        if (index < 0 || index >= INDEXED_BUFFER_SLOTS) return null;
+        if (target == GL31.GL_UNIFORM_BUFFER) return glCtx.uniformBufferBindings;
+        if (target == GL43.GL_SHADER_STORAGE_BUFFER) return glCtx.storageBufferBindings;
+        return null;
+    }
+
+    private static void trackIndexedBufferBinding(GLContextState glCtx, int target, int index, int buffer) {
+        final int[] bindings = indexedBufferBindings(glCtx, target, index);
+        if (bindings != null) bindings[index] = buffer;
+    }
+
+    public static int getIndexedBufferBinding(int target, int index) {
+        if (isCachingEnabled()) {
+            final int[] bindings = indexedBufferBindings(ctx(), target, index);
+            if (bindings != null) return bindings[index];
+        }
+        return RENDER_BACKEND.getIndexedBufferBinding(target, index);
     }
 
     public static int glGetUniformBlockIndex(int program, CharSequence name) { return RENDER_BACKEND.getUniformBlockIndex(program, name); }
@@ -8656,7 +8686,9 @@ public class GLStateManager {
         return ctx().imageUnits.get(unit);
     }
 
-    private static int imageBindingOrBackend(int pname, int index) {
+    private static int indexedIntegerOrBackend(int pname, int index) {
+        if (pname == GL31.GL_UNIFORM_BUFFER_BINDING) return getIndexedBufferBinding(GL31.GL_UNIFORM_BUFFER, index);
+        if (pname == GL43.GL_SHADER_STORAGE_BUFFER_BINDING) return getIndexedBufferBinding(GL43.GL_SHADER_STORAGE_BUFFER, index);
         final ImageUnitBinding binding = !isCachingEnabled() ? null : ctx().imageUnits.get(index);
         if (binding == null) return RENDER_BACKEND.getIntegerIndexed(pname, index);
         return switch (pname) {
@@ -8671,11 +8703,11 @@ public class GLStateManager {
     }
 
     public static int glGetInteger(int pname, int index) {
-        return imageBindingOrBackend(pname, index);
+        return indexedIntegerOrBackend(pname, index);
     }
 
     public static int glGetIntegeri(int pname, int index) {
-        return imageBindingOrBackend(pname, index);
+        return indexedIntegerOrBackend(pname, index);
     }
 
     public static void glGetIntegeri(int pname, int index, IntBuffer params) {
@@ -8683,11 +8715,11 @@ public class GLStateManager {
     }
 
     public static void glGetIntegeri_v(int pname, int index, IntBuffer params) {
-        params.put(params.position(), imageBindingOrBackend(pname, index));
+        params.put(params.position(), indexedIntegerOrBackend(pname, index));
     }
 
     public static void glGetBooleani_v(int pname, int index, ByteBuffer params) {
-        params.put(params.position(), (byte) (imageBindingOrBackend(pname, index) != 0 ? GL11.GL_TRUE : GL11.GL_FALSE));
+        params.put(params.position(), (byte) (indexedIntegerOrBackend(pname, index) != 0 ? GL11.GL_TRUE : GL11.GL_FALSE));
     }
 
     public static void glGetBooleani(int pname, int index, ByteBuffer params) {
