@@ -369,6 +369,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             LOG.info("Splash offscreen target {}x{} (window {}x{}, max desktop {}x{})", splashTexW, splashTexH, splashW, splashH, maxDesktop[0], maxDesktop[1]);
         }
 
+        Lwjgl3GLCapabilitiesShim.installFunctionProvider();
         Lwjgl3GLCapabilitiesShim.installOnCurrentThread(advertisedCapabilities());
 
         LOG.info("SDLGPURenderBackend initialized: renderer={}, version={}", cachedRenderer, cachedVersion);
