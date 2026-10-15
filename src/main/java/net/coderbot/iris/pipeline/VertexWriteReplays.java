@@ -5,7 +5,9 @@ import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.backend.VertexWriteReplaySetup;
 import com.gtnewhorizons.angelica.glsm.texture.InternalTextureFormat;
 import com.gtnewhorizons.angelica.glsm.texture.TextureType;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntIterator;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.image.ImageHolder;
 import net.coderbot.iris.gl.program.ComputeProgram;
@@ -33,10 +35,20 @@ import java.util.function.IntSupplier;
 final class VertexWriteReplays {
 
     private final List<ComputeProgram> twins = new ArrayList<>();
-    private final IntArrayList attachedPrograms = new IntArrayList();
+    private final Int2ObjectMap<List<String>> writtenImagesByProgram = new Int2ObjectOpenHashMap<>();
+
+    boolean writesImage(Program program, String image) {
+        final List<String> images = writtenImagesByProgram.get(program.getProgramId());
+        return images != null && images.contains(image);
+    }
+
+    boolean writesImages(Program program) {
+        return writtenImagesByProgram.containsKey(program.getProgramId());
+    }
 
     void attach(String name, Program program, Map<PatchShaderType, String> transformed, BiConsumer<SamplerHolder, ImageHolder> wireResources) {
         BackendManager.RENDER_BACKEND.setVertexWriteReplay(program.getProgramId(), null);
+        writtenImagesByProgram.remove(program.getProgramId());
         final String source = transformed.get(PatchShaderType.COMPUTE);
         if (RwImageStoreExtractor.parseSentinel(source) != RwImageStoreExtractor.RwExtractMode.VERTEX_REPLAY) return;
 
@@ -76,13 +88,13 @@ final class VertexWriteReplays {
             inputNames, inputLocations, resources.images, writtenImages.size(),
             resources.samplerNames.toArray(new String[0]), resources.samplerUnits, resources.samplerTextures, resources.samplerObjects,
             RwImageStoreExtractor.VG_REPLAY_VERTEX_BUFFER_BINDING, RwImageStoreExtractor.VG_REPLAY_VERTEX_BUFFER_COUNT, RwImageStoreExtractor.VG_REPLAY_INDEX_BUFFER_BINDING));
-        attachedPrograms.add(program.getProgramId());
+        writtenImagesByProgram.put(program.getProgramId(), writtenImages);
         twins.add(twin);
     }
 
     void destroy() {
-        for (int i = 0; i < attachedPrograms.size(); i++) BackendManager.RENDER_BACKEND.setVertexWriteReplay(attachedPrograms.getInt(i), null);
-        attachedPrograms.clear();
+        for (IntIterator it = writtenImagesByProgram.keySet().iterator(); it.hasNext(); ) BackendManager.RENDER_BACKEND.setVertexWriteReplay(it.nextInt(), null);
+        writtenImagesByProgram.clear();
         for (ComputeProgram twin : twins) twin.destroy();
         twins.clear();
     }
