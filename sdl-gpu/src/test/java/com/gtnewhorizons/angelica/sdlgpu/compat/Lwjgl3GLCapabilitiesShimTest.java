@@ -88,6 +88,21 @@ class Lwjgl3GLCapabilitiesShimTest {
     }
 
     @Test
+    void functionProviderResolvesEveryNameToAbsent() {
+        final boolean preinstalled = GL.getFunctionProvider() != null;
+        Lwjgl3GLCapabilitiesShim.installFunctionProvider();
+        try {
+            assertNotNull(GL.getFunctionProvider());
+            if (!preinstalled) {
+                assertEquals(0L, GL.getFunctionProvider().getFunctionAddress("glBindVertexArrayAPPLE"));
+            }
+            Lwjgl3GLCapabilitiesShim.installFunctionProvider();
+        } finally {
+            if (!preinstalled) GL.destroy();
+        }
+    }
+
+    @Test
     void advertisedSetHasNoDuplicatesOrBlanks() {
         final Set<String> advertised = SDLGPURenderBackend.advertisedCapabilities();
         assertEquals(new HashSet<>(advertised).size(), advertised.size());
