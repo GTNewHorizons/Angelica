@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Maps objects with specific NBT properties to shader IDs. Generic over the
@@ -34,7 +35,7 @@ public class NbtConditionalIdMap<K> {
         boolean isExistenceOnly() { return expectedValue == null; }
     }
 
-    record NbtCondition(PropertyMatcher[] matchers, int shaderId) {}
+    record NbtCondition(PropertyMatcher[] matchers, Set<Integer> metas, int shaderId) {}
 
     private final Map<K, List<NbtCondition>> conditionsByKey;
 
@@ -47,7 +48,7 @@ public class NbtConditionalIdMap<K> {
      * registries at registration time. Single-quoted values are kept as literals.
      * Dot notation paths are pre-split here so we prevent allocations.
      */
-    public void addCondition(K key, Map<String, PropertiesTokenizer.NbtValue> nbtProperties, int shaderId) {
+    public void addCondition(K key, Map<String, PropertiesTokenizer.NbtValue> nbtProperties, int shaderId, Set<Integer> metas) {
         final PropertyMatcher[] matchers = new PropertyMatcher[nbtProperties.size()];
         int i = 0;
 
@@ -88,7 +89,7 @@ public class NbtConditionalIdMap<K> {
         }
 
         conditionsByKey.computeIfAbsent(key, k -> new ArrayList<>())
-            .add(new NbtCondition(matchers, shaderId));
+            .add(new NbtCondition(matchers, metas, shaderId));
     }
 
     public boolean hasConditions(K key) {
@@ -102,19 +103,29 @@ public class NbtConditionalIdMap<K> {
     /**
      * Resolves the shader ID by matching the provided NBT data.
      */
-    public int resolve(K key, NBTTagCompound nbt) {
+    public int resolve(K key, NBTTagCompound nbt, Integer meta) {
         final List<NbtCondition> conditions = conditionsByKey.get(key);
         if (conditions == null) {
             return -1;
         }
 
         for (NbtCondition condition : conditions) {
+            if (meta != null && condition.metas != null && !condition.metas.contains(meta)) {
+                continue;
+            }
             if (matchesNbt(nbt, condition.matchers())) {
                 return condition.shaderId;
             }
         }
 
         return -1;
+    }
+
+    /**
+     * Resolves the shader ID by matching the provided NBT data.
+     */
+    public int resolve(K key, NBTTagCompound nbt) {
+        return resolve(key, nbt, null);
     }
 
     private static boolean matchesNbt(NBTTagCompound nbt, PropertyMatcher[] matchers) {
