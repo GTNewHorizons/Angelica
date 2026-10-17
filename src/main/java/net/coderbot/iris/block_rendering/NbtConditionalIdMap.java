@@ -35,7 +35,9 @@ public class NbtConditionalIdMap<K> {
         boolean isExistenceOnly() { return expectedValue == null; }
     }
 
-    record NbtCondition(PropertyMatcher[] matchers, Set<Integer> metas, int shaderId) {}
+    record NbtCondition(PropertyMatcher[] matchers, Set<Integer> metas, int shaderId) {
+        boolean isMetaMatch() { return metas != null && !metas.isEmpty(); }
+    }
 
     private final Map<K, List<NbtCondition>> conditionsByKey;
 
@@ -110,7 +112,7 @@ public class NbtConditionalIdMap<K> {
         }
 
         for (NbtCondition condition : conditions) {
-            if (meta != null && condition.metas != null && !condition.metas.contains(meta)) {
+            if (meta != null && condition.isMetaMatch() && !condition.metas.contains(meta)) {
                 continue;
             }
             if (matchesNbt(nbt, condition.matchers())) {
