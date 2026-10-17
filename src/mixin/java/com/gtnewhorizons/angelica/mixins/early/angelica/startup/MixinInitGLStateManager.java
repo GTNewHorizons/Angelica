@@ -8,6 +8,7 @@ import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.compat.DriverCompatabilityCheck;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
+import com.gtnewhorizons.angelica.glsm.backend.BackendStartGuard;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
@@ -47,6 +48,7 @@ public class MixinInitGLStateManager {
             .enableDSA(AngelicaConfig.enableDSA)
             .postInitCallback(SelectionBoxRenderer::init)
             .build());
+        BackendStartGuard.disarm();
 
         GLSMConfig.extendedAttribsExpected = AngelicaConfig.enableIris;
 

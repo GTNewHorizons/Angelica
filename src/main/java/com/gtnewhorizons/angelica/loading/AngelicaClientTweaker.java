@@ -72,8 +72,7 @@ public final class AngelicaClientTweaker implements IFMLLoadingPlugin, IEarlyMix
             // Angelica Config
             ConfigurationManager.registerConfig(AngelicaConfig.class);
             TracyOptions.latch(AngelicaConfig.enableTracy, AngelicaConfig.tracyAllowRemote, AngelicaConfig.tracyFineZones, AngelicaConfig.tracyMaxSrcLocs);
-            if (BackendStartGuard.begin(new File(Launch.minecraftHome, "angelica" + File.separator + "sdlgpu-starting"), AngelicaConfig.sdlGpuConfigured(), SystemProperties.SDL_GPU_OVERRIDE != null)) {
-                LOGGER.warn("The last start with SDL GPU did not reach the main menu; resetting the render backend to OpenGL");
+            if (BackendStartGuard.begin(new File(Launch.minecraftHome, "angelica"), AngelicaConfig.sdlGpuConfigured(), SystemProperties.SDL_GPU_OVERRIDE != null, SDLGPUGate.REQUIREMENTS_REVISION, BackendOptions.sdlGpuDriver(AngelicaConfig.sdlGpuDriverName()))) {
                 AngelicaConfig.renderBackend = RenderBackendChoice.OPENGL;
                 ConfigurationManager.save(AngelicaConfig.class);
             }

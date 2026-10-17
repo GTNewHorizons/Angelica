@@ -4,6 +4,7 @@ import static org.lwjgl.sdl.SDLVideo.SDL_PROP_WINDOW_CREATE_METAL_BOOLEAN;
 
 import com.gtnewhorizons.angelica.glsm.backend.BackendOptions;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
+import com.gtnewhorizons.angelica.glsm.backend.BackendStartGuard;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import com.gtnewhorizons.angelica.glsm.loading.DependencyVerifier;
 import com.gtnewhorizons.angelica.glsm.loading.DependencyVerifier.Check;
@@ -55,6 +56,7 @@ public final class SDLGPUGate {
     }
 
     public static final String LWJGL3IFY_MIN_VERSION = "3.0.25";
+    public static final int REQUIREMENTS_REVISION = 1;
 
     private static final List<Check> REQUIREMENTS = List.of(
         new Check("/org/lwjgl/sdl/SDLGPU.class", "no lwjgl-sdl on the classpath"),
@@ -90,12 +92,16 @@ public final class SDLGPUGate {
         boolean ok;
         try {
             Sys.initialize();
+            BackendStartGuard.arm();
             ok = MainThreadExec.runOnMainThread(device()::createDevice);
         } catch (Throwable t) {
             LOG.error("SDL GPU device probe failed", t);
             ok = false;
         }
-        if (!ok) resetSdlLogging();
+        if (!ok) {
+            resetSdlLogging();
+            BackendStartGuard.disarm();
+        }
         deviceReady = ok;
         return ok;
     }
@@ -182,6 +188,7 @@ public final class SDLGPUGate {
             throw new IllegalStateException("Celeritas already selected the SDL GPU LWJGL service; falling back to OpenGL would leave it bound to a dead backend");
         }
         SDLGPULWJGLService.unbind();
+        BackendStartGuard.disarm();
         disarmed = true;
         engaged = false;
         deviceReady = false;
