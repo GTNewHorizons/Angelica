@@ -21,7 +21,7 @@ public final class FfpFixture {
 
     private FfpFixture() {}
 
-    public static final class IntegerInstances {
+    public static final class EntityIdInstances {
 
         private static final int INSTANCES = 3;
 
@@ -31,16 +31,17 @@ public final class FfpFixture {
             layout(location = 5) in vec4 a_InstRow0;
             layout(location = 6) in vec4 a_InstRow1;
             layout(location = 7) in vec4 a_InstRow2;
-            layout(location = 11) in uvec4 iris_Entity;
+            layout(location = 11) in vec4 iris_InstEntity;
             flat out vec3 v_Color;
             void main() {
             """;
 
         private static final String VS_TAIL = """
               gl_Position = instMV * vec4(a_Position, 1.0);
-              if (iris_Entity.x == 65535u) { v_Color = vec3(1.0, 0.0, 0.0); }
-              else if (iris_Entity.x == 7u) { v_Color = vec3(0.0, 1.0, 0.0); }
-              else if (iris_Entity.x == 50020u) { v_Color = vec3(0.0, 0.0, 1.0); }
+              int entity = int(round(iris_InstEntity.x * 65535.0));
+              if (entity == 65535) { v_Color = vec3(1.0, 0.0, 0.0); }
+              else if (entity == 7) { v_Color = vec3(0.0, 1.0, 0.0); }
+              else if (entity == 50020) { v_Color = vec3(0.0, 0.0, 1.0); }
               else { v_Color = vec3(1.0, 0.0, 1.0); }
             }
             """;
@@ -59,7 +60,7 @@ public final class FfpFixture {
         private static int templateVbo;
         private static int instanceVbo;
 
-        private IntegerInstances() {}
+        private EntityIdInstances() {}
 
         public static void build(float spacing) {
             program = buildProgram();

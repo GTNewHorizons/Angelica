@@ -16,6 +16,7 @@ import com.gtnewhorizons.angelica.glsm.ffp.CubeParams;
 import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
+import com.gtnewhorizons.angelica.glsm.streaming.TessellatorEntityIds;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.glsm.states.AlphaState;
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
@@ -652,6 +653,7 @@ public final class ModelPartBatcher {
     private TessellatorRoute routeTessellatorDraw(Tessellator tess) {
         if (!active || mode != Mode.BLOCK_ENTITIES || !GLStateManager.isMainThread() || !BatchEligibility.insideRenderer()) return TessellatorRoute.DRAW_NOW;
         if (!tess.isDrawing || tess.drawMode != GL11.GL_QUADS || tess.vertexCount == 0 || (tess.vertexCount & 3) != 0) return TessellatorRoute.DRAW_NOW;
+        if (shaderPipeline != null && TessellatorEntityIds.hasIdChanges(tess)) return TessellatorRoute.DRAW_NOW;
         if (DisplayListManager.isRecording() || !GLStateManager.glIsEnabled(GL11.GL_DEPTH_TEST) || !unitTexIdentity()) return TessellatorRoute.DRAW_NOW;
         if (GLStateManager.getActiveProgram() != (shaderPipeline != null ? shaderPipeline.getActivePassProgramId() : 0)) return TessellatorRoute.DRAW_NOW;
         final TesrMaterial material = EntityMaterials.fromCurrentState(true);

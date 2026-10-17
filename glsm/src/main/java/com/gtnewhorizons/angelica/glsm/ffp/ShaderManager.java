@@ -139,6 +139,7 @@ public final class ShaderManager {
         GLSMHooks.resolvePendingProgram();
         final DeferredBlendHandler bh = GLSMHooks.blendHandler;
         if (bh != null) bh.flushDeferredBlend();
+        GLStateManager.flushEntityIds(glCtx);
 
         // Handle FFP & Iris uniforms
         final int currentProgramId = glCtx.activeProgram;

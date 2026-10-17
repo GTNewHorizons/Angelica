@@ -26,6 +26,7 @@ import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.samplers.IrisSamplers;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
+import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.iris.uniforms.SystemTimeUniforms;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import org.lwjgl.opengl.GL11;
@@ -65,6 +66,9 @@ public class IrisGLSMBridge {
 
     public static void installImmediateExtendedHandler() {
         GLSMHooks.immediateExtendedHandler = new ImmediateExtendedAttribs();
+        final CapturedRenderingState state = CapturedRenderingState.INSTANCE;
+        state.setEntityIdsListener(() -> GLStateManager.setEntityIds(
+            state.getCurrentRenderedEntity(), state.getCurrentRenderedBlockEntity(), state.getCurrentRenderedItem()));
     }
 
     public static void installPostTransformHook() {
