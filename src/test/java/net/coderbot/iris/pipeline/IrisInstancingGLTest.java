@@ -1,5 +1,6 @@
 package net.coderbot.iris.pipeline;
 
+import com.gtnewhorizons.angelica.glsm.EntityIdsOnlyHandler;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.GlTestSupport;
@@ -7,6 +8,7 @@ import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
 import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpFixture;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
+import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
 import com.gtnewhorizons.angelica.glsm.shader.ShaderType;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.rendering.tesr.BatchEligibility;
@@ -403,15 +405,19 @@ class IrisInstancingGLTest {
             """;
         final String fragmentSource = """
             #version 120
-            uniform int entityId;
-            uniform int blockEntityId;
+            uniform int entityId, blockEntityId;
             uniform int currentRenderedItemId;
             uniform int expectedId;
+            // a parameter and a local sharing the id names keep their own values
+            bool isFortyTwo(int entityId) { return entityId == 42; }
             void main() {
                 bool matches = entityId == expectedId && blockEntityId == expectedId && currentRenderedItemId == expectedId;
-                gl_FragData[0] = matches ? vec4(0, 1, 0, 1) : vec4(1, 0, 0, 1);
+                bool shadowed = isFortyTwo(42);
+                { int blockEntityId = 7; shadowed = shadowed && blockEntityId == 7; }
+                gl_FragData[0] = matches && shadowed ? vec4(0, 1, 0, 1) : vec4(1, 0, 0, 1);
             }
             """;
+        final int[] ids = { -1, 0, 32767, 32768, 45020, 50020, 50072, 65534 };
         final int vao = GLStateManager.glGenVertexArrays();
         final int buffer = GLStateManager.glGenBuffers();
         GLStateManager.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
@@ -432,7 +438,7 @@ class IrisInstancingGLTest {
                     GLStateManager.glEnableVertexAttribArray(InstancedAttribs.LOC_ENTITY);
                     GLStateManager.glVertexAttribDivisor(InstancedAttribs.LOC_ENTITY, 1);
                     final ByteBuffer data = BufferUtils.createByteBuffer(InstancedAttribs.HEAD_SIZE);
-                    for (int id : new int[] { -1, 0, 32767, 32768, 45020, 50020, 50072, 65534 }) {
+                    for (int id : ids) {
                         data.putLong(InstancedAttribs.OFFSET_ENTITY, InstancedAttribs.packEntityInfo(id, id, id));
                         GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, data, GL15.GL_STREAM_DRAW);
                         GLStateManager.glUniform1i(GLStateManager.glGetUniformLocation(program, "expectedId"), id);
@@ -448,6 +454,30 @@ class IrisInstancingGLTest {
                     GLStateManager.glUseProgram(0);
                     GLStateManager.glDeleteProgram(program);
                 }
+            }
+
+            final int program = linkProgram("highIdsImmediate", TransformPatcher.patchAttributes(vertexSource, null, null, null, fragmentSource, TEX_LM, false));
+            final ImmediateExtendedAttribHandler previousHandler = GLSMHooks.immediateExtendedHandler;
+            try {
+                EntityIdsOnlyHandler.install();
+                GLStateManager.glUseProgram(program);
+                GLStateManager.glUniform1i(GLStateManager.glGetUniformLocation(program, "iris_currentAlphaFunc"), 7);
+                GLStateManager.glBindVertexArray(vao);
+                for (int id : ids) {
+                    GLStateManager.setEntityIds(id, id, id);
+                    GLStateManager.glUniform1i(GLStateManager.glGetUniformLocation(program, "expectedId"), id);
+                    GLStateManager.glClearColor(0, 0, 0, 1);
+                    GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
+                    GLStateManager.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
+                    assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "draw error");
+                    final int[] pixel = FfpFixture.readPixel(0, 0);
+                    assertEquals(255, pixel[1], "immediate material ID " + id + " pixel " + Arrays.toString(pixel));
+                }
+            } finally {
+                GLStateManager.glUseProgram(0);
+                GLStateManager.glDeleteProgram(program);
+                GLSMHooks.immediateExtendedHandler = previousHandler;
+                GLStateManager.setEntityIds(-1, 0, -1);
             }
         } finally {
             GLStateManager.glBindVertexArray(0);

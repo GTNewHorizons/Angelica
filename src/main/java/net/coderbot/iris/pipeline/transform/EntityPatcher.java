@@ -1,24 +1,21 @@
 package net.coderbot.iris.pipeline.transform;
 
 import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
+import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderIndex;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderType;
 import net.coderbot.iris.pipeline.transform.parameter.AttributeParameters;
+import org.antlr.v4.runtime.CommonToken;
+import org.antlr.v4.runtime.ParserRuleContext;
 import org.taumc.glsl.Transformer;
 import org.taumc.glsl.grammar.GLSLParser;
 
 class EntityPatcher {
 
+	private static final String[] ID_NAMES = { "entityId", "blockEntityId", "currentRenderedItemId" };
+	private static final String[] ID_COMPONENTS = { ".x", ".y", ".z" };
+
 	public static void patchEntityId(Transformer transformer, AttributeParameters parameters) {
-		if (!hasInstanceAttributes(parameters)) {
-			injectUniformIfUndeclared(transformer, "entityId", "uniform int entityId;");
-			injectUniformIfUndeclared(transformer, "blockEntityId", "uniform int blockEntityId;");
-			injectUniformIfUndeclared(transformer, "currentRenderedItemId", "uniform int currentRenderedItemId;");
-			return;
-		}
-
-		removeIfDeclared(transformer, "entityId");
-		removeIfDeclared(transformer, "blockEntityId");
-		removeIfDeclared(transformer, "currentRenderedItemId");
-
 		final String geometryIn = parameters.hasTesselation ? "iris_entityInfoTES" : "iris_entityInfo";
 		final String info = switch (parameters.type) {
 			case GEOMETRY -> geometryIn + "[0]";
@@ -26,17 +23,37 @@ class EntityPatcher {
 			case TESSELATION_EVAL -> "iris_entityInfoTCS[0]";
 			default -> "iris_entityInfo";
 		};
-		transformer.replaceExpression("entityId", info + ".x", GLSLParser::postfix_expression);
-		transformer.replaceExpression("blockEntityId", info + ".y", GLSLParser::postfix_expression);
-		transformer.replaceExpression("currentRenderedItemId", info + ".z", GLSLParser::postfix_expression);
+		final StringBuilder assignments = new StringBuilder();
+		for (int i = 0; i < ID_NAMES.length; i++) {
+			final String name = ID_NAMES[i];
+			if (!transformer.containsCall(name)) continue;
+			final GLSLParser.Typeless_declarationContext global = topLevelDeclarator(transformer, name);
+			if (global != null) {
+				if (!isUniform(global)) continue;
+				// removeVariable takes the last declaration it finds by name, which can be a pack local
+				final String removed = "iris_removed_" + name;
+				((CommonToken) global.IDENTIFIER().getSymbol()).setText(removed);
+				transformer.removeVariable(removed);
+			}
+			transformer.injectVariable("int " + name + ";");
+			assignments.append(name).append(" = ").append(info).append(ID_COMPONENTS[i]).append("; ");
+		}
+		if (parameters.type != ShaderType.VERTEX && assignments.length() > 0) {
+			transformer.prependMain("{ " + assignments + "}");
+		}
 
 		switch (parameters.type) {
 			case VERTEX -> {
+				final boolean instanced = hasInstanceAttributes(parameters);
+				final String input = instanced ? "iris_InstEntity" : "iris_Entity";
+				final int location = instanced ? InstancedAttribs.LOC_ENTITY : ImmediateExtendedAttribHandler.LOC_ENTITY_IDS;
 				removeIfDeclared(transformer, "iris_Entity");
-				transformer.injectVariable("layout(location = " + InstancedAttribs.LOC_ENTITY + ") in uvec4 iris_Entity;");
+				removeIfDeclared(transformer, "iris_InstEntity");
+				transformer.injectVariable("layout(location = " + location + ") in vec4 " + input + ";");
 				transformer.injectVariable("flat out ivec3 iris_entityInfo;");
-				transformer.prependMain("iris_entityInfo = ivec3(iris_Entity.x == 65535u ? -1 : int(iris_Entity.x), "
-					+ "iris_Entity.y == 65535u ? -1 : int(iris_Entity.y), iris_Entity.z == 65535u ? -1 : int(iris_Entity.z));");
+				transformer.prependMain("{ ivec3 iris_ids = ivec3(round(" + input + ".xyz * 65535.0)); "
+					+ "iris_entityInfo = ivec3(iris_ids.x == 65535 ? -1 : iris_ids.x, iris_ids.y == 65535 ? -1 : iris_ids.y, "
+					+ "iris_ids.z == 65535 ? -1 : iris_ids.z); " + assignments + "}");
 			}
 			case TESSELATION_CONTROL -> {
 				transformer.injectVariable("flat out ivec3 iris_entityInfoTCS[];");
@@ -111,6 +128,27 @@ class EntityPatcher {
 			}
 			default -> {}
 		}
+	}
+
+	private static GLSLParser.Typeless_declarationContext topLevelDeclarator(Transformer transformer, String name) {
+		final GLSLParser.Typeless_declarationContext[] found = new GLSLParser.Typeless_declarationContext[1];
+		transformer.mutateTree(root -> {
+			for (GLSLParser.External_declarationContext external : root.external_declaration()) {
+				final GLSLParser.DeclarationContext declaration = external.declaration();
+				if (declaration == null || declaration.init_declarator_list() == null) continue;
+				for (GLSLParser.Typeless_declarationContext declarator : ShaderIndex.declarators(declaration.init_declarator_list())) {
+					if (declarator.IDENTIFIER().getText().equals(name)) found[0] = declarator;
+				}
+			}
+		});
+		return found[0];
+	}
+
+	private static boolean isUniform(GLSLParser.Typeless_declarationContext declarator) {
+		final ParserRuleContext parent = declarator.getParent();
+		final GLSLParser.Init_declarator_listContext list = (GLSLParser.Init_declarator_listContext)
+			(parent instanceof GLSLParser.Single_declarationContext ? parent.getParent() : parent);
+		return ShaderIndex.hasStorageQualifier(list.single_declaration().fully_specified_type().type_qualifier(), "uniform");
 	}
 
 	private static boolean hasInstanceAttributes(AttributeParameters parameters) {

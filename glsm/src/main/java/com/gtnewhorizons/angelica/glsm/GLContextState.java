@@ -34,6 +34,7 @@ import com.gtnewhorizons.angelica.glsm.states.PixelStoreState;
 import com.gtnewhorizons.angelica.glsm.states.ImageUnitArray;
 import com.gtnewhorizons.angelica.glsm.states.SamplerUnitArray;
 import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
+import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
@@ -104,6 +105,8 @@ public class GLContextState {
     public boolean dirtyNormalAttrib;
     public boolean dirtyTexCoordAttrib;
     public boolean dirtyLightmapAttrib = true;
+    public long entityIds = InstancedAttribs.DEFAULT_ENTITY_IDS;
+    public boolean dirtyEntityIdsAttrib = true;
     public boolean unit23TexCoordSetDuringDraw = false;
     public int maxBoundTextureUnit = 0;
     public int maxBoundImageUnit = 0;

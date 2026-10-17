@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.glsm.ffp.CubeInstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
 import com.gtnewhorizons.angelica.glsm.ffp.ParticleInstancedAttribs;
+import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.pipeline.transform.parameter.AttributeParameters;
 import org.junit.jupiter.api.AfterAll;
@@ -259,9 +260,10 @@ class AttributeTransformerInstancedTest {
         assertLacks(v, "uniform int entityId;");
         assertLacks(v, "uniform int blockEntityId;");
         assertLacks(v, "uniform int currentRenderedItemId;");
-        assertHas(v, "layout(location = " + InstancedAttribs.LOC_ENTITY + ") in uvec4 iris_Entity;");
+        assertHas(v, "layout(location = " + InstancedAttribs.LOC_ENTITY + ") in vec4 iris_InstEntity;");
+        assertLacks(v, "in vec4 iris_Entity;");
         assertHas(v, "flat out ivec3 iris_entityInfo;");
-        assertHas(v, "iris_entityInfo = ivec3(iris_Entity.x == 65535u ? -1 : int(iris_Entity.x), iris_Entity.y == 65535u ? -1 : int(iris_Entity.y), iris_Entity.z == 65535u ? -1 : int(iris_Entity.z));");
+        assertHas(v, "ivec3 iris_ids = ivec3(round(iris_InstEntity.xyz * 65535.0));");
 
         assertLacks(f, "uniform int entityId;");
         assertHas(f, "flat in ivec3 iris_entityInfo;");
@@ -362,6 +364,8 @@ class AttributeTransformerInstancedTest {
         assertHas(v, "layout(location = 3) in vec4 iris_CubeDelta");
         assertHas(v, "layout(location = " + CubeInstancedAttribs.LOC_CUBE_TEX + ") in vec4 iris_CubeTex");
         assertHas(v, "layout(location = " + CubeInstancedAttribs.LOC_LIGHTMAP_SCALE + ") in vec4 iris_InstLightmapScale");
+        assertHas(v, "layout(location = " + InstancedAttribs.LOC_ENTITY + ") in vec4 iris_InstEntity;");
+        assertLacks(v, "in vec4 iris_Entity;");
         assertLacks(v, "layout(location = 2) in vec4 iris_MultiTexCoord0");
         assertHas(v, "vec4 iris_MultiTexCoord0;");
         assertHas(v, "iris_MultiTexCoord1 = vec4(iris_InstLightmapScale.xy, 0.0, 1.0)");
@@ -417,10 +421,11 @@ class AttributeTransformerInstancedTest {
         assertEquals(ParticleInstancedAttribs.LOC_UV, locationOf(byLocation, "iris_InstUv"));
         assertEquals(InstancedAttribs.LOC_COLOR, locationOf(byLocation, "iris_InstColor"));
         assertEquals(InstancedAttribs.LOC_LIGHTMAP, locationOf(byLocation, "iris_InstLightmap"));
+        assertEquals(ImmediateExtendedAttribHandler.LOC_ENTITY_IDS, locationOf(byLocation, "iris_Entity"));
 
         assertFalse(byLocation.containsKey(7), "location 7 is unused");
         for (final int loc : byLocation.keySet()) {
-            assertTrue(loc < 11, "unexpected attribute location " + loc + " declared for the particle variant");
+            assertTrue(loc < 11 || loc == ImmediateExtendedAttribHandler.LOC_ENTITY_IDS, "unexpected attribute location " + loc + " declared for the particle variant");
         }
     }
 
@@ -431,7 +436,7 @@ class AttributeTransformerInstancedTest {
     }
 
     @Test
-    void particleEntityIdAndOverlayColorStayAsPlainUniformsLikeTheNonePath() {
+    void particleEntityIdsAndOverlayColorFollowTheNonePath() {
         final Map<PatchShaderType, String> result = TransformPatcher.patchAttributesInstanced(VERTEX_ENTITY_AND_COLOR, null, null, null, FRAGMENT_ENTITY_AND_COLOR, TEX_LM, false, Instancing.PARTICLE);
         assertNotNull(result);
         final String v = result.get(PatchShaderType.VERTEX);
@@ -441,16 +446,16 @@ class AttributeTransformerInstancedTest {
         ShaderParser.parseShader(v);
         ShaderParser.parseShader(f);
 
-        assertHas(v, "uniform int entityId;");
+        assertLacks(v, "uniform int entityId;");
+        assertHas(v, "layout(location = " + ImmediateExtendedAttribHandler.LOC_ENTITY_IDS + ") in vec4 iris_Entity;");
         assertHas(v, "uniform vec4 entityColor;");
-        assertLacks(v, "iris_entityInfo");
         assertLacks(v, "iris_InstOverlay");
         assertLacks(v, "out vec4 entityColor;");
 
-        assertHas(f, "uniform int entityId;");
+        assertLacks(f, "uniform int entityId;");
+        assertHas(f, "flat in ivec3 iris_entityInfo;");
         assertHas(f, "uniform vec4 entityColor;");
         assertLacks(f, "in vec4 entityColor;");
-        assertLacks(f, "flat in ivec3 iris_entityInfo;");
     }
 
     @Test
@@ -465,6 +470,6 @@ class AttributeTransformerInstancedTest {
 
         final Map<PatchShaderType, String> entityResult = TransformPatcher.patchAttributes(VERTEX_ENTITY, null, null, null, FRAGMENT_ENTITY, TEX_LM, false);
         assertNotNull(entityResult);
-        assertHas(entityResult.get(PatchShaderType.VERTEX), "uniform int entityId;");
+        assertHas(entityResult.get(PatchShaderType.VERTEX), "layout(location = " + ImmediateExtendedAttribHandler.LOC_ENTITY_IDS + ") in vec4 iris_Entity;");
     }
 }

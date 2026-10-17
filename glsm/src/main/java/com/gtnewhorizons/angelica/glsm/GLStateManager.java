@@ -12,6 +12,7 @@ import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.backend.GLDebugMessageListener;
 import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
+import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
@@ -25,6 +26,7 @@ import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
 import com.gtnewhorizons.angelica.glsm.hooks.GlintColorHandler;
+import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
 import com.gtnewhorizons.angelica.glsm.recording.CommandRecorder;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
 import com.gtnewhorizons.angelica.glsm.recording.ImmediateModeRecorder;
@@ -68,6 +70,7 @@ import com.gtnewhorizons.angelica.glsm.states.ImageUnitBinding;
 import com.gtnewhorizons.angelica.glsm.states.TextureBinding;
 import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
 import com.gtnewhorizons.angelica.glsm.streaming.LineQuads;
+import com.gtnewhorizons.angelica.glsm.streaming.TessellatorEntityIds;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
@@ -394,6 +397,26 @@ public class GLStateManager {
             RENDER_BACKEND.vertexAttrib4f(Usage.SECONDARY_UV.getAttributeLocation(), glCtx.lastBrightnessX, glCtx.lastBrightnessY, 0.0f, 1.0f);
             glCtx.dirtyLightmapAttrib = false;
         }
+    }
+
+    public static void setEntityIds(int entity, int blockEntity, int item) {
+        if (!isMainThread()) return;
+        final GLContextState glCtx = ctx();
+        final long ids = InstancedAttribs.packEntityInfo(entity, blockEntity, item);
+        if (ids == glCtx.entityIds) return;
+        TessellatorEntityIds.onIdsChanged(glCtx.entityIds, ids);
+        glCtx.entityIds = ids;
+        glCtx.dirtyEntityIdsAttrib = true;
+    }
+
+    public static void flushEntityIds(GLContextState glCtx) {
+        if (!glCtx.dirtyEntityIdsAttrib || glCtx.activeProgram == 0) return;
+        final ImmediateExtendedAttribHandler handler = GLSMHooks.immediateExtendedHandler;
+        if (handler == null || !handler.wantsEntityIds()) return;
+        final long ids = glCtx.entityIds;
+        RENDER_BACKEND.vertexAttrib4f(ImmediateExtendedAttribHandler.LOC_ENTITY_IDS,
+            InstancedAttribs.normalizedId(ids, 0), InstancedAttribs.normalizedId(ids, 16), InstancedAttribs.normalizedId(ids, 32), 0.0f);
+        glCtx.dirtyEntityIdsAttrib = false;
     }
 
 
@@ -4823,6 +4846,7 @@ public class GLStateManager {
         glCtx.dirtyNormalAttrib = true;
         glCtx.dirtyTexCoordAttrib = true;
         glCtx.dirtyLightmapAttrib = true;
+        glCtx.dirtyEntityIdsAttrib = true;
     }
 
     private static void applyPolygonOffset(GLContextState glCtx) {

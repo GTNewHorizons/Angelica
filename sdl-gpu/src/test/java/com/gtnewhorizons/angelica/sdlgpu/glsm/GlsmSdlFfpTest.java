@@ -46,7 +46,7 @@ class GlsmSdlFfpTest {
         GLStateManager.setFfpInstancing(Instancing.NONE);
         CubeParityFixture.deleteResources();
         ParticleParityFixture.deleteResources();
-        FfpFixture.IntegerInstances.delete();
+        FfpFixture.EntityIdInstances.delete();
     }
 
     private static void bindBaseTexture() {
@@ -172,11 +172,11 @@ class GlsmSdlFfpTest {
 
     @Test
     void entityAttribSelectsColorPerInstance() {
-        FfpFixture.IntegerInstances.build(0.6f);
+        FfpFixture.EntityIdInstances.build(0.6f);
 
         GlsmSdlHeadlessRig.beginFrameAndClear();
 
-        FfpFixture.IntegerInstances.draw();
+        FfpFixture.EntityIdInstances.draw();
 
         final int[] pixels = GlsmSdlHeadlessRig.readTarget();
 

@@ -35,6 +35,7 @@ public class CapturedRenderingState {
 	@Getter
 	private int currentRenderedItem = -1;
 	private Runnable itemIdListener = null;
+	private Runnable entityIdsListener = null;
 	private final IntArrayList itemStack = new IntArrayList();
 	private final IntArrayList entityStack = new IntArrayList();
 	private final IntArrayList blockEntityStack = new IntArrayList();
@@ -88,15 +89,25 @@ public class CapturedRenderingState {
 		if (this.blockEntityIdListener != null) {
 			this.blockEntityIdListener.run();
 		}
+		notifyEntityIdsChanged();
 	}
 
-    private void setCurrentEntity(int entity) {
-		if (currentRenderedEntity == entity) return;
-		this.currentRenderedEntity = entity;
-
-		if (this.entityIdListener != null) {
-			this.entityIdListener.run();
+	private void applyCurrentEntityAndItem(int entity, int item) {
+		final boolean entityChanged = currentRenderedEntity != entity;
+		final boolean itemChanged = currentRenderedItem != item;
+		if (entityChanged) {
+			this.currentRenderedEntity = entity;
+			if (this.entityIdListener != null) {
+				this.entityIdListener.run();
+			}
 		}
+		if (itemChanged) {
+			this.currentRenderedItem = item;
+			if (this.itemIdListener != null) {
+				this.itemIdListener.run();
+			}
+		}
+		if (entityChanged || itemChanged) notifyEntityIdsChanged();
 	}
 
 	/**
@@ -104,15 +115,13 @@ public class CapturedRenderingState {
 	 */
 	public void setCurrentEntityAndItem(int entity, int item) {
 		IrisDisplayListState.recordEntityAndItem(entity, item);
-		setCurrentEntity(entity);
-		applyCurrentRenderedItem(item);
+		applyCurrentEntityAndItem(entity, item);
 	}
 
 	public void setCurrentNamedEntity(NamespacedId entity) {
 		IrisDisplayListState.recordNamedEntity(entity);
 		final var ids = BlockRenderingSettings.INSTANCE.getEntityIds();
-		setCurrentEntity(ids == null ? -1 : ids.applyAsInt(entity));
-		applyCurrentRenderedItem(0);
+		applyCurrentEntityAndItem(ids == null ? -1 : ids.applyAsInt(entity), 0);
 	}
 
 	public void pushCurrentEntityAndItem() {
@@ -123,15 +132,13 @@ public class CapturedRenderingState {
 
 	public void setCurrentRenderedEntity(Entity entity) {
 		IrisDisplayListState.recordEntity(entity);
-		setCurrentEntity(EntityIdHelper.getEntityId(entity));
-		applyCurrentRenderedItem(0);
+		applyCurrentEntityAndItem(EntityIdHelper.getEntityId(entity), 0);
 	}
 
 	public void popCurrentEntityAndItem() {
 		IrisDisplayListState.recordEntityScope(false);
 		// Restore the playback caller, never the IDs seen while compiling the list.
-		setCurrentEntity(entityStack.popInt());
-		applyCurrentRenderedItem(itemStack.popInt());
+		applyCurrentEntityAndItem(entityStack.popInt(), itemStack.popInt());
 	}
 
     public void setCurrentEntityColor(float r, float g, float b, float a) {
@@ -208,6 +215,18 @@ public class CapturedRenderingState {
 
 		if (this.itemIdListener != null) {
 			this.itemIdListener.run();
+		}
+		notifyEntityIdsChanged();
+	}
+
+	public void setEntityIdsListener(Runnable listener) {
+		this.entityIdsListener = listener;
+		notifyEntityIdsChanged();
+	}
+
+	private void notifyEntityIdsChanged() {
+		if (this.entityIdsListener != null) {
+			this.entityIdsListener.run();
 		}
 	}
 

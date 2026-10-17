@@ -1,11 +1,13 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.ffp;
 
+import com.gtnewhorizons.angelica.glsm.streaming.TessellatorEntityIds;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import net.minecraft.client.renderer.Tessellator;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
@@ -18,5 +20,10 @@ public class MixinTessellator_CoreProfile {
     @Inject(method = "draw", at = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/Tessellator;isDrawing:Z", opcode = Opcodes.GETFIELD), cancellable = true)
     private void angelica$coreProfileDraw(CallbackInfoReturnable<Integer> cir) {
         cir.setReturnValue(ModelPartBatcher.drawTessellator((Tessellator) (Object) this));
+    }
+
+    @Inject(method = "reset", at = @At("HEAD"))
+    private void angelica$forgetEntityIds(CallbackInfo ci) {
+        TessellatorEntityIds.onReset((Tessellator) (Object) this);
     }
 }

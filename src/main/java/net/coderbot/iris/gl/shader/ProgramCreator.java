@@ -5,6 +5,7 @@ package net.coderbot.iris.gl.shader;
 import com.gtnewhorizons.angelica.glsm.GLDebug;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
 import com.gtnewhorizons.angelica.glsm.shader.ProgramBinaryCache;
 import org.apache.logging.log4j.LogManager;
@@ -24,8 +25,8 @@ public class ProgramCreator {
 	public static final int AT_MIDBLOCK = ImmediateExtendedAttribHandler.LOC_MIDBLOCK;
 
 	// TODO: This is *really* hardcoded, we need to refactor this to support external calls to glBindAttribLocation
-	private static final String[] ATTRIBUTE_NAMES = { "iris_Entity", "mc_Entity", "mc_midTexCoord", "iris_CubeTangent", "at_tangent", "at_midBlock" };
-	private static final int[] ATTRIBUTE_LOCATIONS = { MC_ENTITY, MC_ENTITY, MC_MID_TEX_COORD, AT_TANGENT, AT_TANGENT, AT_MIDBLOCK };
+	private static final String[] ATTRIBUTE_NAMES = { "iris_InstEntity", "mc_Entity", "mc_midTexCoord", "iris_CubeTangent", "at_tangent", "at_midBlock" };
+	private static final int[] ATTRIBUTE_LOCATIONS = { InstancedAttribs.LOC_ENTITY, MC_ENTITY, MC_MID_TEX_COORD, AT_TANGENT, AT_TANGENT, AT_MIDBLOCK };
 
 	@Nullable
 	public static ProgramBinaryCache.Key cacheKey() {

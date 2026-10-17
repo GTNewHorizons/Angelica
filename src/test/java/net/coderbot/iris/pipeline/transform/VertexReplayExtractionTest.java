@@ -118,10 +118,10 @@ class VertexReplayExtractionTest {
         final RwImageStoreExtractor.Result result = replayOf(TransformPatcher.patchAttributesInstanced(CRYSTAL_VERTEX, null, null, null, FRAGMENT, TEX_LM, false, Instancing.TEMPLATE));
         final List<VertexInput> inputs = RwImageStoreExtractor.parseVertexReplayInputs(result.computeSource());
 
-        final VertexInput entity = input(inputs, "iris_Entity");
+        final VertexInput entity = input(inputs, "iris_InstEntity");
         assertEquals(InstancedAttribs.LOC_ENTITY, entity.location());
-        assertEquals("uvec4", entity.glslType());
-        assertTrue(result.computeSource().contains("iris_Entity = uvec4(_vg_uint("), result.computeSource());
+        assertEquals("vec4", entity.glslType());
+        assertTrue(result.computeSource().contains("iris_InstEntity = vec4(_vg_float("), result.computeSource());
         assertFalse(result.computeSource().contains("location"), "a location on a former interface variable does not compile in compute");
     }
 
