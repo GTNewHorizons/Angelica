@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -12,54 +11,54 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BackendStartGuardTest {
 
-    private static File marker(Path dir) {
-        return dir.resolve("angelica").resolve("sdlgpu-starting").toFile();
+    @TempDir
+    Path dir;
+
+    private boolean boot() {
+        return boot(1);
+    }
+
+    private boolean boot(int revision) {
+        return BackendStartGuard.begin(dir.toFile(), true, false, revision, "");
+    }
+
+    private File marker() {
+        return dir.resolve("sdlgpu-starting").toFile();
     }
 
     @Test
-    void firstStartCreatesTheMarkerAndFinishRemovesIt(@TempDir Path dir) {
-        final File marker = marker(dir);
-        assertFalse(BackendStartGuard.begin(marker, true, false));
-        assertFalse(BackendStartGuard.tripped());
-        assertTrue(marker.isFile());
-        BackendStartGuard.finish();
-        assertFalse(marker.exists());
+    void bootsThatReachTheBackendNeverCountAsStrikes() {
+        for (int i = 0; i < BackendStartGuard.STRIKE_LIMIT; i++) {
+            assertFalse(boot());
+            BackendStartGuard.arm();
+            BackendStartGuard.disarm();
+        }
+        assertFalse(boot());
     }
 
     @Test
-    void leftoverMarkerTripsOnceAndIsRemoved(@TempDir Path dir) {
-        final File marker = marker(dir);
-        assertFalse(BackendStartGuard.begin(marker, true, false));
-        assertTrue(BackendStartGuard.begin(marker, true, false));
+    void thirdDeathInTheDeviceWindowResets() {
+        for (int i = 0; i < BackendStartGuard.STRIKE_LIMIT; i++) {
+            assertFalse(boot());
+            BackendStartGuard.arm();
+        }
+        assertTrue(boot());
         assertTrue(BackendStartGuard.tripped());
-        assertFalse(marker.exists());
-        BackendStartGuard.finish();
-        assertFalse(marker.exists());
-        assertFalse(BackendStartGuard.begin(marker, true, false));
-        assertFalse(BackendStartGuard.tripped());
-        BackendStartGuard.finish();
+        assertFalse(marker().exists());
     }
 
     @Test
-    void openGlConfigWritesNoMarkerAndClearsAStaleOne(@TempDir Path dir) throws IOException {
-        final File marker = marker(dir);
-        assertFalse(BackendStartGuard.begin(marker, false, false));
-        assertFalse(marker.exists());
-        assertTrue(marker.getParentFile().mkdirs());
-        assertTrue(marker.createNewFile());
-        assertFalse(BackendStartGuard.begin(marker, false, false));
-        assertFalse(BackendStartGuard.tripped());
-        assertFalse(marker.exists());
-    }
+    void latchStopsArmingUntilTheRequirementsRevisionChanges() {
+        assertFalse(boot());
+        BackendStartGuard.arm();
+        BackendStartGuard.disarm();
+        BackendStartGuard.latch();
+        assertFalse(boot());
+        BackendStartGuard.arm();
+        assertFalse(marker().exists());
 
-    @Test
-    void forcedFlagNeverTripsOrWrites(@TempDir Path dir) throws IOException {
-        final File marker = marker(dir);
-        assertFalse(BackendStartGuard.begin(marker, true, true));
-        assertFalse(marker.exists());
-        assertTrue(marker.getParentFile().mkdirs());
-        assertTrue(marker.createNewFile());
-        assertFalse(BackendStartGuard.begin(marker, true, true));
-        assertFalse(BackendStartGuard.tripped());
+        assertFalse(boot(2));
+        BackendStartGuard.arm();
+        assertTrue(marker().isFile());
     }
 }

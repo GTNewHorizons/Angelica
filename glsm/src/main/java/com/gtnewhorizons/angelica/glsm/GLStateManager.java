@@ -415,6 +415,7 @@ public class GLStateManager {
 
     // This setting varies depending on driver, so it gets queried at runtime
     public static int DEFAULT_DRAW_BUFFER = GL11.GL_BACK;
+    private static float maxPointSize;
 
     private static volatile Thread CurrentThread = MainThread;
     @Setter @Getter private static boolean runningSplash = true;
@@ -515,18 +516,6 @@ public class GLStateManager {
                 attribSlotsSaved++;
             }
         }
-    }
-
-    private static float maxPointSize(GLContextState glCtx) {
-        if (Float.isNaN(glCtx.maxPointSize)) {
-            final FloatBuffer range = glCtx.queryScratch;
-            range.clear();
-            RENDER_BACKEND.getFloat(GL11.GL_POINT_SIZE_RANGE, range);
-            final float smooth = range.get(1);
-            RENDER_BACKEND.getFloat(GL12.GL_ALIASED_POINT_SIZE_RANGE, range);
-            glCtx.maxPointSize = Math.max(smooth, range.get(1));
-        }
-        return glCtx.maxPointSize;
     }
 
     private static <T extends CowStateStack<?>> T mod(T s) {
@@ -776,6 +765,13 @@ public class GLStateManager {
         if (initCallback != null) {
             initCallback.run();
         }
+
+        final FloatBuffer range = glCtx.queryScratch;
+        range.clear();
+        RENDER_BACKEND.getFloat(GL11.GL_POINT_SIZE_RANGE, range);
+        final float smooth = range.get(1);
+        RENDER_BACKEND.getFloat(GL12.GL_ALIASED_POINT_SIZE_RANGE, range);
+        maxPointSize = Math.max(smooth, range.get(1));
 
         // Drain any pending GL errors from initialization. In core profile, some legacy queries may generate GL_INVALID_ENUM. The splash thread inherits the
         // DrawableGL context and its error state, so stale errors here would cause SplashProgress.checkGLError() to fail.
@@ -1482,7 +1478,7 @@ public class GLStateManager {
             case GL11.GL_LINE_WIDTH -> glCtx.lineState.getWidth();
             case GL11.GL_POINT_SIZE -> glCtx.pointState.getSize();
             case GL14.GL_POINT_SIZE_MIN -> glCtx.pointState.getMinSize();
-            case GL14.GL_POINT_SIZE_MAX -> Float.isNaN(glCtx.pointState.getMaxSize()) ? maxPointSize(glCtx) : glCtx.pointState.getMaxSize();
+            case GL14.GL_POINT_SIZE_MAX -> Float.isNaN(glCtx.pointState.getMaxSize()) ? maxPointSize : glCtx.pointState.getMaxSize();
             case GL14.GL_POINT_FADE_THRESHOLD_SIZE -> glCtx.pointState.getFadeThreshold();
             default -> {
                 final int desc = isCachingEnabled() ? LegacyQueries.desc(pname) : 0;

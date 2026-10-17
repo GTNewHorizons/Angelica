@@ -245,7 +245,6 @@ public class GLContextState {
     public final int[] clientAttribSavedPackBuffer = new int[GLStateManager.CLIENT_ATTRIB_STACK_DEPTH];
     public final VAOManager.ClientArrays[] clientAttribSavedArrays = new VAOManager.ClientArrays[GLStateManager.CLIENT_ATTRIB_STACK_DEPTH];
     public int clientAttribStackPointer = 0;
-    public float maxPointSize = Float.NaN;
     public int restoreChangedMask;
     public long restoreUnitChangedMask;
     public final BlendState vanillaBlendBefore = new BlendState();
