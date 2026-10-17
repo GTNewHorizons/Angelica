@@ -236,6 +236,8 @@ public class GLContextState {
     public int boundCopyReadBuffer;
     public int boundCopyWriteBuffer;
     public final Int2IntMap boundOtherBuffers = new Int2IntOpenHashMap();
+    public final int[] uniformBufferBindings = new int[GLStateManager.INDEXED_BUFFER_SLOTS];
+    public final int[] storageBufferBindings = new int[GLStateManager.INDEXED_BUFFER_SLOTS];
     public PixelStoreState pixelUnpackState = PixelStoreState.DEFAULT;
     public PixelStoreState pixelPackState = PixelStoreState.DEFAULT;
     public final int[] clientAttribSavedMask = new int[GLStateManager.CLIENT_ATTRIB_STACK_DEPTH];
