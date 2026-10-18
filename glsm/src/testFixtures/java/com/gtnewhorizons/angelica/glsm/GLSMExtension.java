@@ -61,6 +61,7 @@ public class GLSMExtension implements BeforeAllCallback, BeforeEachCallback, Aft
 
     @Override
     public void beforeAll(ExtensionContext context) throws LWJGLException {
+        GlsmRedirectAgent.requireInstalled();
         if (startFailure != null) {
             throw new IllegalStateException("GLSMExtension context setup failed earlier in this JVM", startFailure);
         }
@@ -179,6 +180,7 @@ public class GLSMExtension implements BeforeAllCallback, BeforeEachCallback, Aft
             fail("Test leaked an open display-list recorder! Missing glEndList.");
         }
 
+        GlsmRedirectAgent.assertNoFailures();
         final int error = GL11.glGetError();
         assertEquals(GL11.GL_NO_ERROR, error,
             () -> "GL Error: 0x" + Integer.toHexString(error));

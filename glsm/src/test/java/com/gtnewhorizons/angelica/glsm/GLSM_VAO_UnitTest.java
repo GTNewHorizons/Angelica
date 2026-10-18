@@ -18,7 +18,7 @@ public class GLSM_VAO_UnitTest {
 
     @AfterEach
     void resetClientArrayState() {
-        glBindVertexArray(0);
+        UniversalVAO.bindVertexArray(0);
         GLStateManager.glClientActiveTexture(GL13.GL_TEXTURE0);
         GLSMUtil.setClientState(GL11.GL_NORMAL_ARRAY, false);
     }
@@ -66,7 +66,7 @@ public class GLSM_VAO_UnitTest {
         int vao = UniversalVAO.genVertexArrays();
         Assertions.assertTrue(vao > 0, "GL_VERTEX_ARRAY_BINDING - VAO Created");
 
-        glBindVertexArray(vao);
+        UniversalVAO.bindVertexArray(vao);
         verifyState(GL30.GL_VERTEX_ARRAY_BINDING, vao, "GL_VERTEX_ARRAY_BINDING - Bound");
 
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
@@ -91,7 +91,7 @@ public class GLSM_VAO_UnitTest {
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
 
         // Check if everything got reset to default
-        glBindVertexArray(0);
+        UniversalVAO.bindVertexArray(0);
         verifyState(GL30.GL_VERTEX_ARRAY_BINDING, GLStateManager.ctx().defaultVAO, "GL_VERTEX_ARRAY_BINDING - Unbound");
         verifyState(GL15.GL_ARRAY_BUFFER_BINDING, 0, "GL_ARRAY_BUFFER_BINDING - Unbound");
 
@@ -103,18 +103,18 @@ public class GLSM_VAO_UnitTest {
         verifyState(GL11.GL_NORMAL_ARRAY, true, "GL_NORMAL_ARRAY - Reset");
 
         // Check if the VAO states are still valid after re-binding it
-        glBindVertexArray(vao);
+        UniversalVAO.bindVertexArray(vao);
 
         verifyState(GL11.GL_VERTEX_ARRAY, vaoVertexEnabled, "GL_VERTEX_ARRAY - Preserved");
         verifyState(GL11.GL_VERTEX_ARRAY_SIZE, vaoVertexSize, "GL_VERTEX_ARRAY_SIZE - Preserved");
         verifyState(GL11.GL_VERTEX_ARRAY_TYPE, vaoVertexType, "GL_VERTEX_ARRAY_TYPE - Preserved");
         verifyState(GL11.GL_VERTEX_ARRAY_STRIDE, vaoVertexStride, "GL_VERTEX_ARRAY_STRIDE - Preserved");
 
-        glBindVertexArray(0);
+        UniversalVAO.bindVertexArray(0);
 
         GLStateManager.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
 
-        glBindVertexArray(vao);
+        UniversalVAO.bindVertexArray(vao);
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
 
         GLStateManager.glPopAttrib();
@@ -123,7 +123,7 @@ public class GLSM_VAO_UnitTest {
         verifyState(GL15.GL_ARRAY_BUFFER_BINDING, vbo, "GL_ARRAY_BUFFER_BINDING - Not affected by glPushAttrib");
 
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-        glBindVertexArray(0);
+        UniversalVAO.bindVertexArray(0);
 
         GLStateManager.glDeleteBuffers(vbo);
         UniversalVAO.deleteVertexArrays(vao);
@@ -132,7 +132,7 @@ public class GLSM_VAO_UnitTest {
     @Test
     void testGenericAttributeSupersedesFfpConventional() {
         final int vao = UniversalVAO.genVertexArrays();
-        glBindVertexArray(vao);
+        UniversalVAO.bindVertexArray(vao);
         final int vbo = GL15.glGenBuffers();
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
 
@@ -145,7 +145,7 @@ public class GLSM_VAO_UnitTest {
 
         GLStateManager.glDisableVertexAttribArray(0);
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-        glBindVertexArray(0);
+        UniversalVAO.bindVertexArray(0);
         GLStateManager.glDeleteBuffers(vbo);
         UniversalVAO.deleteVertexArrays(vao);
     }
@@ -153,7 +153,7 @@ public class GLSM_VAO_UnitTest {
     @Test
     void testGenericAttributeWinsRegardlessOfOrder() {
         final int vao = UniversalVAO.genVertexArrays();
-        glBindVertexArray(vao);
+        UniversalVAO.bindVertexArray(vao);
         final int vbo = GL15.glGenBuffers();
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
 
@@ -166,7 +166,7 @@ public class GLSM_VAO_UnitTest {
 
         GLStateManager.glDisableVertexAttribArray(0);
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-        glBindVertexArray(0);
+        UniversalVAO.bindVertexArray(0);
         GLStateManager.glDeleteBuffers(vbo);
         UniversalVAO.deleteVertexArrays(vao);
     }
@@ -174,7 +174,7 @@ public class GLSM_VAO_UnitTest {
     @Test
     void testFfpConventionalAppliesWithoutGenericAttribute() {
         final int vao = UniversalVAO.genVertexArrays();
-        glBindVertexArray(vao);
+        UniversalVAO.bindVertexArray(vao);
         final int vbo = GL15.glGenBuffers();
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
 
@@ -186,7 +186,7 @@ public class GLSM_VAO_UnitTest {
 
         GLStateManager.glDisableClientState(GL11.GL_VERTEX_ARRAY);
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-        glBindVertexArray(0);
+        UniversalVAO.bindVertexArray(0);
         GLStateManager.glDeleteBuffers(vbo);
         UniversalVAO.deleteVertexArrays(vao);
     }
@@ -197,13 +197,5 @@ public class GLSM_VAO_UnitTest {
         verifyState(GL11.GL_NORMAL_ARRAY, false, "GL_NORMAL_ARRAY Default State");
         verifyState(GL11.GL_COLOR_ARRAY, false, "GL_COLOR_ARRAY Default State");
         verifyState(GL11.GL_INDEX_ARRAY, false, "GL_INDEX_ARRAY Default State");
-    }
-
-    private static void glBindVertexArray(int array) {
-        final GLContextState glCtx = GLStateManager.ctx();
-        if (array == 0) array = glCtx.defaultVAO;
-        glCtx.boundVAO = array;
-        glCtx.vaos.onBindVertexArrayPre(array);
-        UniversalVAO.bindVertexArray(array);
     }
 }

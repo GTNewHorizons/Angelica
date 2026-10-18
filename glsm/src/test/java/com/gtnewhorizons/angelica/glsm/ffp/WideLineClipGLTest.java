@@ -35,7 +35,6 @@ class WideLineClipGLTest {
 
     @BeforeEach
     void setUp() {
-        FfpFixture.routeVertexFormats(true);
         savedEmulation = GLStateManager.wideLineEmulationEnabled;
         GLStateManager.wideLineEmulationEnabled = true;
 
@@ -54,7 +53,6 @@ class WideLineClipGLTest {
 
     @AfterEach
     void tearDown() {
-        FfpFixture.routeVertexFormats(false);
         GLStateManager.wideLineEmulationEnabled = savedEmulation;
         GLStateManager.glLineWidth(1.0f);
         if (vbo != 0) { GLStateManager.glDeleteBuffers(vbo); vbo = 0; }
