@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GlsmRedirectAgent;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
@@ -71,9 +72,8 @@ public final class GlsmSdlHeadlessRig {
         GLStateManager.setRunningSplash(false);
         GLStateManager.markSplashComplete("glsmSdlHeadlessRig");
 
-        assertTrue(GlsmSdlRedirectAgent.transformedCount() > 0, "redirect agent transformed no classes");
-        assertTrue(GlsmSdlRedirectAgent.failures().isEmpty(),
-            () -> "redirect agent recorded failures: " + GlsmSdlRedirectAgent.failures());
+        assertTrue(GlsmRedirectAgent.transformedCount() > 0, "redirect agent transformed no classes");
+        GlsmRedirectAgent.assertNoFailures();
 
         createTarget();
         booted = true;

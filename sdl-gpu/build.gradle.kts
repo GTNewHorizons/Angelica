@@ -108,6 +108,7 @@ val glsmSdlAgent = sourceSets.create("glsmSdlAgent") {
 
 dependencies {
     "glsmSdlAgentCompileOnly"(project(":glsm"))
+    "glsmSdlAgentCompileOnly"(testFixtures(project(":glsm")))
     "glsmSdlAgentCompileOnly"(libs.asm.tree.test)
     testImplementation(glsmSdlAgent.output)
 }
@@ -155,9 +156,8 @@ val glsmSdlTest by tasks.registering(Test::class) {
     useJUnitPlatform {
         includeTags(glsmSdlTag)
     }
-    dependsOn(tasks.named("glsmSdlStubsClasses"), glsmSdlRedirectAgentJar)
-    val agentJarPath = glsmSdlRedirectAgentJar.flatMap { it.archiveFile }.map { it.asFile.path }
-    jvmArgumentProviders.add(CommandLineArgumentProvider { listOf("-javaagent:${agentJarPath.get()}") })
+    dependsOn(tasks.named("glsmSdlStubsClasses"))
+    javaAgent(files(glsmSdlRedirectAgentJar))
     jvmArgs(
         "-Dangelica.sdlgpu.enable=true",
         "-Dangelica.sdlgpu.disablePresenterThread=true",

@@ -28,6 +28,7 @@ public class GLSMCoreExtension implements BeforeAllCallback, BeforeEachCallback,
 
     @Override
     public void beforeAll(ExtensionContext context) throws LWJGLException {
+        GlsmRedirectAgent.requireInstalled();
         if (startFailure != null) {
             throw new IllegalStateException("GLSMCoreExtension context setup failed earlier in this JVM", startFailure);
         }
@@ -81,6 +82,7 @@ public class GLSMCoreExtension implements BeforeAllCallback, BeforeEachCallback,
     public void afterEach(ExtensionContext context) {
         final int error = GL11.glGetError();
         while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
+        GlsmRedirectAgent.assertNoFailures();
         assertEquals(GL11.GL_NO_ERROR, error, () -> "GL Error: 0x" + Integer.toHexString(error));
     }
 

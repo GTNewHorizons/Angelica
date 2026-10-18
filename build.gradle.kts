@@ -170,7 +170,13 @@ val archScanAsm: Configuration by configurations.creating {
     isCanBeResolved = true
 }
 
+val glsmRedirectAgent: Configuration by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
 dependencies {
+    glsmRedirectAgent(project(":glsm", "redirectAgent"))
     archScanAsm(libs.asm.tree.test)
     archScanAsm(libs.asm.commons.test)
 }
@@ -211,6 +217,8 @@ val glCoreTest by tasks.registering(Test::class) {
     classpath = downgradedTest
         .plus(downgraded(downgradeRootMainClasses))
         .plus(sourceSets["test"].runtimeClasspath.minus(rawMain).minus(rawTest))
+
+    javaAgent(glsmRedirectAgent)
 
     configureAngelicaJava8()
 }
