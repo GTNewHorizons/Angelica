@@ -267,6 +267,22 @@ tasks.test {
     configureGlsmJava8()
 }
 
+val redirectAgentJar by tasks.registering(Jar::class) {
+    archiveClassifier = "redirect-agent"
+    manifest {
+        attributes("Premain-Class" to "com.gtnewhorizons.angelica.glsm.GlsmRedirectAgent")
+    }
+}
+
+val redirectAgent by configurations.creating {
+    isCanBeConsumed = true
+    isCanBeResolved = false
+}
+
+artifacts {
+    add(redirectAgent.name, redirectAgentJar)
+}
+
 val glTestTasks = GL_TASK_TAGS.map { (taskName, tag) ->
     tasks.register<Test>(taskName) {
         description = "Runs the $tag GL tests in their own JVM, so they get their own Display and GL profile."
@@ -275,6 +291,7 @@ val glTestTasks = GL_TASK_TAGS.map { (taskName, tag) ->
             includeTags = setOf(tag)
         }
         configureGlsmJava8()
+        javaAgent(files(redirectAgentJar))
     }
 }
 

@@ -60,8 +60,7 @@ class RetainedTesrGroupsGLTest {
     private static final float[] TRIANGLE = { -0.1f, -0.1f, 0f, 0.1f, -0.1f, 0f, 0f, 0.15f, 0f };
     private static final ResourceLocation GLINT_TEXTURE = new ResourceLocation("angelica", "test/glint");
 
-    private static boolean overridesRegistered;
-    private static boolean skipClientArrays;
+    private static boolean probeRegistered;
     private static Runnable onBufferSetup;
 
     private AngelicaBufferSource source;
@@ -82,14 +81,13 @@ class RetainedTesrGroupsGLTest {
     private CubeParams[] glintCubes;
 
     @BeforeAll
-    static void registerClientArrayOverrides() {
-        if (overridesRegistered) return;
-        overridesRegistered = true;
+    static void registerBufferSetupProbe() {
+        if (probeRegistered) return;
+        probeRegistered = true;
         VertexFormat.registerSetupBufferStateOverride((format, offset) -> {
             if (onBufferSetup != null) onBufferSetup.run();
-            return skipClientArrays;
+            return false;
         });
-        VertexFormat.registerClearBufferStateOverride(format -> skipClientArrays);
     }
 
     @BeforeEach
@@ -119,7 +117,6 @@ class RetainedTesrGroupsGLTest {
     @AfterEach
     void cleanup() {
         onBufferSetup = null;
-        skipClientArrays = false;
         source.discard();
         GLStateManager.setFfpInstancing(Instancing.NONE);
         GLStateManager.glBindVertexArray(0);
@@ -221,12 +218,8 @@ class RetainedTesrGroupsGLTest {
             state.setCurrentBlockEntity(83);
             state.setCurrentEntityColor(0, 1, 0, 0.5f);
             draws.clear();
-            skipClientArrays = true;
             assertEquals(GL11.GL_QUADS, template.drawMode);
             groups.drawLayer(layer);
-            // FIXME each GL_QUADS fallback draw (VertexBuffer.draw inside MeshBuffer.render) raises this with the
-            // client arrays skipped; a GL_TRIANGLES template does not.
-            assertEquals(GL11.GL_INVALID_ENUM, GL11.glGetError());
             assertEquals(3, draws.size(), "only differing uniform values split the CPU fallback");
             for (int i = 0; i < 3; i++) {
                 assertArrayEquals(new long[] {45010 + i, 45020 + i, 45030 + i,
@@ -339,7 +332,6 @@ class RetainedTesrGroupsGLTest {
         assertEquals(2, group.cubeColumns.runs.size(), "sanity: cube runs A,B,A merge into two heads");
         assertNotNull(group.cubeColumns.runs.get(0).next, "sanity: the cube A head must carry a second segment");
 
-        skipClientArrays = true;
         groups.drawLayer(layer);
 
         assertEquals(0, pipeline.matrixBinds);
