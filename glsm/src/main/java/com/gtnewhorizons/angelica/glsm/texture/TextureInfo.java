@@ -22,8 +22,8 @@ public class TextureInfo {
     protected int width = -1;
     protected int height = -1;
 
-    @Setter protected int minFilter = UNSET_INT;
-    @Setter protected int magFilter = UNSET_INT;
+    protected int minFilter = UNSET_INT;
+    protected int magFilter = UNSET_INT;
     @Setter protected int wrapS = UNSET_INT;
     @Setter protected int wrapT = UNSET_INT;
     @Setter protected int maxLevel = UNSET_INT;
@@ -37,9 +37,12 @@ public class TextureInfo {
     @Getter @Setter protected boolean generateMipmap = false;
 
     @Getter protected int uploadGeneration;
+    @Getter protected boolean writtenOutsideUploads;
+    @Getter protected int changeStamp;
 
     void bumpUploadGeneration() {
         uploadGeneration++;
+        changeStamp++;
     }
 
     protected TextureInfo(int id) {
@@ -76,6 +79,16 @@ public class TextureInfo {
             height = RenderSystem.getTexLevelParameteri(id, 0, GL11.GL_TEXTURE_HEIGHT);
         }
         return height;
+    }
+
+    public void setMinFilter(int minFilter) {
+        this.minFilter = minFilter;
+        changeStamp++;
+    }
+
+    public void setMagFilter(int magFilter) {
+        this.magFilter = magFilter;
+        changeStamp++;
     }
 
     public int getMinFilter() {

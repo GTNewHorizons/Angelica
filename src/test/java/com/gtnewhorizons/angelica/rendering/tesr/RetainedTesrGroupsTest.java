@@ -11,6 +11,7 @@ import net.coderbot.batchedentityrendering.impl.AngelicaBufferSource;
 import net.coderbot.batchedentityrendering.impl.BufferSegment;
 import net.coderbot.batchedentityrendering.impl.BufferSourceProbe;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
+import net.minecraft.util.ResourceLocation;
 import org.joml.Matrix4f;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -403,8 +404,8 @@ class RetainedTesrGroupsTest {
         final Matrix4f mv = new Matrix4f().translation(1f, 2f, 3f);
 
         groups.beginPass(new Matrix4f(), 0, 0, 0, new InstancedTemplateRenderer(ring));
-        groups.queue(template, cubes(3), 0.0625f, layer, STREAM, mv, 7, -1, 0, 0L, 5, null);
-        groups.queue(template, cubes(2), 0.0625f, layer, STREAM, new Matrix4f(), 7, -1, 0, 0L, 5, null);
+        groups.queue(template, cubes(3), 0.0625f, layer, STREAM, mv, 7, -1, 0, 0L, 5, null, null);
+        groups.queue(template, cubes(2), 0.0625f, layer, STREAM, new Matrix4f(), 7, -1, 0, 0L, 5, null, null);
 
         assertTrue(groups.hasDraws(layer));
         assertEquals(0, groups.streamedInstances);
@@ -416,8 +417,8 @@ class RetainedTesrGroupsTest {
 
         final RetainedTesrGroups piped = new RetainedTesrGroups(source);
         piped.beginPass(new Matrix4f(), 0, 0, 0, new InstancedTemplateRenderer(ring), new RetainedTesrTestSupport.CountingPipeline(false, false));
-        piped.queue(template, cubes(3), 0.0625f, layer, STREAM, mv, 7, -1, 0, 0L, 5, null);
-        piped.queue(template, cubes(2), 0.0625f, layer, STREAM, new Matrix4f(), 7, -1, 0, 0L, 5, null);
+        piped.queue(template, cubes(3), 0.0625f, layer, STREAM, mv, 7, -1, 0, 0L, 5, null, null);
+        piped.queue(template, cubes(2), 0.0625f, layer, STREAM, new Matrix4f(), 7, -1, 0, 0L, 5, null, null);
 
         final RetainedTesrGroups.Group pipedGroup = onlyGroup(piped);
         assertEquals(2, pipedGroup.cubeColumns.templates.size(), "a pipeline can fall back to the per-part template");
@@ -428,7 +429,7 @@ class RetainedTesrGroupsTest {
     void cubePartsFallBackToTemplatesWithoutAnInstancedRenderer() {
 
         groups.beginPass(new Matrix4f(), 0, 0, 0);
-        groups.queue(template(), cubes(2), 0.0625f, layer, STREAM, new Matrix4f(), 0, -1, 0, 0L, 5, null);
+        groups.queue(template(), cubes(2), 0.0625f, layer, STREAM, new Matrix4f(), 0, -1, 0, 0L, 5, null, null);
 
         assertEquals(0, cubeInstances(groups));
         assertEquals(1, groups.streamedInstances);
@@ -439,9 +440,9 @@ class RetainedTesrGroupsTest {
         final CubeParams[] params = cubes(2);
 
         groups.beginPass(new Matrix4f(), 0, 0, 0, new InstancedTemplateRenderer(ring));
-        groups.queue(template(), params, 0.0625f, layer, STREAM, new Matrix4f(), 0, -1, 0, 0L, 5, null);
+        groups.queue(template(), params, 0.0625f, layer, STREAM, new Matrix4f(), 0, -1, 0, 0L, 5, null, null);
         groups.beginPass(new Matrix4f(), 0, 0, 0, new InstancedTemplateRenderer(ring));
-        groups.queue(template(), params, 0.0625f, layer, STREAM, new Matrix4f(), 0, -1, 0, 0L, 5, null);
+        groups.queue(template(), params, 0.0625f, layer, STREAM, new Matrix4f(), 0, -1, 0, 0L, 5, null, null);
 
         assertEquals(2, cubeInstances(groups), "the previous frame's instances must not accumulate");
     }
@@ -525,5 +526,18 @@ class RetainedTesrGroupsTest {
         groups.queue(template, layer, materialB, new Matrix4f(), 0, -1, 0, 0L, 5, null);
 
         assertEquals(2, groups.groupCount(), "the last-group memo must compare material, not just layer and id, on every queue call");
+    }
+
+    @Test
+    void glintCopiesSampleTheirOwnTextureRatherThanTheBaseAtlasRegion() {
+        final EntityTextureAtlas.Page page = new EntityTextureAtlas.Page(new ResourceLocation("angelica", "test_page"), 0);
+        final EntityTextureAtlas.Slot slot = new EntityTextureAtlas.Slot(page, 0, 0, 4, 2);
+        final RetainedTesrGroups.InstanceColumns base = new RetainedTesrGroups.InstanceColumns();
+        base.addCubes(null, cubes(1), 0.0625f, new Matrix4f(), 0, -1, 0, 0L, slot);
+        final RetainedTesrGroups.InstanceColumns glint = new RetainedTesrGroups.InstanceColumns();
+        glint.appendRange(base, 0, 1, 0, -1, 0);
+
+        assertSame(slot, base.atlasSlot(0));
+        assertNull(glint.atlasSlot(0));
     }
 }

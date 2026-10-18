@@ -1881,6 +1881,8 @@ public class SDLGPURenderBackend extends RenderBackend {
         }
 
         if (cs.boundFboId == framebuffer) return;
+        final FboState drawing = framebuffer != 0 ? resourceManager.getFbo(framebuffer) : null;
+        if (drawing != null && drawing.readOnlyColor) makeColorTargets(drawing);
         final int oldFboId = cs.boundFboId;
         final boolean structurallyIdentical = oldFboId != 0 && framebuffer != 0 && fboClearTracker.fbosHaveSameAttachments(cs, oldFboId, framebuffer);
         cs.boundFboId = framebuffer;
@@ -1893,36 +1895,52 @@ public class SDLGPURenderBackend extends RenderBackend {
             cs.pipeline.setColorTargetFormats(cachedSwapchainFormatArray);
             cs.pipeline.setDrawBuffers(null);
             cs.pipeline.setDepthTargetFormat(resourceManager.getSwapchainDepthStencilFormat());
-        } else {
-            final FboState fbo = resourceManager.getFbo(framebuffer);
-            if (fbo != null && fbo.getColorTexture() != 0) {
-                fboClearTracker.updatePipelineCacheColorFormats(cs, fbo);
-                cs.pipeline.setDepthTargetFormat(fbo.depthTexture != 0 ? fbo.depthFormat : 0);
-            }
+        } else if (drawing != null && drawing.getColorTexture() != 0) {
+            fboClearTracker.updatePipelineCacheColorFormats(cs, drawing);
+            cs.pipeline.setDepthTargetFormat(drawing.depthTexture != 0 ? drawing.depthFormat : 0);
         }
         cs.pipeline.markOutputDirty();
     }
 
+    private void makeColorTargets(FboState fbo) {
+        for (int i = 0; i < fbo.colorAttachmentCount; i++) {
+            final int glId = fbo.colorGlIds[i];
+            if (glId == 0) continue;
+            fbo.colorTextures[i] = resourceManager.ensureTextureUsage(glId, SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COLOR_TARGET);
+            resourceManager.markFboAttachment(glId);
+        }
+        fbo.readOnlyColor = false;
+        fbo.targetsDirty = true;
+    }
+
     @Override public void framebufferTexture2D(int target, int attachment, int textarget, int texture, int level) {
         final ContextState cs = s();
-        if (cs.boundFboId == cs.defaultFboId) return;
-        final FboState fbo = resourceManager.getFbo(cs.boundFboId);
+        final int fboId = target == GL30.GL_READ_FRAMEBUFFER ? cs.boundReadFboId : cs.boundFboId;
+        if (fboId == cs.defaultFboId) return;
+        final FboState fbo = resourceManager.getFbo(fboId);
         if (fbo == null) return;
+        final boolean drawTarget = fboId == cs.boundFboId;
 
         final int colorIdx = attachment - GL30.GL_COLOR_ATTACHMENT0;
         if (colorIdx >= 0 && colorIdx < ContextState.MAX_COLOR_ATTACHMENTS) {
             if (texture == 0) {
                 fbo.detachColor(colorIdx);
-                fboClearTracker.updatePipelineCacheColorFormats(cs, fbo);
-                cs.pipeline.markOutputDirty();
+                if (drawTarget) {
+                    fboClearTracker.updatePipelineCacheColorFormats(cs, fbo);
+                    cs.pipeline.markOutputDirty();
+                }
                 return;
             }
-            final long handle = resourceManager.ensureTextureUsage(texture, SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COLOR_TARGET);
+            final long handle = resourceManager.ensureTextureUsage(texture, drawTarget ? SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COLOR_TARGET : SDL_GPU_TEXTUREUSAGE_SAMPLER);
             final ResourceManager.TextureMeta meta = resourceManager.getTextureMeta(texture);
             fbo.colorTextures[colorIdx] = handle;
             fbo.colorGlIds[colorIdx] = texture;
             fbo.colorLevels[colorIdx] = level;
-            resourceManager.markFboAttachment(texture);
+            if (drawTarget) {
+                resourceManager.markFboAttachment(texture);
+            } else {
+                fbo.readOnlyColor = true;
+            }
             fbo.targetsDirty = true;
             if (meta != null) {
                 fbo.colorFormats[colorIdx] = meta.sdlFormat();
@@ -1933,16 +1951,20 @@ public class SDLGPURenderBackend extends RenderBackend {
             }
             fbo.colorAttachmentCount = Math.max(fbo.colorAttachmentCount, colorIdx + 1);
             fbo.cachedFormatsDirty = true;
-            fboClearTracker.updatePipelineCacheColorFormats(cs, fbo);
-            cs.pipeline.markOutputDirty();
+            if (drawTarget) {
+                fboClearTracker.updatePipelineCacheColorFormats(cs, fbo);
+                cs.pipeline.markOutputDirty();
+            }
         } else if (attachment == GL30.GL_DEPTH_ATTACHMENT || attachment == GL30.GL_DEPTH_STENCIL_ATTACHMENT || attachment == GL30.GL_STENCIL_ATTACHMENT) {
             final boolean stencilOnly = attachment == GL30.GL_STENCIL_ATTACHMENT;
             if (texture == 0) {
                 if (stencilOnly && fbo.depthGlId != 0) return;
                 fbo.detachDepth();
-                cs.pipeline.hasDepthTarget = false;
-                cs.pipeline.depthTargetFormat = 0;
-                cs.pipeline.markOutputDirty();
+                if (drawTarget) {
+                    cs.pipeline.hasDepthTarget = false;
+                    cs.pipeline.depthTargetFormat = 0;
+                    cs.pipeline.markOutputDirty();
+                }
                 return;
             }
             if (stencilOnly && fbo.depthGlId != 0 && fbo.depthGlId != texture) {
@@ -1962,9 +1984,11 @@ public class SDLGPURenderBackend extends RenderBackend {
             if (meta != null) {
                 fbo.depthFormat = meta.sdlFormat();
             }
-            cs.pipeline.hasDepthTarget = true;
-            cs.pipeline.depthTargetFormat = fbo.depthFormat;
-            cs.pipeline.markOutputDirty();
+            if (drawTarget) {
+                cs.pipeline.hasDepthTarget = true;
+                cs.pipeline.depthTargetFormat = fbo.depthFormat;
+                cs.pipeline.markOutputDirty();
+            }
         }
     }
 

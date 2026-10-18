@@ -175,6 +175,33 @@ class GlsmSdlCopyBlitTest {
         GLStateManager.glDeleteTextures(destination);
     }
 
+    @Test
+    void attachingToTheReadFramebufferLeavesTheDrawFramebufferAlone() {
+        final int source = GlsmSdlHeadlessRig.createSolidTexture(GREEN);
+        final int drawColor = GlsmSdlHeadlessRig.createSolidTexture(BLUE);
+        final int readFbo = GLStateManager.glGenFramebuffers();
+        final int drawFbo = GlsmSdlHeadlessRig.fboWithColor(drawColor, 0);
+        try {
+            GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, readFbo);
+            GLStateManager.glFramebufferTexture2D(GL30.GL_READ_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, source, 0);
+            GLStateManager.glBlitFramebuffer(0, 0, 2, 2, 0, 0, 2, 2, GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
+            GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTextureLevel(drawColor, 0), GREEN, "the blit reads the read framebuffer's attachment");
+
+            GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, drawFbo);
+            GLStateManager.glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+            GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
+            GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTextureLevel(drawColor, 0), RED, "the draw framebuffer kept its own attachment");
+            GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTextureLevel(source, 0), GREEN, "the read attachment never became a draw target");
+        } finally {
+            GLStateManager.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+            GLStateManager.glDeleteFramebuffers(readFbo);
+            GLStateManager.glDeleteFramebuffers(drawFbo);
+            GLStateManager.glDeleteTextures(source);
+            GLStateManager.glDeleteTextures(drawColor);
+        }
+    }
+
     static Stream<Arguments> levelBlits() {
         return Stream.of(
             Arguments.of("1:1 into level 0: reads the source attachment level", SIZE / 2, 0),

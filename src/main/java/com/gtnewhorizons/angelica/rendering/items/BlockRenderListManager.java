@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.resources.IReloadableResourceManager;
 import org.lwjgl.opengl.GL11;
 
@@ -39,6 +40,11 @@ public class BlockRenderListManager {
 
     public static int getItemFrameDisplayList(int variant) {
         return itemFrameDisplayLists[variant];
+    }
+
+    public static boolean rendersPlainItem(RenderBlocks rb, Block block, float brightness) {
+        return !isISBRH(block.getRenderType()) && !rb.enableAO && rb.overrideBlockTexture == null && brightness == 1.0F && rb.useInventoryTint
+            && rb.blockAccess == null && (rb.uvRotateEast | rb.uvRotateWest | rb.uvRotateSouth | rb.uvRotateNorth | rb.uvRotateTop | rb.uvRotateBottom) == 0;
     }
 
     public static int callOrStartCompiling(int cached) {

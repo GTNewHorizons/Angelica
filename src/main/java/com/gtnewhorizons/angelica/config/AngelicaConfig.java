@@ -163,6 +163,10 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableCubeInstancing;
 
+    @Config.Comment("Stitch a texture atlas between entity and block entity models so different textures draw together (requires cube instancing)")
+    @Config.DefaultBoolean(true)
+    public static boolean enableEntityTextureAtlas;
+
     @Config.Comment("Skip the end-of-frame shader buffer copy by ping-ponging buffers. Disable if a shader pack misrenders.")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart

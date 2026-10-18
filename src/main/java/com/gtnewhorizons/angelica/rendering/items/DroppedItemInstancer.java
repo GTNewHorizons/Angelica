@@ -35,6 +35,7 @@ public final class DroppedItemInstancer {
     private static final AngelicaTesrMeshCache.GtnhMeshBackend iconBackend = new AngelicaTesrMeshCache.GtnhMeshBackend();
     private static BakedTransformCapture blockBackend;
     private static boolean basePart;
+    private static int itemsDrawingBlocks;
     private static final GlintCapture glintCapture = new GlintCapture();
     private static boolean glintSeen;
     private static final ItemPropCache.ItemProp glintProperties = new ItemPropCache.ItemProp();
@@ -199,6 +200,24 @@ public final class DroppedItemInstancer {
     }
 
     public static long block(ItemStack stack, RenderBlocks rb, Block block, int meta, float brightness, boolean unfilteredAtlas) {
+        final long part = itemBlock(stack, rb, block, meta, brightness, unfilteredAtlas);
+        if (part != SKIP) itemsDrawingBlocks++;
+        return part;
+    }
+
+    public static void endBlock(long part) {
+        if (part != SKIP) itemsDrawingBlocks--;
+        endPart(part);
+    }
+
+    public static long directBlock(RenderBlocks rb, Block block, int meta, float brightness) {
+        if (itemsDrawingBlocks != 0 || !ModelPartBatcher.INSTANCE.entitiesActive()) return RUN;
+        if (!BatchEligibility.batchingAllowed()) return GLStateManager.drawCalls;
+        final TesrMaterial material = EntityMaterials.itemFromCurrentState(false);
+        return material != null ? batchBlock(material, rb, block, meta, brightness) : GLStateManager.drawCalls;
+    }
+
+    private static long itemBlock(ItemStack stack, RenderBlocks rb, Block block, int meta, float brightness, boolean unfilteredAtlas) {
         final TesrMaterial material = material(stack, unfilteredAtlas);
         if (material == null) {
             return RUN;
@@ -244,6 +263,10 @@ public final class DroppedItemInstancer {
         if (part >= 0L) {
             BatchEligibility.onPartFallback(part, GLStateManager.drawCalls);
         }
+    }
+
+    public static void forgetItemDraws() {
+        itemsDrawingBlocks = 0;
     }
 
     public static void clear() {
@@ -307,10 +330,7 @@ public final class DroppedItemInstancer {
 
     private static BailReason blockStateBail(RenderBlocks renderBlocks, Block block, float brightness) {
         if (BlockRenderListManager.isISBRH(block.getRenderType())) return BailReason.ISBRH;
-        if (renderBlocks.enableAO || renderBlocks.overrideBlockTexture != null || brightness != 1.0F || !renderBlocks.useInventoryTint
-            || renderBlocks.blockAccess != null || (renderBlocks.uvRotateEast | renderBlocks.uvRotateWest | renderBlocks.uvRotateSouth
-                | renderBlocks.uvRotateNorth | renderBlocks.uvRotateTop | renderBlocks.uvRotateBottom) != 0) return BailReason.BLOCK_STATE;
-        return null;
+        return BlockRenderListManager.rendersPlainItem(renderBlocks, block, brightness) ? null : BailReason.BLOCK_STATE;
     }
 
     private static final class IconMesh {

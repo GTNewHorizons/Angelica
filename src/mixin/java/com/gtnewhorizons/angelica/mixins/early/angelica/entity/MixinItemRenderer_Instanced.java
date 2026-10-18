@@ -160,7 +160,7 @@ public abstract class MixinItemRenderer_Instanced {
 
     @Surround.Finally("block")
     private void angelica$endHeldBlock(@Surround.Carry long part) {
-        DroppedItemInstancer.endPart(part);
+        DroppedItemInstancer.endBlock(part);
     }
 
     @Redirect(

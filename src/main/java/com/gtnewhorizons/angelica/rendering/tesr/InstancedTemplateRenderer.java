@@ -178,12 +178,13 @@ final class InstancedTemplateRenderer {
                 final int light = data.lights.getInt(i);
                 final int overlay = data.overlays.getInt(i);
                 final long info = data.infos.getLong(i);
-                for (int p = 0, n = partCubes.length; p < n; p++) {
-                    final CubeParams cube = partCubes[p];
+                final EntityTextureAtlas.Slot slot = data.atlasSlot(run, i);
+                final EntityTextureAtlas.Slot region = slot != null ? slot : EntityTextureAtlas.Slot.WHOLE_TEXTURE;
+                for (final CubeParams cube : partCubes) {
                     cube.writeRows(ptr, data.matrices, off, scale);
                     InstancedAttribs.writeTail(ptr, color, overlay, info);
                     InstancedAttribs.writeLightmap(ptr + CubeInstancedAttribs.OFFSET_LIGHTMAP_SCALE, light);
-                    cube.writeTexture(ptr);
+                    cube.writeTexture(ptr, region.u, region.v, region.w, region.h);
                     ptr += CubeInstancedAttribs.STRIDE;
                 }
             }
