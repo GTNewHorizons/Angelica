@@ -94,6 +94,8 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
     static final class InstanceColumns {
         final ObjectArrayList<TemplateBuffer> templates = new ObjectArrayList<>();
         final ObjectArrayList<CubeParams[]> cubes = new ObjectArrayList<>();
+        final ObjectArrayList<EntityTextureAtlas.Slot> atlasSlots = new ObjectArrayList<>();
+        boolean anyAtlasSlot;
         final FloatArrayList scales = new FloatArrayList();
         final IntArrayList lights = new IntArrayList();
         final IntArrayList colors = new IntArrayList();
@@ -122,8 +124,18 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
             size++;
         }
 
-        void addCubes(TemplateBuffer templateOrNull, CubeParams[] cubeParams, float scale, Matrix4fc mv, int light, int color, int overlay, long info) {
+        EntityTextureAtlas.Slot atlasSlot(int i) {
+            return anyAtlasSlot ? atlasSlots.get(i) : null;
+        }
+
+        EntityTextureAtlas.Slot atlasSlot(TexRun run, int i) {
+            return run.source != null ? null : atlasSlot(i);
+        }
+
+        void addCubes(TemplateBuffer templateOrNull, CubeParams[] cubeParams, float scale, Matrix4fc mv, int light, int color, int overlay, long info, EntityTextureAtlas.Slot atlasSlot) {
             cubes.add(cubeParams);
+            atlasSlots.add(atlasSlot);
+            anyAtlasSlot |= atlasSlot != null;
             scales.add(scale);
             add(templateOrNull, mv, light, color, overlay, info);
         }
@@ -140,6 +152,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
             }
             if (src.cubes.size() == src.size) {
                 for (int i = start; i < end; i++) cubes.add(src.cubes.get(i));
+                atlasSlots.size(atlasSlots.size() + n);
                 scales.addElements(scales.size(), src.scales.elements(), start, n);
             }
             fill(lights, n, light);
@@ -158,6 +171,8 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
         void clear() {
             templates.clear();
             cubes.clear();
+            atlasSlots.clear();
+            anyAtlasSlot = false;
             scales.clear();
             lights.clear();
             colors.clear();
@@ -477,10 +492,14 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
     }
 
     void queue(TemplateBuffer template, RenderLayer layer, TesrMaterial material, Matrix4f currentMV, int packedLight, int colorABGR, int overlayABGR, long entityInfo, int id, Matrix4f texMatrix) {
-        queue(template, null, 1.0f, layer, material, currentMV, packedLight, colorABGR, overlayABGR, entityInfo, id, texMatrix);
+        queue(template, null, 1.0f, layer, material, currentMV, packedLight, colorABGR, overlayABGR, entityInfo, id, texMatrix, null);
     }
 
-    void queue(TemplateBuffer template, CubeParams[] cubes, float scale, RenderLayer layer, TesrMaterial material, Matrix4f currentMV, int packedLight, int colorABGR, int overlayABGR, long entityInfo, int id, Matrix4f texMatrix) {
+    boolean instancesCubes(TesrMaterial material) {
+        return instanceableMaterial(material) && glintCapture == null;
+    }
+
+    void queue(TemplateBuffer template, CubeParams[] cubes, float scale, RenderLayer layer, TesrMaterial material, Matrix4f currentMV, int packedLight, int colorABGR, int overlayABGR, long entityInfo, int id, Matrix4f texMatrix, EntityTextureAtlas.Slot atlasSlot) {
         final Group group = groupFor(layer, material, id);
         touch(group, layer);
         if (group.stream) {
@@ -488,7 +507,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
             final boolean capturingBase = glintCapture != null && glintCapture.capturesBase();
             if (instanceable && cubes != null) {
                 final TexRun run = group.openOrExtendRun(group.cubeColumns, texMatrix, false, capturingBase && group.opaque);
-                group.cubeColumns.addCubes(deferred != null ? template : null, cubes, scale, currentMV, packedLight, colorABGR, overlayABGR, entityInfo);
+                group.cubeColumns.addCubes(deferred != null ? template : null, cubes, scale, currentMV, packedLight, colorABGR, overlayABGR, entityInfo, atlasSlot);
                 run.last.end = group.cubeColumns.size;
                 run.parts++;
                 run.instances += cubes.length;
@@ -706,7 +725,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
             if (group.cubeColumns.hasInstances()) {
                 if (cubeAvailable) {
                     need |= NEED_CUBE;
-                } else if (matrixAvailable) {
+                } else if (matrixAvailable && !group.cubeColumns.anyAtlasSlot) {
                     need |= NEED_MATRIX;
                 } else {
                     drawInstancesCpu(group, group.cubeColumns);
@@ -724,7 +743,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
                 final boolean fixedFunction = deferred == null && GLStateManager.getActiveProgram() == 0;
                 drawTemplateRuns(group.templateColumns, group.material.special() == TesrMaterial.SpecialRender.GLINT && fixedFunction, group.material == EntityMaterials.ITEM_GLINT);
             }
-            if (!cubeAvailable && group.cubeColumns.hasInstances()) {
+            if (!cubeAvailable && group.cubeColumns.hasInstances() && !group.cubeColumns.anyAtlasSlot) {
                 drawTemplateRuns(group.cubeColumns, group.material == EntityMaterials.GLINT && deferred == null, false);
             }
         }
@@ -904,7 +923,8 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
                             System.arraycopy(data.matrices, i * 16, matScratch, 0, 16);
                             scratchMat.set(matScratch);
                             final int color = head.source != null ? head.color : data.colors.getInt(i);
-                            ptr = VertexTransform.writeInstance(ptr, format, templates.get(i), scratchMat, scratchVec, color, data.lights.getInt(i), texMatrix);
+                            final EntityTextureAtlas.Slot slot = data.atlasSlot(head, i);
+                            ptr = VertexTransform.writeInstance(ptr, format, templates.get(i), scratchMat, scratchVec, color, data.lights.getInt(i), slot != null ? slot.uvMatrix : texMatrix);
                         }
                         fallbackScratch.position((int) (ptr - base));
                         fallbackScratch.flip();

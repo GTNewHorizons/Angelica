@@ -2610,7 +2610,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	private static final ProgramId[] INSTANCED_PROGRAM_IDS = {
 		ProgramId.Block, ProgramId.BlockTrans, ProgramId.Entities, ProgramId.EntitiesTrans,
-		ProgramId.Shadow, ProgramId.ShadowWater, ProgramId.ArmorGlint
+		ProgramId.Shadow, ProgramId.ShadowWater, ProgramId.ArmorGlint, ProgramId.SpiderEyes
 	};
 
 	private static final ProgramId[] PARTICLE_PROGRAM_IDS = {

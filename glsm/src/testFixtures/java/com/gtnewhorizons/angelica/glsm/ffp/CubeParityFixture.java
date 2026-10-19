@@ -260,7 +260,7 @@ public final class CubeParityFixture {
             InstancedAttribs.writeTail(ptr, 0xFFFFFFFF, 0, 0L);
             memPutFloat(ptr + CubeInstancedAttribs.OFFSET_LIGHTMAP_SCALE, BRIGHTNESS);
             memPutFloat(ptr + CubeInstancedAttribs.OFFSET_LIGHTMAP_SCALE + 4, BRIGHTNESS);
-            cube.writeTexture(ptr);
+            cube.writeTexture(ptr, 0.0f, 0.0f, 1.0f, 1.0f);
         }
         records.position(0).limit(specs.length * CubeInstancedAttribs.STRIDE);
 

@@ -28,6 +28,7 @@ public class PBRTextureManager {
 	}
 
 	private final Int2ObjectMap<PBRTextureHolder> holders = new Int2ObjectOpenHashMap<>();
+	private int holderChanges;
 	private final PBRTextureConsumerImpl consumer = new PBRTextureConsumerImpl();
 
 	private NativeImageBackedSingleColorTexture defaultNormalTexture;
@@ -61,13 +62,22 @@ public class PBRTextureManager {
 		return holder;
 	}
 
+	public boolean hasLoadedPbrTextures(int id) {
+		return getHolder(id) != defaultHolder;
+	}
+
 	public PBRTextureHolder getOrLoadHolder(int id) {
 		PBRTextureHolder holder = holders.get(id);
 		if (holder == null) {
 			holder = loadHolder(id);
 			holders.put(id, holder);
+			holderChanges++;
 		}
 		return holder;
+	}
+
+	public int holderChanges() {
+		return holderChanges;
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
@@ -96,6 +106,7 @@ public class PBRTextureManager {
 		PBRTextureHolder holder = holders.remove(id);
 		if (holder != null) {
 			closeHolder(holder);
+			holderChanges++;
 		}
 	}
 
@@ -106,6 +117,7 @@ public class PBRTextureManager {
 			}
 		}
 		holders.clear();
+		holderChanges++;
 	}
 
 	public void close() {

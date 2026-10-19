@@ -13,6 +13,7 @@ public final class FboState {
     public final int[] colorFormats = new int[MAX_COLOR_ATTACHMENTS];
     public final int[] colorLevels = new int[MAX_COLOR_ATTACHMENTS];
     public int colorAttachmentCount;
+    public boolean readOnlyColor;
 
     public int[] drawBuffers = {0};
     public int readBufferIndex;

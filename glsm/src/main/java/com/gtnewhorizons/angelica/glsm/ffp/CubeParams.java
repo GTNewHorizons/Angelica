@@ -5,6 +5,7 @@ import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutFloat;
 public record CubeParams(float minX, float minY, float minZ, float spanX, float spanY, float spanZ, float u0, float v0, float uScaleX, float vScaleY, float uScaleZ, float vScaleZ) {
 
     private static final float MIN_SPAN = 1.0e-4f;
+    private static final float UV_EPSILON = 1.0e-5f;
 
     public CubeParams {
         if (!(spanX > MIN_SPAN && spanY > MIN_SPAN && spanZ > MIN_SPAN)) throw new IllegalArgumentException("degenerate cube span");
@@ -43,12 +44,25 @@ public record CubeParams(float minX, float minY, float minZ, float spanX, float 
         }
     }
 
-    public void writeTexture(long ptr) {
-        memPutFloat(ptr + CubeInstancedAttribs.OFFSET_LIGHTMAP_SCALE + 8, uScaleZ);
-        memPutFloat(ptr + CubeInstancedAttribs.OFFSET_LIGHTMAP_SCALE + 12, vScaleZ);
-        memPutFloat(ptr + CubeInstancedAttribs.OFFSET_CUBE_TEX, u0);
-        memPutFloat(ptr + CubeInstancedAttribs.OFFSET_CUBE_TEX + 4, v0);
-        memPutFloat(ptr + CubeInstancedAttribs.OFFSET_CUBE_TEX + 8, uScaleX);
-        memPutFloat(ptr + CubeInstancedAttribs.OFFSET_CUBE_TEX + 12, vScaleY);
+    public boolean uvInsideTexture() {
+        final float u1 = u0 + 2.0f * (Math.abs(uScaleX) + uScaleZ);
+        final float v1 = v0 + vScaleY + vScaleZ;
+        return u0 >= 0.0f && v0 >= 0.0f && u1 <= 1.0f + UV_EPSILON && v1 <= 1.0f + UV_EPSILON;
+    }
+
+    public static boolean allInsideTexture(CubeParams[] cubes) {
+        for (CubeParams cube : cubes) {
+            if (!cube.uvInsideTexture()) return false;
+        }
+        return true;
+    }
+
+    public void writeTexture(long ptr, float regionU, float regionV, float regionW, float regionH) {
+        memPutFloat(ptr + CubeInstancedAttribs.OFFSET_LIGHTMAP_SCALE + 8, uScaleZ * regionW);
+        memPutFloat(ptr + CubeInstancedAttribs.OFFSET_LIGHTMAP_SCALE + 12, vScaleZ * regionH);
+        memPutFloat(ptr + CubeInstancedAttribs.OFFSET_CUBE_TEX, regionU + u0 * regionW);
+        memPutFloat(ptr + CubeInstancedAttribs.OFFSET_CUBE_TEX + 4, regionV + v0 * regionH);
+        memPutFloat(ptr + CubeInstancedAttribs.OFFSET_CUBE_TEX + 8, uScaleX * regionW);
+        memPutFloat(ptr + CubeInstancedAttribs.OFFSET_CUBE_TEX + 12, vScaleY * regionH);
     }
 }

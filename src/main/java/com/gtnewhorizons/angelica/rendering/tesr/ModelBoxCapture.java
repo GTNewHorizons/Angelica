@@ -2,6 +2,8 @@ package com.gtnewhorizons.angelica.rendering.tesr;
 
 import com.gtnewhorizons.angelica.glsm.ffp.CubeParams;
 import com.gtnewhorizons.angelica.glsm.ffp.UnitCubeMesh;
+import net.minecraft.client.model.ModelBox;
+import net.minecraft.client.model.ModelRenderer;
 import net.minecraft.client.model.PositionTextureVertex;
 import net.minecraft.client.model.TexturedQuad;
 
@@ -10,6 +12,10 @@ public final class ModelBoxCapture {
     private static final float EPSILON = 1.0e-4f;
 
     private ModelBoxCapture() {}
+
+    public static CubeParams capture(ModelBox box, TexturedQuad[] quads, ModelRenderer part, int texU, int texV, int sizeX, int sizeY, int sizeZ, float inflate) {
+        return capture(quads, part.textureWidth, part.textureHeight, part.mirror, texU, texV, box.posX1, box.posY1, box.posZ1, sizeX, sizeY, sizeZ, inflate);
+    }
 
     public static CubeParams capture(TexturedQuad[] quads, float texWidth, float texHeight, boolean mirror, int texU, int texV, float x, float y, float z, int sizeX, int sizeY, int sizeZ, float inflate) {
         if (quads == null || quads.length != UnitCubeMesh.FACE_COUNT) return null;

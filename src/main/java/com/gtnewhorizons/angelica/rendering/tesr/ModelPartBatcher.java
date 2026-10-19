@@ -14,6 +14,7 @@ import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard;
 import com.gtnewhorizons.angelica.glsm.ffp.CubeParams;
 import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
+import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorEntityIds;
@@ -103,6 +104,7 @@ public final class ModelPartBatcher {
     private boolean texCaptured;
     private boolean texIdentity;
     private boolean active;
+    private int entityFireDepth;
     private Mode mode = Mode.BLOCK_ENTITIES;
     private boolean instancedThisCycle;
     private DeferredWorldRenderingPipeline shaderPipeline;
@@ -141,6 +143,7 @@ public final class ModelPartBatcher {
     private static final class PartTemplate {
         TemplateBuffer template;
         CubeParams[] cubes;
+        boolean cubesInsideTexture;
         float scale;
         long lastUsedMs;
         boolean emptyVanillaPart;
@@ -248,6 +251,8 @@ public final class ModelPartBatcher {
         if (entityPass && entityTranslucentsHeld) {
             discardHeldEntities();
         }
+        // Held entity translucents draw after deferred and can still sample regions released before them
+        if (!entityTranslucentsHeld) recycleAtlas();
         active = true;
         final long nowMs = System.currentTimeMillis();
         mvCaptured = false;
@@ -350,6 +355,7 @@ public final class ModelPartBatcher {
                     if (instancedThisCycle) {
                         TesrBatchRenderer.INSTANCE.instancedRenderer.endFrame();
                     }
+                    recycleAtlas();
                     AngelicaBufferSource.rebindPass();
                 } finally {
                     if (wrap) GbufferPrograms.endEntities();
@@ -367,6 +373,15 @@ public final class ModelPartBatcher {
     private void discardHeldEntities() {
         entityTranslucentsHeld = false;
         entitySource.discard();
+        recycleAtlas();
+    }
+
+    private static void recycleAtlas() {
+        if (AngelicaConfig.enableEntityTextureAtlas) {
+            EntityTextureAtlas.INSTANCE.recycleReleasedRegions();
+        } else {
+            EntityTextureAtlas.INSTANCE.freePages();
+        }
     }
 
     public boolean isActive() {
@@ -514,7 +529,11 @@ public final class ModelPartBatcher {
     }
 
     public boolean entityPassActive() {
-        return active && mode == Mode.ENTITIES && !shadow;
+        return entitiesActive() && !shadow;
+    }
+
+    public boolean entitiesActive() {
+        return active && mode == Mode.ENTITIES;
     }
 
     public boolean isShadowPass() {
@@ -555,18 +574,18 @@ public final class ModelPartBatcher {
         if (shadow && isDepthEqualDecalState()) {
             return true;
         }
-        return queueTemplate(entry.template, entry.cubes, scale, null, false);
+        return queueTemplate(entry.template, entry.cubes, entry.cubesInsideTexture, scale, null, false);
     }
 
     public boolean queueTemplate(TemplateBuffer template, TesrMaterial material) {
-        return queueTemplate(template, null, 1.0f, material, false);
+        return queueTemplate(template, null, false, 1.0f, material, false);
     }
 
     public boolean queueTemplate(TemplateBuffer template, TesrMaterial material, boolean afterGlint) {
-        return queueTemplate(template, null, 1.0f, material, afterGlint);
+        return queueTemplate(template, null, false, 1.0f, material, afterGlint);
     }
 
-    private boolean queueTemplate(TemplateBuffer template, CubeParams[] cubes, float scale, TesrMaterial explicitMaterial, boolean afterGlint) {
+    private boolean queueTemplate(TemplateBuffer template, CubeParams[] cubes, boolean cubesInsideTexture, float scale, TesrMaterial explicitMaterial, boolean afterGlint) {
         if (!active) {
             bail(BailReason.INACTIVE);
             return false;
@@ -613,7 +632,8 @@ public final class ModelPartBatcher {
         final int glintSlot = material.special() == TesrMaterial.SpecialRender.GLINT ? lastBoundGlintSlot : ShaderGlint.NO_TINT;
         final int cullCode = material.isNoCull() ? DrawState.DISABLED : DrawState.liveCull();
         final boolean lit = DrawState.liveLit(material);
-        final RenderLayer layer = layerFor(texture, material, pass, offsetFactor, offsetUnits, glintSlot, cullCode, lit, DrawState.liveLightmap(), afterGlint);
+        final EntityTextureAtlas.Slot atlasSlot = texMatrix == null && cubesInsideTexture ? atlasSlotFor(material) : null;
+        final RenderLayer layer = layerFor(atlasSlot != null ? Objects.requireNonNull(atlasSlot.page).location : texture, material, pass, offsetFactor, offsetUnits, glintSlot, cullCode, lit, DrawState.liveLightmap(), afterGlint);
         // Entities nested inside a TESR (mob spawner, OpenBlocks trophy) run in the block entity pass but carry an entity id
         final int entityId = groupId(shaderPipeline != null, mode == Mode.ENTITIES || pass.isEntityPhase(), CapturedRenderingState.INSTANCE.getCurrentRenderedEntity(), CapturedRenderingState.INSTANCE.getCurrentRenderedBlockEntity());
         final Color4 color = GLStateManager.getColor();
@@ -621,9 +641,18 @@ public final class ModelPartBatcher {
         final int overlayABGR = currentOverlay();
         final long entityInfo = currentEntityInfo(CapturedRenderingState.INSTANCE.getCurrentRenderedItem());
         final int packedLight = GLSMConfig.packedLastBrightness();
-        activeGroups.queue(template, cubes, scale, layer, material, currentModelView(), packedLight, colorABGR, overlayABGR, entityInfo, entityId, texMatrix);
+        activeGroups.queue(template, cubes, scale, layer, material, currentModelView(), packedLight, colorABGR, overlayABGR, entityInfo, entityId, texMatrix, atlasSlot);
         parts++;
         return true;
+    }
+
+    private EntityTextureAtlas.Slot atlasSlotFor(TesrMaterial material) {
+        if (!AngelicaConfig.enableEntityTextureAtlas) return null;
+        // Glint, overlay and custom shaders sample their own textures
+        if (material.special() != TesrMaterial.SpecialRender.NONE || material.shader() != null || material.isUnfilteredAtlas() || material == EntityMaterials.OVERLAY) return null;
+        if (!activeGroups.instancesCubes(material)) return null;
+        if (shaderPipeline != null && !shaderPipeline.hasInstancedVariant(Instancing.CUBE)) return null;
+        return EntityTextureAtlas.INSTANCE.slotFor(lastBoundGlId, shaderPipeline != null);
     }
 
     private enum TessellatorRoute { DRAW_NOW, DRAW_NOW_EXPECTED, QUEUE }
@@ -650,8 +679,13 @@ public final class ModelPartBatcher {
         }
     }
 
+    public void beginEntityFire() { entityFireDepth++; }
+    public void endEntityFire() { entityFireDepth--; }
+
     private TessellatorRoute routeTessellatorDraw(Tessellator tess) {
-        if (!active || mode != Mode.BLOCK_ENTITIES || !GLStateManager.isMainThread() || !BatchEligibility.insideRenderer()) return TessellatorRoute.DRAW_NOW;
+        if (!active || !GLStateManager.isMainThread()) return TessellatorRoute.DRAW_NOW;
+        final boolean entityFire = entityFireDepth != 0 && mode == Mode.ENTITIES;
+        if (!entityFire && (mode != Mode.BLOCK_ENTITIES || !BatchEligibility.insideRenderer())) return TessellatorRoute.DRAW_NOW;
         if (!tess.isDrawing || tess.drawMode != GL11.GL_QUADS || tess.vertexCount == 0 || (tess.vertexCount & 3) != 0) return TessellatorRoute.DRAW_NOW;
         if (shaderPipeline != null && TessellatorEntityIds.hasIdChanges(tess)) return TessellatorRoute.DRAW_NOW;
         if (DisplayListManager.isRecording() || !GLStateManager.glIsEnabled(GL11.GL_DEPTH_TEST) || !unitTexIdentity()) return TessellatorRoute.DRAW_NOW;
@@ -659,7 +693,7 @@ public final class ModelPartBatcher {
         final TesrMaterial material = EntityMaterials.fromCurrentState(true);
         if (material == null || material == EntityMaterials.OVERLAY) return TessellatorRoute.DRAW_NOW;
         if (lastBoundLocation == null || GLStateManager.getBoundTextureForServerState() != lastBoundGlId) return TessellatorRoute.DRAW_NOW;
-        if (!BatchEligibility.batchingAllowed()) return TessellatorRoute.DRAW_NOW_EXPECTED;
+        if (!entityFire && !BatchEligibility.batchingAllowed()) return TessellatorRoute.DRAW_NOW_EXPECTED;
 
         final PassOverride pass = shaderPipeline != null ? PassOverride.capture() : PassOverride.NONE;
         final boolean offset = GLStateManager.glIsEnabled(GL11.GL_POLYGON_OFFSET_FILL);
@@ -667,7 +701,8 @@ public final class ModelPartBatcher {
         final int cullCode = material.isNoCull() ? DrawState.DISABLED : DrawState.liveCull();
         final RenderLayer layer = layerFor(lastBoundLocation, material, pass, offset ? polygon.getOffsetFactor() : 0.0f, offset ? polygon.getOffsetUnits() : 0.0f,
             ShaderGlint.NO_TINT, cullCode, DrawState.liveLit(material), DrawState.liveLightmap());
-        final int groupId = groupId(shaderPipeline != null, pass.isEntityPhase(), CapturedRenderingState.INSTANCE.getCurrentRenderedEntity(), CapturedRenderingState.INSTANCE.getCurrentRenderedBlockEntity());
+        // Flames carry entity_flame, which some packs may voxelize as a light source in the shadow pass
+        final int groupId = groupId(shaderPipeline != null, mode == Mode.ENTITIES || pass.isEntityPhase(), CapturedRenderingState.INSTANCE.getCurrentRenderedEntity(), CapturedRenderingState.INSTANCE.getCurrentRenderedBlockEntity());
         TessellatorStreamingDrawer.fillMissingAttributes(tess);
         activeGroups.streamVertices(layer, groupId, tess.rawBuffer, tess.vertexCount, currentModelView());
         return TessellatorRoute.QUEUE;
@@ -724,6 +759,7 @@ public final class ModelPartBatcher {
         entry.scale = scale;
         entry.template = null;
         entry.cubes = null;
+        entry.cubesInsideTexture = false;
         entry.emptyVanillaPart = false;
         final List<ModelBox> boxes = part.cubeList;
         if (builder != null) {
@@ -758,6 +794,7 @@ public final class ModelPartBatcher {
             cubes[i] = params;
         }
         entry.cubes = cubes;
+        entry.cubesInsideTexture = CubeParams.allInsideTexture(cubes);
     }
 
     private RenderLayer layerFor(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot, int cullCode, boolean lit, boolean lightmap) {
@@ -794,6 +831,7 @@ public final class ModelPartBatcher {
     }
 
     public void clear() {
+        entityFireDepth = 0;
         shadows.reset();
         groups.clear();
         entityGroups.clear();

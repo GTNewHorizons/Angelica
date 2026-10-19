@@ -191,7 +191,7 @@ class RetainedTesrGroupsGLTest {
         for (int id = 1; id <= 3; id++) {
             final Matrix4f mv = new Matrix4f().translation(id, 0f, 0f);
             groups.queue(template, layer, RetainedTesrTestSupport.STREAM, mv, 0, -1, 0, 0L, id, null);
-            groups.queue(template, RetainedTesrTestSupport.cubes(1), 0.0625f, layer, RetainedTesrTestSupport.STREAM, mv, 0, -1, 0, 0L, id, null);
+            groups.queue(template, RetainedTesrTestSupport.cubes(1), 0.0625f, layer, RetainedTesrTestSupport.STREAM, mv, 0, -1, 0, 0L, id, null, null);
         }
     }
 
@@ -283,7 +283,7 @@ class RetainedTesrGroupsGLTest {
         for (int id = 1; id <= 3; id++) {
             final Matrix4f mv = new Matrix4f().translation(id, 0f, 0f);
             groups.queue(template, layer, RetainedTesrTestSupport.STREAM, mv, 0, -1, 0, 0L, id, texMatrices[id - 1]);
-            groups.queue(template, RetainedTesrTestSupport.cubes(1), 0.0625f, layer, RetainedTesrTestSupport.STREAM, mv, 0, -1, 0, 0L, id, null);
+            groups.queue(template, RetainedTesrTestSupport.cubes(1), 0.0625f, layer, RetainedTesrTestSupport.STREAM, mv, 0, -1, 0, 0L, id, null, null);
         }
 
         groups.drawLayer(layer);
@@ -323,7 +323,7 @@ class RetainedTesrGroupsGLTest {
         for (int id = 1; id <= 3; id++) {
             final Matrix4f mv = new Matrix4f().translation(id, 0f, 0f);
             groups.queue(template, layer, EntityMaterials.GLINT, mv, 0, -1, 0, 0L, id, texMatrices[id - 1]);
-            groups.queue(template, RetainedTesrTestSupport.cubes(1), 0.0625f, layer, EntityMaterials.GLINT, mv, 0, -1, 0, 0L, id, texMatrices[id - 1]);
+            groups.queue(template, RetainedTesrTestSupport.cubes(1), 0.0625f, layer, EntityMaterials.GLINT, mv, 0, -1, 0, 0L, id, texMatrices[id - 1], null);
         }
 
         final RetainedTesrGroups.Group group = RetainedTesrTestSupport.onlyGroup(groups);
@@ -602,8 +602,8 @@ class RetainedTesrGroupsGLTest {
         FfpFixture.clear();
         bindBase();
         final InstanceColumns cols = new InstanceColumns();
-        cols.addCubes(null, glintCubes, CUBE_SCALE, cubeE1, 0, 0xFFFFFFFF, 0, 0L);
-        cols.addCubes(null, glintCubes, CUBE_SCALE, cubeE2, 0, 0xFFFFFFFF, 0, 0L);
+        cols.addCubes(null, glintCubes, CUBE_SCALE, cubeE1, 0, 0xFFFFFFFF, 0, 0L, null);
+        cols.addCubes(null, glintCubes, CUBE_SCALE, cubeE2, 0, 0xFFFFFFFF, 0, 0L, null);
         instanced.drawCubes(cols, run(2, 2 * glintCubes.length));
         instanced.endFrame();
         return FfpFixture.readRegion(SIZE);
@@ -611,7 +611,7 @@ class RetainedTesrGroupsGLTest {
 
     private void drawCubeInstance(Matrix4f mv) {
         final InstanceColumns cols = new InstanceColumns();
-        cols.addCubes(null, glintCubes, CUBE_SCALE, mv, 0, 0xFFFFFFFF, 0, 0L);
+        cols.addCubes(null, glintCubes, CUBE_SCALE, mv, 0, 0xFFFFFFFF, 0, 0L, null);
         instanced.drawCubes(cols, run(1, glintCubes.length));
         instanced.endFrame();
     }
@@ -668,10 +668,10 @@ class RetainedTesrGroupsGLTest {
         setGlintBlendState();
         bindGlint();
         groups.beginPass(new Matrix4f(), 0, 0, 0, instanced);
-        groups.queue(null, glintCubes, CUBE_SCALE, layer, EntityMaterials.GLINT, cubeE1, 0, -1, 0, 0L, 1, glintMatrixA);
-        groups.queue(null, glintCubes, CUBE_SCALE, layer, EntityMaterials.GLINT, cubeE1, 0, -1, 0, 0L, 1, glintMatrixB);
-        groups.queue(null, glintCubes, CUBE_SCALE, layer, EntityMaterials.GLINT, cubeE2, 0, -1, 0, 0L, 2, glintMatrixA);
-        groups.queue(null, glintCubes, CUBE_SCALE, layer, EntityMaterials.GLINT, cubeE2, 0, -1, 0, 0L, 2, glintMatrixB);
+        groups.queue(null, glintCubes, CUBE_SCALE, layer, EntityMaterials.GLINT, cubeE1, 0, -1, 0, 0L, 1, glintMatrixA, null);
+        groups.queue(null, glintCubes, CUBE_SCALE, layer, EntityMaterials.GLINT, cubeE1, 0, -1, 0, 0L, 1, glintMatrixB, null);
+        groups.queue(null, glintCubes, CUBE_SCALE, layer, EntityMaterials.GLINT, cubeE2, 0, -1, 0, 0L, 2, glintMatrixA, null);
+        groups.queue(null, glintCubes, CUBE_SCALE, layer, EntityMaterials.GLINT, cubeE2, 0, -1, 0, 0L, 2, glintMatrixB, null);
         groups.drawLayer(layer);
         instanced.endFrame();
         assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "the merged candidate draw must not raise a GL error");
@@ -747,7 +747,7 @@ class RetainedTesrGroupsGLTest {
         for (Matrix4f pose : new Matrix4f[] {cubeE1, cubeE2}) {
             applyGlintTexMatrix(glintMatrixA);
             assertTrue(capture.begin(groups));
-            groups.queue(null, glintCubes, CUBE_SCALE, layer, EntityMaterials.GLINT, pose, 0, -1, 0, 0L, 0, glintMatrixA);
+            groups.queue(null, glintCubes, CUBE_SCALE, layer, EntityMaterials.GLINT, pose, 0, -1, 0, 0L, 0, glintMatrixA, null);
             capture.end();
             applyGlintTexMatrix(glintMatrixB);
             assertTrue(capture.replay(groups));

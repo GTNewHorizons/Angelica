@@ -199,6 +199,7 @@ public enum Mixins implements IMixins {
             "angelica.entity.MixinRendererLivingEntity_GlintClock",
             "angelica.entity.MixinRendererLivingEntity_ModelPassDraws",
             "angelica.entity.MixinRender_BatchEligibility",
+            "angelica.entity.MixinRender_EntityFireBatch",
             "angelica.entity.MixinRender_NameTagDraws",
             "angelica.entity.MixinRender_ShadowBatch",
             "angelica.entity.MixinTextureManager",

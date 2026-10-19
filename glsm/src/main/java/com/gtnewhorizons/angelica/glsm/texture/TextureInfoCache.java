@@ -14,7 +14,10 @@ import org.lwjgl.opengl.GL32;
 import org.lwjgl.opengl.GL40;
 
 import java.nio.Buffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.IntConsumer;
 
 public class TextureInfoCache {
     /**
@@ -28,8 +31,43 @@ public class TextureInfoCache {
 
     private final Int2ObjectMap<TextureInfo> cache = new Int2ObjectOpenHashMap<>();
     private final ReentrantLock lock = new ReentrantLock();
+    private final List<IntConsumer> deleteListeners = new ArrayList<>();
+    private int deleteCount;
 
     private TextureInfoCache() {
+    }
+
+    public int deleteCount() {
+        return deleteCount;
+    }
+
+    public void addDeleteListener(IntConsumer listener) {
+        deleteListeners.add(listener);
+    }
+
+    public void onContentsChanged(int texture) {
+        if (texture <= 0) return;
+        final TextureInfo info = getInfo(texture);
+        if (info != null) info.bumpUploadGeneration();
+    }
+
+    public void onWrittenOutsideUploads(int texture) {
+        if (texture <= 0) return;
+        final TextureInfo info = getInfo(texture);
+        if (info == null || info.writtenOutsideUploads) return;
+        info.writtenOutsideUploads = true;
+        info.changeStamp++;
+    }
+
+    private void defineLevelZero(int texture, int target, int internalformat, int width, int height) {
+        final TextureInfo info = getInfo(texture);
+        if (info == null) return;
+        info.setTarget(target);
+        info.internalFormat = internalformat;
+        info.resolvedInternalFormat = isGenericCompressedInternalFormat(internalformat) ? -1 : internalformat;
+        info.width = width;
+        info.height = height;
+        info.bumpUploadGeneration();
     }
 
     public TextureInfo getInfo(int id) {
@@ -48,48 +86,27 @@ public class TextureInfoCache {
     }
 
     public void onTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable Buffer pixels) {
-        if (isTrackedTarget(target) && level == 0) {
-            final TextureInfo info = getInfo(GLStateManager.getBoundTextureForServerState());
-            if (info == null) return;
-            info.setTarget(target);
-            info.internalFormat = internalformat;
-            info.resolvedInternalFormat = isGenericCompressedInternalFormat(internalformat) ? -1 : internalformat;
-            info.width = width;
-            info.height = height;
-            info.bumpUploadGeneration();
-        }
+        if (isTrackedTarget(target) && level == 0) defineLevelZero(GLStateManager.getBoundTextureForServerState(), target, internalformat, width, height);
     }
 
     public void onTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, long pixels_buffer_offset) {
-        if (isTrackedTarget(target) && level == 0) {
-            final TextureInfo info = getInfo(GLStateManager.getBoundTextureForServerState());
-            if (info == null) return;
-            info.setTarget(target);
-            info.internalFormat = internalformat;
-            info.resolvedInternalFormat = isGenericCompressedInternalFormat(internalformat) ? -1 : internalformat;
-            info.width = width;
-            info.height = height;
-            info.bumpUploadGeneration();
-        }
+        if (isTrackedTarget(target) && level == 0) defineLevelZero(GLStateManager.getBoundTextureForServerState(), target, internalformat, width, height);
+    }
+
+    public void onCopyTexImage2D(int target, int level, int internalformat, int width, int height) {
+        if (isTrackedTarget(target) && level == 0) defineLevelZero(GLStateManager.getBoundTextureForServerState(), target, internalformat, width, height);
+    }
+
+    public void onTextureImage2D(int texture, int target, int level, int internalformat, int width, int height) {
+        if (isTrackedTarget(target) && level == 0) defineLevelZero(texture, target, internalformat, width, height);
     }
 
     public void onTexStorage2D(int target, int internalformat, int width, int height) {
-        if (!isTrackedTarget(target)) return;
-        final TextureInfo info = getInfo(GLStateManager.getBoundTextureForServerState());
-        if (info == null) return;
-        info.setTarget(target);
-        info.internalFormat = internalformat;
-        info.resolvedInternalFormat = isGenericCompressedInternalFormat(internalformat) ? -1 : internalformat;
-        info.width = width;
-        info.height = height;
-        info.bumpUploadGeneration();
+        if (isTrackedTarget(target)) defineLevelZero(GLStateManager.getBoundTextureForServerState(), target, internalformat, width, height);
     }
 
     public void onTexSubImage2D(int target, int level) {
-        if (!isTrackedTarget(target) || level != 0) return;
-        final TextureInfo info = getInfo(GLStateManager.getBoundTextureForServerState());
-        if (info == null) return;
-        info.bumpUploadGeneration();
+        if (isTrackedTarget(target) && level == 0) onContentsChanged(GLStateManager.getBoundTextureForServerState());
     }
 
     public static boolean isGenericCompressedInternalFormat(int internalFormat) {
@@ -131,9 +148,11 @@ public class TextureInfoCache {
 
     public void onDeleteTexture(int id) {
         if (id < 0) return;
+        deleteCount++;
 
         if (GLStateManager.isSplashComplete()) {
             cache.remove(id);
+            for (IntConsumer listener : deleteListeners) listener.accept(id);
             return;
         }
 

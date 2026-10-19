@@ -24,8 +24,9 @@ public abstract class MixinModelBox_CubeParams implements ModelBoxData {
 
     @Inject(method = "<init>", at = @At("RETURN"))
     private void angelica$captureCubeParams(ModelRenderer part, int texU, int texV, float x, float y, float z, int sizeX, int sizeY, int sizeZ, float inflate, CallbackInfo ci) {
+        //noinspection ConstantValue
         if (((Object) this).getClass() != ModelBox.class) return;
-        this.angelica$cubeParams = ModelBoxCapture.capture(this.quadList, part.textureWidth, part.textureHeight, part.mirror, texU, texV, x, y, z, sizeX, sizeY, sizeZ, inflate);
+        this.angelica$cubeParams = ModelBoxCapture.capture((ModelBox) (Object) this, this.quadList, part, texU, texV, sizeX, sizeY, sizeZ, inflate);
     }
 
     @Override

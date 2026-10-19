@@ -5644,6 +5644,9 @@ public class GLStateManager {
             return true;
         }
         switch (pname) {
+            case GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_TEXTURE_WRAP_S, GL11.GL_TEXTURE_WRAP_T -> {
+                return updateTexParameteriCache(info, pname, (int) param);
+            }
             case EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT -> {
                 if (info.getMaxAnisotropy() == param && isCachingEnabled()) return false;
                 info.setMaxAnisotropy(param);
@@ -5891,7 +5894,10 @@ public class GLStateManager {
         }
         TextureInfoCache.INSTANCE.onTexStorage2D(target, internalFormat, width, height);
     }
-    public static void glClearTexImage(int texture, int level, int format, int type, ByteBuffer data) { RENDER_BACKEND.clearTexImage(texture, level, format, type); }
+    public static void glClearTexImage(int texture, int level, int format, int type, ByteBuffer data) {
+        RENDER_BACKEND.clearTexImage(texture, level, format, type);
+        if (level == 0) TextureInfoCache.INSTANCE.onContentsChanged(texture);
+    }
 
     public static int glGenSamplers() {
         requireContext("glGenSamplers");
@@ -6754,6 +6760,7 @@ public class GLStateManager {
             throw DisplayListManager.unsupportedInList("glCopyTexImage2D");
         }
         RENDER_BACKEND.copyTexImage2D(target, level, internalFormat, x, y, width, height, border);
+        TextureInfoCache.INSTANCE.onCopyTexImage2D(target, level, internalFormat, width, height);
         maybeGenerateMipmap(target, level);
     }
 
@@ -7875,10 +7882,18 @@ public class GLStateManager {
     }
 
     public static void glFramebufferTexture2D(int target, int attachment, int textarget, int texture, int level) {
+        TextureInfoCache.INSTANCE.onWrittenOutsideUploads(texture);
         RENDER_BACKEND.framebufferTexture2D(target, attachment, textarget, texture, level);
     }
 
-    public static void glFramebufferTexture(int target, int attachment, int texture, int level) { RENDER_BACKEND.framebufferTexture(target, attachment, texture, level); }
+    public static void glFramebufferTexture(int target, int attachment, int texture, int level) {
+        TextureInfoCache.INSTANCE.onWrittenOutsideUploads(texture);
+        RENDER_BACKEND.framebufferTexture(target, attachment, texture, level);
+    }
+
+    public static void attachTextureForReading(int attachment, int texture) {
+        RENDER_BACKEND.framebufferTexture2D(GL30.GL_READ_FRAMEBUFFER, attachment, GL11.GL_TEXTURE_2D, texture, 0);
+    }
 
     public static int glGenRenderbuffers() {
         requireContext("glGenRenderbuffers");
@@ -8699,6 +8714,7 @@ public class GLStateManager {
             binding.setBinding(texture, level, layered, layer, access, format);
             if (texture != 0 && unit > glCtx.maxBoundImageUnit) glCtx.maxBoundImageUnit = unit;
         }
+        if (access != GL15.GL_READ_ONLY) TextureInfoCache.INSTANCE.onWrittenOutsideUploads(texture);
         RENDER_BACKEND.bindImageTexture(unit, texture, level, layered, layer, access, format);
     }
 
@@ -8752,6 +8768,7 @@ public class GLStateManager {
                                            int srcWidth, int srcHeight, int srcDepth) {
         RENDER_BACKEND.copyImageSubData(srcName, srcTarget, srcLevel, srcX, srcY, srcZ,
             dstName, dstTarget, dstLevel, dstX, dstY, dstZ, srcWidth, srcHeight, srcDepth);
+        if (dstTarget != GL30.GL_RENDERBUFFER && dstLevel == 0) TextureInfoCache.INSTANCE.onContentsChanged(dstName);
     }
     public static void glDispatchCompute(int x, int y, int z) { RENDER_BACKEND.dispatchCompute(x, y, z); }
 

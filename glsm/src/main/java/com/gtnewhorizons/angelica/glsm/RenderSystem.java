@@ -267,6 +267,7 @@ public class RenderSystem {
 
     public static void copyTexSubImage2D(int destTexture, int target, int i, int i1, int i2, int i3, int i4, int width, int height) {
         dsaState.copyTexSubImage2D(destTexture, target, i, i1, i2, i3, i4, width, height);
+        if (i == 0) TextureInfoCache.INSTANCE.onContentsChanged(destTexture);
     }
 
     public static void texParameteri(int texture, int target, int pname, int param) {
@@ -281,24 +282,28 @@ public class RenderSystem {
         GLStateManager.suspendPixelUnpackBuffer();
         dsaState.textureImage2D(texture, target, level, internalformat, width, height, border, format, type, pixels);
         GLStateManager.restorePixelUnpackBuffer();
+        TextureInfoCache.INSTANCE.onTextureImage2D(texture, target, level, internalformat, width, height);
     }
 
     public static void textureImage2D(int texture, int target, int level, int internalformat, int width, int height, int border, int format, int type, IntBuffer pixels) {
         GLStateManager.suspendPixelUnpackBuffer();
         dsaState.textureImage2D(texture, target, level, internalformat, width, height, border, format, type, pixels);
         GLStateManager.restorePixelUnpackBuffer();
+        TextureInfoCache.INSTANCE.onTextureImage2D(texture, target, level, internalformat, width, height);
     }
 
     public static void textureSubImage2D(int texture, int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, ByteBuffer pixels) {
         GLStateManager.suspendPixelUnpackBuffer();
         dsaState.textureSubImage2D(texture, target, level, xoffset, yoffset, width, height, format, type, pixels);
         GLStateManager.restorePixelUnpackBuffer();
+        if (level == 0) TextureInfoCache.INSTANCE.onContentsChanged(texture);
     }
 
     public static void textureSubImage2D(int texture, int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, IntBuffer pixels) {
         GLStateManager.suspendPixelUnpackBuffer();
         dsaState.textureSubImage2D(texture, target, level, xoffset, yoffset, width, height, format, type, pixels);
         GLStateManager.restorePixelUnpackBuffer();
+        if (level == 0) TextureInfoCache.INSTANCE.onContentsChanged(texture);
     }
 
     public static void texImage1D(int texture, int target, int level, int internalformat, int width, int border, int format, int type, ByteBuffer pixels) {
@@ -358,6 +363,7 @@ public class RenderSystem {
     }
 
     public static void framebufferTexture2D(int fb, int fbtarget, int attachment, int target, int texture, int levels) {
+        TextureInfoCache.INSTANCE.onWrittenOutsideUploads(texture);
         dsaState.framebufferTexture2D(fb, fbtarget, attachment, target, texture, levels);
     }
 
