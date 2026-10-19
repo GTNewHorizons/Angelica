@@ -33,10 +33,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
+import org.lwjgl.opengl.GL14;
+import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -96,6 +100,12 @@ class TesrLayerStateTest {
         GLStateManager.glDepthMask(true);
         GLStateManager.glColorMask(true, true, true, true);
         GLStateManager.glDisable(GL11.GL_TEXTURE_2D);
+    }
+
+    private static void assertDriverColorMask(boolean expected) {
+        final ByteBuffer mask = BufferUtils.createByteBuffer(16);
+        GL11.glGetBoolean(GL11.GL_COLOR_WRITEMASK, mask);
+        for (int i = 0; i < 4; i++) assertEquals(expected, mask.get(i) != 0, "driver color mask channel " + i);
     }
 
     private static RenderLayer layer(TesrMaterial material) {
@@ -197,10 +207,14 @@ class TesrLayerStateTest {
                     () -> {
                         assertEquals(0, GLStateManager.getActiveProgram(), "program during batch draw");
                         assertEquals(0, GLStateManager.getDrawFramebuffer(), "framebuffer during batch draw");
+                        assertEquals(0, GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM), "driver program during batch draw");
+                        assertEquals(0, GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING), "driver draw framebuffer during batch draw");
                     },
                     () -> {
                         assertEquals(program, GLStateManager.getActiveProgram(), "caller program restored");
                         assertEquals(framebuffer, GLStateManager.getDrawFramebuffer(), "caller framebuffer restored");
+                        assertEquals(program, GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM), "driver caller program restored");
+                        assertEquals(framebuffer, GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING), "driver caller framebuffer restored");
                     },
                     () -> {
                         GLStateManager.glUseProgram(0);
@@ -220,8 +234,16 @@ class TesrLayerStateTest {
                 GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
                 GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
                 return new BatchScenario(
-                    () -> assertEquals(GL11.GL_LINEAR, TextureInfoCache.INSTANCE.getInfo(texture).getMinFilter(), "filter from before the window"),
-                    () -> assertEquals(GL11.GL_NEAREST, TextureInfoCache.INSTANCE.getInfo(texture).getMinFilter(), "window filter restored"),
+                    () -> {
+                        assertEquals(GL11.GL_LINEAR, TextureInfoCache.INSTANCE.getInfo(texture).getMinFilter(), "filter from before the window");
+                        assertEquals(GL11.GL_LINEAR, GL11.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER), "driver min filter from before the window");
+                        assertEquals(GL11.GL_LINEAR, GL11.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER), "driver mag filter from before the window");
+                    },
+                    () -> {
+                        assertEquals(GL11.GL_NEAREST, TextureInfoCache.INSTANCE.getInfo(texture).getMinFilter(), "window filter restored");
+                        assertEquals(GL11.GL_NEAREST, GL11.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER), "driver window min filter restored");
+                        assertEquals(GL11.GL_NEAREST, GL11.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER), "driver window mag filter restored");
+                    },
                     () -> {
                         TextureUtilHooks.clearSavedFilterTexture();
                         GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
@@ -423,6 +445,14 @@ class TesrLayerStateTest {
                     assertTrue(GLStateManager.getLightingState().isEnabled(), "lit");
                     assertTrue(GLStateManager.getColorMask().red, "color mask pinned on");
                     assertFalse(GLStateManager.glIsEnabled(GL11.GL_POLYGON_OFFSET_FILL), "no polygon offset");
+                    assertTrue(GL11.glIsEnabled(GL11.GL_DEPTH_TEST), "driver depth test");
+                    assertEquals(GL11.GL_LEQUAL, GL11.glGetInteger(GL11.GL_DEPTH_FUNC), "driver depth func");
+                    assertTrue(GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK), "driver depth write");
+                    assertFalse(GL11.glIsEnabled(GL11.GL_BLEND), "driver opaque");
+                    assertTrue(GL11.glIsEnabled(GL11.GL_CULL_FACE), "driver cull pinned on");
+                    assertEquals(GL11.GL_BACK, GL11.glGetInteger(GL11.GL_CULL_FACE_MODE), "driver cull face pinned to back");
+                    assertDriverColorMask(true);
+                    assertFalse(GL11.glIsEnabled(GL11.GL_POLYGON_OFFSET_FILL), "driver no polygon offset");
                 }),
             Arguments.of("every material toggle", (Runnable) () -> { },
                 TesrMaterial.builder().noCull().unlit().noDepthWrite().cutout(0.5f).translucent().depthEqual().build(), (Runnable) () -> {
@@ -435,6 +465,12 @@ class TesrLayerStateTest {
                     assertEquals(GL11.GL_SRC_ALPHA, GLStateManager.getBlendState().getSrcRgb());
                     assertEquals(GL11.GL_ONE_MINUS_SRC_ALPHA, GLStateManager.getBlendState().getDstRgb());
                     assertEquals(GL11.GL_EQUAL, GLStateManager.getDepthState().getFunc(), "depthEqual");
+                    assertFalse(GL11.glIsEnabled(GL11.GL_CULL_FACE), "driver noCull");
+                    assertFalse(GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK), "driver noDepthWrite");
+                    assertTrue(GL11.glIsEnabled(GL11.GL_BLEND), "driver translucent");
+                    assertEquals(GL11.GL_SRC_ALPHA, GL11.glGetInteger(GL14.GL_BLEND_SRC_RGB), "driver blend src rgb");
+                    assertEquals(GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.glGetInteger(GL14.GL_BLEND_DST_RGB), "driver blend dst rgb");
+                    assertEquals(GL11.GL_EQUAL, GL11.glGetInteger(GL11.GL_DEPTH_FUNC), "driver depthEqual");
                 }));
     }
 

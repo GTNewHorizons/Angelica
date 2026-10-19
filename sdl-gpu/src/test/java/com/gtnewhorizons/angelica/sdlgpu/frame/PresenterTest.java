@@ -136,15 +136,6 @@ class PresenterTest {
     }
 
     @Test
-    void tryRequestEnqueuesWhenIdle() {
-        final DeferredExecutor executor = new DeferredExecutor();
-        final Presenter p = presenter(executor);
-
-        assertTrue(p.tryRequestPresent(1L, 10, 10, SDL_FLIP_NONE));
-        assertEquals(1, executor.tasks.size());
-    }
-
-    @Test
     void tryRequestDropsWithoutBlockingWhileAPresentIsPending() {
         final DeferredExecutor executor = new DeferredExecutor();
         final Presenter p = presenter(executor);

@@ -9,6 +9,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -89,32 +90,24 @@ class ReducerStateMachineTest {
         assertEquals(State.FOCUSED, machine.state());
     }
 
-    @Test
-    void toggleForcedCountsAsInput() {
-        time += 10_000_000_000L;
-        machine.evaluate(true, true, true, 1_000_000_000L);
-        assertEquals(State.IDLE, machine.state());
-
-        machine.toggleForced();
-        machine.evaluate(true, true, true, 1_000_000_000L);
-        assertEquals(State.FORCED, machine.state());
-
-        machine.toggleForced();
-        machine.evaluate(true, true, true, 1_000_000_000L);
-        assertEquals(State.FOCUSED, machine.state());
+    static Stream<Arguments> inputToggles() {
+        return Stream.of(
+            Arguments.of("forced toggle", (Consumer<ReducerStateMachine>) ReducerStateMachine::toggleForced, State.FORCED),
+            Arguments.of("keybind-disabled toggle", (Consumer<ReducerStateMachine>) ReducerStateMachine::toggleKeybindDisabled, State.DISABLED));
     }
 
-    @Test
-    void toggleKeybindDisabledCountsAsInput() {
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("inputToggles")
+    void toggleCountsAsInput(String label, Consumer<ReducerStateMachine> toggle, State expected) {
         time += 10_000_000_000L;
         machine.evaluate(true, true, true, 1_000_000_000L);
         assertEquals(State.IDLE, machine.state());
 
-        machine.toggleKeybindDisabled();
+        toggle.accept(machine);
         machine.evaluate(true, true, true, 1_000_000_000L);
-        assertEquals(State.DISABLED, machine.state());
+        assertEquals(expected, machine.state());
 
-        machine.toggleKeybindDisabled();
+        toggle.accept(machine);
         machine.evaluate(true, true, true, 1_000_000_000L);
         assertEquals(State.FOCUSED, machine.state());
     }
@@ -180,13 +173,15 @@ class ReducerStateMachineTest {
         assertEquals(0.01f, ReducerStateMachine.masterVolume(1.0f, 0), DELTA);
     }
 
-    @Test
-    void stateVolumeSelectsProfile() {
-        assertEquals(10, ReducerStateMachine.stateVolume(State.FORCED, 10, 20, 30));
-        assertEquals(10, ReducerStateMachine.stateVolume(State.UNFOCUSED, 10, 20, 30));
-        assertEquals(20, ReducerStateMachine.stateVolume(State.MINIMIZED, 10, 20, 30));
-        assertEquals(30, ReducerStateMachine.stateVolume(State.IDLE, 10, 20, 30));
-        assertEquals(100, ReducerStateMachine.stateVolume(State.FOCUSED, 10, 20, 30));
-        assertEquals(100, ReducerStateMachine.stateVolume(State.DISABLED, 10, 20, 30));
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({
+        "FORCED, 10",
+        "UNFOCUSED, 10",
+        "MINIMIZED, 20",
+        "IDLE, 30",
+        "FOCUSED, 100",
+        "DISABLED, 100"})
+    void stateVolumeSelectsProfile(State state, int expected) {
+        assertEquals(expected, ReducerStateMachine.stateVolume(state, 10, 20, 30));
     }
 }

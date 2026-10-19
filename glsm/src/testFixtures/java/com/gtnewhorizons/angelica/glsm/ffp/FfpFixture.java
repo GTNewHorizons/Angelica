@@ -224,6 +224,11 @@ public final class FfpFixture {
         assertTrue(coveredPixels > base.length / 8, "base draw covered only " + coveredPixels + " of " + base.length + " pixels");
     }
 
+    public static void activateFfp() {
+        ShaderManager.enable();
+        ShaderManager.getInstance().activate();
+    }
+
     public static void resetFfpState() {
         GLStateManager.setFfpInstancing(Instancing.NONE);
         final ShaderManager sm = ShaderManager.getInstance();

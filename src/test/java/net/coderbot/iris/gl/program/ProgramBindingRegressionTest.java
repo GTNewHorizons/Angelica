@@ -72,12 +72,14 @@ class ProgramBindingRegressionTest {
         GLStateManager.glUseProgram(bound);
         GLStateManager.glDeleteProgram(bound);
         assertTrue(GLStateManager.isProgramPendingDeletion(bound));
+        assertTrue(GL20.glIsProgram(bound), "driver keeps the bound program alive");
         final int other = linkedProgram();
         GLStateManager.glUseProgram(other);
         for (int i = 0; i < 8; i++) {
             final int unused = GLStateManager.glCreateProgram();
             GLStateManager.glDeleteProgram(unused);
             assertFalse(GLStateManager.isProgramPendingDeletion(unused));
+            assertFalse(GL20.glIsProgram(unused), "driver deletes an unbound program immediately");
             assertFalse(GLStateManager.isProgramPendingDeletion(bound));
         }
         GLStateManager.glUseProgram(0);
@@ -140,13 +142,16 @@ class ProgramBindingRegressionTest {
             for (int i = 0; i < 5; i++) GLStateManager.glCallList(list);
             verify(backend, times(1)).isProgram(id);
             assertEquals(id, GLStateManager.getActiveProgram());
+            assertEquals(id, GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM));
 
             GLStateManager.glDeleteProgram(id);
             GLStateManager.glCallList(list); // Still valid while bound, but must not be cached.
             assertEquals(id, GLStateManager.getActiveProgram());
+            assertEquals(id, GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM));
             GLStateManager.glUseProgram(other); // Completes deferred deletion.
             GLStateManager.glCallList(list);
             assertEquals(0, GLStateManager.getActiveProgram());
+            assertEquals(0, GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM));
             verify(backend, times(4)).isProgram(id);
             GLStateManager.glCallList(list);
             verify(backend, times(4)).isProgram(id);

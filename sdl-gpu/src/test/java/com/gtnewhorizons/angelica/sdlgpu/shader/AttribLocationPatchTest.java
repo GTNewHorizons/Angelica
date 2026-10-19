@@ -59,19 +59,6 @@ class AttribLocationPatchTest {
             assertEquals(DESIRED[i], prog.resolvedAttribLocations.getInt(NAMES[i]), () -> "resolved location for " + NAMES[idx]);
         }
         assertEquals(0x3f, prog.vertexInputMask, "six inputs at 0..5");
-    }
-
-    @Test
-    void metadataFollowsTheRemappedLocation() {
-        final ShaderManager.ProgramObject prog = new ShaderManager.ProgramObject();
-        prog.vertexSpirv = ByteBuffer.allocateDirect(NAMES.length * Integer.BYTES).order(ByteOrder.nativeOrder());
-        final ShaderManager.StageReflection vs = reflectionWithInputs(prog.vertexSpirv);
-        for (int i = 0; i < NAMES.length; i++) {
-            prog.attribLocationBindings.put(NAMES[i], DESIRED[i]);
-        }
-
-        ShaderManager.applyAttribLocationsAndInputMask(prog, vs);
-
         assertEquals(4, prog.vertexInputVecSize[1]);
         assertEquals(Spvc.SPVC_BASETYPE_FP32, prog.vertexInputBaseType[1]);
         assertEquals(1, prog.vertexInputVecSize[5]);

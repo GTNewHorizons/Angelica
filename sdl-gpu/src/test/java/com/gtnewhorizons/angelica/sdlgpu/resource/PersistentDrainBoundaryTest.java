@@ -54,25 +54,16 @@ class PersistentDrainBoundaryTest {
     }
 
     @Test
-    void oneDrainCoversEveryRangeDirtiedSinceTheLastDrain() {
-        try (Fixture f = new Fixture()) {
-            for (int i = 0; i < 64; i++) f.sync.onPersistentBufferWrite(1, i * 188L, 188L);
-            f.sync.enqueueDirtyPersistentRegions();
-
-            assertEquals(1, f.sink.offsets.size(), "contiguous writes drain as a single upload");
-            assertEquals(0L, f.sink.offsets.getLong(0));
-            assertEquals(64L * 188L, f.sink.sizes.getLong(0), "the union spans every byte written since the last drain");
-            assertFalse(f.rm.hasDirtyPersistentRegions());
-        }
-    }
-
-    @Test
     void theAccumulatedUnionMatchesThePerDrawSum() {
         final long batched;
         try (Fixture f = new Fixture()) {
             for (int i = 0; i < 64; i++) f.sync.onPersistentBufferWrite(1, i * 188L, 188L);
             f.sync.enqueueDirtyPersistentRegions();
             batched = f.sink.totalBytes();
+            assertEquals(1, f.sink.offsets.size(), "contiguous writes drain as a single upload");
+            assertEquals(0L, f.sink.offsets.getLong(0));
+            assertEquals(64L * 188L, f.sink.sizes.getLong(0), "the union spans every byte written since the last drain");
+            assertFalse(f.rm.hasDirtyPersistentRegions());
         }
         try (Fixture f = new Fixture()) {
             for (int i = 0; i < 64; i++) {

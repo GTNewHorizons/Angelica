@@ -377,6 +377,17 @@ class PacerCoreSimTest {
         return sim;
     }
 
+    private static Sim tearingSim(String name, int cap) {
+        final Sim sim = new Sim().named(name);
+        sim.tearFree = false;
+        sim.vsyncOn = false;
+        sim.mode = Mode.IMMEDIATE;
+        sim.gate = Gate.NONE;
+        sim.cap = cap;
+        sim.gpuTail = 200 * US;
+        return sim;
+    }
+
     private static void assertNeverBunches(Result r, long slopNanos) {
         for (int f = WARMUP; f < FRAMES; f++) {
             if (r.driven[f] || r.driven[f - 1]) continue;
@@ -509,14 +520,8 @@ class PacerCoreSimTest {
 
     @Test
     void aTearingCapHoldsItsPeriodAndKeepsLatencyToOneFrameOfWork() {
-        final Sim sim = new Sim().named("vsyncOff cap100");
-        sim.tearFree = false;
-        sim.vsyncOn = false;
-        sim.mode = Mode.IMMEDIATE;
-        sim.gate = Gate.NONE;
-        sim.cap = 100;
+        final Sim sim = tearingSim("vsyncOff cap100", 100);
         sim.work = 4 * MS;
-        sim.gpuTail = 200 * US;
         final Result r = run(sim);
 
         assertTrue(Math.abs(r.minInterval - 10 * MS) < 200 * US, r.toString());
@@ -527,14 +532,8 @@ class PacerCoreSimTest {
 
     @Test
     void aFrameSlowerThanTheCadenceIsNeverSleptOn() {
-        final Sim sim = new Sim().named("cpuBound R=20ms cap60");
-        sim.tearFree = false;
-        sim.vsyncOn = false;
-        sim.mode = Mode.IMMEDIATE;
-        sim.gate = Gate.NONE;
-        sim.cap = 60;
+        final Sim sim = tearingSim("cpuBound R=20ms cap60", 60);
         sim.work = 20 * MS;
-        sim.gpuTail = 200 * US;
         final Result r = run(sim);
 
         assertEquals(0, r.startParks, r.toString());
@@ -544,14 +543,8 @@ class PacerCoreSimTest {
 
     @Test
     void aCoarseSleepTimerWidensTheMarginWithoutSaturatingIt() {
-        final Sim sim = new Sim().named("coarseTimer cap60");
-        sim.tearFree = false;
-        sim.vsyncOn = false;
-        sim.mode = Mode.IMMEDIATE;
-        sim.gate = Gate.NONE;
-        sim.cap = 60;
+        final Sim sim = tearingSim("coarseTimer cap60", 60);
         sim.granularity = 4 * MS;
-        sim.gpuTail = 200 * US;
         final Result r = run(sim);
 
         assertTrue(r.margin > PacerCore.MARGIN_MIN_NANOS, r + " a coarse timer must buy extra lead");

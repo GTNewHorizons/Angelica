@@ -25,16 +25,19 @@ class VertexAttribDefaultBridgeTest {
         return new float[] { buf.get(0), buf.get(1), buf.get(2), buf.get(3) };
     }
 
+    private void assertAttrib(int index, String label, float... expected) {
+        final float[] actual = getVertexAttrib4f(index);
+        for (int i = 0; i < expected.length; i++) {
+            assertEquals(expected[i], actual[i], EPSILON, label + "[" + i + "]");
+        }
+    }
+
     @Test
     void testGlColor4fSetsVertexAttrib() {
         GLStateManager.glColor4f(0.5f, 0.25f, 0.75f, 0.8f);
         GLStateManager.flushDeferredVertexAttribs(GLStateManager.ctx(), false, false, false, false);
 
-        float[] color = getVertexAttrib4f(COLOR_ATTRIB);
-        assertEquals(0.5f, color[0], EPSILON, "color.r");
-        assertEquals(0.25f, color[1], EPSILON, "color.g");
-        assertEquals(0.75f, color[2], EPSILON, "color.b");
-        assertEquals(0.8f, color[3], EPSILON, "color.a");
+        assertAttrib(COLOR_ATTRIB, "color", 0.5f, 0.25f, 0.75f, 0.8f);
     }
 
     @Test
@@ -42,10 +45,7 @@ class VertexAttribDefaultBridgeTest {
         GLStateManager.glNormal3f(0.0f, 1.0f, 0.0f);
         GLStateManager.flushDeferredVertexAttribs(GLStateManager.ctx(), false, false, false, false);
 
-        float[] normal = getVertexAttrib4f(NORMAL_ATTRIB);
-        assertEquals(0.0f, normal[0], EPSILON, "normal.x");
-        assertEquals(1.0f, normal[1], EPSILON, "normal.y");
-        assertEquals(0.0f, normal[2], EPSILON, "normal.z");
+        assertAttrib(NORMAL_ATTRIB, "normal", 0.0f, 1.0f, 0.0f);
     }
 
     @Test
@@ -53,11 +53,7 @@ class VertexAttribDefaultBridgeTest {
         GLStateManager.setLightmapTextureCoords(GL13.GL_TEXTURE1, 240.0f, 128.0f);
         GLStateManager.flushDeferredVertexAttribs(GLStateManager.ctx(), false, false, false, false);
 
-        float[] lm = getVertexAttrib4f(SECONDARY_UV_ATTRIB);
-        assertEquals(240.0f, lm[0], EPSILON, "lightmap.s");
-        assertEquals(128.0f, lm[1], EPSILON, "lightmap.t");
-        assertEquals(0.0f, lm[2], EPSILON, "lightmap.r");
-        assertEquals(1.0f, lm[3], EPSILON, "lightmap.q");
+        assertAttrib(SECONDARY_UV_ATTRIB, "lightmap", 240.0f, 128.0f, 0.0f, 1.0f);
     }
 
     @Test
@@ -66,9 +62,7 @@ class VertexAttribDefaultBridgeTest {
         GLStateManager.glTexCoord2f(0.5f, 0.75f);
         GLStateManager.flushDeferredVertexAttribs(GLStateManager.ctx(), false, false, false, false);
 
-        float[] uv = getVertexAttrib4f(PRIMARY_UV_ATTRIB);
-        assertEquals(0.5f, uv[0], EPSILON, "texcoord.s");
-        assertEquals(0.75f, uv[1], EPSILON, "texcoord.t");
+        assertAttrib(PRIMARY_UV_ATTRIB, "texcoord", 0.5f, 0.75f);
     }
 
     @Test
@@ -79,11 +73,7 @@ class VertexAttribDefaultBridgeTest {
         GLStateManager.glColor4f(0.3f, 0.6f, 0.9f, 1.0f);
         GLStateManager.flushDeferredVertexAttribs(GLStateManager.ctx(), false, false, false, false);
 
-        float[] color = getVertexAttrib4f(COLOR_ATTRIB);
-        assertEquals(0.3f, color[0], EPSILON, "color.r after dedup");
-        assertEquals(0.6f, color[1], EPSILON, "color.g after dedup");
-        assertEquals(0.9f, color[2], EPSILON, "color.b after dedup");
-        assertEquals(1.0f, color[3], EPSILON, "color.a after dedup");
+        assertAttrib(COLOR_ATTRIB, "color after dedup", 0.3f, 0.6f, 0.9f, 1.0f);
     }
 
     @Test
@@ -97,11 +87,7 @@ class VertexAttribDefaultBridgeTest {
         // Color during COMPILE should NOT reach changeColor (early return)
         GLStateManager.glColor4f(0.9f, 0.8f, 0.7f, 0.6f);
 
-        float[] color = getVertexAttrib4f(COLOR_ATTRIB);
-        assertEquals(0.1f, color[0], EPSILON, "color.r unchanged during COMPILE");
-        assertEquals(0.2f, color[1], EPSILON, "color.g unchanged during COMPILE");
-        assertEquals(0.3f, color[2], EPSILON, "color.b unchanged during COMPILE");
-        assertEquals(1.0f, color[3], EPSILON, "color.a unchanged during COMPILE");
+        assertAttrib(COLOR_ATTRIB, "color unchanged during COMPILE", 0.1f, 0.2f, 0.3f, 1.0f);
 
         GLStateManager.glEndList();
         GLStateManager.glDeleteLists(listId, 1);

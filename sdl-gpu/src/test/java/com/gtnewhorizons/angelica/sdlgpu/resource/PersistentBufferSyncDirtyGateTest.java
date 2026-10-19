@@ -2,7 +2,6 @@ package com.gtnewhorizons.angelica.sdlgpu.resource;
 
 import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 
-import com.gtnewhorizons.angelica.sdlgpu.device.Device;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
@@ -32,7 +31,6 @@ class PersistentBufferSyncDirtyGateTest {
     @Test
     void gateStaysClosedUntilAWriteMarksARegionDirty() {
         final SdlTestRig rig = SdlTestRig.create();
-        final Device device = rig.device;
         final FrameManager fm = rig.frameManager;
         final ResourceManager rm = rig.resourceManager;
         final CountingSink sink = new CountingSink();
@@ -63,7 +61,6 @@ class PersistentBufferSyncDirtyGateTest {
     @Test
     void widenAndRemoveKeepTheCountExact() {
         final SdlTestRig rig = SdlTestRig.create();
-        final Device device = rig.device;
         final FrameManager fm = rig.frameManager;
         final ResourceManager rm = rig.resourceManager;
         final PersistentBufferSync sync = new PersistentBufferSync(fm, rm, new CountingSink());
@@ -87,7 +84,6 @@ class PersistentBufferSyncDirtyGateTest {
     @Test
     void mappingsVersionMovesOnlyWhenTheMapChanges() {
         final SdlTestRig rig = SdlTestRig.create();
-        final Device device = rig.device;
         final FrameManager fm = rig.frameManager;
         final ResourceManager rm = rig.resourceManager;
 
@@ -122,7 +118,6 @@ class PersistentBufferSyncDirtyGateTest {
     @Test
     void repeatedDrainsKeepUploadingWhenTheMappingSetIsUnchanged() {
         final SdlTestRig rig = SdlTestRig.create();
-        final Device device = rig.device;
         final FrameManager fm = rig.frameManager;
         final ResourceManager rm = rig.resourceManager;
         final CountingSink sink = new CountingSink();
@@ -148,7 +143,6 @@ class PersistentBufferSyncDirtyGateTest {
     @Test
     void aReplacedMappingIsPickedUpByALaterDrain() {
         final SdlTestRig rig = SdlTestRig.create();
-        final Device device = rig.device;
         final FrameManager fm = rig.frameManager;
         final ResourceManager rm = rig.resourceManager;
         final CountingSink sink = new CountingSink();
@@ -178,7 +172,6 @@ class PersistentBufferSyncDirtyGateTest {
     @Test
     void concurrentWritesAndDrainsLeaveTheGateExact() throws Exception {
         final SdlTestRig rig = SdlTestRig.create();
-        final Device device = rig.device;
         final FrameManager fm = rig.frameManager;
         final ResourceManager rm = rig.resourceManager;
         final CountingSink sink = new CountingSink();

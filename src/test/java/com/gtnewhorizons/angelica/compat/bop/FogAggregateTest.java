@@ -71,18 +71,6 @@ class FogAggregateTest {
     }
 
     @Test
-    void colorEvictionDoesNotDiscardInteriorTotals() {
-        final AtomicInteger color = new AtomicInteger(0x010203);
-        final World world = world(new AtomicBoolean(true), color);
-        final float[] actual = new float[4];
-        FogColourGrid.accumulateInterior(world, 0, 64, 0, 1, actual);
-        color.set(0x040506);
-        FogColourGrid.colour(world, 128, 64, 0);
-        FogColourGrid.accumulateInterior(world, 0, 64, 0, 1, actual);
-        assertBits(new float[] {1,2,3,1}, actual);
-    }
-
-    @Test
     void biomeEvictionDoesNotDiscardInteriorTotals() {
         final AtomicInteger color = new AtomicInteger(0x010203);
         final World world = world(new AtomicBoolean(true), color);

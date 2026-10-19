@@ -856,6 +856,11 @@ public class GLSM_LegacyStackQueries_GLTest {
         }
     }
 
+    private static boolean isDriverHint(int target) {
+        return target == GL11.GL_LINE_SMOOTH_HINT || target == GL11.GL_POLYGON_SMOOTH_HINT
+            || target == GL13.GL_TEXTURE_COMPRESSION_HINT || target == GL20.GL_FRAGMENT_SHADER_DERIVATIVE_HINT;
+    }
+
     @Test
     void hintsRoundTripAndFollowHintBit() {
         final int base = GLStateManager.getAttribDepth();
@@ -869,17 +874,21 @@ public class GLSM_LegacyStackQueries_GLTest {
                 assertEquals(GL11.GL_DONT_CARE, GLStateManager.glGetInteger(target), "default " + name);
                 GLStateManager.glHint(target, GL11.GL_NICEST);
                 assertEquals(GL11.GL_NICEST, GLStateManager.glGetInteger(target), "nicest " + name);
+                if (isDriverHint(target)) assertEquals(GL11.GL_NICEST, GL11.glGetInteger(target), "driver nicest " + name);
                 GLStateManager.glHint(target, 12345);
                 assertEquals(GL11.GL_NICEST, GLStateManager.glGetInteger(target), "invalid mode " + name);
+                if (isDriverHint(target)) assertEquals(GL11.GL_NICEST, GL11.glGetInteger(target), "driver invalid mode " + name);
             }
             GLStateManager.glPushAttrib(GL11.GL_HINT_BIT);
             for (final int target : HINT_TARGETS) {
                 GLStateManager.glHint(target, GL11.GL_FASTEST);
                 assertEquals(GL11.GL_FASTEST, GLStateManager.glGetInteger(target), "fastest " + hex(target));
+                if (isDriverHint(target)) assertEquals(GL11.GL_FASTEST, GL11.glGetInteger(target), "driver fastest " + hex(target));
             }
             GLStateManager.glPopAttrib();
             for (final int target : HINT_TARGETS) {
                 assertEquals(GL11.GL_NICEST, GLStateManager.glGetInteger(target), "restored " + hex(target));
+                if (isDriverHint(target)) assertEquals(GL11.GL_NICEST, GL11.glGetInteger(target), "driver restored " + hex(target));
             }
             assertEquals(GL11.GL_RENDER, GLStateManager.glGetInteger(GL11.GL_RENDER_MODE));
         } finally {
@@ -916,6 +925,7 @@ public class GLSM_LegacyStackQueries_GLTest {
             assertEquals(0.5f, GLStateManager.glGetFloat(GL14.GL_POINT_SIZE_MIN));
             assertEquals(2.5f, GLStateManager.glGetFloat(GL14.GL_POINT_SIZE_MAX));
             assertEquals(4.5f, GLStateManager.glGetFloat(GL14.GL_POINT_FADE_THRESHOLD_SIZE));
+            assertEquals(4.5f, GL11.glGetFloat(GL14.GL_POINT_FADE_THRESHOLD_SIZE));
             GLStateManager.glPointParameterf(GL14.GL_POINT_SIZE_MIN, -1f);
             assertEquals(0.5f, GLStateManager.glGetFloat(GL14.GL_POINT_SIZE_MIN));
 
@@ -933,6 +943,7 @@ public class GLSM_LegacyStackQueries_GLTest {
 
             GLStateManager.glPointParameteri(GL20.GL_POINT_SPRITE_COORD_ORIGIN, GL20.GL_LOWER_LEFT);
             assertEquals(GL20.GL_LOWER_LEFT, GLStateManager.glGetInteger(GL20.GL_POINT_SPRITE_COORD_ORIGIN));
+            assertEquals(GL20.GL_LOWER_LEFT, GL11.glGetInteger(GL20.GL_POINT_SPRITE_COORD_ORIGIN));
 
             GLStateManager.glPushAttrib(GL11.GL_POINT_BIT);
             GLStateManager.glPointParameterf(GL14.GL_POINT_SIZE_MIN, 1f);
@@ -944,6 +955,7 @@ public class GLSM_LegacyStackQueries_GLTest {
             GLStateManager.glPointParameteri(GL20.GL_POINT_SPRITE_COORD_ORIGIN, GL20.GL_UPPER_LEFT);
             assertEquals(1f, GLStateManager.glGetFloat(GL14.GL_POINT_SIZE_MIN));
             assertEquals(GL20.GL_UPPER_LEFT, GLStateManager.glGetInteger(GL20.GL_POINT_SPRITE_COORD_ORIGIN));
+            assertEquals(GL20.GL_UPPER_LEFT, GL11.glGetInteger(GL20.GL_POINT_SPRITE_COORD_ORIGIN));
             GLStateManager.glPointParameterf(GL14.GL_POINT_SIZE_MIN, Float.NaN);
             assertTrue(Float.isNaN(GLStateManager.glGetFloat(GL14.GL_POINT_SIZE_MIN)));
             GLStateManager.glPopAttrib();
@@ -951,7 +963,9 @@ public class GLSM_LegacyStackQueries_GLTest {
             assertEquals(0.5f, GLStateManager.glGetFloat(GL14.GL_POINT_SIZE_MIN));
             assertEquals(2.5f, GLStateManager.glGetFloat(GL14.GL_POINT_SIZE_MAX));
             assertEquals(4.5f, GLStateManager.glGetFloat(GL14.GL_POINT_FADE_THRESHOLD_SIZE));
+            assertEquals(4.5f, GL11.glGetFloat(GL14.GL_POINT_FADE_THRESHOLD_SIZE));
             assertEquals(GL20.GL_LOWER_LEFT, GLStateManager.glGetInteger(GL20.GL_POINT_SPRITE_COORD_ORIGIN));
+            assertEquals(GL20.GL_LOWER_LEFT, GL11.glGetInteger(GL20.GL_POINT_SPRITE_COORD_ORIGIN));
             attenuation.clear();
             GLStateManager.glGetFloat(GL14.GL_POINT_DISTANCE_ATTENUATION, attenuation);
             assertEquals(0.5f, attenuation.get(0));

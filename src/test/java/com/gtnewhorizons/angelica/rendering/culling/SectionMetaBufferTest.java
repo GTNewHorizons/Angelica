@@ -18,6 +18,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SectionMetaBufferTest {
+    private static int put(SectionMetaBuffer meta, int pass, int x, int y, int z, ByteBuffer src) {
+        return meta.update(pass, x, y, z, 0, MemoryUtilities.memAddress(src), 0, SectionRenderDataUnsafe.Strategy.FULL, QuadPrimitiveType.TRIANGULATED);
+    }
+
     @Test
     void slotLayout_originAndFencePosts() {
         final SectionMetaBuffer meta = new SectionMetaBuffer();
@@ -57,23 +61,20 @@ class SectionMetaBufferTest {
     @Test
     void slotAllocation_isStablePerSection() {
         final SectionMetaBuffer meta = new SectionMetaBuffer();
-        final int[] vo = { 0, 0, 0, 0, 0, 0, 0 };
-        final int[] ec = { 0, 0, 0, 0, 0, 0, 0 };
-        final int[] io = { 0, 0, 0, 0, 0, 0, 0 };
-        final ByteBuffer src = SyntheticSectionData.row(0, 0, vo, ec, io);
+        final ByteBuffer src = SyntheticSectionData.sliceMaskOnly(0);
         try {
-            meta.update(0, 16, 32, 64, 0, MemoryUtilities.memAddress(src), 0, SectionRenderDataUnsafe.Strategy.FULL, QuadPrimitiveType.TRIANGULATED);
+            put(meta, 0, 16, 32, 64, src);
             final int firstSlot = meta.lookupSlot(0, 16, 32, 64);
-            meta.update(0, 16, 32, 64, 0, MemoryUtilities.memAddress(src), 0, SectionRenderDataUnsafe.Strategy.FULL, QuadPrimitiveType.TRIANGULATED);
+            put(meta, 0, 16, 32, 64, src);
             assertEquals(firstSlot, meta.lookupSlot(0, 16, 32, 64), "slot must be stable across updates");
 
-            meta.update(0, 0, 0, 0, 0, MemoryUtilities.memAddress(src), 0, SectionRenderDataUnsafe.Strategy.FULL, QuadPrimitiveType.TRIANGULATED);
+            put(meta, 0, 0, 0, 0, src);
             final int otherSlot = meta.lookupSlot(0, 0, 0, 0);
             assertEquals(firstSlot + 1, otherSlot, "fresh section -> next high-water slot");
 
             meta.remove(0, 16, 32, 64, 0);
             assertEquals(-1, meta.lookupSlot(0, 16, 32, 64), "removed slot should not resolve");
-            meta.update(0, 16, 32, 64, 0, MemoryUtilities.memAddress(src), 0, SectionRenderDataUnsafe.Strategy.FULL, QuadPrimitiveType.TRIANGULATED);
+            put(meta, 0, 16, 32, 64, src);
             assertEquals(firstSlot, meta.lookupSlot(0, 16, 32, 64), "free-list reuse should reclaim the slot");
         } finally {
             MemoryUtilities.memFree(src);
@@ -84,10 +85,7 @@ class SectionMetaBufferTest {
     @Test
     void localSectionIndex_unpacking() {
         final SectionMetaBuffer meta = new SectionMetaBuffer();
-        final int[] vo = { 0, 0, 0, 0, 0, 0, 0 };
-        final int[] ec = { 0, 0, 0, 0, 0, 0, 0 };
-        final int[] io = { 0, 0, 0, 0, 0, 0, 0 };
-        final ByteBuffer src = SyntheticSectionData.row(0, 0, vo, ec, io);
+        final ByteBuffer src = SyntheticSectionData.sliceMaskOnly(0);
         try {
             final int x = 3, y = 2, z = 5;
             final int localIdx = (x << 5) | (z << 2) | y;
@@ -136,16 +134,13 @@ class SectionMetaBufferTest {
     @Test
     void update_returnsAllocatedSlot() {
         final SectionMetaBuffer meta = new SectionMetaBuffer();
-        final int[] vo = { 0, 0, 0, 0, 0, 0, 0 };
-        final int[] ec = { 0, 0, 0, 0, 0, 0, 0 };
-        final int[] io = { 0, 0, 0, 0, 0, 0, 0 };
-        final ByteBuffer src = SyntheticSectionData.row(0, 0, vo, ec, io);
+        final ByteBuffer src = SyntheticSectionData.sliceMaskOnly(0);
         try {
-            final int slotA = meta.update(0, 16, 32, 64, 0, MemoryUtilities.memAddress(src), 0, SectionRenderDataUnsafe.Strategy.FULL, QuadPrimitiveType.TRIANGULATED);
-            final int slotB = meta.update(0, 0, 0, 0, 0, MemoryUtilities.memAddress(src), 0, SectionRenderDataUnsafe.Strategy.FULL, QuadPrimitiveType.TRIANGULATED);
+            final int slotA = put(meta, 0, 16, 32, 64, src);
+            final int slotB = put(meta, 0, 0, 0, 0, src);
             assertEquals(0, slotA, "first allocation -> slot 0");
             assertEquals(1, slotB, "second distinct section -> slot 1");
-            assertEquals(slotA, meta.update(0, 16, 32, 64, 0, MemoryUtilities.memAddress(src), 0, SectionRenderDataUnsafe.Strategy.FULL, QuadPrimitiveType.TRIANGULATED), "re-update returns the stable slot");
+            assertEquals(slotA, put(meta, 0, 16, 32, 64, src), "re-update returns the stable slot");
             assertEquals(-1, meta.update(0, 0, 0, 0, 0, 0L, 0, SectionRenderDataUnsafe.Strategy.FULL, QuadPrimitiveType.TRIANGULATED), "null dataPtr -> -1");
         } finally {
             MemoryUtilities.memFree(src);
@@ -156,11 +151,10 @@ class SectionMetaBufferTest {
     @Test
     void syncIfDirty_positionsAndClearsDirty() {
         final SectionMetaBuffer meta = new SectionMetaBuffer();
-        final int[] zeros = { 0, 0, 0, 0, 0, 0, 0 };
-        final ByteBuffer src = SyntheticSectionData.row(0, 0, zeros, zeros, zeros);
+        final ByteBuffer src = SyntheticSectionData.sliceMaskOnly(0);
         try {
-            meta.update(0, 16, 32, 64, 0, MemoryUtilities.memAddress(src), 0, SectionRenderDataUnsafe.Strategy.FULL, QuadPrimitiveType.TRIANGULATED);
-            meta.update(0, 0, 0, 0, 0, MemoryUtilities.memAddress(src), 0, SectionRenderDataUnsafe.Strategy.FULL, QuadPrimitiveType.TRIANGULATED);
+            put(meta, 0, 16, 32, 64, src);
+            put(meta, 0, 0, 0, 0, src);
             assertTrue(meta.isDirty(), "dirty after update");
             final AtomicReference<ByteBuffer> seen = new AtomicReference<>();
             final boolean ran = meta.syncIfDirty(b -> { seen.set(b); return true; });
@@ -180,10 +174,9 @@ class SectionMetaBufferTest {
     @Test
     void syncIfDirty_refusedSinkKeepsDataPending() {
         final SectionMetaBuffer meta = new SectionMetaBuffer();
-        final int[] zeros = { 0, 0, 0, 0, 0, 0, 0 };
-        final ByteBuffer src = SyntheticSectionData.row(0, 0, zeros, zeros, zeros);
+        final ByteBuffer src = SyntheticSectionData.sliceMaskOnly(0);
         try {
-            meta.update(0, 16, 32, 64, 0, MemoryUtilities.memAddress(src), 0, SectionRenderDataUnsafe.Strategy.FULL, QuadPrimitiveType.TRIANGULATED);
+            put(meta, 0, 16, 32, 64, src);
             final AtomicInteger offers = new AtomicInteger();
 
             assertFalse(meta.syncIfDirty(b -> { offers.incrementAndGet(); return false; }), "a refused sink reports no sync");
@@ -214,16 +207,15 @@ class SectionMetaBufferTest {
     @Test
     void reset_isIdempotent() {
         final SectionMetaBuffer meta = new SectionMetaBuffer();
-        final int[] zeros = { 0, 0, 0, 0, 0, 0, 0 };
-        final ByteBuffer src = SyntheticSectionData.row(0, 0, zeros, zeros, zeros);
+        final ByteBuffer src = SyntheticSectionData.sliceMaskOnly(0);
         try {
-            meta.update(0, 16, 32, 64, 0, MemoryUtilities.memAddress(src), 0, SectionRenderDataUnsafe.Strategy.FULL, QuadPrimitiveType.TRIANGULATED);
+            put(meta, 0, 16, 32, 64, src);
             meta.reset();
             assertNull(meta.getMirrorForReadOnly(), "mirror gone after reset");
             assertEquals(-1, meta.lookupSlot(0, 16, 32, 64), "slot map cleared");
             meta.reset();
             meta.reset();
-            meta.update(0, 16, 32, 64, 0, MemoryUtilities.memAddress(src), 0, SectionRenderDataUnsafe.Strategy.FULL, QuadPrimitiveType.TRIANGULATED);
+            put(meta, 0, 16, 32, 64, src);
             assertEquals(0, meta.lookupSlot(0, 16, 32, 64), "reset is reusable, allocates fresh slot");
         } finally {
             MemoryUtilities.memFree(src);
@@ -234,8 +226,7 @@ class SectionMetaBufferTest {
     @Test
     void concurrent_updates_and_syncs_doNotCrash() throws InterruptedException {
         final SectionMetaBuffer meta = new SectionMetaBuffer();
-        final int[] zeros = { 0, 0, 0, 0, 0, 0, 0 };
-        final ByteBuffer src = SyntheticSectionData.row(0, 0, zeros, zeros, zeros);
+        final ByteBuffer src = SyntheticSectionData.sliceMaskOnly(0);
         final AtomicBoolean stop = new AtomicBoolean(false);
         final long srcAddr = MemoryUtilities.memAddress(src);
 
@@ -276,13 +267,10 @@ class SectionMetaBufferTest {
     @Test
     void perPassRemove_leavesSiblingPasses() {
         final SectionMetaBuffer meta = new SectionMetaBuffer();
-        final int[] vo = { 0, 0, 0, 0, 0, 0, 0 };
-        final int[] ec = { 0, 0, 0, 0, 0, 0, 0 };
-        final int[] io = { 0, 0, 0, 0, 0, 0, 0 };
-        final ByteBuffer src = SyntheticSectionData.row(0, 0, vo, ec, io);
+        final ByteBuffer src = SyntheticSectionData.sliceMaskOnly(0);
         try {
-            meta.update(0, 16, 32, 64, 0, MemoryUtilities.memAddress(src), 0, SectionRenderDataUnsafe.Strategy.FULL, QuadPrimitiveType.TRIANGULATED);
-            meta.update(1, 16, 32, 64, 0, MemoryUtilities.memAddress(src), 0, SectionRenderDataUnsafe.Strategy.FULL, QuadPrimitiveType.TRIANGULATED);
+            put(meta, 0, 16, 32, 64, src);
+            put(meta, 1, 16, 32, 64, src);
             final int slotA = meta.lookupSlot(0, 16, 32, 64);
             final int slotB = meta.lookupSlot(1, 16, 32, 64);
 
@@ -290,7 +278,7 @@ class SectionMetaBufferTest {
             assertEquals(-1, meta.lookupSlot(0, 16, 32, 64), "pass 0 slot must be gone");
             assertEquals(slotB, meta.lookupSlot(1, 16, 32, 64), "pass 1 slot must survive pass 0 removal");
 
-            meta.update(0, 0, 0, 0, 0, MemoryUtilities.memAddress(src), 0, SectionRenderDataUnsafe.Strategy.FULL, QuadPrimitiveType.TRIANGULATED);
+            put(meta, 0, 0, 0, 0, src);
             assertEquals(slotA, meta.lookupSlot(0, 0, 0, 0), "free-list reuse claims pass 0's vacated slot");
         } finally {
             MemoryUtilities.memFree(src);

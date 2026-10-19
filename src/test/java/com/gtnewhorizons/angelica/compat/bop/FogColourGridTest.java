@@ -5,8 +5,12 @@ import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraft.world.chunk.IChunkProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.function.IntBinaryOperator;
+import java.util.stream.Stream;
 
 import com.gtnewhorizons.angelica.compat.bop.BopFogTestSupport.BopFog;
 
@@ -64,28 +68,23 @@ class FogColourGridTest {
         }
     }
 
-    @Test
-    void oneBlockShiftIsAColdFill() {
-        final World world = mockWorld(true);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("requeryCounts")
+    void fogColourCallsPerCoordinateList(String label, boolean chunksLoaded, int[][] xyz, int expectedFogColourCalls) {
+        final World world = mockWorld(chunksLoaded);
         final BiomeGenBase biome = fixedFogBiome(world, 0x123456);
 
-        FogColourGrid.colour(world, 100, 64, 200);
-        FogColourGrid.colour(world, 100, 64, 200);
-        BopFog.verifyCall(biome, times(1));
-
-        FogColourGrid.colour(world, 101, 64, 200);
-        BopFog.verifyCall(biome, times(2));
+        for (int[] c : xyz) {
+            FogColourGrid.colour(world, c[0], c[1], c[2]);
+        }
+        BopFog.verifyCall(biome, times(expectedFogColourCalls));
     }
 
-    @Test
-    void nonCacheableCellIsRequeried() {
-        final World world = mockWorld(false);
-        final BiomeGenBase biome = fixedFogBiome(world, 0x654321);
-
-        FogColourGrid.colour(world, 5, 64, 9);
-        FogColourGrid.colour(world, 5, 64, 9);
-
-        BopFog.verifyCall(biome, times(2));
+    private static Stream<Arguments> requeryCounts() {
+        return Stream.of(
+            Arguments.of("non-cacheable cell is requeried", false, new int[][] {{5, 64, 9}, {5, 64, 9}}, 2),
+            Arguments.of("loaded repeat hits the cache", true, new int[][] {{100, 64, 200}, {100, 64, 200}}, 1),
+            Arguments.of("one block shift is a cold fill", true, new int[][] {{100, 64, 200}, {100, 64, 200}, {101, 64, 200}}, 2));
     }
 
     @Test

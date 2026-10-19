@@ -113,14 +113,10 @@ class GLRedirectsTest {
         "Foo.bar",
         "String.valueOf",
         "ARBShaderObjects.GL_OBJECT_COMPILE_STATUS_ARB",
+        "noDotHere",
     })
     void nonRedirectedReturnsNull(String classAndMethod) {
         assertNull(GLRedirects.getTargetMethodName(classAndMethod));
-    }
-
-    @Test
-    void nullDotReturnsNull() {
-        assertNull(GLRedirects.getTargetMethodName("noDotHere"));
     }
 
     @ParameterizedTest(name = "pattern matches {0}")

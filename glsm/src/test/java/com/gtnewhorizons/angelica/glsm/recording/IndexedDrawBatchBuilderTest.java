@@ -139,6 +139,10 @@ class IndexedDrawBatchBuilderTest extends DisplayListTestFixture {
         assertNotNull(cmd);
         assertEquals(6, cmd.getIndexCount());
         assertEquals(GL11.GL_UNSIGNED_INT, cmd.getIndexType(), "batching always widens indices to UINT for safe base-vertex shifting");
+
+        final ByteBuffer ib = readBufferBytes(GL15.GL_ELEMENT_ARRAY_BUFFER, firstBatch(list).getSharedEBO(), 6 * 4);
+        assertUintIndices(ib, 0, 1, 2, 2, 3, 0);
+        MemoryUtilities.memFree(ib);
     }
 
     @Test
@@ -156,13 +160,7 @@ class IndexedDrawBatchBuilderTest extends DisplayListTestFixture {
         final int vbo = defaultQuadVbo();
         final int vao = setupPosColorVao(vbo);
 
-        final int list = newList();
-        GLStateManager.glNewList(list, GL11.GL_COMPILE);
-        GLStateManager.glBindVertexArray(vao);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
-        GLStateManager.glDrawElements(GL11.GL_TRIANGLES, 3, GL11.GL_UNSIGNED_SHORT, 0L);
-        GLStateManager.glBindVertexArray(0);
-        GLStateManager.glEndList();
+        final int list = recordSingleIndexedDraw(vao, 0, GL11.GL_TRIANGLES, 3, GL11.GL_UNSIGNED_SHORT);
 
         assertTrue(allBatchedCmds(list).isEmpty(), "no EBO bound → no batched command attached");
         assertTrue(batchesOf(list).isEmpty(), "no batches either");
@@ -358,51 +356,6 @@ class IndexedDrawBatchBuilderTest extends DisplayListTestFixture {
     }
 
     @Test
-    void multiDrawDifferentFormats_splitBatches() {
-        // Draw A: pos+color (stride=12). Draw B: pos-only (stride=8). Different layout → two batches.
-        final int vboA = defaultQuadVbo();
-        final int vaoA = setupPosColorVao(vboA);
-
-        final int vboB = newBuffer();
-        final ByteBuffer bData = MemoryUtilities.memAlloc(4 * 8).order(ByteOrder.nativeOrder());
-        for (int i = 0; i < 4; i++) {
-            bData.putFloat(DEFAULT_QUAD_POSITIONS[i * 2]);
-            bData.putFloat(DEFAULT_QUAD_POSITIONS[i * 2 + 1]);
-        }
-        bData.flip();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vboB);
-        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, bData, GL15.GL_STATIC_DRAW);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-        MemoryUtilities.memFree(bData);
-
-        final int vaoB = newVao();
-        GLStateManager.glBindVertexArray(vaoB);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vboB);
-        GLStateManager.glVertexAttribPointer(0, 2, GL11.GL_FLOAT, false, 8, 0);
-        GLStateManager.glEnableVertexAttribArray(0);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-        GLStateManager.glBindVertexArray(0);
-
-        final int ebo = uploadEbo(GL11.GL_UNSIGNED_SHORT, 0, 1, 2);
-
-        final int list = newList();
-        GLStateManager.glNewList(list, GL11.GL_COMPILE);
-        GLStateManager.glBindVertexArray(vaoA);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
-        GLStateManager.glDrawElements(GL11.GL_TRIANGLES, 3, GL11.GL_UNSIGNED_SHORT, 0L);
-        GLStateManager.glBindVertexArray(vaoB);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
-        GLStateManager.glDrawElements(GL11.GL_TRIANGLES, 3, GL11.GL_UNSIGNED_SHORT, 0L);
-        GLStateManager.glBindVertexArray(0);
-        GLStateManager.glEndList();
-
-        final List<BatchedIndexedDrawCmd> cmds = allBatchedCmds(list);
-        assertEquals(2, cmds.size());
-        assertEquals(2, batchesOf(list).size(), "incompatible layouts → two batches");
-        assertNotSame(batchOf(cmds.get(0)), batchOf(cmds.get(1)), "separate layouts must get distinct batches");
-    }
-
-    @Test
     void sameSizesDifferentLocations_splitIntoSeparateBatches() {
         // Both VAOs: pos 2f + color 4ub (same sizes/types/normalized). Only the enabled
         // location sets differ — VAO-A uses {0,1}, VAO-B uses {0,2}. If AttribLayoutKey
@@ -424,16 +377,7 @@ class IndexedDrawBatchBuilderTest extends DisplayListTestFixture {
 
         final int ebo = uploadEbo(GL11.GL_UNSIGNED_SHORT, 0, 1, 2);
 
-        final int list = newList();
-        GLStateManager.glNewList(list, GL11.GL_COMPILE);
-        GLStateManager.glBindVertexArray(vaoA);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
-        GLStateManager.glDrawElements(GL11.GL_TRIANGLES, 3, GL11.GL_UNSIGNED_SHORT, 0L);
-        GLStateManager.glBindVertexArray(vaoB);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
-        GLStateManager.glDrawElements(GL11.GL_TRIANGLES, 3, GL11.GL_UNSIGNED_SHORT, 0L);
-        GLStateManager.glBindVertexArray(0);
-        GLStateManager.glEndList();
+        final int list = recordTwoVaoDraws(vaoA, vaoB, ebo);
 
         final List<BatchedIndexedDrawCmd> cmds = allBatchedCmds(list);
         assertEquals(2, cmds.size());
@@ -472,30 +416,14 @@ class IndexedDrawBatchBuilderTest extends DisplayListTestFixture {
 
         // Record (A, B) and (B, A) as independent lists; each list's batch order
         // must match its own recording order.
-        final int listAB = newList();
-        GLStateManager.glNewList(listAB, GL11.GL_COMPILE);
-        GLStateManager.glBindVertexArray(vaoA);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
-        GLStateManager.glDrawElements(GL11.GL_TRIANGLES, 3, GL11.GL_UNSIGNED_SHORT, 0L);
-        GLStateManager.glBindVertexArray(vaoB);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
-        GLStateManager.glDrawElements(GL11.GL_TRIANGLES, 3, GL11.GL_UNSIGNED_SHORT, 0L);
-        GLStateManager.glBindVertexArray(0);
-        GLStateManager.glEndList();
+        final int listAB = recordTwoVaoDraws(vaoA, vaoB, ebo);
 
-        final int listBA = newList();
-        GLStateManager.glNewList(listBA, GL11.GL_COMPILE);
-        GLStateManager.glBindVertexArray(vaoB);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
-        GLStateManager.glDrawElements(GL11.GL_TRIANGLES, 3, GL11.GL_UNSIGNED_SHORT, 0L);
-        GLStateManager.glBindVertexArray(vaoA);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
-        GLStateManager.glDrawElements(GL11.GL_TRIANGLES, 3, GL11.GL_UNSIGNED_SHORT, 0L);
-        GLStateManager.glBindVertexArray(0);
-        GLStateManager.glEndList();
+        final int listBA = recordTwoVaoDraws(vaoB, vaoA, ebo);
 
         final List<BatchedIndexedDrawCmd> ab = allBatchedCmds(listAB);
         final List<BatchedIndexedDrawCmd> ba = allBatchedCmds(listBA);
+        assertEquals(2, ab.size());
+        assertEquals(2, batchesOf(listAB).size(), "incompatible layouts -> two batches");
         // Placeholders sit in command-stream order (A-first vs B-first).
         // Batches must be ordered so that placeholder[0] points at batch[0].
         assertSame(batchesOf(listAB).get(0), batchOf(ab.get(0)),
@@ -514,44 +442,48 @@ class IndexedDrawBatchBuilderTest extends DisplayListTestFixture {
                 final ByteBuffer idx = BufferUtils.createByteBuffer(3);
                 idx.put(new byte[]{0, 1, 2}).flip();
                 GLStateManager.glDrawElements(GL11.GL_TRIANGLES, idx);
-            }, GL11.GL_TRIANGLES, 3),
+            }, GL11.GL_TRIANGLES, 3, new int[]{0, 1, 2}),
             arguments("short indices", GL11.GL_COMPILE, (Runnable) () -> {
                 final ShortBuffer idx = BufferUtils.createShortBuffer(3);
                 idx.put(new short[]{0, 1, 2}).flip();
                 GLStateManager.glDrawElements(GL11.GL_TRIANGLES, idx);
-            }, GL11.GL_TRIANGLES, 3),
+            }, GL11.GL_TRIANGLES, 3, new int[]{0, 1, 2}),
             arguments("int indices", GL11.GL_COMPILE, (Runnable) () -> {
                 final IntBuffer idx = BufferUtils.createIntBuffer(3);
                 idx.put(new int[]{0, 1, 2}).flip();
                 GLStateManager.glDrawElements(GL11.GL_TRIANGLES, idx);
-            }, GL11.GL_TRIANGLES, 3),
+            }, GL11.GL_TRIANGLES, 3, new int[]{0, 1, 2}),
             arguments("explicit count+type", GL11.GL_COMPILE, (Runnable) () -> {
                 final ByteBuffer idx = BufferUtils.createByteBuffer(3 * 2).order(ByteOrder.nativeOrder());
                 idx.putShort((short) 0).putShort((short) 1).putShort((short) 2).flip();
                 GLStateManager.glDrawElements(GL11.GL_TRIANGLES, 3, GL11.GL_UNSIGNED_SHORT, idx);
-            }, GL11.GL_TRIANGLES, 3),
+            }, GL11.GL_TRIANGLES, 3, new int[]{0, 1, 2}),
             arguments("quads triangulate at record", GL11.GL_COMPILE, (Runnable) () -> {
                 final IntBuffer idx = BufferUtils.createIntBuffer(4);
                 idx.put(new int[]{0, 1, 2, 3}).flip();
                 GLStateManager.glDrawElements(GL11.GL_QUADS, idx);
-            }, GL11.GL_TRIANGLES, 6),
+            }, GL11.GL_TRIANGLES, 6, new int[]{0, 1, 3, 1, 2, 3}),
             arguments("compile-and-execute fires live and bakes", GL11.GL_COMPILE_AND_EXECUTE, (Runnable) () -> {
                 final IntBuffer idx = BufferUtils.createIntBuffer(3);
                 idx.put(new int[]{0, 1, 2}).flip();
                 GLStateManager.glDrawElements(GL11.GL_TRIANGLES, idx);
-            }, GL11.GL_TRIANGLES, 3)
+            }, GL11.GL_TRIANGLES, 3, new int[]{0, 1, 2})
         );
     }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("clientIndexedDrawCases")
-    void clientIndexedDraw_capturedAndWidenedToUnsignedInt(String name, int listMode, Runnable draw, int expectedMode, int expectedCount) {
+    void clientIndexedDraw_capturedAndWidenedToUnsignedInt(String name, int listMode, Runnable draw, int expectedMode, int expectedCount, int[] expectedIndices) {
         final int list = recordClientIndexDraw(listMode, draw);
         final BatchedIndexedDrawCmd cmd = firstBatchedCmd(list);
         assertNotNull(cmd);
         assertEquals(expectedMode, cmd.getDrawMode());
         assertEquals(expectedCount, cmd.getIndexCount());
         assertEquals(GL11.GL_UNSIGNED_INT, cmd.getIndexType(), "client indices always widen to UNSIGNED_INT");
+
+        final ByteBuffer ib = readBufferBytes(GL15.GL_ELEMENT_ARRAY_BUFFER, firstBatch(list).getSharedEBO(), expectedCount * 4);
+        assertUintIndices(ib, expectedIndices);
+        MemoryUtilities.memFree(ib);
     }
 
     @Test

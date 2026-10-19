@@ -148,6 +148,19 @@ public abstract class DisplayListTestFixture {
         return list;
     }
 
+    protected final int recordTwoVaoDraws(int firstVao, int secondVao, int ebo) {
+        final int list = newList();
+        GLStateManager.glNewList(list, GL11.GL_COMPILE);
+        for (int vao : new int[] { firstVao, secondVao }) {
+            GLStateManager.glBindVertexArray(vao);
+            GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
+            GLStateManager.glDrawElements(GL11.GL_TRIANGLES, 3, GL11.GL_UNSIGNED_SHORT, 0L);
+        }
+        GLStateManager.glBindVertexArray(0);
+        GLStateManager.glEndList();
+        return list;
+    }
+
     protected static CompiledDisplayList compiledOf(int listId) {
         final CompiledDisplayList compiled = DisplayListManager.getDisplayList(listId);
         assertNotNull(compiled, "compiled display list must exist for id " + listId);

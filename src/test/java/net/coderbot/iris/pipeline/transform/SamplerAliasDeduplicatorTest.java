@@ -1,10 +1,14 @@
 package net.coderbot.iris.pipeline.transform;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.taumc.glsl.Transformer;
 
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import static net.coderbot.iris.pipeline.transform.TransformTestSupport.format;
 import static net.coderbot.iris.pipeline.transform.TransformTestSupport.occurrences;
@@ -23,35 +27,55 @@ class SamplerAliasDeduplicatorTest {
         return format(t);
     }
 
-    @Test
-    void bothDeclared_aliasDropped_canonicalKept() {
+    static Stream<Arguments> presentAbsentCases() {
+        return Stream.of(
+            Arguments.of("only alias declared",
+                "#version 330 core\n" +
+                "uniform sampler2D gtexture;\n" +
+                "out vec4 fragColor;\n" +
+                "void main() { fragColor = texture(gtexture, vec2(0.5)); }\n",
+                "uniform sampler2D tex", "gtexture"),
+            Arguments.of("no match",
+                "#version 330 core\n" +
+                "uniform sampler2D somethingElse;\n" +
+                "out vec4 fragColor;\n" +
+                "void main() { fragColor = texture(somethingElse, vec2(0.5)); }\n",
+                "uniform sampler2D somethingElse", "uniform sampler2D tex")
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("presentAbsentCases")
+    void presentAndAbsent(String label, String src, String present, String absent) {
+        String out = transformFragment(src);
+        assertTrue(out.contains(present), out);
+        assertFalse(out.contains(absent), out);
+    }
+
+    static Stream<Arguments> bothDeclaredCases() {
+        return Stream.of(
+            Arguments.of("tex group", "tex", "gtexture"),
+            Arguments.of("depth group", "depthtex0", "gdepthtex")
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("bothDeclaredCases")
+    void bothDeclared_aliasDropped_canonicalKept(String label, String canonical, String alias) {
         String src =
             "#version 330 core\n" +
-            "uniform sampler2D tex;\n" +
-            "uniform sampler2D gtexture;\n" +
+            "uniform sampler2D " + canonical + ";\n" +
+            "uniform sampler2D " + alias + ";\n" +
             "out vec4 fragColor;\n" +
             "void main() {\n" +
-            "    fragColor = texture(gtexture, vec2(0.5)) + texture(tex, vec2(0.5));\n" +
+            "    fragColor = texture(" + alias + ", vec2(0.5)) + texture(" + canonical + ", vec2(0.5));\n" +
             "}\n";
 
         String out = transformFragment(src);
-        assertTrue(out.contains("uniform sampler2D tex"), "canonical declaration must remain");
-        assertFalse(out.contains("uniform sampler2D gtexture"), "alias declaration must be removed: " + out);
-        assertFalse(out.contains("gtexture"), "all references to alias must be rewritten: " + out);
-        assertEquals(2, occurrences(out, "texture(tex"), "both references should now read from tex");
-    }
-
-    @Test
-    void onlyAliasDeclared_renamedToCanonical() {
-        String src =
-            "#version 330 core\n" +
-            "uniform sampler2D gtexture;\n" +
-            "out vec4 fragColor;\n" +
-            "void main() { fragColor = texture(gtexture, vec2(0.5)); }\n";
-
-        String out = transformFragment(src);
-        assertTrue(out.contains("uniform sampler2D tex"), "alias should be promoted to canonical: " + out);
-        assertFalse(out.contains("gtexture"), "no alias should remain: " + out);
+        assertTrue(out.contains("uniform sampler2D " + canonical), "canonical declaration must remain");
+        assertFalse(out.contains("uniform sampler2D " + alias), "alias declaration must be removed: " + out);
+        assertFalse(out.contains(alias), "all references to alias must be rewritten: " + out);
+        assertEquals(2, occurrences(out, "texture(" + canonical), "both references should now read from " + canonical);
     }
 
     @Test
@@ -96,32 +120,5 @@ class SamplerAliasDeduplicatorTest {
         String out = transformFragment(src);
         assertTrue(out.contains("uniform sampler2D textureAtlas"), "a pack-defined sampler keeps its own binding: " + out);
         assertTrue(out.contains("texture(textureAtlas"), "its reads must not be redirected to tex: " + out);
-    }
-
-    @Test
-    void noMatch_unchanged() {
-        String src =
-            "#version 330 core\n" +
-            "uniform sampler2D somethingElse;\n" +
-            "out vec4 fragColor;\n" +
-            "void main() { fragColor = texture(somethingElse, vec2(0.5)); }\n";
-
-        String out = transformFragment(src);
-        assertTrue(out.contains("uniform sampler2D somethingElse"), "untouched uniform must survive: " + out);
-        assertFalse(out.contains("uniform sampler2D tex"), "no spurious tex declaration: " + out);
-    }
-
-    @Test
-    void depthAliasGroup_collapsesToDepthtex0() {
-        String src =
-            "#version 330 core\n" +
-            "uniform sampler2D depthtex0;\n" +
-            "uniform sampler2D gdepthtex;\n" +
-            "out vec4 fragColor;\n" +
-            "void main() { fragColor = texture(gdepthtex, vec2(0.5)) + texture(depthtex0, vec2(0.5)); }\n";
-
-        String out = transformFragment(src);
-        assertTrue(out.contains("uniform sampler2D depthtex0"));
-        assertFalse(out.contains("gdepthtex"), out);
     }
 }

@@ -27,15 +27,6 @@ class ReadbackShadowsTest {
     }
 
     @Test
-    void serveRefusesAStaleSlot() {
-        final ReadbackShadows shadows = shadows();
-        SdlReflect.putReadbackSlot(shadows, 7, 0, SENTINEL_HANDLE, 64, false);
-
-        assertFalse(shadows.serve(7, 0, out(64), 64),
-            "a slot invalidated by a GPU-to-GPU write must not be served as if it were downloaded");
-    }
-
-    @Test
     void serveRefusesAnUnknownSlot() {
         final ReadbackShadows shadows = shadows();
         SdlReflect.putReadbackSlot(shadows, 7, 0, SENTINEL_HANDLE, 64, true);

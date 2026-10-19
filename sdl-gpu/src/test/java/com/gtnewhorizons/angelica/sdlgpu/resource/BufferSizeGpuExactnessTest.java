@@ -7,6 +7,8 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.opengl.GL15;
 
@@ -33,28 +35,12 @@ class BufferSizeGpuExactnessTest {
         if (resourceManager != null) resourceManager.shutdown();
     }
 
-    @Test
-    void subBucketSize_reportsRequestedNotBucketed() {
-        final int glId = 9001;
-        final long handle = resourceManager.createBuffer(glId, FormatMap.mapBufferUsage(GL15.GL_ARRAY_BUFFER), 1000);
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({"sub-bucket,9001,1000", "bucket boundary,9002,4096"})
+    void createdBufferReportsRequestedSize(String name, int glId, long size) {
+        final long handle = resourceManager.createBuffer(glId, FormatMap.mapBufferUsage(GL15.GL_ARRAY_BUFFER), size);
         assertNotEquals(0L, handle, "buffer creation failed");
-        assertEquals(1000L, resourceManager.getBufferSize(glId));
-        resourceManager.deleteBuffer(glId);
-    }
-
-    @Test
-    void bucketBoundarySize_isUnchanged() {
-        final int glId = 9002;
-        resourceManager.createBuffer(glId, FormatMap.mapBufferUsage(GL15.GL_ARRAY_BUFFER), 4096);
-        assertEquals(4096L, resourceManager.getBufferSize(glId));
-        resourceManager.deleteBuffer(glId);
-    }
-
-    @Test
-    void freshStore_reportsUndefinedContents() {
-        final int glId = 9005;
-        resourceManager.createBuffer(glId, FormatMap.mapBufferUsage(GL15.GL_ARRAY_BUFFER), 1000);
-        assertTrue(resourceManager.hasUndefinedContents(glId));
+        assertEquals(size, resourceManager.getBufferSize(glId));
         resourceManager.deleteBuffer(glId);
     }
 
@@ -63,6 +49,7 @@ class BufferSizeGpuExactnessTest {
         final int usage = FormatMap.mapBufferUsage(GL15.GL_ARRAY_BUFFER);
         final int first = 9006;
         resourceManager.createBuffer(first, usage, 1000);
+        assertTrue(resourceManager.hasUndefinedContents(first));
         resourceManager.markBufferContentsDefined(first);
         resourceManager.deleteBuffer(first);
 

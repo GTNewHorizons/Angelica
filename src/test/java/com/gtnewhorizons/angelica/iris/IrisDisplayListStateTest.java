@@ -19,6 +19,7 @@ import net.coderbot.iris.pipeline.FixedFunctionWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.PipelineManager;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
+import net.coderbot.iris.uniforms.CapturedStateScope;
 import net.coderbot.iris.uniforms.ItemIdManager;
 import net.coderbot.iris.uniforms.ItemMaterialHelper;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
@@ -34,6 +35,7 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL13;
+import org.lwjgl.opengl.GL14;
 
 import java.nio.IntBuffer;
 import java.util.ArrayList;
@@ -169,6 +171,11 @@ class IrisDisplayListStateTest {
                 try {
                     GLStateManager.glCallList(parent);
                     assertTrue(GLStateManager.isEffectiveBlendEnabled());
+                    assertTrue(GL11.glIsEnabled(GL11.GL_BLEND), "driver blend enable");
+                    assertEquals(GL11.GL_SRC_ALPHA, GL11.glGetInteger(GL14.GL_BLEND_SRC_RGB), "driver blend src rgb");
+                    assertEquals(GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.glGetInteger(GL14.GL_BLEND_DST_RGB), "driver blend dst rgb");
+                    assertEquals(GL11.GL_ZERO, GL11.glGetInteger(GL14.GL_BLEND_SRC_ALPHA), "driver blend src alpha");
+                    assertEquals(GL11.GL_ONE, GL11.glGetInteger(GL14.GL_BLEND_DST_ALPHA), "driver blend dst alpha");
                     final var blend = GLStateManager.getEffectiveBlendState(new com.gtnewhorizons.angelica.glsm.states.BlendState());
                     assertEquals(GL11.GL_SRC_ALPHA, blend.getSrcRgb());
                     assertEquals(GL11.GL_ONE_MINUS_SRC_ALPHA, blend.getDstRgb());
@@ -187,31 +194,24 @@ class IrisDisplayListStateTest {
     @Test
     void idsAndColorReplayInsideNestedScopesAndRestoreThePlaybackCaller() {
         final CapturedRenderingState state = CapturedRenderingState.INSTANCE;
-        state.pushCurrentEntityAndItem();
-        state.pushCurrentBlockEntity();
-        state.pushCurrentEntityColor();
-        try {
+        try (CapturedStateScope ignored = new CapturedStateScope()) {
             for (int mode : new int[] {GL11.GL_COMPILE, GL11.GL_COMPILE_AND_EXECUTE}) {
                 state.setCurrentEntityAndItem(10, 11);
                 state.setCurrentBlockEntity(12);
                 state.setCurrentEntityColor(1, 0, 0, 0.5f);
                 final int child = newList();
                 GLStateManager.glNewList(child, mode);
-                state.pushCurrentEntityAndItem();
-                state.pushCurrentBlockEntity();
-                state.pushCurrentEntityColor();
-                state.setCurrentEntityAndItem(45010, 45011);
-                state.setCurrentBlockEntity(45012);
-                state.setCurrentEntityColor(0, 1, 0, 0.25f);
-                DisplayListManager.recordStateCommand(() -> {
-                    assertEquals(45010, state.getCurrentRenderedEntity());
-                    assertEquals(45011, state.getCurrentRenderedItem());
-                    assertEquals(45012, state.getCurrentRenderedBlockEntity());
-                    assertTrue(state.getCurrentEntityColor().equals(0, 1, 0, 0.25f));
-                });
-                state.popCurrentEntityColor();
-                state.popCurrentBlockEntity();
-                state.popCurrentEntityAndItem();
+                try (CapturedStateScope nestedIgnored = new CapturedStateScope()) {
+                    state.setCurrentEntityAndItem(45010, 45011);
+                    state.setCurrentBlockEntity(45012);
+                    state.setCurrentEntityColor(0, 1, 0, 0.25f);
+                    DisplayListManager.recordStateCommand(() -> {
+                        assertEquals(45010, state.getCurrentRenderedEntity());
+                        assertEquals(45011, state.getCurrentRenderedItem());
+                        assertEquals(45012, state.getCurrentRenderedBlockEntity());
+                        assertTrue(state.getCurrentEntityColor().equals(0, 1, 0, 0.25f));
+                    });
+                }
                 GLStateManager.glEndList();
 
                 final int parent = newList();
@@ -234,20 +234,13 @@ class IrisDisplayListStateTest {
                     assertTrue(state.getCurrentEntityColor().equals(0, 0, 1, 0.75f));
                 }
             }
-        } finally {
-            state.popCurrentEntityColor();
-            state.popCurrentBlockEntity();
-            state.popCurrentEntityAndItem();
         }
     }
 
     @Test
     void explicitStateRecordsEvenWhenUnchangedAndOnlyDeduplicatesAdjacentCommands() {
         final CapturedRenderingState state = CapturedRenderingState.INSTANCE;
-        state.pushCurrentEntityAndItem();
-        state.pushCurrentBlockEntity();
-        state.pushCurrentEntityColor();
-        try {
+        try (CapturedStateScope ignored = new CapturedStateScope()) {
             state.setCurrentEntityAndItem(7, 8);
             state.setCurrentBlockEntity(9);
             state.setCurrentEntityColor(1, 0, 0, 0.5f);
@@ -266,10 +259,6 @@ class IrisDisplayListStateTest {
             assertEquals(8, state.getCurrentRenderedItem());
             assertEquals(9, state.getCurrentRenderedBlockEntity());
             assertTrue(state.getCurrentEntityColor().equals(1, 0, 0, 0.5f));
-        } finally {
-            state.popCurrentEntityColor();
-            state.popCurrentBlockEntity();
-            state.popCurrentEntityAndItem();
         }
     }
 

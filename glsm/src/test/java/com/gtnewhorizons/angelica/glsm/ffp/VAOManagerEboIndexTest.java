@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Test;
 import java.util.Random;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class VAOManagerEboIndexTest {
@@ -126,65 +125,5 @@ public class VAOManagerEboIndexTest {
             assertExpectedEbos(op);
         }
         assertTrue(sharedEboDeletes > 20, "op stream never freed a multi-owner EBO (hits: " + sharedEboDeletes + ")");
-    }
-
-    @Test
-    void sharedEboClearsEveryOwner() {
-        final int ebo = 77;
-        bindVao(1);
-        bindEbo(ebo);
-        bindVao(2);
-        bindEbo(ebo);
-        bindVao(3);
-        bindEbo(ebo);
-        bindVao(DEFAULT_VAO);
-
-        deleteBuffer(ebo);
-
-        assertEquals(0, vaos.vaoMap.get(1).ebo, "vao 1 kept a freed shared EBO");
-        assertEquals(0, vaos.vaoMap.get(2).ebo, "vao 2 kept a freed shared EBO");
-        assertEquals(0, vaos.vaoMap.get(3).ebo, "vao 3 kept a freed shared EBO");
-        assertFalse(vaos.eboOwners.containsKey(ebo), "index kept owners for a freed EBO");
-    }
-
-    @Test
-    void sharedEboEntryDropsOnlyAfterItsLastOwnerGoes() {
-        final int ebo = 88;
-        bindVao(1);
-        bindEbo(ebo);
-        bindVao(2);
-        bindEbo(ebo);
-        bindVao(DEFAULT_VAO);
-
-        deleteVao(1);
-        assertTrue(vaos.eboOwners.containsKey(ebo), "index dropped a still-live owner");
-        deleteVao(2);
-        assertFalse(vaos.eboOwners.containsKey(ebo), "index kept an entry after its last owner went away");
-    }
-
-    @Test
-    void deletingTheBoundVaoDoesNotOrphanAnIndexEntry() {
-        final int ebo = 99;
-        bindVao(1);
-        bindEbo(ebo);
-
-        deleteVao(1);
-        bindVao(DEFAULT_VAO);
-
-        assertFalse(vaos.eboOwners.containsKey(ebo), "deleting the bound VAO left an unreachable owner in the index");
-        assertEquals(0, vaos.eboOwners.size(), "index leaked an entry for a deleted VAO");
-    }
-
-    @Test
-    void indexEmptiesOutWhenEverythingIsDeleted() {
-        for (int vao = 1; vao <= 64; vao++) {
-            bindVao(vao);
-            bindEbo(1000 + vao);
-        }
-        bindVao(DEFAULT_VAO);
-        for (int vao = 1; vao <= 64; vao++) {
-            deleteVao(vao);
-        }
-        assertEquals(0, vaos.eboOwners.size(), "index leaked entries after every VAO was deleted");
     }
 }

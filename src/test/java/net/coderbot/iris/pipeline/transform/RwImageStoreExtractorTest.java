@@ -64,15 +64,6 @@ class RwImageStoreExtractorTest {
         "}",
         "");
 
-    @Test void raster_keepsVariablesInitializedFromAtomics() {
-        final var result = RwImageStoreExtractor.tryExtract(ATOMIC_RESULT_VSH, PatchShaderType.VERTEX, "prepare");
-        assertNotNull(result);
-        final String stripped = norm(result.strippedSource());
-        assertTrue(stripped.contains("int previous = 0;"), stripped);
-        assertTrue(stripped.contains("if (previous == 0)"), stripped);
-        assertFalse(stripped.contains("imageAtomic"), stripped);
-    }
-
     static Stream<Arguments> undetected() {
         return Stream.of(Arguments.of("no imageStore", NO_IMAGESTORE_VSH), Arguments.of("null input", null));
     }
@@ -112,58 +103,6 @@ class RwImageStoreExtractorTest {
         assertTrue(result.computeSource().startsWith("// _vg_mode: chunk\n"));
     }
 
-    static Stream<Arguments> minimalVoxCompute() {
-        return Stream.of(
-            has("compute version", "#version 460 core"),
-            has("workgroup size", "layout(local_size_x = 64) in;"),
-            has("range base uniform", "uniform int _vg_rangeBase;"),
-            has("range count uniform", "uniform int _vg_rangeCount;"),
-            has("vertex total uniform", "uniform int _vg_vertexTotal;"),
-            has("invocation base uniform", "uniform int _vg_invocationBase;"),
-            has("ranges SSBO", "layout(std430, binding = 10) readonly buffer _VgRanges { uvec2 r[]; } _vg_ranges;"),
-            has("vertex id from the range table", "int id = int(_vg_ranges.r[_vg_lo].x + (_vg_g - _vg_ranges.r[_vg_lo].y));"),
-            lacks("no start vertex uniform", "_vg_startVertex"),
-            lacks("no vertex count uniform", "_vg_vertexCount"),
-            has("VBO SSBO binds at the dedicated voxelization slot, not 0..8 which shaderpacks claim via buffer.N",
-                "layout(std430, binding = " + RwImageStoreExtractor.VG_VBUF_SSBO_BINDING + ") readonly buffer _VgVbuf"),
-            has("original main renamed", "_vg_body"),
-            lacksNorm("user-original main no longer named main", "void main ( ) { texCoord ="),
-            has("synthesized main reads the invocation id", "gl_GlobalInvocationID"),
-            has("synthesized main unpacks", "_vg_unpack(uint(id));"),
-            has("synthesized main calls the body", "_vg_body();"),
-            has("unpack reads iris_Vertex", "iris_Vertex = vec4(uintBitsToFloat(_vg_vbuf.data[base + 0u])"),
-            has("unpack reads iris_Color", "iris_Color = vec4(float(_vg_vbuf.data[base + 3u] & 0xFFu)"),
-            has("ATTRIBUTES-patch mc_Entity is delivered as vec4 raw", "mc_Entity = vec4(float(_vg_vbuf.data[base + 10u])"),
-            lacksNorm("out qualifier stripped from varyings", "out vec2 texCoord"),
-            hasNorm("varying becomes a global", "vec2 texCoord"),
-            lacksNorm("flat is interface-only; a compute global carrying it does not compile", "flat"),
-            hasNorm("flat varying still becomes a global", "int mat"),
-            lacksNorm("iris_Vertex input declaration stripped", "in vec4 iris_Vertex"),
-            lacksNorm("mc_Entity attribute declaration stripped", "attribute vec4 mc_Entity"));
-    }
-
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("minimalVoxCompute")
-    void minimalVox_compute(String what, boolean normalized, String needle, boolean present) {
-        assertSource(RwImageStoreExtractor.tryExtract(MINIMAL_VOX_VSH, PatchShaderType.VERTEX, "shadow").computeSource(), normalized, needle, present);
-    }
-
-    static Stream<Arguments> minimalVoxRaster() {
-        return Stream.of(
-            lacks("no imageStore calls", "imageStore("),
-            lacks("no writeonly image decls", "writeonly uniform uimage"),
-            lacksNorm("no uimage3D voxel_img decl", "uniform uimage3D voxel_img"),
-            has("keeps main", "main"),
-            has("keeps a version directive", "#version"),
-            has("preserves the user #extension directive", "#extension GL_ARB_shader_image_load_store"));
-    }
-
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("minimalVoxRaster")
-    void minimalVox_raster(String what, boolean normalized, String needle, boolean present) {
-        assertSource(RwImageStoreExtractor.tryExtract(MINIMAL_VOX_VSH, PatchShaderType.VERTEX, "shadow").strippedSource(), normalized, needle, present);
-    }
-
     @Test void compute_ssboBindingDoesNotCollideWithShaderpackSlots() {
         assertTrue(RwImageStoreExtractor.VG_VBUF_SSBO_BINDING >= 9, "VG_VBUF_SSBO_BINDING must be >= 9 to avoid colliding with shaderpack buffer.N slots; got " + RwImageStoreExtractor.VG_VBUF_SSBO_BINDING);
     }
@@ -190,38 +129,6 @@ class RwImageStoreExtractorTest {
         assertTrue(n.contains("tintA = vec3 [ ] ("), "tintA: unsized array initializer must stay on the declaration");
         assertTrue(n.contains("tintB [ ] = vec3 [ ] ("), "tintB: unsized array initializer must stay on the declaration");
         assertTrue(n.indexOf("tintA =") == n.lastIndexOf("tintA ="), "tintA: initializer must not additionally be hoisted into the body");
-    }
-
-    @Test void compute_vertInitOnlyAssignsUnpackedAttributes() {
-        final String src = String.join("\n",
-            "#version 460 core",
-            "in vec3 a_PosId;",
-            "writeonly uniform uimage3D voxel_img;",
-            "void main() {",
-            "    gl_Position = vec4(a_PosId, 1.0);",
-            "    imageStore(voxel_img, ivec3(a_PosId), uvec4(1u, 0u, 0u, 0u));",
-            "}",
-            "");
-        final String s = norm(RwImageStoreExtractor.tryExtract(src, PatchShaderType.VERTEX, "shadow").computeSource());
-        assertTrue(s.contains("_vert_position = a_PosId"), "the used attribute is still decoded\n\n" + s);
-        assertFalse(s.contains("a_TexCoord"), "an unused attribute must not be referenced\n\n" + s);
-        assertFalse(s.contains("a_LightCoord"), "an unused attribute must not be referenced\n\n" + s);
-    }
-
-    @Test void compute_dropsAuxiliaryStorageQualifierFromVaryings() {
-        final String src = String.join("\n",
-            "#version 460 core",
-            "in vec4 iris_Vertex;",
-            "writeonly uniform uimage3D voxel_img;",
-            "centroid out vec2 texCoord;",
-            "void main() {",
-            "    texCoord = iris_Vertex.xy;",
-            "    imageStore(voxel_img, ivec3(0), uvec4(1u, 0u, 0u, 0u));",
-            "}",
-            "");
-        final String s = norm(RwImageStoreExtractor.tryExtract(src, PatchShaderType.VERTEX, "shadow").computeSource());
-        assertFalse(s.contains("centroid"), "centroid is interface-only\n\n" + s);
-        assertTrue(s.contains("vec2 texCoord"), "the varying still becomes a global");
     }
 
     @ParameterizedTest(name = "{0} {1}")
@@ -293,32 +200,6 @@ class RwImageStoreExtractorTest {
         assertEquals(RwImageStoreExtractor.RwExtractMode.CHUNK, result.mode());
     }
 
-    static Stream<Arguments> celeritasCompute() {
-        return Stream.of(
-            has("uncompressed (live) a_PosId global", "vec3 a_PosId;"),
-            has("a_Color global", "vec4 a_Color;"),
-            has("a_TexCoord global", "vec2 a_TexCoord;"),
-            has("a_LightCoord global", "uint a_LightCoord;"),
-            has("mc_Entity global", "uint mc_Entity;"),
-            has("mc_midTexCoord global", "vec2 mc_midTexCoord;"),
-            has("iris_Normal global", "vec3 iris_Normal;"),
-            has("at_midBlock global", "vec4 at_midBlock;"),
-            has("unpack reads a_PosId", "a_PosId = vec3(uintBitsToFloat(_vg_vbuf.data[base + 0u])"),
-            has("unpack reads a_TexCoord", "a_TexCoord = vec2(uintBitsToFloat(_vg_vbuf.data[base + 4u])"),
-            has("unpack reads a_LightCoord", "a_LightCoord = _vg_vbuf.data[base + 6u]"),
-            has("celeritas-typed mc_Entity is delivered as the raw packed uint", "mc_Entity = _vg_vbuf.data[base + 10u]"),
-            has("mc_midTexCoord is an unnormalized ushort delivered raw by the vertex stage, so the compute prelude must not rescale it",
-                "mc_midTexCoord = vec2(float(_vg_vbuf.data[base + 7u] & 0xFFFFu),"),
-            has("vertex decode assigns position", "_vert_position = a_PosId;"),
-            has("_get_draw_translation depends on _draw_id", "_draw_id = (_vg_draw_params >> 8) & 0xFFu;"));
-    }
-
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("celeritasCompute")
-    void celeritas_compute(String what, boolean normalized, String needle, boolean present) {
-        assertSource(RwImageStoreExtractor.tryExtract(CELERITAS_PATCHED_VOX_VSH, PatchShaderType.VERTEX, "CELERITAS_TERRAIN").computeSource(), normalized, needle, present);
-    }
-
     @Test void celeritas_vertexDecodeComesAfterTheGlobalDeclarations() {
         final String s = RwImageStoreExtractor.tryExtract(CELERITAS_PATCHED_VOX_VSH, PatchShaderType.VERTEX, "CELERITAS_TERRAIN").computeSource();
         for (String global : new String[]{"_vert_position", "_vert_tex_diffuse_coord", "_vert_color", "_vert_tex_light_coord", "_draw_id", "_material_params"}) {
@@ -346,13 +227,6 @@ class RwImageStoreExtractorTest {
         "    imageStore(wsr_lod_img, ivec3(0), uvec4(0u));",
         "}",
         "");
-
-    @Test void compute_emitsExplicitBindingsForWriteonlyImages() {
-        final String s = RwImageStoreExtractor.tryExtract(MULTI_IMAGE_VSH, PatchShaderType.VERTEX, "ATTRIBUTES").computeSource();
-        assertTrue(s.contains("layout(binding = 0) writeonly uniform uimage3D voxel_img;"), "voxel_img must be binding 0 (alphabetical-first), missing in:\n" + s);
-        assertTrue(s.contains("layout(binding = 1) writeonly uniform uimage2D wsr_img;"));
-        assertTrue(s.contains("layout(binding = 2) writeonly uniform uimage3D wsr_lod_img;"));
-    }
 
     private static final String NON_WRITEONLY_PREPARE_VSH = String.join("\n",
         "#version 460 core",
@@ -398,13 +272,6 @@ class RwImageStoreExtractorTest {
         assertTrue(s.contains("if (vid >= 4u) return;"));
     }
 
-    @Test void compositeVsh_rasterStillCompilesShape() {
-        final var result = RwImageStoreExtractor.tryExtract(COMPOSITE_VSH, PatchShaderType.VERTEX, "composite");
-        final String r = result.strippedSource();
-        assertFalse(r.contains("imageStore("), "raster has no imageStore");
-        assertFalse(r.contains("uimage2D"), "raster has no uimage2D decl");
-    }
-
     private static final String COMPOSITE_FSH = String.join("\n",
         "#version 460 core",
         "writeonly uniform uimage2D out_img;",
@@ -427,14 +294,6 @@ class RwImageStoreExtractorTest {
         assertTrue(s.contains("uniform ivec2 _vg_target_size;"));
         assertTrue(s.contains("#define gl_FragCoord _vg_gl_fragcoord_raw"));
         assertTrue(s.contains("vec2(px) + 0.5"));
-    }
-
-    @Test void compositeFsh_rasterKeepsOutColorButStripsImage() {
-        final var result = RwImageStoreExtractor.tryExtract(COMPOSITE_FSH, PatchShaderType.FRAGMENT, "composite_fsh");
-        final String r = result.strippedSource();
-        assertFalse(r.contains("imageStore("));
-        assertFalse(r.contains("uimage2D"));
-        assertTrue(norm(r).contains("out vec4 outColor"), "raster keeps user output\n\n" + r);
     }
 
     private static final String ATOMIC_IMAGE_VSH = String.join("\n",
@@ -481,15 +340,6 @@ class RwImageStoreExtractorTest {
         "}",
         "");
 
-    @Test void mixedReadWrite_componentTypesCorrect() {
-        final var result = RwImageStoreExtractor.tryExtract(MIXED_IMAGES_VSH, PatchShaderType.VERTEX, "mixed");
-        assertNotNull(result);
-        final String r = result.strippedSource();
-        assertTrue(r.contains("vec4(0.0)"), "image2D imageLoad replaced by vec4(0.0)\n\n" + r);
-        assertTrue(r.contains("ivec4(0)"), "iimage2D imageLoad replaced by ivec4(0)");
-        assertTrue(r.contains("uvec4(0u)"), "uimage3D imageLoad replaced by uvec4(0u)");
-    }
-
     private static final String ATOMIC_NOT_WRITEONLY_VSH = String.join("\n",
         "#version 460 core",
         "in vec4 iris_Vertex;",
@@ -505,21 +355,6 @@ class RwImageStoreExtractorTest {
         "    gl_Position = vec4(0.0);",
         "}",
         "");
-
-    @Test void atomicOnlyImage_doesNotGetWriteonlyQualifier() {
-        final var result = RwImageStoreExtractor.tryExtract(ATOMIC_NOT_WRITEONLY_VSH, PatchShaderType.VERTEX, "atomic_only");
-        assertNotNull(result);
-        final String s = result.computeSource();
-        assertFalse(s.contains("writeonly uniform iimage2D endcrystal_img"), "imageAtomic-only image must not get writeonly qualifier (atomics are read+write)\n\n" + s);
-        assertTrue(s.contains("uniform iimage2D endcrystal_img"), "image decl still emitted in prelude\n\n" + s);
-    }
-
-    @Test void writeonlyImage_stillGetsWriteonlyQualifier() {
-        final var result = RwImageStoreExtractor.tryExtract(MULTI_IMAGE_VSH, PatchShaderType.VERTEX, "writeonly");
-        final String s = result.computeSource();
-        assertTrue(s.contains("writeonly uniform uimage3D voxel_img"),
-            "imageStore-only image keeps writeonly qualifier\n\n" + s);
-    }
 
     private static final String IRIS_INJECTED_MC_ENTITY_VSH = String.join("\n",
         "#version 460 core",
@@ -538,15 +373,6 @@ class RwImageStoreExtractorTest {
         "}",
         "");
 
-    @Test void astDeclaredMcEntity_emitsOnlyUintVariant() {
-        final var result = RwImageStoreExtractor.tryExtract(IRIS_INJECTED_MC_ENTITY_VSH, PatchShaderType.VERTEX, "shadow");
-        final String s = result.computeSource();
-        assertFalse(s.contains("vec4 mc_Entity"), "mc_Entity declared in AST as uint must not emit a vec4 variant (Iris's iris_Entity uses mc_Entity >> 1u)\n\n" + s);
-        assertTrue(s.contains("uint mc_Entity;"), "mc_Entity must be emitted as uint matching the AST decl\n\n" + s);
-        assertFalse(s.contains("vec4 mc_midTexCoord"), "mc_midTexCoord declared in AST as vec2 must not emit a vec4 variant\n\n" + s);
-        assertTrue(s.contains("vec2 mc_midTexCoord;"));
-    }
-
     private static final String IMAGE_STORE_AS_BRACELESS_IF_BODY_VSH = String.join("\n",
         "#version 460 core",
         "in vec4 iris_Vertex;",
@@ -563,37 +389,6 @@ class RwImageStoreExtractorTest {
         "    gl_Position = vec4(iris_Vertex.xyz, 1.0);",
         "}",
         "");
-
-    @Test void raster_brackelessIfBodyImageStore_stripDoesNotLeaveDanglingIf() {
-        final var result = RwImageStoreExtractor.tryExtract(IMAGE_STORE_AS_BRACELESS_IF_BODY_VSH, PatchShaderType.VERTEX, "if_body");
-        assertNotNull(result);
-        final String r = result.strippedSource();
-        assertFalse(r.contains("imageStore("), "imageStore must be removed\n\n" + r);
-        final String nr = norm(r);
-        assertTrue(nr.contains("if (gl_VertexID % 4 == 0) ;"), "if statement must have a valid empty body after strip\n\n" + r);
-    }
-
-    @Test void raster_preservesIfdefBlockAndItsContents() {
-        final var result = RwImageStoreExtractor.tryExtract(CELERITAS_PATCHED_VOX_VSH, PatchShaderType.VERTEX, "CELERITAS_TERRAIN");
-        final String r = result.strippedSource();
-        assertTrue(r.contains("#ifdef USE_VERTEX_COMPRESSION"), "raster must preserve the #ifdef block verbatim so _vert_init() resolves\n\n" + r);
-        assertTrue(r.contains("#else"), "raster preserves the #else branch\n\n" + r);
-        assertTrue(r.contains("#endif"), "raster preserves the #endif\n\n" + r);
-        assertTrue(r.contains("void _vert_init()"), "raster must keep the _vert_init definition the user's main calls\n\n" + r);
-        assertFalse(r.contains("imageStore("), "raster still strips imageStore\n\n" + r);
-        assertFalse(norm(r).contains("uniform uimage3D voxel_img"), "raster still strips the image decl\n\n" + r);
-    }
-
-    @Test void atomicCall_rewrittenToInlineCompoundStatement() {
-        final var result = RwImageStoreExtractor.tryExtract(ATOMIC_NOT_WRITEONLY_VSH, PatchShaderType.VERTEX, "atomic");
-        assertNotNull(result);
-        final String c = result.computeSource();
-        final String nc = norm(c);
-        assertFalse(nc.contains("imageAtomicAdd ("), "imageAtomicAdd must be rewritten in compute output\n\n" + c);
-        assertTrue(nc.contains("int _vg_prev = imageLoad ( endcrystal_img"), "inline emulation must load the prior value with the original global name\n\n" + c);
-        assertTrue(nc.contains("imageStore ( endcrystal_img"), "inline emulation must write the new value back to the original global\n\n" + c);
-        assertTrue(nc.contains("ivec4 ( _vg_prev +"), "inline emulation must compute prev + val in the destination vec\n\n" + c);
-    }
 
     private static final String MIXED_ATOMIC_AND_STORE_VSH = String.join("\n",
         "#version 460 core",
@@ -623,5 +418,149 @@ class RwImageStoreExtractorTest {
         int from = 0;
         while ((from = nc.indexOf("imageStore ( dual_img", from)) >= 0) { storeCount++; from++; }
         assertTrue(storeCount >= 2, "expected both the user's imageStore and the emulated imageStore on dual_img, got " + storeCount + ":\n\n" + c);
+    }
+
+    private static final String VERT_INIT_VSH = String.join("\n",
+        "#version 460 core",
+        "in vec3 a_PosId;",
+        "writeonly uniform uimage3D voxel_img;",
+        "void main() {",
+        "    gl_Position = vec4(a_PosId, 1.0);",
+        "    imageStore(voxel_img, ivec3(a_PosId), uvec4(1u, 0u, 0u, 0u));",
+        "}",
+        "");
+
+    private static final String CENTROID_VSH = String.join("\n",
+        "#version 460 core",
+        "in vec4 iris_Vertex;",
+        "writeonly uniform uimage3D voxel_img;",
+        "centroid out vec2 texCoord;",
+        "void main() {",
+        "    texCoord = iris_Vertex.xy;",
+        "    imageStore(voxel_img, ivec3(0), uvec4(1u, 0u, 0u, 0u));",
+        "}",
+        "");
+
+    private static Stream<Arguments> rows(String source, PatchShaderType stage, boolean raster, Arguments... checks) {
+        return Stream.of(checks).map(c -> {
+            final Object[] a = c.get();
+            return Arguments.of(a[0], source, stage, raster, a[1], a[2], a[3]);
+        });
+    }
+
+    @SafeVarargs
+    private static Stream<Arguments> concat(Stream<Arguments>... groups) {
+        return Stream.of(groups).flatMap(g -> g);
+    }
+
+    static Stream<Arguments> extractedSourceChecks() {
+        return concat(
+            rows(ATOMIC_RESULT_VSH, PatchShaderType.VERTEX, true,
+                hasNorm("atomic-initialized variable kept as zero", "int previous = 0;"),
+                hasNorm("branch on atomic-initialized variable kept", "if (previous == 0)"),
+                lacksNorm("no imageAtomic left in raster", "imageAtomic")),
+            rows(MINIMAL_VOX_VSH, PatchShaderType.VERTEX, false,
+                has("compute version", "#version 460 core"),
+                has("workgroup size", "layout(local_size_x = 64) in;"),
+                has("range base uniform", "uniform int _vg_rangeBase;"),
+                has("range count uniform", "uniform int _vg_rangeCount;"),
+                has("vertex total uniform", "uniform int _vg_vertexTotal;"),
+                has("invocation base uniform", "uniform int _vg_invocationBase;"),
+                has("ranges SSBO", "layout(std430, binding = 10) readonly buffer _VgRanges { uvec2 r[]; } _vg_ranges;"),
+                has("vertex id from the range table", "int id = int(_vg_ranges.r[_vg_lo].x + (_vg_g - _vg_ranges.r[_vg_lo].y));"),
+                lacks("no start vertex uniform", "_vg_startVertex"),
+                lacks("no vertex count uniform", "_vg_vertexCount"),
+                has("VBO SSBO binds at the dedicated voxelization slot, not 0..8 which shaderpacks claim via buffer.N",
+                    "layout(std430, binding = " + RwImageStoreExtractor.VG_VBUF_SSBO_BINDING + ") readonly buffer _VgVbuf"),
+                has("original main renamed", "_vg_body"),
+                lacksNorm("user-original main no longer named main", "void main ( ) { texCoord ="),
+                has("synthesized main reads the invocation id", "gl_GlobalInvocationID"),
+                has("synthesized main unpacks", "_vg_unpack(uint(id));"),
+                has("synthesized main calls the body", "_vg_body();"),
+                has("unpack reads iris_Vertex", "iris_Vertex = vec4(uintBitsToFloat(_vg_vbuf.data[base + 0u])"),
+                has("unpack reads iris_Color", "iris_Color = vec4(float(_vg_vbuf.data[base + 3u] & 0xFFu)"),
+                has("ATTRIBUTES-patch mc_Entity is delivered as vec4 raw", "mc_Entity = vec4(float(_vg_vbuf.data[base + 10u])"),
+                lacksNorm("out qualifier stripped from varyings", "out vec2 texCoord"),
+                hasNorm("varying becomes a global", "vec2 texCoord"),
+                lacksNorm("flat is interface-only; a compute global carrying it does not compile", "flat"),
+                hasNorm("flat varying still becomes a global", "int mat"),
+                lacksNorm("iris_Vertex input declaration stripped", "in vec4 iris_Vertex"),
+                lacksNorm("mc_Entity attribute declaration stripped", "attribute vec4 mc_Entity")),
+            rows(MINIMAL_VOX_VSH, PatchShaderType.VERTEX, true,
+                lacks("no imageStore calls", "imageStore("),
+                lacks("no writeonly image decls", "writeonly uniform uimage"),
+                lacksNorm("no uimage3D voxel_img decl", "uniform uimage3D voxel_img"),
+                has("keeps main", "main"),
+                has("keeps a version directive", "#version"),
+                has("preserves the user #extension directive", "#extension GL_ARB_shader_image_load_store")),
+            rows(VERT_INIT_VSH, PatchShaderType.VERTEX, false,
+                hasNorm("the used attribute is still decoded", "_vert_position = a_PosId"),
+                lacksNorm("an unused attribute a_TexCoord must not be referenced", "a_TexCoord"),
+                lacksNorm("an unused attribute a_LightCoord must not be referenced", "a_LightCoord")),
+            rows(CENTROID_VSH, PatchShaderType.VERTEX, false,
+                lacksNorm("centroid is interface-only", "centroid"),
+                hasNorm("the varying still becomes a global", "vec2 texCoord")),
+            rows(CELERITAS_PATCHED_VOX_VSH, PatchShaderType.VERTEX, false,
+                has("uncompressed (live) a_PosId global", "vec3 a_PosId;"),
+                has("a_Color global", "vec4 a_Color;"),
+                has("a_TexCoord global", "vec2 a_TexCoord;"),
+                has("a_LightCoord global", "uint a_LightCoord;"),
+                has("mc_Entity global", "uint mc_Entity;"),
+                has("mc_midTexCoord global", "vec2 mc_midTexCoord;"),
+                has("iris_Normal global", "vec3 iris_Normal;"),
+                has("at_midBlock global", "vec4 at_midBlock;"),
+                has("unpack reads a_PosId", "a_PosId = vec3(uintBitsToFloat(_vg_vbuf.data[base + 0u])"),
+                has("unpack reads a_TexCoord", "a_TexCoord = vec2(uintBitsToFloat(_vg_vbuf.data[base + 4u])"),
+                has("unpack reads a_LightCoord", "a_LightCoord = _vg_vbuf.data[base + 6u]"),
+                has("celeritas-typed mc_Entity is delivered as the raw packed uint", "mc_Entity = _vg_vbuf.data[base + 10u]"),
+                has("mc_midTexCoord is an unnormalized ushort delivered raw by the vertex stage, so the compute prelude must not rescale it",
+                    "mc_midTexCoord = vec2(float(_vg_vbuf.data[base + 7u] & 0xFFFFu),"),
+                has("vertex decode assigns position", "_vert_position = a_PosId;"),
+                has("_get_draw_translation depends on _draw_id", "_draw_id = (_vg_draw_params >> 8) & 0xFFu;")),
+            rows(CELERITAS_PATCHED_VOX_VSH, PatchShaderType.VERTEX, true,
+                has("raster preserves the ifdef block", "#ifdef USE_VERTEX_COMPRESSION"),
+                has("raster preserves the else branch", "#else"),
+                has("raster preserves the endif", "#endif"),
+                has("raster keeps the _vert_init definition the user's main calls", "void _vert_init()"),
+                lacks("raster still strips imageStore", "imageStore("),
+                lacksNorm("raster still strips the image decl", "uniform uimage3D voxel_img")),
+            rows(MULTI_IMAGE_VSH, PatchShaderType.VERTEX, false,
+                has("voxel_img is binding 0 (alphabetical-first)", "layout(binding = 0) writeonly uniform uimage3D voxel_img;"),
+                has("wsr_img is binding 1", "layout(binding = 1) writeonly uniform uimage2D wsr_img;"),
+                has("wsr_lod_img is binding 2", "layout(binding = 2) writeonly uniform uimage3D wsr_lod_img;")),
+            rows(COMPOSITE_VSH, PatchShaderType.VERTEX, true,
+                lacks("composite vsh raster has no imageStore", "imageStore("),
+                lacks("composite vsh raster has no uimage2D decl", "uimage2D")),
+            rows(COMPOSITE_FSH, PatchShaderType.FRAGMENT, true,
+                lacks("composite fsh raster has no imageStore", "imageStore("),
+                lacks("composite fsh raster has no uimage2D decl", "uimage2D"),
+                hasNorm("composite fsh raster keeps user output", "out vec4 outColor")),
+            rows(MIXED_IMAGES_VSH, PatchShaderType.VERTEX, true,
+                has("image2D imageLoad replaced by vec4(0.0)", "vec4(0.0)"),
+                has("iimage2D imageLoad replaced by ivec4(0)", "ivec4(0)"),
+                has("uimage3D imageLoad replaced by uvec4(0u)", "uvec4(0u)")),
+            rows(ATOMIC_NOT_WRITEONLY_VSH, PatchShaderType.VERTEX, false,
+                lacks("imageAtomic-only image must not get writeonly qualifier", "writeonly uniform iimage2D endcrystal_img"),
+                has("imageAtomic-only image decl still emitted in prelude", "uniform iimage2D endcrystal_img"),
+                lacksNorm("imageAtomicAdd rewritten in compute output", "imageAtomicAdd ("),
+                hasNorm("inline emulation loads the prior value from the original global", "int _vg_prev = imageLoad ( endcrystal_img"),
+                hasNorm("inline emulation writes back to the original global", "imageStore ( endcrystal_img"),
+                hasNorm("inline emulation computes prev + val", "ivec4 ( _vg_prev +")),
+            rows(IRIS_INJECTED_MC_ENTITY_VSH, PatchShaderType.VERTEX, false,
+                lacks("AST-declared uint mc_Entity emits no vec4 variant", "vec4 mc_Entity"),
+                has("mc_Entity emitted as uint", "uint mc_Entity;"),
+                lacks("AST-declared vec2 mc_midTexCoord emits no vec4 variant", "vec4 mc_midTexCoord"),
+                has("mc_midTexCoord emitted as vec2", "vec2 mc_midTexCoord;")),
+            rows(IMAGE_STORE_AS_BRACELESS_IF_BODY_VSH, PatchShaderType.VERTEX, true,
+                lacks("imageStore removed", "imageStore("),
+                hasNorm("if statement keeps a valid empty body after strip", "if (gl_VertexID % 4 == 0) ;")));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("extractedSourceChecks")
+    void extractedSource(String what, String source, PatchShaderType stage, boolean raster, boolean normalized, String needle, boolean present) {
+        final var result = RwImageStoreExtractor.tryExtract(source, stage, "extract");
+        assertNotNull(result);
+        assertSource(raster ? result.strippedSource() : result.computeSource(), normalized, needle, present);
     }
 }

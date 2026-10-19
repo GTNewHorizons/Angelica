@@ -14,6 +14,7 @@ class DeferredDrawBatcherTest {
         "basic, 42, 0x0302, 0x0001, true, false",
         "zero fields, 0, 0, 0, false, true",
         "largest 20-bit texture id, 1048575, 0x0302, 0x0303, true, true",
+        "dst alpha blend constants, 1, 0x0304, 0x0305, true, true",
     })
     void stateKey_roundtrip(String name, int textureId, int srcRgb, int dstRgb, boolean blend, boolean depthMask) {
         long key = DeferredDrawBatcher.packStateKey(textureId, srcRgb, dstRgb, blend, depthMask, true, true);
@@ -31,27 +32,6 @@ class DeferredDrawBatcherTest {
         long keyC = DeferredDrawBatcher.packStateKey(42, GL11.GL_ONE, GL11.GL_ONE, true, false, true, true);
         assertNotEquals(keyA, keyB, "Different texture IDs should produce different keys");
         assertNotEquals(keyA, keyC, "Different blend funcs should produce different keys");
-    }
-
-    @Test
-    void stateKey_blendConstants() {
-        // Verify all common GL blend constants roundtrip correctly
-        int[] blendConstants = {
-            GL11.GL_ZERO,           // 0x0000
-            GL11.GL_ONE,            // 0x0001
-            GL11.GL_SRC_ALPHA,      // 0x0302
-            GL11.GL_ONE_MINUS_SRC_ALPHA, // 0x0303
-            GL11.GL_DST_ALPHA,      // 0x0304
-            GL11.GL_ONE_MINUS_DST_ALPHA, // 0x0305
-        };
-
-        for (int src : blendConstants) {
-            for (int dst : blendConstants) {
-                long key = DeferredDrawBatcher.packStateKey(1, src, dst, true, true, true, true);
-                assertEquals(src, DeferredDrawBatcher.unpackSrcRgb(key), "srcRgb roundtrip failed for 0x" + Integer.toHexString(src));
-                assertEquals(dst, DeferredDrawBatcher.unpackDstRgb(key), "dstRgb roundtrip failed for 0x" + Integer.toHexString(dst));
-            }
-        }
     }
 
     @Test

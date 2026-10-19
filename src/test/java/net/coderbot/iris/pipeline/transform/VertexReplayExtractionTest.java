@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 
 import static net.coderbot.iris.pipeline.transform.TransformTestSupport.TEX_LM;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -235,16 +236,20 @@ class VertexReplayExtractionTest {
         assertTrue(skip < compute.indexOf("_vg_vertex = _vg_index_value + uint(_vg_draw.w);"), compute);
     }
 
+    private static EnumMap<PatchShaderType, String> extractAttributes(String vertex, Predicate<String> atomicsSupported) {
+        final EnumMap<PatchShaderType, String> stages = new EnumMap<>(PatchShaderType.class);
+        stages.put(PatchShaderType.VERTEX, vertex);
+        ShaderTransformer.extractRwImageStores(stages, Patch.ATTRIBUTES, null, atomicsSupported);
+        return stages;
+    }
+
     @Test
     void atomicReplayIsDroppedWithoutBackendSupport() {
-        final EnumMap<PatchShaderType, String> atomic = new EnumMap<>(PatchShaderType.class);
-        atomic.put(PatchShaderType.VERTEX, TransformPatcher.patchAttributes(CRYSTAL_VERTEX, null, FRAGMENT, TEX_LM).get(PatchShaderType.VERTEX));
-        ShaderTransformer.extractRwImageStores(atomic, Patch.ATTRIBUTES, null, image -> false);
+        final EnumMap<PatchShaderType, String> atomic = extractAttributes(TransformPatcher.patchAttributes(CRYSTAL_VERTEX, null, FRAGMENT, TEX_LM).get(PatchShaderType.VERTEX), image -> false);
         assertFalse(atomic.containsKey(PatchShaderType.COMPUTE));
         assertFalse(atomic.get(PatchShaderType.VERTEX).contains("imageAtomic"), atomic.get(PatchShaderType.VERTEX));
 
-        final EnumMap<PatchShaderType, String> plain = new EnumMap<>(PatchShaderType.class);
-        plain.put(PatchShaderType.VERTEX, """
+        final EnumMap<PatchShaderType, String> plain = extractAttributes("""
             #version 460 core
             in vec4 iris_Vertex;
             layout(r32ui) uniform uimage2D marks;
@@ -252,8 +257,7 @@ class VertexReplayExtractionTest {
                 imageStore(marks, ivec2(0), uvec4(1u));
                 gl_Position = iris_Vertex;
             }
-            """);
-        ShaderTransformer.extractRwImageStores(plain, Patch.ATTRIBUTES, null, image -> false);
+            """, image -> false);
         assertTrue(plain.containsKey(PatchShaderType.COMPUTE), "plain stores need no atomics, so the replay stays");
     }
 
@@ -261,14 +265,10 @@ class VertexReplayExtractionTest {
     void atomicReplayFollowsTheImageItWrites() {
         final String vertex = TransformPatcher.patchAttributes(CRYSTAL_VERTEX, null, FRAGMENT, TEX_LM).get(PatchShaderType.VERTEX);
 
-        final EnumMap<PatchShaderType, String> supported = new EnumMap<>(PatchShaderType.class);
-        supported.put(PatchShaderType.VERTEX, vertex);
-        ShaderTransformer.extractRwImageStores(supported, Patch.ATTRIBUTES, null, "endcrystal_img"::equals);
+        final EnumMap<PatchShaderType, String> supported = extractAttributes(vertex, "endcrystal_img"::equals);
         assertTrue(supported.containsKey(PatchShaderType.COMPUTE));
 
-        final EnumMap<PatchShaderType, String> unsupported = new EnumMap<>(PatchShaderType.class);
-        unsupported.put(PatchShaderType.VERTEX, vertex);
-        ShaderTransformer.extractRwImageStores(unsupported, Patch.ATTRIBUTES, null, "voxel_img"::equals);
+        final EnumMap<PatchShaderType, String> unsupported = extractAttributes(vertex, "voxel_img"::equals);
         assertFalse(unsupported.containsKey(PatchShaderType.COMPUTE));
     }
 

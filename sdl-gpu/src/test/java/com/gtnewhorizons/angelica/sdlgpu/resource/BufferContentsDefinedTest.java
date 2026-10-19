@@ -9,11 +9,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class BufferContentsDefinedTest {
 
     @Test
-    void unknownBuffer_isNotUndefined() {
-        assertFalse(SdlTestRig.resourceManager().hasUndefinedContents(4242));
-    }
-
-    @Test
     void markDefined_clearsTheFlag() {
         final ResourceManager rm = SdlTestRig.resourceManager();
         SdlReflect.markUndefined(rm, 7);

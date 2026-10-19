@@ -2663,6 +2663,13 @@ public class GLStateManager {
             }
         }
 
+        for (int i = 0; i <= glCtx.maxBoundImageUnit; i++) {
+            final ImageUnitBinding image = glCtx.imageUnits.get(i);
+            if (image != null && image.getTexture() == id) {
+                RENDER_BACKEND.bindImageTexture(i, 0, 0, false, 0, GL15.GL_READ_ONLY, GL30.GL_R8);
+            }
+        }
+
         // Restore active unit, then shrink the texture via a temporary bind
         if (changedUnit) {
             RENDER_BACKEND.activeTexture(GL13.GL_TEXTURE0 + savedUnit);
@@ -4357,7 +4364,7 @@ public class GLStateManager {
         for (int i = 0; i <= glCtx.maxBoundImageUnit; i++) {
             final ImageUnitBinding image = glCtx.imageUnits.get(i);
             if (image != null && image.getTexture() == id) {
-                image.setBinding(0, 0, false, 0, 0, 0);
+                image.reset();
             }
         }
     }
@@ -8711,7 +8718,7 @@ public class GLStateManager {
         if (binding == null) {
             warnOnce("imageUnitRange", "glBindImageTexture unit {} exceeds GL_MAX_IMAGE_UNITS {}", unit, glCtx.imageUnits.size());
         } else {
-            binding.setBinding(texture, level, layered, layer, access, format);
+            binding.setBinding(texture, level, texture != 0 && layered, texture != 0 ? layer : 0, access, format);
             if (texture != 0 && unit > glCtx.maxBoundImageUnit) glCtx.maxBoundImageUnit = unit;
         }
         if (access != GL15.GL_READ_ONLY) TextureInfoCache.INSTANCE.onWrittenOutsideUploads(texture);

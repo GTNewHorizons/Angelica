@@ -14,6 +14,7 @@ import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL33;
 
 import java.nio.FloatBuffer;
@@ -502,6 +503,7 @@ public class GLSM_ClientArrays_GLTest {
 
             assertEquals(2, GLStateManager.glGetInteger(GL11.GL_VERTEX_ARRAY_SIZE), "array state is not restored once its array buffer is gone");
             assertEquals(vbo2, GLStateManager.glGetInteger(GL15.GL_ARRAY_BUFFER_BINDING));
+            assertEquals(vbo2, GL11.glGetInteger(GL15.GL_ARRAY_BUFFER_BINDING));
             assertEquals(GL13.GL_TEXTURE0, GLStateManager.glGetInteger(GL13.GL_CLIENT_ACTIVE_TEXTURE));
         } finally {
             drainClientAttribStack();
@@ -524,6 +526,7 @@ public class GLSM_ClientArrays_GLTest {
             GLStateManager.glBindVertexArray(other);
             GLStateManager.glCallList(list);
             assertEquals(other, GLStateManager.getBoundVAO(), "replaying the list must not rebind the vertex array that was bound while compiling");
+            assertEquals(other, GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING), "driver vertex array unchanged by replay");
         } finally {
             drainClientAttribStack();
             GLStateManager.glDeleteLists(list, 1);

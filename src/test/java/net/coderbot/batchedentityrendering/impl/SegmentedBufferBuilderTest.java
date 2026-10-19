@@ -2,20 +2,16 @@ package net.coderbot.batchedentityrendering.impl;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuad;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
-import com.gtnewhorizons.angelica.rendering.tesr.TemplateBuffer;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
+import net.coderbot.iris.uniforms.CapturedStateScope;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.junit.jupiter.api.Test;
-import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
 import java.util.List;
 
-import static com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil.COLOR_INDEX;
-import static com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil.VERTEX_SIZE;
-import static com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil.X_INDEX;
-
+import static com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrTestSupport.template;
 import static net.coderbot.batchedentityrendering.impl.BufferSourceProbe.layer;
 import static net.coderbot.batchedentityrendering.impl.BufferSourceProbe.quad;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -26,10 +22,7 @@ class SegmentedBufferBuilderTest {
     @Test
     void segmentsSnapshotAllIdsAndTintAtQueueTime() {
         final CapturedRenderingState state = CapturedRenderingState.INSTANCE;
-        state.pushCurrentEntityAndItem();
-        state.pushCurrentBlockEntity();
-        state.pushCurrentEntityColor();
-        try {
+        try (CapturedStateScope ignored = new CapturedStateScope()) {
             final SegmentedBufferBuilder builder = new SegmentedBufferBuilder();
             final RenderLayer layer = layer("snapshot", TransparencyType.OPAQUE);
             for (int i = 0; i < 3; i++) {
@@ -54,10 +47,6 @@ class SegmentedBufferBuilderTest {
                 assertEquals(AngelicaBufferSource.packAbgr(i / 2f, 0, 0, 1), segment.getEntityColor());
                 assertEquals(8, segment.getVertexCount());
             }
-        } finally {
-            state.popCurrentEntityColor();
-            state.popCurrentBlockEntity();
-            state.popCurrentEntityAndItem();
         }
     }
 
@@ -266,15 +255,5 @@ class SegmentedBufferBuilderTest {
         builder.begin(layer, 1);
         builder.addQuad(quad());
         assertEquals(1, builder.getSegments().size());
-    }
-
-    static TemplateBuffer template() {
-        final int[] data = new int[4 * VERTEX_SIZE];
-        for (int v = 0; v < 4; v++) {
-            final int base = v * VERTEX_SIZE;
-            data[base + X_INDEX] = Float.floatToRawIntBits(v);
-            data[base + COLOR_INDEX] = 0xFFFFFFFF;
-        }
-        return new TemplateBuffer(data, 4, GL11.GL_QUADS);
     }
 }

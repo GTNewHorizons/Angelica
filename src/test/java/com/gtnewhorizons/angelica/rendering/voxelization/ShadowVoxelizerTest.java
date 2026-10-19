@@ -18,12 +18,16 @@ import org.embeddedt.embeddium.impl.render.chunk.vertex.format.ChunkVertexType;
 import org.embeddedt.embeddium.impl.render.viewport.CameraTransform;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -151,6 +155,15 @@ class ShadowVoxelizerTest {
         return sink;
     }
 
+    private RecordingSink walkSingleSection(RenderRegion region, CameraTransform camera, boolean faceCulling, int... vertsPerFacing) {
+        final TerrainRenderPass renderPass = pass("solid");
+        final long heap = heap();
+        final SectionRenderDataStorage storage = storage(heap);
+        writeSection(heap, 0, 0, vertsPerFacing);
+        attachStorage(region, renderPass, storage);
+        return walk(lists(renderList(region, 0)), renderPass, camera, faceCulling);
+    }
+
     private final List<Long> heaps = new ArrayList<>();
 
     @AfterEach
@@ -182,82 +195,53 @@ class ShadowVoxelizerTest {
         assertArrayEqualsInt(new int[]{116, 4}, sink.ranges.get(4), "section 5 facing 4");
     }
 
-    @Test
-    void regionOffsetIsCameraRelative() {
-        final TerrainRenderPass renderPass = pass("solid");
-        final RenderRegion region = region(1, 0, 3);
-        final long heap = heap();
-        final SectionRenderDataStorage storage = storage(heap);
-        writeSection(heap, 0, 0, 4, 0, 0, 0, 0, 0, 0);
-        attachStorage(region, renderPass, storage);
-        final CameraTransform camera = new CameraTransform(70.25, 12.5, -3.75);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("regionOffsets")
+    void regionOffsetIsCameraRelativeFromTheRegionOrigin(String label, int rx, int ry, int rz,
+                                                         double camX, double camY, double camZ, Float literalX) {
+        final RenderRegion region = region(rx, ry, rz);
+        final CameraTransform camera = new CameraTransform(camX, camY, camZ);
 
-        final RecordingSink sink = walk(lists(renderList(region, 0)), renderPass, camera, false);
+        final RecordingSink sink = walkSingleSection(region, camera, false, 4, 0, 0, 0, 0, 0, 0);
 
         assertEquals(1, sink.regions.size());
         final float[] offset = sink.regions.get(0);
         assertEquals(region.getOriginX() - camera.intX - camera.fracX, offset[0], 0f, "x");
         assertEquals(region.getOriginY() - camera.intY - camera.fracY, offset[1], 0f, "y");
         assertEquals(region.getOriginZ() - camera.intZ - camera.fracZ, offset[2], 0f, "z");
+        if (literalX != null) {
+            assertEquals(literalX, offset[0], 0f, "region 1 starts at block 128");
+        }
     }
 
-    @Test
-    void regionOffsetUsesTheRegionOriginNotA256BlockGrid() {
-        final TerrainRenderPass renderPass = pass("solid");
-        final RenderRegion region = region(1, 0, 0);
-        final long heap = heap();
-        final SectionRenderDataStorage storage = storage(heap);
-        writeSection(heap, 0, 0, 4, 0, 0, 0, 0, 0, 0);
-        attachStorage(region, renderPass, storage);
-
-        final RecordingSink sink = walk(lists(renderList(region, 0)), renderPass, new CameraTransform(0, 0, 0), false);
-
-        assertEquals(128f, sink.regions.get(0)[0], 0f, "region 1 starts at block 128");
+    private static Stream<Arguments> regionOffsets() {
+        return Stream.of(
+            Arguments.of("camera relative", 1, 0, 3, 70.25, 12.5, -3.75, null),
+            Arguments.of("region origin is not a 256 block grid", 1, 0, 0, 0.0, 0.0, 0.0, 128f));
     }
 
-    @Test
-    void contiguousFacingsCollapseToOneRange() {
-        final TerrainRenderPass renderPass = pass("solid");
-        final RenderRegion region = region(0, 0, 0);
-        final long heap = heap();
-        final SectionRenderDataStorage storage = storage(heap);
-        writeSection(heap, 0, 0, 4, 4, 4, 4, 4, 4, 4);
-        attachStorage(region, renderPass, storage);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("facingRuns")
+    void facingMaskProducesTheExpectedRanges(String label, int[] vertsPerFacing, int[][] expectedRanges) {
+        final RecordingSink sink = walkSingleSection(region(0, 0, 0), new CameraTransform(0, 0, 0), false, vertsPerFacing);
 
-        final RecordingSink sink = walk(lists(renderList(region, 0)), renderPass, new CameraTransform(0, 0, 0), false);
-
-        assertEquals(1, sink.ranges.size(), "seven adjacent facings are one vertex span, not seven dispatches");
-        assertEquals(0, sink.ranges.get(0)[0]);
-        assertEquals(28, sink.ranges.get(0)[1]);
+        assertEquals(expectedRanges.length, sink.ranges.size());
+        for (int i = 0; i < expectedRanges.length; i++) {
+            assertArrayEqualsInt(expectedRanges[i], sink.ranges.get(i), "range " + i);
+        }
     }
 
-    @Test
-    void gapsInTheFacingMaskSplitRuns() {
-        final TerrainRenderPass renderPass = pass("solid");
-        final RenderRegion region = region(0, 0, 0);
-        final long heap = heap();
-        final SectionRenderDataStorage storage = storage(heap);
-        writeSection(heap, 0, 0, 4, 0, 8, 0, 0, 0, 4);
-        attachStorage(region, renderPass, storage);
-
-        final RecordingSink sink = walk(lists(renderList(region, 0)), renderPass, new CameraTransform(0, 0, 0), false);
-
-        assertEquals(3, sink.ranges.size());
-        assertArrayEqualsInt(new int[]{0, 4}, sink.ranges.get(0), "facing 0");
-        assertArrayEqualsInt(new int[]{4, 8}, sink.ranges.get(1), "facing 2");
-        assertArrayEqualsInt(new int[]{12, 4}, sink.ranges.get(2), "facing 6");
+    private static Stream<Arguments> facingRuns() {
+        return Stream.of(
+            Arguments.of("seven adjacent facings are one vertex span, not seven dispatches",
+                new int[] {4, 4, 4, 4, 4, 4, 4}, new int[][] {{0, 28}}),
+            Arguments.of("gaps in the facing mask split runs",
+                new int[] {4, 0, 8, 0, 0, 0, 4}, new int[][] {{0, 4}, {4, 8}, {12, 4}}));
     }
 
     @Test
     void sectionsWithoutGeometryNeverAnnounceTheRegion() {
-        final TerrainRenderPass renderPass = pass("solid");
-        final RenderRegion region = region(0, 0, 0);
-        final long heap = heap();
-        final SectionRenderDataStorage storage = storage(heap);
-        writeSection(heap, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-        attachStorage(region, renderPass, storage);
-
-        final RecordingSink sink = walk(lists(renderList(region, 0)), renderPass, new CameraTransform(0, 0, 0), false);
+        final RecordingSink sink = walkSingleSection(region(0, 0, 0), new CameraTransform(0, 0, 0), false, 0, 0, 0, 0, 0, 0, 0);
 
         assertTrue(sink.regions.isEmpty(), "an empty region must not open an encoder");
         assertTrue(sink.ranges.isEmpty());
@@ -297,16 +281,7 @@ class ShadowVoxelizerTest {
 
     @Test
     void faceCullingNarrowsTheEmittedRanges() {
-        final TerrainRenderPass renderPass = pass("solid");
-        final RenderRegion region = region(0, 0, 0);
-        final long heap = heap();
-        final SectionRenderDataStorage storage = storage(heap);
-        writeSection(heap, 0, 0, 4, 4, 4, 4, 4, 4, 4);
-        attachStorage(region, renderPass, storage);
-        final ChunkRenderListIterable renderLists = lists(renderList(region, 0));
-        final CameraTransform camera = new CameraTransform(500, 200, 500);
-
-        final RecordingSink sink = walk(renderLists, renderPass, camera, true);
+        final RecordingSink sink = walkSingleSection(region(0, 0, 0), new CameraTransform(500, 200, 500), true, 4, 4, 4, 4, 4, 4, 4);
 
         assertFalse(sink.ranges.isEmpty(), "face culling removed everything; the fixture is not exercising the path");
         assertTrue(sink.ranges.size() < 7 || sink.ranges.get(0)[1] < 28, "face culling did not narrow anything");

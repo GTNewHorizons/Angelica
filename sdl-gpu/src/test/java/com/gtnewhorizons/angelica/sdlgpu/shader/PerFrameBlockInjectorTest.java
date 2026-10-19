@@ -52,6 +52,8 @@ class PerFrameBlockInjectorTest {
         for (Member m : BLOCK.members()) {
             assertTrue(out.contains(PerFrameBlockInjector.std140Type(m.type()) + " " + m.name() + ";"), "missing member " + m.name());
         }
+        assertFalse(out.contains("uniform float rainStrength;"));
+        assertTrue(out.contains("    float rainStrength;"));
     }
 
     @Test
@@ -75,16 +77,11 @@ class PerFrameBlockInjectorTest {
     }
 
     @Test
-    void emptyMemberListIsANoOp() {
-        final String src = "#version 330 core\nvoid main() {}\n";
-        assertEquals(src, ShaderTransformChain.inject(src, new PerFrameUniformBlock(List.of()), null));
-    }
-
-    @Test
     void noBlocksReturnsTheSourceInstance() {
         final String src = "#version 330 core\nuniform float frameTimeCounter;\nvoid main() {}\n";
         assertSame(src, ShaderTransformChain.inject(src, null, null));
         assertSame(src, ShaderTransformChain.inject(src, new PerFrameUniformBlock(List.of()), new PerFrameUniformBlock(List.of())));
+        assertSame(src, ShaderTransformChain.inject(src, new PerFrameUniformBlock(List.of()), null));
     }
 
     @Test
@@ -159,18 +156,6 @@ class PerFrameBlockInjectorTest {
         assertFalse(out.contains("    int isRightHanded;"));
 
         memFree(compileOrFail(out, Shaderc.shaderc_fragment_shader));
-    }
-
-    @Test
-    void uniformDeclaredWithTheMatchingTypeIsStillReplaced() {
-        final String out = ShaderTransformChain.inject("""
-            #version 330 core
-            uniform float rainStrength;
-            out vec4 fragColor;
-            void main() { fragColor = vec4(rainStrength); }
-            """, BLOCK, null);
-        assertFalse(out.contains("uniform float rainStrength;"));
-        assertTrue(out.contains("    float rainStrength;"));
     }
 
     @Test

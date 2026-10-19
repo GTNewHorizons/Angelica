@@ -35,9 +35,9 @@ class UploadCBAutoFlushThresholdTest {
     @Test
     void manyTinyUploadsAccumulateBytes() {
         final FrameManager fm = SdlTestRig.frameManager();
-        for (int i = 0; i < 255; i++) fm.recordUploadCommands(65536, 1);
+        for (int i = 0; i < 255; i++) fm.recordUploadCommands(65536, 0);
         assertTrue(fm.frame().pendingUploadBytes < MAX_PENDING_UPLOAD_BYTES);
-        fm.recordUploadCommands(65536, 1);
+        fm.recordUploadCommands(65536, 0);
         assertTrue(fm.shouldAutoSubmitPendingUpload());
     }
 

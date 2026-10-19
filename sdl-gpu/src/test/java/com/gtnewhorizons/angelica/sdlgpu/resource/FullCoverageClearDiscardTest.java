@@ -3,6 +3,11 @@ package com.gtnewhorizons.angelica.sdlgpu.resource;
 import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -22,16 +27,6 @@ class FullCoverageClearDiscardTest {
 
     private static ResourceManager.TextureMeta meta() {
         return new ResourceManager.TextureMeta(0, 0, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM, W, H, 1, 1, 0);
-    }
-
-    @Test
-    void fullTargetColorBlitDropsThePendingClear() {
-        final ContextState st = new ContextState();
-        FBOClearTracker.recordPendingColorClear(st, HANDLE, 1f, 0f, 0f, 1f);
-
-        assertTrue(tracker().discardPendingClearIfFullyCovered(st, HANDLE, 0, 0, 0, W, H, meta(), true));
-        assertFalse(st.pendingColorTextures.contains(HANDLE), "pending clear must be dropped, not left queued");
-        assertFalse(st.pendingColorValues.containsKey(HANDLE));
     }
 
     @Test
@@ -59,46 +54,31 @@ class FullCoverageClearDiscardTest {
         assertFalse(st.pendingDepthValues.containsKey(HANDLE) || st.pendingStencilValues.containsKey(HANDLE));
     }
 
-    @Test
-    void partialCoverageKeepsTheClear() {
-        final int[][] partial = {
-            { 0, 0, 0, W / 2, H },      // narrower
-            { 0, 0, 0, W, H / 2 },      // shorter
-            { 1, 0, 0, W, H },          // offset x
-            { 0, 1, 0, W, H },          // offset y
-            { 0, 0, 1, W, H },          // not level 0
-        };
-        for (int[] c : partial) {
-            final ContextState st = new ContextState();
-            FBOClearTracker.recordPendingColorClear(st, HANDLE, 1f, 0f, 0f, 1f);
-            assertFalse(tracker().discardPendingClearIfFullyCovered(st, HANDLE, c[0], c[1], c[2], c[3], c[4], meta(), true),
-                "x=" + c[0] + " y=" + c[1] + " level=" + c[2] + " w=" + c[3] + " h=" + c[4]);
-            assertTrue(st.pendingColorTextures.contains(HANDLE), "the clear must survive a partial overwrite");
-        }
+    private static Stream<Arguments> clearsThatSurvive() {
+        final ResourceManager.TextureMeta volume = new ResourceManager.TextureMeta(0, 0, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM, W, H, 4, 1, 0);
+        return Stream.of(
+            Arguments.of("narrower", 0, 0, 0, W / 2, H, meta()),
+            Arguments.of("shorter", 0, 0, 0, W, H / 2, meta()),
+            Arguments.of("offset x", 1, 0, 0, W, H, meta()),
+            Arguments.of("offset y", 0, 1, 0, W, H, meta()),
+            Arguments.of("not level 0", 0, 0, 1, W, H, meta()),
+            Arguments.of("volume slice", 0, 0, 0, W, H, volume),
+            Arguments.of("missing meta", 0, 0, 0, W, H, null));
     }
 
-    @Test
-    void volumeTextureKeepsTheClear() {
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("clearsThatSurvive")
+    void partialCoverageKeepsTheClear(String name, int x, int y, int level, int w, int h, ResourceManager.TextureMeta meta) {
         final ContextState st = new ContextState();
         FBOClearTracker.recordPendingColorClear(st, HANDLE, 1f, 0f, 0f, 1f);
-        final ResourceManager.TextureMeta volume = new ResourceManager.TextureMeta(0, 0, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM, W, H, 4, 1, 0);
-        assertFalse(tracker().discardPendingClearIfFullyCovered(st, HANDLE, 0, 0, 0, W, H, volume, true),
-            "one slice of a volume is not full coverage");
-        assertTrue(st.pendingColorTextures.contains(HANDLE));
+        assertFalse(tracker().discardPendingClearIfFullyCovered(st, HANDLE, x, y, level, w, h, meta, true));
+        assertTrue(st.pendingColorTextures.contains(HANDLE), "the clear must survive a partial overwrite");
     }
 
     @Test
     void noPendingClearIsNotAnOverwriteClaim() {
         final ContextState st = new ContextState();
         assertFalse(tracker().discardPendingClearIfFullyCovered(st, HANDLE, 0, 0, 0, W, H, meta(), true));
-    }
-
-    @Test
-    void missingMetaFallsBackToMaterializing() {
-        final ContextState st = new ContextState();
-        FBOClearTracker.recordPendingColorClear(st, HANDLE, 1f, 0f, 0f, 1f);
-        assertFalse(tracker().discardPendingClearIfFullyCovered(st, HANDLE, 0, 0, 0, W, H, null, true));
-        assertTrue(st.pendingColorTextures.contains(HANDLE));
     }
 
     @Test
@@ -110,5 +90,7 @@ class FullCoverageClearDiscardTest {
 
         assertTrue(tracker().discardPendingClearIfFullyCovered(st, HANDLE, 0, 0, 0, W, H, meta(), true));
         assertEquals(before + 1, st.pendingMutationGen);
+        assertFalse(st.pendingColorTextures.contains(HANDLE), "pending clear must be dropped, not left queued");
+        assertFalse(st.pendingColorValues.containsKey(HANDLE));
     }
 }

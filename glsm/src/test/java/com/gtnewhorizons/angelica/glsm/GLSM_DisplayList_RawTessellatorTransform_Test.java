@@ -27,18 +27,21 @@ class GLSM_DisplayList_RawTessellatorTransform_Test {
         GLStateManager.glLoadIdentity();
     }
 
-    @Test
-    void pendingTransformIsEmittedBeforeARawDraw() {
+    private CompiledDisplayList compileHalfScaled(Runnable body) {
         testList = GLStateManager.glGenLists(1);
         GLStateManager.glNewList(testList, GL11.GL_COMPILE);
-
         GLStateManager.glScalef(0.5f, 0.5f, 0.5f);
-        rawQuad(1.0f);
-
+        body.run();
         GLStateManager.glEndList();
 
         final CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
         assertNotNull(compiled);
+        return compiled;
+    }
+
+    @Test
+    void pendingTransformIsEmittedBeforeARawDraw() {
+        final CompiledDisplayList compiled = compileHalfScaled(() -> rawQuad(1.0f));
 
         final IntList opcodes = compiled.getCommandOpcodes();
         final int scaleIndex = opcodes.indexOf(GLCommand.SCALE);
@@ -52,16 +55,7 @@ class GLSM_DisplayList_RawTessellatorTransform_Test {
 
     @Test
     void pendingTransformIsNotEmittedBeforeABakedDraw() {
-        testList = GLStateManager.glGenLists(1);
-        GLStateManager.glNewList(testList, GL11.GL_COMPILE);
-
-        GLStateManager.glScalef(0.5f, 0.5f, 0.5f);
-        immediateQuad(1.0f);
-
-        GLStateManager.glEndList();
-
-        final CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
-        assertNotNull(compiled);
+        final CompiledDisplayList compiled = compileHalfScaled(() -> immediateQuad(1.0f));
 
         final IntList opcodes = compiled.getCommandOpcodes();
         final int scaleIndex = opcodes.indexOf(GLCommand.SCALE);
@@ -73,17 +67,10 @@ class GLSM_DisplayList_RawTessellatorTransform_Test {
 
     @Test
     void aRawDrawAfterABakedDrawStillGetsTheTransform() {
-        testList = GLStateManager.glGenLists(1);
-        GLStateManager.glNewList(testList, GL11.GL_COMPILE);
-
-        GLStateManager.glScalef(0.5f, 0.5f, 0.5f);
-        immediateQuad(1.0f);
-        rawQuad(1.0f);
-
-        GLStateManager.glEndList();
-
-        final CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
-        assertNotNull(compiled);
+        final CompiledDisplayList compiled = compileHalfScaled(() -> {
+            immediateQuad(1.0f);
+            rawQuad(1.0f);
+        });
 
         final IntList opcodes = compiled.getCommandOpcodes();
         final int scaleIndex = opcodes.indexOf(GLCommand.SCALE);
@@ -97,23 +84,17 @@ class GLSM_DisplayList_RawTessellatorTransform_Test {
 
     @Test
     void aRawDrawDoesNotFlushWhileBakedGeometryIsPending() {
-        testList = GLStateManager.glGenLists(1);
-        GLStateManager.glNewList(testList, GL11.GL_COMPILE);
+        final CompiledDisplayList compiled = compileHalfScaled(() -> {
+            GLStateManager.glBegin(GL11.GL_QUADS);
+            GLStateManager.glVertex3f(0.0f, 0.0f, 0.0f);
+            GLStateManager.glVertex3f(1.0f, 0.0f, 0.0f);
+            GLStateManager.glVertex3f(1.0f, 1.0f, 0.0f);
+            GLStateManager.glVertex3f(0.0f, 1.0f, 0.0f);
 
-        GLStateManager.glScalef(0.5f, 0.5f, 0.5f);
-        GLStateManager.glBegin(GL11.GL_QUADS);
-        GLStateManager.glVertex3f(0.0f, 0.0f, 0.0f);
-        GLStateManager.glVertex3f(1.0f, 0.0f, 0.0f);
-        GLStateManager.glVertex3f(1.0f, 1.0f, 0.0f);
-        GLStateManager.glVertex3f(0.0f, 1.0f, 0.0f);
+            rawQuad(1.0f);
 
-        rawQuad(1.0f);
-
-        GLStateManager.glEnd();
-        GLStateManager.glEndList();
-
-        final CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
-        assertNotNull(compiled);
+            GLStateManager.glEnd();
+        });
 
         final IntList opcodes = compiled.getCommandOpcodes();
         final int scaleIndex = opcodes.indexOf(GLCommand.SCALE);

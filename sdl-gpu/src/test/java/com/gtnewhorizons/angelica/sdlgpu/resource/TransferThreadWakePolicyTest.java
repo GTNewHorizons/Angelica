@@ -26,20 +26,10 @@ class TransferThreadWakePolicyTest {
     }
 
     @Test
-    void windowIsEvenlySpaced() {
-        long previous = -1;
+    void wakesExactlyOnEveryWindowBoundary() {
         for (long seq = 1; seq <= 512; seq++) {
-            if (!TransferThread.shouldWakeOnEnqueue(seq)) continue;
-            if (previous >= 0) assertEquals(16, seq - previous, "gaps between unparks must be uniform");
-            previous = seq;
+            assertEquals(seq % 16 == 0, TransferThread.shouldWakeOnEnqueue(seq), "seq " + seq);
         }
-    }
-
-    @Test
-    void neighboursOfAWakeDoNotWake() {
-        assertTrue(TransferThread.shouldWakeOnEnqueue(16));
-        assertFalse(TransferThread.shouldWakeOnEnqueue(15));
-        assertFalse(TransferThread.shouldWakeOnEnqueue(17));
     }
 
     private static TransferThread stoppedThread(long submittedSeq) {

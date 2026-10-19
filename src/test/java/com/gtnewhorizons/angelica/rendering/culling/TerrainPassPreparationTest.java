@@ -223,19 +223,6 @@ class TerrainPassPreparationTest {
         assertEquals(2, state("totalAppendedEntries"));
     }
 
-    @Test
-    void absentSolidSelectionPreservesPreparedCutoutAndSortedPasses() {
-        final ChunkRenderListIterable lists = lists(6);
-        prepare(lists);
-        select(lists, 0);
-        gpu.endPass();
-        select(lists, 1);
-        assertRange("primaryPass", 0);
-        gpu.endPass();
-        select(lists, 2);
-        assertRange("sortedPass", 1);
-    }
-
     @ParameterizedTest(name = "passMask={0}")
     @ValueSource(ints = {4, 5}) // translucent alone, and chained after solid
     void unsortedTranslucentPassClearsIndexPointerMask(int passMask) {

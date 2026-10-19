@@ -94,6 +94,7 @@ class FfpUniformBlockDedupTest {
 
             second.upload(GLStateManager.ctx());
             assertEquals(1, second.blockWrites, "a never-bound instance must write regardless of content");
+            assertEquals(second.getRing().getBufferId(), GL30.glGetInteger(GL31.GL_UNIFORM_BUFFER_BINDING, FFPUniformBlock.BINDING_POINT));
         } finally {
             first.destroy();
             second.destroy();

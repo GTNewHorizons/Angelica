@@ -94,19 +94,6 @@ public class GLSM_CoreRemovedCaps_GLTest {
     }
 
     @Test
-    void secondaryColorIsCacheOnly() {
-        try {
-            // Calling through to the driver here aborts the JVM in a core profile - the color sum is emulated by the FFP shaders
-            GLStateManager.glSecondaryColor3f(0.25F, 0.5F, 0.75F);
-            assertNoGlError("glSecondaryColor3f");
-
-            assertSecondaryColor(0.25F, 0.5F, 0.75F);
-        } finally {
-            GLStateManager.glSecondaryColor3f(0.0F, 0.0F, 0.0F);
-        }
-    }
-
-    @Test
     void secondaryColorIsRestoredByPopAttrib() {
         try {
             GLStateManager.glSecondaryColor3f(0.125F, 0.25F, 0.375F);

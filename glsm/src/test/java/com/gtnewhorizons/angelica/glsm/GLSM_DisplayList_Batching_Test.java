@@ -6,6 +6,8 @@ import com.gtnewhorizons.angelica.glsm.recording.DisplayListVBO;
 import com.gtnewhorizons.angelica.glsm.recording.GLCommand;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -39,26 +41,18 @@ class GLSM_DisplayList_Batching_Test {
 
     // ==================== Pure Unit Tests (No GL Context) ====================
 
-    @Test
-    void testConsecutiveDrawsWithSameFormatShareSingleVBO() {
+    @ParameterizedTest(name = "{0} draws")
+    @ValueSource(ints = { 3, 100 })
+    void testConsecutiveDrawsWithSameFormatShareSingleVBO(int draws) {
         CompiledDisplayList compiled = createDisplayList(() -> {
-            createSimpleDraw();
-            createSimpleDraw();
-            createSimpleDraw();
+            for (int i = 0; i < draws; i++) {
+                createSimpleDraw();
+            }
         });
 
-
-        // Verify: 1 VBO for all draws (format-based batching)
-        assertEquals(1, getVBOCount(compiled),
-            "3 draws with same format should produce 1 shared VBO");
-
-        // Verify: 1 DrawRangeCmd covering all geometry
-        Int2IntMap counts = compiled.getCommandCounts();
-        int drawCount = counts.getOrDefault(GLCommand.DRAW_RANGE, 0);
-        assertEquals(1, drawCount,
-            "3 consecutive draws with same format and transform should produce 1 DrawRangeCmd");
-
-
+        assertEquals(1, getVBOCount(compiled), draws + " draws with same format should produce 1 shared VBO");
+        assertEquals(1, compiled.getCommandCounts().getOrDefault(GLCommand.DRAW_RANGE, 0),
+            draws + " consecutive draws with same format and transform should produce 1 DrawRangeCmd");
     }
 
     @Test
@@ -99,23 +93,6 @@ class GLSM_DisplayList_Batching_Test {
         int multMatrixCount = counts.getOrDefault(GLCommand.TRANSLATE, 0);
         assertEquals(1, drawCount, "3 draws with different transforms should produce 1 DrawRangeCmd (transforms get prebaked)");
         assertEquals(1, multMatrixCount, "Should have 1 Translate at the end (the transforms in the draws are prebaked)");
-    }
-
-    @Test
-    void testManyDrawsSameFormatProduceSingleVBO() {
-        CompiledDisplayList compiled = createDisplayList(() -> {
-            for (int i = 0; i < 100; i++) {
-                createSimpleDraw();
-            }
-        });
-
-        // Verify: 1 shared VBO
-        assertEquals(1, getVBOCount(compiled), "100 draws with same format should produce 1 shared VBO");
-
-        Int2IntMap counts = compiled.getCommandCounts();
-        int drawCount = counts.getOrDefault(GLCommand.DRAW_RANGE, 0);
-        assertEquals(1, drawCount,
-            "100 consecutive draws with same format and transform should produce 1 DrawRangeCmd");
     }
 
 

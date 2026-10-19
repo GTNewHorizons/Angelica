@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.List;
 import java.util.Random;
@@ -12,7 +14,6 @@ class ReservedWordRenameTest {
 
     private static final List<Pattern> LEGACY_ALWAYS = List.of(Pattern.compile("\\bsample\\b"), Pattern.compile("\\bnew\\b"));
     private static final Pattern LEGACY_400 = Pattern.compile("\\bsampler\\b(?!\\d)");
-    private static final String[] WORDS = { "sample", "sampler", "new" };
 
     private static String legacyRename(String source, int targetVersion) {
         String out = source;
@@ -30,17 +31,17 @@ class ReservedWordRenameTest {
         }
     }
 
-    @Test
-    void edgeCasesMatchLegacy() {
-        final String[] cases = {
-            "", "sample", "new", "sampler", " sample ", "sample;", "(sample)", "_sample", "sample_", "sample2", "2sample",
-            "samples", "resample", "sampler2D", "samplerX", "sampler_", "sampler;", "uniform sampler s;", "sampler2DShadow",
-            "new_", "renew", "news", "new;new new", "sample sample sample", "samplesampler", "sampler sample new",
-            "ésample", "sampleé", "ßnewß", "中sampler", "sampler中", "samplé",
-            "// sample in a comment\nfloat sample = 1.0;\n", "#define new sample\n", "vec4 c = texture(sampler, uv) * sample;",
-            "float x = sample.x + new_value + newValue + sample1;", "sample\nnew\nsampler\n", "\tsample\t", "sample-new+sampler*",
-        };
-        for (String c : cases) assertSameAsLegacy(c);
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "", "sample", "new", "sampler", " sample ", "sample;", "(sample)", "_sample", "sample_", "sample2", "2sample",
+        "samples", "resample", "sampler2D", "samplerX", "sampler_", "sampler;", "uniform sampler s;", "sampler2DShadow",
+        "new_", "renew", "news", "new;new new", "sample sample sample", "samplesampler", "sampler sample new",
+        "\u00e9sample", "sample\u00e9", "\u00dfnew\u00df", "\u4e2dsampler", "sampler\u4e2d", "sampl\u00e9",
+        "// sample in a comment\nfloat sample = 1.0;\n", "#define new sample\n", "vec4 c = texture(sampler, uv) * sample;",
+        "float x = sample.x + new_value + newValue + sample1;", "sample\nnew\nsampler\n", "\tsample\t", "sample-new+sampler*",
+    })
+    void edgeCasesMatchLegacy(String source) {
+        assertSameAsLegacy(source);
     }
 
     @Test
@@ -55,10 +56,9 @@ class ReservedWordRenameTest {
         }
     }
 
-    @Test
-    void literalWordsAreTheOnlyCandidates() {
-        for (String w : WORDS) {
-            assertEquals("angelica_renamed_" + w, GlslTransformUtils.renameReservedWords(w, 460));
-        }
+    @ParameterizedTest
+    @ValueSource(strings = { "sample", "sampler", "new" })
+    void literalWordsAreTheOnlyCandidates(String word) {
+        assertEquals("angelica_renamed_" + word, GlslTransformUtils.renameReservedWords(word, 460));
     }
 }

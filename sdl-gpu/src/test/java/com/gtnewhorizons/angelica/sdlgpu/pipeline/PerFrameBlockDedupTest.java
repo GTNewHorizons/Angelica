@@ -11,7 +11,6 @@ import org.lwjgl.util.spvc.Spvc;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PerFrameBlockDedupTest {
@@ -54,11 +53,13 @@ class PerFrameBlockDedupTest {
 
         st.boundProgramObj = a;
         applier.putUniform(st, 0, new float[]{0.75f});
+        assertEquals(0.75f, st.uniformBlocks[0].staging(BLOCK_SIZE).get(16 >> 2));
         st.uniformBlocks[0].dirty = false;
 
         st.boundProgramObj = b;
         applier.putUniform(st, 0, new float[]{0.25f});
         assertTrue(st.uniformBlocks[0].dirty, "a genuinely new value must still reach the buffer");
+        assertEquals(0.25f, st.uniformBlocks[0].staging(BLOCK_SIZE).get(16 >> 2), "the new value must be in the staging buffer");
     }
 
     @Test
@@ -82,19 +83,6 @@ class PerFrameBlockDedupTest {
         applier.putUniform(st, 0, new float[]{0.75f});
         assertTrue(st.uniformBlocks[1].dirty, "per-pass block has its own hash slots");
         assertFalse(st.uniformBlocks[0].dirty, "per-frame block untouched");
-    }
-
-    @Test
-    void dedupDoesNotDropTheValueItself() {
-        st.boundProgramObj = programWithBlockMemberAt(16, ShaderManager.BLOCK_PER_FRAME);
-        applier.putUniform(st, 0, new float[]{0.75f});
-        final float first = st.uniformBlocks[0].staging(BLOCK_SIZE).get(16 >> 2);
-
-        st.boundProgramObj = programWithBlockMemberAt(16, ShaderManager.BLOCK_PER_FRAME);
-        applier.putUniform(st, 0, new float[]{0.25f});
-        final float second = st.uniformBlocks[0].staging(BLOCK_SIZE).get(16 >> 2);
-
-        assertNotEquals(first, second, "the new value must be in the staging buffer");
     }
 
     @Test
