@@ -1,10 +1,14 @@
 package com.gtnewhorizons.angelica.rendering.tesr;
 
-import org.junit.jupiter.api.Test;
+import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.lwjgl.opengl.GL11;
 
+import java.util.stream.Stream;
+
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -13,120 +17,91 @@ class EntityMaterialsTest {
     private static final int SA = GL11.GL_SRC_ALPHA;
     private static final int OMSA = GL11.GL_ONE_MINUS_SRC_ALPHA;
 
-    @Test
-    void mainModelStateMapsToCutout() {
-        assertSame(EntityMaterials.CUTOUT, EntityMaterials.fromState(true, false, SA, OMSA, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, true));
+    private static Arguments row(String name, TesrMaterial expected, boolean textured, boolean blend, Boolean texAnimated, int srcRgb, int dstRgb, boolean alphaTest, int alphaFunc, float alphaRef, int depthFunc, boolean depthMask) {
+        return Arguments.of(name, expected, textured, blend, texAnimated, srcRgb, dstRgb, alphaTest, alphaFunc, alphaRef, depthFunc, depthMask);
     }
 
-    @Test
-    void shadowPassHalfAlphaRefMapsToCutoutHalf() {
-        assertSame(EntityMaterials.CUTOUT_HALF, EntityMaterials.fromState(true, false, SA, OMSA, true, GL11.GL_GREATER, 0.5f, GL11.GL_LEQUAL, true));
+    static Stream<Arguments> fromStateCases() {
+        return Stream.of(
+            row("main model state maps to cutout", EntityMaterials.CUTOUT, true, false, null, SA, OMSA, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, true),
+            row("shadow pass half alpha ref maps to cutout half", EntityMaterials.CUTOUT_HALF, true, false, null, SA, OMSA, true, GL11.GL_GREATER, 0.5f, GL11.GL_LEQUAL, true),
+            row("no alpha no blend maps to solid", EntityMaterials.SOLID, true, false, null, SA, OMSA, false, GL11.GL_ALWAYS, 0f, GL11.GL_LEQUAL, true),
+            row("invisibility maps to translucent", EntityMaterials.TRANSLUCENT, true, true, null, SA, OMSA, true, GL11.GL_GREATER, 0.0039f, GL11.GL_LEQUAL, false),
+            row("invisibility with depth write maps to translucent depth write", EntityMaterials.TRANSLUCENT_DEPTH_WRITE, true, true, null, SA, OMSA, true, GL11.GL_GREATER, 0.0039f, GL11.GL_LEQUAL, true),
+            row("eyes map to additive", EntityMaterials.ADDITIVE, true, true, null, GL11.GL_ONE, GL11.GL_ONE, false, GL11.GL_ALWAYS, 0f, GL11.GL_LEQUAL, true),
+            row("eyes without depth write map to additive no depth write", EntityMaterials.ADDITIVE_NO_DEPTH_WRITE, true, true, null, GL11.GL_ONE, GL11.GL_ONE, false, GL11.GL_ALWAYS, 0f, GL11.GL_LEQUAL, false),
+            row("additive keeps captured alpha test", EntityMaterials.ADDITIVE_CUTOUT, true, true, null, GL11.GL_ONE, GL11.GL_ONE, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, true),
+            row("additive cutout without depth write", EntityMaterials.ADDITIVE_CUTOUT_NO_DEPTH_WRITE, true, true, null, GL11.GL_ONE, GL11.GL_ONE, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, false),
+            row("additive alpha keeps captured alpha test", EntityMaterials.ADDITIVE_ALPHA_CUTOUT, true, true, null, SA, GL11.GL_ONE, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, true),
+            row("additive alpha cutout without depth write", EntityMaterials.ADDITIVE_ALPHA_CUTOUT_NO_DEPTH_WRITE, true, true, null, SA, GL11.GL_ONE, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, false),
+            row("animated additive keeps captured alpha test", EntityMaterials.ADDITIVE_CUTOUT, true, true, true, GL11.GL_ONE, GL11.GL_ONE, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, true),
+            row("animated additive alpha cutout without depth write", EntityMaterials.ADDITIVE_ALPHA_CUTOUT_NO_DEPTH_WRITE, true, true, true, SA, GL11.GL_ONE, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, false),
+            row("additive with a nonstandard alpha ref stays live", null, true, true, null, GL11.GL_ONE, GL11.GL_ONE, true, GL11.GL_GREATER, 0.5f, GL11.GL_LEQUAL, true),
+            row("additive with a non-GREATER alpha func stays live", null, true, true, null, GL11.GL_ONE, GL11.GL_ONE, true, GL11.GL_LESS, 0.1f, GL11.GL_LEQUAL, true),
+            row("animated additive with a nonstandard alpha ref stays live", null, true, true, true, SA, GL11.GL_ONE, true, GL11.GL_GREATER, 0.5f, GL11.GL_LEQUAL, true),
+            row("hurt overlay maps to overlay", EntityMaterials.OVERLAY, false, true, null, SA, OMSA, false, GL11.GL_ALWAYS, 0f, GL11.GL_EQUAL, true),
+            row("glint maps to glint when texture animated", EntityMaterials.GLINT, true, true, true, GL11.GL_SRC_COLOR, GL11.GL_ONE, true, GL11.GL_GREATER, 0.1f, GL11.GL_EQUAL, false),
+            row("an alpha-blended animated decal such as a CIT armor overlay is not glint", null, true, true, true, SA, OMSA, true, GL11.GL_GREATER, 0.1f, GL11.GL_EQUAL, false),
+            row("glint blend without texture animation stays live", null, true, true, false, GL11.GL_SRC_COLOR, GL11.GL_ONE, true, GL11.GL_GREATER, 0.1f, GL11.GL_EQUAL, false),
+            row("glint blend with depth write is not vanilla glint", null, true, true, true, GL11.GL_SRC_COLOR, GL11.GL_ONE, true, GL11.GL_GREATER, 0.1f, GL11.GL_EQUAL, true),
+            row("animated additive maps", EntityMaterials.ADDITIVE, true, true, true, GL11.GL_ONE, GL11.GL_ONE, false, GL11.GL_ALWAYS, 0f, GL11.GL_LEQUAL, true),
+            row("animated additive alpha without depth write maps", EntityMaterials.ADDITIVE_ALPHA_NO_DEPTH_WRITE, true, true, true, SA, GL11.GL_ONE, false, GL11.GL_ALWAYS, 0f, GL11.GL_LEQUAL, false),
+            row("animated standard-alpha scrolling translucent stays live", null, true, true, true, SA, OMSA, false, GL11.GL_ALWAYS, 0f, GL11.GL_LEQUAL, true),
+            row("animated without blend stays live", null, true, false, true, SA, OMSA, false, GL11.GL_ALWAYS, 0f, GL11.GL_LEQUAL, true),
+            row("additive alpha maps without animation", EntityMaterials.ADDITIVE_ALPHA, true, true, false, SA, GL11.GL_ONE, false, GL11.GL_ALWAYS, 0f, GL11.GL_LEQUAL, true),
+            row("additive alpha without animation or depth write", EntityMaterials.ADDITIVE_ALPHA_NO_DEPTH_WRITE, true, true, false, SA, GL11.GL_ONE, false, GL11.GL_ALWAYS, 0f, GL11.GL_LEQUAL, false),
+            row("glint blend at EQUAL without animation stays live", null, true, true, null, GL11.GL_SRC_COLOR, GL11.GL_ONE, false, GL11.GL_ALWAYS, 0f, GL11.GL_EQUAL, false),
+            row("nonstandard alpha ref stays live", null, true, false, null, SA, OMSA, true, GL11.GL_GREATER, 0.3f, GL11.GL_LEQUAL, true),
+            row("texture off without overlay signature stays live", null, false, false, null, SA, OMSA, false, GL11.GL_ALWAYS, 0f, GL11.GL_LEQUAL, true),
+            row("textured EQUAL-depth re-render stays live", null, true, true, null, SA, OMSA, false, GL11.GL_ALWAYS, 0f, GL11.GL_EQUAL, true));
     }
 
-    @Test
-    void noAlphaNoBlendMapsToSolid() {
-        assertSame(EntityMaterials.SOLID, EntityMaterials.fromState(true, false, SA, OMSA, false, GL11.GL_ALWAYS, 0f, GL11.GL_LEQUAL, true));
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("fromStateCases")
+    void fromState(String name, TesrMaterial expected, boolean textured, boolean blend, Boolean texAnimated, int srcRgb, int dstRgb, boolean alphaTest, int alphaFunc, float alphaRef, int depthFunc, boolean depthMask) {
+        final TesrMaterial actual = texAnimated == null
+            ? EntityMaterials.fromState(textured, blend, srcRgb, dstRgb, alphaTest, alphaFunc, alphaRef, depthFunc, depthMask)
+            : EntityMaterials.fromState(textured, texAnimated, blend, srcRgb, dstRgb, alphaTest, alphaFunc, alphaRef, depthFunc, depthMask);
+        assertSame(expected, actual, name);
     }
 
-    @Test
-    void invisibilityMapsToTranslucent() {
-        assertSame(EntityMaterials.TRANSLUCENT, EntityMaterials.fromState(true, true, SA, OMSA, true, GL11.GL_GREATER, 0.0039f, GL11.GL_LEQUAL, false));
-        assertSame(EntityMaterials.TRANSLUCENT_DEPTH_WRITE, EntityMaterials.fromState(true, true, SA, OMSA, true, GL11.GL_GREATER, 0.0039f, GL11.GL_LEQUAL, true));
+    static Stream<Arguments> itemFromStateCases() {
+        return Stream.of(
+            Arguments.of("dropped item cutout", EntityMaterials.DROPPED_ITEM_CUTOUT, true, false, SA, OMSA, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, true),
+            Arguments.of("held block cutout", EntityMaterials.HELD_BLOCK_CUTOUT, false, false, SA, OMSA, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, true),
+            Arguments.of("dropped item translucent", EntityMaterials.DROPPED_ITEM_TRANSLUCENT, true, true, SA, OMSA, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, true),
+            Arguments.of("held block translucent", EntityMaterials.HELD_BLOCK_TRANSLUCENT, false, true, SA, OMSA, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, true),
+            Arguments.of("nonstandard alpha ref must stay live", null, true, false, SA, OMSA, true, GL11.GL_GREATER, 0.3f, GL11.GL_LEQUAL, true),
+            Arguments.of("non-GREATER alpha func must stay live", null, true, false, SA, OMSA, true, GL11.GL_LESS, 0.1f, GL11.GL_LEQUAL, true),
+            Arguments.of("alpha test disabled must stay live", null, true, false, SA, OMSA, false, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, true),
+            Arguments.of("depth mask off must stay live", null, true, false, SA, OMSA, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, false),
+            Arguments.of("non-LEQUAL/LESS depth func must stay live", null, true, false, SA, OMSA, true, GL11.GL_GREATER, 0.1f, GL11.GL_ALWAYS, true),
+            Arguments.of("additive blend has no item material", null, true, true, GL11.GL_ONE, GL11.GL_ONE, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, true));
     }
 
-    @Test
-    void eyesMapToAdditive() {
-        assertSame(EntityMaterials.ADDITIVE, EntityMaterials.fromState(true, true, GL11.GL_ONE, GL11.GL_ONE, false, GL11.GL_ALWAYS, 0f, GL11.GL_LEQUAL, true));
-        assertSame(EntityMaterials.ADDITIVE_NO_DEPTH_WRITE, EntityMaterials.fromState(true, true, GL11.GL_ONE, GL11.GL_ONE, false, GL11.GL_ALWAYS, 0f, GL11.GL_LEQUAL, false));
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("itemFromStateCases")
+    void itemFromState(String name, TesrMaterial expected, boolean unfilteredAtlas, boolean blend, int srcRgb, int dstRgb, boolean alphaTest, int alphaFunc, float alphaRef, int depthFunc, boolean depthMask) {
+        assertSame(expected, EntityMaterials.itemFromState(unfilteredAtlas, blend, srcRgb, dstRgb, alphaTest, alphaFunc, alphaRef, depthFunc, depthMask), name);
     }
 
-    @Test
-    void additiveKeepsCapturedAlphaTest() {
-        assertSame(EntityMaterials.ADDITIVE_CUTOUT, EntityMaterials.fromState(true, true, GL11.GL_ONE, GL11.GL_ONE, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, true));
-        assertSame(EntityMaterials.ADDITIVE_CUTOUT_NO_DEPTH_WRITE, EntityMaterials.fromState(true, true, GL11.GL_ONE, GL11.GL_ONE, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, false));
-        assertSame(EntityMaterials.ADDITIVE_ALPHA_CUTOUT, EntityMaterials.fromState(true, true, SA, GL11.GL_ONE, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, true));
-        assertSame(EntityMaterials.ADDITIVE_ALPHA_CUTOUT_NO_DEPTH_WRITE, EntityMaterials.fromState(true, true, SA, GL11.GL_ONE, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, false));
+    static Stream<Arguments> depthOnlyFromStateCases() {
+        return Stream.of(
+            Arguments.of("color masked off with alpha test maps to depth-only cutout", EntityMaterials.DEPTH_ONLY_CUTOUT, true, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, true),
+            Arguments.of("color masked off maps to depth-only", EntityMaterials.DEPTH_ONLY, true, false, GL11.GL_ALWAYS, 0f, GL11.GL_LEQUAL, true),
+            Arguments.of("nonstandard alpha ref must stay live", null, true, true, GL11.GL_GREATER, 0.5f, GL11.GL_LEQUAL, true),
+            Arguments.of("no color and no depth writes must stay live", null, true, false, GL11.GL_ALWAYS, 0f, GL11.GL_LEQUAL, false),
+            Arguments.of("non-LEQUAL/LESS depth func must stay live", null, true, false, GL11.GL_ALWAYS, 0f, GL11.GL_EQUAL, true),
+            Arguments.of("texture off must stay live", null, false, false, GL11.GL_ALWAYS, 0f, GL11.GL_LEQUAL, true));
     }
 
-    @Test
-    void texAnimatedAdditiveKeepsCapturedAlphaTest() {
-        assertSame(EntityMaterials.ADDITIVE_CUTOUT, EntityMaterials.fromState(true, true, true, GL11.GL_ONE, GL11.GL_ONE, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, true));
-        assertSame(EntityMaterials.ADDITIVE_ALPHA_CUTOUT_NO_DEPTH_WRITE, EntityMaterials.fromState(true, true, true, SA, GL11.GL_ONE, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, false));
-    }
-
-    @Test
-    void additiveWithUnrepresentableAlphaTestStaysLive() {
-        assertNull(EntityMaterials.fromState(true, true, GL11.GL_ONE, GL11.GL_ONE, true, GL11.GL_GREATER, 0.5f, GL11.GL_LEQUAL, true), () -> "additive with a nonstandard alpha ref must stay live, not silently drop the test");
-        assertNull(EntityMaterials.fromState(true, true, GL11.GL_ONE, GL11.GL_ONE, true, GL11.GL_LESS, 0.1f, GL11.GL_LEQUAL, true), () -> "additive with a non-GREATER alpha func must stay live");
-        assertNull(EntityMaterials.fromState(true, true, true, SA, GL11.GL_ONE, true, GL11.GL_GREATER, 0.5f, GL11.GL_LEQUAL, true), () -> "animated additive with a nonstandard alpha ref must stay live");
-    }
-
-    @Test
-    void hurtOverlayMapsToOverlay() {
-        assertSame(EntityMaterials.OVERLAY, EntityMaterials.fromState(false, true, SA, OMSA, false, GL11.GL_ALWAYS, 0f, GL11.GL_EQUAL, true));
-    }
-
-    @Test
-    void glintStateMapsToGlintOnlyWhenTexAnimated() {
-        assertSame(EntityMaterials.GLINT, EntityMaterials.fromState(true, true, true, GL11.GL_SRC_COLOR, GL11.GL_ONE, true, GL11.GL_GREATER, 0.1f, GL11.GL_EQUAL, false));
-        assertNull(EntityMaterials.fromState(true, true, true, GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, true, GL11.GL_GREATER, 0.1f, GL11.GL_EQUAL, false), () -> "an alpha-blended animated decal such as a CIT armor overlay is not glint");
-        assertNull(EntityMaterials.fromState(true, false, true, GL11.GL_SRC_COLOR, GL11.GL_ONE, true, GL11.GL_GREATER, 0.1f, GL11.GL_EQUAL, false), () -> "glint blend without texture animation must stay live");
-        assertNull(EntityMaterials.fromState(true, true, true, GL11.GL_SRC_COLOR, GL11.GL_ONE, true, GL11.GL_GREATER, 0.1f, GL11.GL_EQUAL, true), () -> "glint blend with depth write is not vanilla glint");
-    }
-
-    @Test
-    void texAnimatedAdditiveVariantsMap() {
-        assertSame(EntityMaterials.ADDITIVE, EntityMaterials.fromState(true, true, true, GL11.GL_ONE, GL11.GL_ONE, false, GL11.GL_ALWAYS, 0f, GL11.GL_LEQUAL, true));
-        assertSame(EntityMaterials.ADDITIVE_ALPHA_NO_DEPTH_WRITE, EntityMaterials.fromState(true, true, true, SA, GL11.GL_ONE, false, GL11.GL_ALWAYS, 0f, GL11.GL_LEQUAL, false));
-        assertNull(EntityMaterials.fromState(true, true, true, SA, OMSA, false, GL11.GL_ALWAYS, 0f, GL11.GL_LEQUAL, true), () -> "animated standard-alpha (scrolling translucent) must stay live");
-        assertNull(EntityMaterials.fromState(true, true, false, SA, OMSA, false, GL11.GL_ALWAYS, 0f, GL11.GL_LEQUAL, true), () -> "animated without blend must stay live");
-    }
-
-    @Test
-    void additiveAlphaMapsWithoutAnimation() {
-        assertSame(EntityMaterials.ADDITIVE_ALPHA, EntityMaterials.fromState(true, false, true, SA, GL11.GL_ONE, false, GL11.GL_ALWAYS, 0f, GL11.GL_LEQUAL, true));
-        assertSame(EntityMaterials.ADDITIVE_ALPHA_NO_DEPTH_WRITE, EntityMaterials.fromState(true, false, true, SA, GL11.GL_ONE, false, GL11.GL_ALWAYS, 0f, GL11.GL_LEQUAL, false));
-    }
-
-    @Test
-    void itemStateCutoutVsTranslucent() {
-        assertSame(EntityMaterials.DROPPED_ITEM_CUTOUT, EntityMaterials.itemFromState(true, false, SA, OMSA, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, true));
-        assertSame(EntityMaterials.HELD_BLOCK_CUTOUT, EntityMaterials.itemFromState(false, false, SA, OMSA, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, true));
-        assertSame(EntityMaterials.DROPPED_ITEM_TRANSLUCENT, EntityMaterials.itemFromState(true, true, SA, OMSA, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, true));
-        assertSame(EntityMaterials.HELD_BLOCK_TRANSLUCENT, EntityMaterials.itemFromState(false, true, SA, OMSA, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, true));
-    }
-
-    @Test
-    void itemStateRejectsWrongAlphaRefOrFunc() {
-        assertNull(EntityMaterials.itemFromState(true, false, SA, OMSA, true, GL11.GL_GREATER, 0.3f, GL11.GL_LEQUAL, true), "nonstandard alpha ref must stay live");
-        assertNull(EntityMaterials.itemFromState(true, false, SA, OMSA, true, GL11.GL_LESS, 0.1f, GL11.GL_LEQUAL, true), "non-GREATER alpha func must stay live");
-        assertNull(EntityMaterials.itemFromState(true, false, SA, OMSA, false, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, true), "alpha test disabled must stay live");
-        assertNull(EntityMaterials.itemFromState(true, false, SA, OMSA, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, false), "depth mask off must stay live");
-        assertNull(EntityMaterials.itemFromState(true, false, SA, OMSA, true, GL11.GL_GREATER, 0.1f, GL11.GL_ALWAYS, true), "non-LEQUAL/LESS depth func must stay live");
-        assertNull(EntityMaterials.itemFromState(true, true, GL11.GL_ONE, GL11.GL_ONE, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, true), "additive blend has no item material");
-    }
-
-    @Test
-    void colorMaskedOffMapsToDepthOnly() {
-        assertSame(EntityMaterials.DEPTH_ONLY_CUTOUT, EntityMaterials.depthOnlyFromState(true, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, true));
-        assertSame(EntityMaterials.DEPTH_ONLY, EntityMaterials.depthOnlyFromState(true, false, GL11.GL_ALWAYS, 0f, GL11.GL_LEQUAL, true));
-        assertFalse(DrawState.forMaterial(EntityMaterials.DEPTH_ONLY, DrawState.CULL_BACK, true, true, 0f, 0f).isColorWrite(), "depth-only must replay with color writes off");
-        assertTrue(DrawState.forMaterial(EntityMaterials.DEPTH_ONLY, DrawState.CULL_BACK, true, true, 0f, 0f).isDepthWrite(), "depth-only must replay with depth writes on");
-    }
-
-    @Test
-    void unrepresentableDepthOnlyStaysLive() {
-        assertNull(EntityMaterials.depthOnlyFromState(true, true, GL11.GL_GREATER, 0.5f, GL11.GL_LEQUAL, true), "nonstandard alpha ref must stay live");
-        assertNull(EntityMaterials.depthOnlyFromState(true, false, GL11.GL_ALWAYS, 0f, GL11.GL_LEQUAL, false), "no color and no depth writes must stay live");
-        assertNull(EntityMaterials.depthOnlyFromState(true, false, GL11.GL_ALWAYS, 0f, GL11.GL_EQUAL, true), "non-LEQUAL/LESS depth func must stay live");
-        assertNull(EntityMaterials.depthOnlyFromState(false, false, GL11.GL_ALWAYS, 0f, GL11.GL_LEQUAL, true), "texture off must stay live");
-    }
-
-    @Test
-    void unrecognizedStatesFallBackToLive() {
-        assertNull(EntityMaterials.fromState(true, true, GL11.GL_SRC_COLOR, GL11.GL_ONE, false, GL11.GL_ALWAYS, 0f, GL11.GL_EQUAL, false), () -> "glint blend at EQUAL must stay live");
-        assertNull(EntityMaterials.fromState(true, false, SA, OMSA, true, GL11.GL_GREATER, 0.3f, GL11.GL_LEQUAL, true), () -> "nonstandard alpha ref must stay live");
-        assertNull(EntityMaterials.fromState(false, false, SA, OMSA, false, GL11.GL_ALWAYS, 0f, GL11.GL_LEQUAL, true), () -> "texture off without overlay signature must stay live");
-        assertNull(EntityMaterials.fromState(true, true, SA, OMSA, false, GL11.GL_ALWAYS, 0f, GL11.GL_EQUAL, true), () -> "textured EQUAL-depth re-render must stay live");
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("depthOnlyFromStateCases")
+    void depthOnlyFromState(String name, TesrMaterial expected, boolean textured, boolean alphaTest, int alphaFunc, float alphaRef, int depthFunc, boolean depthMask) {
+        assertSame(expected, EntityMaterials.depthOnlyFromState(textured, alphaTest, alphaFunc, alphaRef, depthFunc, depthMask), name);
+        if (expected == EntityMaterials.DEPTH_ONLY) {
+            assertFalse(DrawState.forMaterial(EntityMaterials.DEPTH_ONLY, DrawState.CULL_BACK, true, true, 0f, 0f).isColorWrite(), "depth-only must replay with color writes off");
+            assertTrue(DrawState.forMaterial(EntityMaterials.DEPTH_ONLY, DrawState.CULL_BACK, true, true, 0f, 0f).isDepthWrite(), "depth-only must replay with depth writes on");
+        }
     }
 }

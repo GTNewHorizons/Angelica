@@ -1,0 +1,58 @@
+# OpenComputers TESR scene, close ring. ~ is the flight start; ground-standing level is ~-2. Yaw 0 faces south (+z).
+# Use with FLYBY_ORIGIN=x,z,-21 SMOKE_PITCH=30.
+
+# setup
+gamerule doMobSpawning false
+gamerule doFireTick false
+difficulty 1
+
+# northwest corner: test ISBRH
+setblock ~-7 ~-2 ~-7 angelica:test_isbrh
+
+# south: geolyzers
+setblock ~-1 ~-2 ~4 OpenComputers:geolyzer
+setblock ~0 ~-2 ~4 OpenComputers:geolyzer
+setblock ~1 ~-2 ~4 OpenComputers:geolyzer
+setblock ~0 ~-2 ~5 OpenComputers:geolyzer
+
+# southwest: power distributor, assembler, capacitor
+setblock ~-3 ~-2 ~3 OpenComputers:powerDistributor
+setblock ~-3 ~-1 ~3 OpenComputers:assembler
+setblock ~-4 ~-2 ~3 OpenComputers:capacitor
+
+# west: relay, transposer, adapter
+setblock ~-4 ~-2 ~0 OpenComputers:relay
+setblock ~-4 ~-2 ~1 OpenComputers:transposer
+setblock ~-4 ~-1 ~1 OpenComputers:adapter
+
+# northwest: powered chargers
+setblock ~-3 ~-2 ~-3 OpenComputers:charger
+setblock ~-3 ~-2 ~-4 minecraft:redstone_block
+setblock ~-4 ~-2 ~-2 OpenComputers:charger
+setblock ~-4 ~-2 ~-3 minecraft:redstone_block
+
+# north: microcontrollers, raids
+setblock ~-1 ~-2 ~-4 OpenComputers:microcontroller
+setblock ~0 ~-2 ~-4 OpenComputers:microcontroller
+setblock ~1 ~-2 ~-4 OpenComputers:raid
+setblock ~-1 ~-1 ~-4 OpenComputers:microcontroller
+setblock ~0 ~-1 ~-4 OpenComputers:raid
+setblock ~1 ~-1 ~-4 OpenComputers:raid
+
+# northeast: cases, disk drive
+setblock ~3 ~-2 ~-3 OpenComputers:case1
+setblock ~4 ~-2 ~-3 OpenComputers:case2
+setblock ~3 ~-1 ~-3 OpenComputers:case3
+setblock ~4 ~-1 ~-3 OpenComputers:diskDrive
+
+# east: rack, screens
+setblock ~4 ~-2 ~-2 OpenComputers:rack
+setblock ~4 ~-2 ~-1 OpenComputers:screen2
+setblock ~4 ~-1 ~-1 OpenComputers:screen2
+setblock ~4 ~-2 ~1 OpenComputers:screen1
+
+# southeast: hologram projectors, disassembler, net splitter
+setblock ~2 ~-2 ~3 OpenComputers:hologram1
+setblock ~3 ~-2 ~2 OpenComputers:hologram2
+setblock ~3 ~-2 ~3 OpenComputers:disassembler
+setblock ~3 ~-1 ~3 OpenComputers:netSplitter

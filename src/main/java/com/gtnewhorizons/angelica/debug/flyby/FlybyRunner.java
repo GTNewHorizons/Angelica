@@ -32,6 +32,7 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.IChunkProvider;
+import net.minecraft.world.storage.ThreadedFileIOBase;
 import net.minecraftforge.common.DimensionManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -39,7 +40,9 @@ import org.lwjgl.opengl.Display;
 
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -83,6 +86,9 @@ public final class FlybyRunner {
     private String[] sceneCommands = NO_COMMANDS;
     private volatile boolean sceneClearRequested;
     private int sceneSpawnTotal;
+    private final List<FlybyScene.Deferred> sceneDeferred = new ArrayList<>();
+    private FlybyCommandSender sceneSender;
+    private int sceneTick;
     private boolean pauseOnLostFocusSaved;
     private boolean pauseOnLostFocusOverridden;
     private boolean vsyncOverridden;
@@ -623,7 +629,7 @@ public final class FlybyRunner {
     public void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         final boolean clear = this.sceneClearRequested;
-        if (!clear && this.pendingRequest.get() == null && this.pendingDimensionPlayer.get() == null) return;
+        if (!clear && this.pendingRequest.get() == null && this.pendingDimensionPlayer.get() == null && this.sceneDeferred.isEmpty()) return;
 
         final MinecraftServer server = MinecraftServer.getServer();
         if (server == null) return;
@@ -644,6 +650,8 @@ public final class FlybyRunner {
             this.sceneClearRequested = false;
             this.clearScene(server);
         }
+
+        this.runDeferred(server);
 
         final FlybyRequest request = this.pendingRequest.getAndSet(null);
         if (request == null) return;
@@ -669,6 +677,12 @@ public final class FlybyRunner {
             }
         }
         server.getConfigurationManager().saveAllPlayerData();
+        // Queued chunk NBT aliases the live block arrays: without this drain the scene placed this tick reaches disk.
+        try {
+            ThreadedFileIOBase.threadedIOInstance.waitForFinish();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
 
         worldChangesDiscarded = true;
         LOGGER.warn("Flyby: world saving is off until you leave this world");
@@ -755,14 +769,22 @@ public final class FlybyRunner {
         this.clearScene(server);
 
         final ChunkCoordinates anchor = new ChunkCoordinates(MathHelper.floor_double(request.originX()), MathHelper.floor_double(feetY + 0.5D), MathHelper.floor_double(request.originZ()));
-        final FlybyCommandSender sender = new FlybyCommandSender(player, anchor);
+        this.sceneSender = new FlybyCommandSender(player, anchor);
+        this.sceneTick = 0;
         for (String raw : this.sceneCommands) {
             final String line = FlybyScene.expand(raw, anchor.posX, anchor.posY, anchor.posZ);
-            if (server.getCommandManager().executeCommand(sender, line) == 0) {
+            if (!line.startsWith("after ")) {
+                this.runSceneLine(server, line);
+                continue;
+            }
+            final FlybyScene.Deferred deferred = FlybyScene.deferred(line);
+            if (deferred == null) {
                 LOGGER.warn("flyby scene command did not execute: {}", line);
+            } else {
+                this.sceneDeferred.add(deferred);
             }
         }
-        LOGGER.info("Flyby scene: ran {} commands", this.sceneCommands.length);
+        LOGGER.info("Flyby scene: ran {} commands, {} deferred", this.sceneCommands.length - this.sceneDeferred.size(), this.sceneDeferred.size());
         if (Tracy.ENABLED) Tracy.message("flyby scene " + this.sceneCommands.length + " commands");
         int total = 0;
         for (WorldServer world : server.worldServers) {
@@ -771,7 +793,32 @@ public final class FlybyRunner {
         this.sceneSpawnTotal = total;
     }
 
+    private void runSceneLine(MinecraftServer server, String line) {
+        if (!FlybyScene.run(server, this.sceneSender, line)) {
+            LOGGER.warn("flyby scene command did not execute: {}", line);
+        }
+    }
+
+    private void runDeferred(MinecraftServer server) {
+        if (this.sceneDeferred.isEmpty()) return;
+
+        this.sceneTick++;
+        int i = 0;
+        while (i < this.sceneDeferred.size()) {
+            final FlybyScene.Deferred deferred = this.sceneDeferred.get(i);
+            if (deferred.ticks() > this.sceneTick) {
+                i++;
+                continue;
+            }
+            this.sceneDeferred.remove(i);
+            LOGGER.info("Flyby scene: tick {} {}", this.sceneTick, deferred.line().length() > 80 ? deferred.line().substring(0, 80) : deferred.line());
+            this.runSceneLine(server, deferred.line());
+        }
+    }
+
     private void clearScene(MinecraftServer server) {
+        this.sceneDeferred.clear();
+        this.sceneSender = null;
         int remaining = 0;
         int cleared = 0;
         for (WorldServer world : server.worldServers) {

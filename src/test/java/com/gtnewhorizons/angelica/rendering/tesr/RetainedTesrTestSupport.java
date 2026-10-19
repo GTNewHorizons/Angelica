@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.rendering.tesr;
 
 import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
+import com.gtnewhorizons.angelica.api.tesr.TesrShaders;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.glsm.ffp.CubeParams;
 import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
@@ -22,10 +23,38 @@ final class RetainedTesrTestSupport {
 
     private RetainedTesrTestSupport() {}
 
+    static final long SCOPE = 1L;
+
     static final TesrMaterial STREAM = TesrMaterial.builder().stream().build();
 
+    static final TesrMaterial DEPTH_EQUAL_OVERLAY = TesrMaterial.builder().additiveAlpha().depthEqual().noDepthWrite().build();
+
+    static final String COLOR_VERTEX = "angelica_out vec4 v_Color;\nvoid main() {\n  gl_Position = angelica_clipPosition();\n  v_Color = angelica_color();\n}\n";
+    static final String BAKED_ONLY_VERTEX = "angelica_out vec4 v_Color;\nvoid main() {\n  gl_Position = angelica_ProjectionMatrix * (angelica_ModelViewMatrix * vec4(angelica_Position, 1.0));\n  v_Color = angelica_color();\n}\n";
+    static final String COLOR_FRAGMENT = "angelica_in vec4 v_Color;\nvoid main() { angelica_FragColor = v_Color; }\n";
+
+    static TesrShaderPrograms.Entry linkedSource(String name) {
+        final ResourceLocation unread = new ResourceLocation("angelica", "test/unread");
+        final TesrShaderPrograms.Entry entry = TesrShaderPrograms.entry(TesrShaders.register(name, unread, unread));
+        TesrShaderPrograms.link(entry, false, COLOR_VERTEX, COLOR_FRAGMENT);
+        TesrShaderPrograms.link(entry, true, COLOR_VERTEX, COLOR_FRAGMENT);
+        return entry;
+    }
+
     static RenderLayer testLayer() {
-        return RenderLayer.tesr(null, TesrMaterial.CURRENT_STATE, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.DISABLED, false, true);
+        return layerFor(TesrMaterial.CURRENT_STATE);
+    }
+
+    static RenderLayer layerFor(TesrMaterial material) {
+        return RenderLayer.tesr(null, material, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.DISABLED, false, true);
+    }
+
+    static Reference2ObjectOpenHashMap<RenderLayer, ObjectArrayList<RetainedTesrGroups.Group>> byLayer(RetainedTesrGroups groups) {
+        return Reflect.get(groups, "byLayer");
+    }
+
+    static ObjectArrayList<RetainedTesrGroups.Group> groupsOn(RetainedTesrGroups groups, RenderLayer layer) {
+        return byLayer(groups).get(layer);
     }
 
     static TemplateBuffer template() {
@@ -48,21 +77,17 @@ final class RetainedTesrTestSupport {
     }
 
     static RetainedTesrGroups.Group onlyGroup(RetainedTesrGroups groups) {
-        final Reference2ObjectOpenHashMap<RenderLayer, ObjectArrayList<RetainedTesrGroups.Group>> byLayer = Reflect.get(groups, "byLayer");
+        final Reference2ObjectOpenHashMap<RenderLayer, ObjectArrayList<RetainedTesrGroups.Group>> byLayer = byLayer(groups);
         assertEquals(1, byLayer.size());
         final ObjectArrayList<RetainedTesrGroups.Group> list = byLayer.values().iterator().next();
         assertEquals(1, list.size());
         return list.get(0);
     }
 
-    static int liveCull(TesrMaterial material) {
-        return material.isNoCull() ? DrawState.DISABLED : DrawState.liveCull();
-    }
-
     static RenderLayer capturedLayer(TesrMaterial material) {
         return Reflect.invoke(ModelPartBatcher.INSTANCE, "layerFor",
             new Class<?>[] { ResourceLocation.class, TesrMaterial.class, PassOverride.class, float.class, float.class, int.class, int.class, boolean.class, boolean.class },
-            null, material, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, liveCull(material), DrawState.liveLit(material), DrawState.liveLightmap());
+            null, material, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.liveCull(material), DrawState.liveLit(material), DrawState.liveLightmap());
     }
 
     static final class CountingPipeline implements TesrInstancingPipeline {

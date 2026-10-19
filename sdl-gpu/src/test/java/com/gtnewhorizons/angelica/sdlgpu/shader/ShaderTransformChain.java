@@ -18,6 +18,7 @@ final class ShaderTransformChain {
     private ShaderTransformChain() {}
 
     static String run(String source, int glShaderType) {
+        source = ShaderManager.preprocessed(source, glShaderType);
         final GlslVulkanPreprocess.Result pre = GlslVulkanPreprocess.run(source, glShaderType, "test", true);
         String src = pre != null ? pre.rewrittenSource() : source;
         if (glShaderType == GL20.GL_VERTEX_SHADER) {

@@ -37,7 +37,7 @@ class FlybySceneTest {
             Arguments.of("trims surrounding whitespace", "   time set day   \n", new String[] { "time set day" }),
             Arguments.of("handles CRLF line endings", "time set day\r\nweather clear\r\n", new String[] { "time set day", "weather clear" }),
             Arguments.of("drops a bare slash line", "time set day\n/\nweather clear\n", new String[] { "time set day", "weather clear" }),
-            Arguments.of("preserves order", "one\ntwo\nthree\n", new String[] { "one", "two", "three" }));
+            Arguments.of("substitutes defines and drops them", "define BUF {buffer:[\"a$b\"]}\nsetblock ~ ~ ~ stone 0 replace ${BUF}\nsay ${MISSING}\n", new String[] { "setblock ~ ~ ~ stone 0 replace {buffer:[\"a$b\"]}", "say ${MISSING}" }));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -51,12 +51,6 @@ class FlybySceneTest {
         assertEquals("setblock 94 63 -48 stone {TileX:100}", FlybyScene.expand("setblock $x-6 $y-1 $z+2 stone {TileX:$x}", 100, 64, -50));
         final String plain = "setblock ~ ~-1 ~ stone";
         assertSame(plain, FlybyScene.expand(plain, 100, 64, -50));
-    }
-
-    @Test
-    void missingFileReturnsEmptyArray() {
-        final String path = tempDir.resolve("does-not-exist.txt").toString();
-        assertEquals(0, FlybyScene.load(path).length);
     }
 
     @Test

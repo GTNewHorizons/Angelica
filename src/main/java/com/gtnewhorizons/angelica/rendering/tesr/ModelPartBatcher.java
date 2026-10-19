@@ -462,7 +462,7 @@ public final class ModelPartBatcher {
         if (!canQueueGlint() || GLStateManager.getActiveTextureUnit() != 0 || !activeGroups.canCopyInstances(EntityMaterials.ITEM_GLINT) || !MatrixHelper.isIdentity(GLStateManager.getTextures().getTextureUnitMatrix(0))) return false;
         final boolean offset = GLStateManager.glIsEnabled(GL11.GL_POLYGON_OFFSET_FILL);
         final PolygonState polygon = GLStateManager.getPolygonState();
-        final int cullCode = EntityMaterials.ITEM_GLINT.isNoCull() ? DrawState.DISABLED : DrawState.liveCull();
+        final int cullCode = DrawState.liveCull(EntityMaterials.ITEM_GLINT);
         final RenderLayer layer = layerFor(HeldItemGlint.texture(), EntityMaterials.ITEM_GLINT, PassOverride.NONE, offset ? polygon.getOffsetFactor() : 0, offset ? polygon.getOffsetUnits() : 0, ShaderGlint.NO_TINT, cullCode, false, DrawState.liveLightmap());
         activeGroups.queueGlintLayers(template, layer, EntityMaterials.ITEM_GLINT, currentModelView(), GLSMConfig.packedLastBrightness(), VANILLA_GLINT_COLOR, currentOverlay(), currentEntityInfo(0),
             HeldItemGlint.firstMatrix(), HeldItemGlint.secondMatrix());
@@ -506,7 +506,7 @@ public final class ModelPartBatcher {
     private void setArmorGlint(ResourceLocation texture, int glintSlot, boolean lit, Matrix4f textureMatrix, int color) {
         final boolean offset = GLStateManager.glIsEnabled(GL11.GL_POLYGON_OFFSET_FILL);
         final PolygonState polygon = GLStateManager.getPolygonState();
-        final int cullCode = EntityMaterials.GLINT.isNoCull() ? DrawState.DISABLED : DrawState.liveCull();
+        final int cullCode = DrawState.liveCull(EntityMaterials.GLINT);
         armorGlintLayer = layerFor(texture, EntityMaterials.GLINT, PassOverride.NONE, offset ? polygon.getOffsetFactor() : 0, offset ? polygon.getOffsetUnits() : 0, glintSlot, cullCode, lit, DrawState.liveLightmap());
         armorGlintTexture.set(textureMatrix);
         armorGlintColor = color;
@@ -630,7 +630,7 @@ public final class ModelPartBatcher {
         final float offsetFactor = offset ? polygon.getOffsetFactor() : 0.0f;
         final float offsetUnits = offset ? polygon.getOffsetUnits() : 0.0f;
         final int glintSlot = material.special() == TesrMaterial.SpecialRender.GLINT ? lastBoundGlintSlot : ShaderGlint.NO_TINT;
-        final int cullCode = material.isNoCull() ? DrawState.DISABLED : DrawState.liveCull();
+        final int cullCode = DrawState.liveCull(material);
         final boolean lit = DrawState.liveLit(material);
         final EntityTextureAtlas.Slot atlasSlot = texMatrix == null && cubesInsideTexture ? atlasSlotFor(material) : null;
         final RenderLayer layer = layerFor(atlasSlot != null ? Objects.requireNonNull(atlasSlot.page).location : texture, material, pass, offsetFactor, offsetUnits, glintSlot, cullCode, lit, DrawState.liveLightmap(), afterGlint);
@@ -641,7 +641,7 @@ public final class ModelPartBatcher {
         final int overlayABGR = currentOverlay();
         final long entityInfo = currentEntityInfo(CapturedRenderingState.INSTANCE.getCurrentRenderedItem());
         final int packedLight = GLSMConfig.packedLastBrightness();
-        activeGroups.queue(template, cubes, scale, layer, material, currentModelView(), packedLight, colorABGR, overlayABGR, entityInfo, entityId, texMatrix, atlasSlot);
+        activeGroups.queue(0L, template, cubes, scale, layer, material, currentModelView(), packedLight, colorABGR, overlayABGR, entityInfo, entityId, texMatrix, atlasSlot);
         parts++;
         return true;
     }
@@ -698,7 +698,7 @@ public final class ModelPartBatcher {
         final PassOverride pass = shaderPipeline != null ? PassOverride.capture() : PassOverride.NONE;
         final boolean offset = GLStateManager.glIsEnabled(GL11.GL_POLYGON_OFFSET_FILL);
         final PolygonState polygon = GLStateManager.getPolygonState();
-        final int cullCode = material.isNoCull() ? DrawState.DISABLED : DrawState.liveCull();
+        final int cullCode = DrawState.liveCull(material);
         final RenderLayer layer = layerFor(lastBoundLocation, material, pass, offset ? polygon.getOffsetFactor() : 0.0f, offset ? polygon.getOffsetUnits() : 0.0f,
             ShaderGlint.NO_TINT, cullCode, DrawState.liveLit(material), DrawState.liveLightmap());
         // Flames carry entity_flame, which some packs may voxelize as a light source in the shadow pass

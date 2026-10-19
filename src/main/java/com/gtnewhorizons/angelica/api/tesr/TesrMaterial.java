@@ -97,7 +97,7 @@ public final class TesrMaterial {
             return this;
         }
 
-        /** Depth prepass: writes depth only, no color. Mutually exclusive with noDepthWrite */
+        /** Depth prepass: writes depth only, no color. Mutually exclusive with noDepthWrite and depthEqual */
         public Builder depthOnly() {
             this.depthOnly = true;
             return this;
@@ -109,13 +109,13 @@ public final class TesrMaterial {
             return this;
         }
 
-        /**  Discards pixels with alpha at or below threshold - hard-edged cutout, no blending. ALPHA_TEST GREATER */
+        /** Discards pixels with alpha at or below threshold. ALPHA_TEST GREATER */
         public Builder cutout(float threshold) {
             this.cutoutAlpha = threshold;
             return this;
         }
 
-        /** Draws only where geometry already exists at the same depth; for decal/overlay passes. GL_EQUAL depth */
+        /** GL_EQUAL depth for decal/overlay passes; matches only depth writers in the same tile-entity render or renderCached call */
         public Builder depthEqual() {
             this.depthEqual = true;
             return this;
@@ -164,6 +164,9 @@ public final class TesrMaterial {
         public TesrMaterial build() {
             if (special != SpecialRender.NONE && shader != null) {
                 throw new IllegalStateException("special() and shader() are mutually exclusive");
+            }
+            if (depthOnly && (noDepthWrite || depthEqual)) {
+                throw new IllegalStateException("depthOnly() excludes noDepthWrite() and depthEqual()");
             }
             return intern(new TesrMaterial(hasColor, red, green, blue, alpha, hasLightmap, lightmapX, lightmapY, noCull, unlit, noDepthWrite, depthOnly, stream, cutoutAlpha, depthEqual, unfilteredAtlas, transparency, special, shader));
         }

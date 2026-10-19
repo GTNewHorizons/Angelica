@@ -56,6 +56,7 @@ final class InstancedTemplateRenderer {
     private final Reference2ObjectOpenHashMap<TemplateBuffer, TemplateMesh> meshes = new Reference2ObjectOpenHashMap<>();
     private final ObjectArrayList<Bucket> bucketPool = new ObjectArrayList<>();
     private final ObjectArrayList<Bucket> liveBuckets = new ObjectArrayList<>();
+    private final ObjectArrayList<TemplateBuffer> retired = new ObjectArrayList<>();
 
     private final InstanceRing ring;
     private ByteBuffer staging;
@@ -314,6 +315,18 @@ final class InstancedTemplateRenderer {
         ring.postDraw();
     }
 
+    void retire(TemplateBuffer template) {
+        retired.add(template);
+    }
+
+    void releaseRetired() {
+        for (int i = 0, n = retired.size(); i < n; i++) {
+            final TemplateMesh mesh = meshes.remove(retired.get(i));
+            if (mesh != null) delete(mesh);
+        }
+        retired.clear();
+    }
+
     void sweep(long now) {
         if (meshes.isEmpty()) return;
         final ObjectIterator<TemplateMesh> it = meshes.values().iterator();
@@ -330,6 +343,7 @@ final class InstancedTemplateRenderer {
             delete(mesh);
         }
         meshes.clear();
+        retired.clear();
         liveBuckets.clear();
         bucketPool.clear();
         staging = null;

@@ -9,7 +9,11 @@
 #   QUICKPLAY_WORLD - save to load (default: Flat World - No Mods).
 #   FLYBY_ORIGIN    - x,z[,yaw] flight start (default: 1509.5,-924.5,0).
 #   SMOKE_TIMEOUT   - seconds before the client is killed (default: 600).
+#   SMOKE_SCENE     - scene command file (default: scripts/flyby-scenes/surround-smoke.txt).
 #   SMOKE_PACK      - shaderpack name for the pack variant (default: ComplementaryUnbound_r5.7.1 + EuphoriaPatches_1.8.1).
+#   SMOKE_DEBUG_HUD - true forces F3 on; false keeps the saved setting (default: true).
+#   SMOKE_PITCH     - camera pitch in degrees, positive looks down (default: 15).
+#   SMOKE_WARMUP_TICKS - ticks at the first pose before the pan (default: 100).
 #
 #   Runs from this script's own checkout. Restores run/client/config/shaders.properties and angelica-options.json on exit.
 
@@ -28,8 +32,15 @@ QUICKPLAY_WORLD="${QUICKPLAY_WORLD:-Flat World - No Mods}"
 FLYBY_ORIGIN="${FLYBY_ORIGIN:-1509.5,-924.5,0}"
 SMOKE_TIMEOUT="${SMOKE_TIMEOUT:-600}"
 SMOKE_PACK="${SMOKE_PACK:-ComplementaryUnbound_r5.7.1 + EuphoriaPatches_1.8.1}"
+SMOKE_DEBUG_HUD="${SMOKE_DEBUG_HUD:-true}"
+SMOKE_PITCH="${SMOKE_PITCH:-15}"
+SMOKE_WARMUP_TICKS="${SMOKE_WARMUP_TICKS:-100}"
 
-SCENE="$ROOT/scripts/flyby-scenes/surround-smoke.txt"
+SCENE="${SMOKE_SCENE:-$ROOT/scripts/flyby-scenes/surround-smoke.txt}"
+case "$SCENE" in
+    /*) ;;
+    *) SCENE="$ROOT/$SCENE" ;;
+esac
 RUN="$ROOT/run/client"
 SHADERS="$RUN/config/shaders.properties"
 OUT="$ROOT/tmp/smoke/$NAME"
@@ -146,13 +157,13 @@ PY
     ./gradlew runClient25 --console=plain \
         -Dangelica.flyby.route=pan \
         -Dangelica.flyby.length=360 \
-        -Dangelica.flyby.warmupTicks=100 \
+        -Dangelica.flyby.warmupTicks="$SMOKE_WARMUP_TICKS" \
         -Dangelica.flyby.exitWhenDone=true \
         -Dangelica.flyby.commands="$SCENE" \
         -Dangelica.flyby.origin="$FLYBY_ORIGIN" \
-        -Dangelica.flyby.pitch=15 \
+        -Dangelica.flyby.pitch="$SMOKE_PITCH" \
         -Dangelica.flyby.screenshots=8 \
-        -Dangelica.flyby.debugHud=true \
+        -Dangelica.flyby.debugHud="$SMOKE_DEBUG_HUD" \
         -Dangelica.flyby.crashTest=isbrh \
         -Dangelica.debug.testBlocks=true \
         -DquickPlaySingleplayer="$QUICKPLAY_WORLD" \

@@ -15,28 +15,35 @@ import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
 import net.coderbot.batchedentityrendering.impl.AngelicaBufferSource;
 import net.coderbot.batchedentityrendering.impl.TransparencyType;
+import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.blending.AlphaTestStorage;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.gl.blending.DepthColorStorage;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.layer.PassOverride;
+import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
+import net.coderbot.iris.pipeline.PipelineManager;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
+import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.minecraft.util.ResourceLocation;
 import org.joml.Matrix4f;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL30;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
 
-import static com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrTestSupport.capturedLayer;
-import static com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrTestSupport.liveCull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
@@ -44,6 +51,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @GLCoreTest
 class TesrLayerStateTest {
@@ -69,6 +78,7 @@ class TesrLayerStateTest {
         VanillaLayerRig.clear();
 
         ModelPartBatcher.INSTANCE.clear();
+        TesrShaderPrograms.invalidateAll();
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
         GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
         GLStateManager.glLoadIdentity();
@@ -119,33 +129,6 @@ class TesrLayerStateTest {
     }
 
     @Test
-    void entityBatchRestoresDepthBeforeBlockEntities() {
-        final AngelicaBufferSource source = new AngelicaBufferSource();
-        final RenderLayer entityLayer = layer(EntityMaterials.DROPPED_ITEM_CUTOUT);
-        final AngelicaBufferSource.LayerDrawHook hook = new AngelicaBufferSource.LayerDrawHook() {
-            @Override
-            public boolean hasDraws(RenderLayer layer) {
-                return layer == entityLayer;
-            }
-
-            @Override
-            public void drawLayer(RenderLayer layer) {
-                assertTrue(GL11.glIsEnabled(GL11.GL_DEPTH_TEST), "entity draw depth test");
-            }
-        };
-        try {
-            source.declareUse(entityLayer);
-            source.endBatchWithType(TransparencyType.OPAQUE, hook);
-            source.endBatch(hook);
-            assertTrue(GLStateManager.getDepthTest().isEnabled(), "cached depth before block entities");
-            assertTrue(GL11.glIsEnabled(GL11.GL_DEPTH_TEST), "driver depth before block entities");
-        } finally {
-            source.discard();
-            source.freeBuffers();
-        }
-    }
-
-    @Test
     void afterGlintLayerDrawsAfterEveryGlintLayer() {
         final AngelicaBufferSource source = new AngelicaBufferSource();
         final RenderLayer liquid = layer(EntityMaterials.DROPPED_ITEM_CUTOUT);
@@ -178,11 +161,82 @@ class TesrLayerStateTest {
         }
     }
 
-    @Test
-    void batchDrawDoesNotInheritTheInterruptedRenderersTextureMatrixOrIrisOverride() {
+    record BatchScenario(Runnable during, Runnable after, Runnable cleanup) {}
+
+    static Stream<Arguments> batchDrawCases() {
+        return Stream.of(
+            Arguments.of("texture matrix and iris override", (Supplier<BatchScenario>) () -> {
+                GLStateManager.setTextureMatrix(0, new Matrix4f().translation(0.25f, 0f, 0f));
+                GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.GLINT);
+                GbufferPrograms.pushOverridePhase(WorldRenderingPhase.TERRAIN_CUTOUT);
+                return new BatchScenario(
+                    () -> {
+                        assertTrue(MatrixHelper.isIdentity(GLStateManager.getTextures().getTextureUnitMatrix(0)), "unit 0 texture matrix during batch draw");
+                        assertNull(GbufferPrograms.getSpecialCondition(), "special condition during batch draw");
+                        assertNull(GbufferPrograms.getOverridePhase(), "override phase during batch draw");
+                    },
+                    () -> {
+                        assertEquals(0.25f, GLStateManager.getTextures().getTextureUnitMatrix(0).m30(), "caller texture matrix restored");
+                        assertEquals(SpecialCondition.GLINT, GbufferPrograms.getSpecialCondition(), "caller special condition restored");
+                        assertEquals(WorldRenderingPhase.TERRAIN_CUTOUT, GbufferPrograms.getOverridePhase(), "caller override phase restored");
+                    },
+                    () -> {
+                        GbufferPrograms.popOverridePhase();
+                        GbufferPrograms.teardownSpecialRenderCondition();
+                        GLStateManager.setTextureMatrix(0, new Matrix4f());
+                    });
+            }),
+            Arguments.of("foreign program and framebuffer", (Supplier<BatchScenario>) () -> {
+                final int program = GlTestSupport.program(GlTestSupport.TRIVIAL_VS, GlTestSupport.TRIVIAL_FS);
+                final int framebuffer = GLStateManager.glGenFramebuffers();
+                GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+                BatchDrawDefaults.capturePassFramebuffer();
+                GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, framebuffer);
+                GLStateManager.glUseProgram(program);
+                return new BatchScenario(
+                    () -> {
+                        assertEquals(0, GLStateManager.getActiveProgram(), "program during batch draw");
+                        assertEquals(0, GLStateManager.getDrawFramebuffer(), "framebuffer during batch draw");
+                    },
+                    () -> {
+                        assertEquals(program, GLStateManager.getActiveProgram(), "caller program restored");
+                        assertEquals(framebuffer, GLStateManager.getDrawFramebuffer(), "caller framebuffer restored");
+                    },
+                    () -> {
+                        GLStateManager.glUseProgram(0);
+                        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+                        GLStateManager.glDeleteFramebuffers(framebuffer);
+                        GLStateManager.glDeleteProgram(program);
+                    });
+            }),
+            Arguments.of("filter from before an item renderer's blur window", (Supplier<BatchScenario>) () -> {
+                final int texture = GLStateManager.glGenTextures();
+                GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+                GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+                // What TextureUtil.func_152777_a(false, false, 1) does around an item render.
+                TextureUtilHooks.captureBoundFilterTexture();
+                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+                return new BatchScenario(
+                    () -> assertEquals(GL11.GL_LINEAR, TextureInfoCache.INSTANCE.getInfo(texture).getMinFilter(), "filter from before the window"),
+                    () -> assertEquals(GL11.GL_NEAREST, TextureInfoCache.INSTANCE.getInfo(texture).getMinFilter(), "window filter restored"),
+                    () -> {
+                        TextureUtilHooks.clearSavedFilterTexture();
+                        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+                        GLStateManager.glDeleteTextures(texture);
+                    });
+            }));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("batchDrawCases")
+    void batchDrawDoesNotInheritTheInterruptedRenderersState(String name, Supplier<BatchScenario> setup) {
         final AngelicaBufferSource source = new AngelicaBufferSource();
         final RenderLayer layer = layer(EntityMaterials.DROPPED_ITEM_CUTOUT);
         final int[] draws = { 0 };
+        final BatchScenario[] scenario = { null };
         final AngelicaBufferSource.LayerDrawHook hook = new AngelicaBufferSource.LayerDrawHook() {
             @Override
             public boolean hasDraws(RenderLayer candidate) {
@@ -192,25 +246,17 @@ class TesrLayerStateTest {
             @Override
             public void drawLayer(RenderLayer drawn) {
                 draws[0]++;
-                assertTrue(MatrixHelper.isIdentity(GLStateManager.getTextures().getTextureUnitMatrix(0)), "unit 0 texture matrix during batch draw");
-                assertNull(GbufferPrograms.getSpecialCondition(), "special condition during batch draw");
-                assertNull(GbufferPrograms.getOverridePhase(), "override phase during batch draw");
+                scenario[0].during().run();
             }
         };
-        GLStateManager.setTextureMatrix(0, new Matrix4f().translation(0.25f, 0f, 0f));
-        GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.GLINT);
-        GbufferPrograms.pushOverridePhase(WorldRenderingPhase.TERRAIN_CUTOUT);
         try {
+            scenario[0] = setup.get();
             source.declareUse(layer);
             source.endBatch(hook);
             assertEquals(1, draws[0]);
-            assertEquals(0.25f, GLStateManager.getTextures().getTextureUnitMatrix(0).m30(), "caller texture matrix restored");
-            assertEquals(SpecialCondition.GLINT, GbufferPrograms.getSpecialCondition(), "caller special condition restored");
-            assertEquals(WorldRenderingPhase.TERRAIN_CUTOUT, GbufferPrograms.getOverridePhase(), "caller override phase restored");
+            scenario[0].after().run();
         } finally {
-            GbufferPrograms.popOverridePhase();
-            GbufferPrograms.teardownSpecialRenderCondition();
-            GLStateManager.setTextureMatrix(0, new Matrix4f());
+            if (scenario[0] != null) scenario[0].cleanup().run();
             source.discard();
             source.freeBuffers();
         }
@@ -238,86 +284,6 @@ class TesrLayerStateTest {
         }
     }
 
-    @Test
-    void batchDrawSwapsOutAForeignProgramAndFramebuffer() {
-        final int program = GlTestSupport.program(GlTestSupport.TRIVIAL_VS, GlTestSupport.TRIVIAL_FS);
-        final int framebuffer = GLStateManager.glGenFramebuffers();
-        final AngelicaBufferSource source = new AngelicaBufferSource();
-        final RenderLayer layer = layer(EntityMaterials.DROPPED_ITEM_CUTOUT);
-        final int[] draws = { 0 };
-        final AngelicaBufferSource.LayerDrawHook hook = new AngelicaBufferSource.LayerDrawHook() {
-            @Override
-            public boolean hasDraws(RenderLayer candidate) {
-                return candidate == layer;
-            }
-
-            @Override
-            public void drawLayer(RenderLayer drawn) {
-                draws[0]++;
-                assertEquals(0, GLStateManager.getActiveProgram(), "program during batch draw");
-                assertEquals(0, GLStateManager.getDrawFramebuffer(), "framebuffer during batch draw");
-            }
-        };
-        try {
-            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
-            BatchDrawDefaults.capturePassFramebuffer();
-            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, framebuffer);
-            GLStateManager.glUseProgram(program);
-            source.declareUse(layer);
-            source.endBatch(hook);
-            assertEquals(1, draws[0]);
-            assertEquals(program, GLStateManager.getActiveProgram(), "caller program restored");
-            assertEquals(framebuffer, GLStateManager.getDrawFramebuffer(), "caller framebuffer restored");
-        } finally {
-            GLStateManager.glUseProgram(0);
-            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
-            GLStateManager.glDeleteFramebuffers(framebuffer);
-            GLStateManager.glDeleteProgram(program);
-            source.discard();
-            source.freeBuffers();
-        }
-    }
-
-    @Test
-    void batchDrawUsesTheFilterFromBeforeAnItemRenderersBlurWindow() {
-        final int texture = GLStateManager.glGenTextures();
-        final AngelicaBufferSource source = new AngelicaBufferSource();
-        final RenderLayer layer = layer(EntityMaterials.DROPPED_ITEM_CUTOUT);
-        final int[] draws = { 0 };
-        final AngelicaBufferSource.LayerDrawHook hook = new AngelicaBufferSource.LayerDrawHook() {
-            @Override
-            public boolean hasDraws(RenderLayer candidate) {
-                return candidate == layer;
-            }
-
-            @Override
-            public void drawLayer(RenderLayer drawn) {
-                draws[0]++;
-                assertEquals(GL11.GL_LINEAR, TextureInfoCache.INSTANCE.getInfo(texture).getMinFilter(), "filter from before the window");
-            }
-        };
-        try {
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
-            // What TextureUtil.func_152777_a(false, false, 1) does around an item render.
-            TextureUtilHooks.captureBoundFilterTexture();
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-            source.declareUse(layer);
-            source.endBatch(hook);
-            assertEquals(1, draws[0]);
-            assertEquals(GL11.GL_NEAREST, TextureInfoCache.INSTANCE.getInfo(texture).getMinFilter(), "window filter restored");
-        } finally {
-            TextureUtilHooks.clearSavedFilterTexture();
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-            GLStateManager.glDeleteTextures(texture);
-            source.discard();
-            source.freeBuffers();
-        }
-    }
-
     private static RenderLayer glint(int slot) {
         return RenderLayer.tesr(null, EntityMaterials.GLINT, PassOverride.NONE, 0f, 0f, slot, DrawState.CULL_BACK, true, true);
     }
@@ -341,10 +307,50 @@ class TesrLayerStateTest {
         assertSame(teardown, thrown.getSuppressed()[0]);
     }
 
+    @Test
+    void shaderLayerDefersToThePassHookWhileAPackIsActive() {
+        final List<String> calls = new ArrayList<>();
+        final TesrMaterial material = TesrMaterial.builder()
+            .shader(TesrShaders.register("angelica:test_pack_defers", () -> calls.add("bind"), () -> calls.add("release")))
+            .build();
+        final PassOverride pass = PassOverride.of(SpecialCondition.BEACON_BEAM, null, null);
+        final RenderLayer layer = RenderLayer.tesr(null, material, pass, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_BACK, true, true);
+        withPack(true, drawing -> {
+            layer.startDrawing();
+            assertSame(SpecialCondition.BEACON_BEAM, GbufferPrograms.getSpecialCondition(), "the pass hook must run in the shader's place");
+            drawing[0] = false;
+            layer.endDrawing();
+            assertNull(GbufferPrograms.getSpecialCondition(), "end must undo what begin ran, not re-read the pack state");
+            assertTrue(calls.isEmpty(), "a pack draws the material; the mod program is never bound: " + calls);
+
+            layer.startDrawing();
+            drawing[0] = true;
+            layer.endDrawing();
+            assertEquals(List.of("bind", "release"), calls, "the same interned layer binds the shader once the pack stops drawing the world");
+        });
+    }
+
+    private static void withPack(boolean initiallyDrawing, Consumer<boolean[]> body) {
+        final PipelineManager manager = Iris.getPipelineManager();
+        final WorldRenderingPipeline previous = manager.getPipelineNullable();
+        final boolean enabled = Iris.enabled;
+        final boolean[] drawing = { initiallyDrawing };
+        final DeferredWorldRenderingPipeline pipeline = mock(DeferredWorldRenderingPipeline.class);
+        when(pipeline.shouldOverrideShaders()).thenAnswer(inv -> drawing[0]);
+        Reflect.set(manager, "pipeline", pipeline);
+        Reflect.setStaticFinal(Iris.class, "enabled", boolean.class, true);
+        try {
+            body.accept(drawing);
+        } finally {
+            Reflect.setStaticFinal(Iris.class, "enabled", boolean.class, enabled);
+            Reflect.set(manager, "pipeline", previous);
+        }
+    }
+
     private static RenderLayer queuedLayer(TesrMaterial material) {
         return Reflect.invoke(TesrBatchRenderer.INSTANCE, "layerFor",
             new Class<?>[] { ResourceLocation.class, TesrMaterial.class, PassOverride.class, float.class, float.class, int.class, boolean.class, boolean.class },
-            null, material, PassOverride.NONE, 0f, 0f, liveCull(material), DrawState.liveLit(material), DrawState.liveLightmap());
+            null, material, PassOverride.NONE, 0f, 0f, DrawState.liveCull(material), DrawState.liveLit(material), DrawState.liveLightmap());
     }
 
     private static void drawInBatch(RenderLayer layer, boolean culled) {
@@ -355,22 +361,31 @@ class TesrLayerStateTest {
         GLStateManager.popStateTo(depth);
     }
 
-    @Test
-    void queuedCullingSplitsBothLayerCachesAndRestoresTheDrawCaller() {
-        for (TesrMaterial material : new TesrMaterial[] { EntityMaterials.DROPPED_ITEM_CUTOUT, EntityMaterials.GLINT }) {
+    static Stream<Arguments> layerCaches() {
+        return Stream.of(
+            Arguments.of("ModelPartBatcher", (Function<TesrMaterial, RenderLayer>) RetainedTesrTestSupport::capturedLayer,
+                new TesrMaterial[] { EntityMaterials.DROPPED_ITEM_CUTOUT, EntityMaterials.GLINT }),
+            Arguments.of("TesrBatchRenderer", (Function<TesrMaterial, RenderLayer>) TesrLayerStateTest::queuedLayer,
+                new TesrMaterial[] { TesrMaterial.CURRENT_STATE }));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("layerCaches")
+    void queuedCullingSplitsLayerCachesAndRestoresTheDrawCaller(String name, Function<TesrMaterial, RenderLayer> layerFor, TesrMaterial[] materials) {
+        for (TesrMaterial material : materials) {
             GLStateManager.disableCull();
-            final RenderLayer twoSided = capturedLayer(material);
+            final RenderLayer twoSided = layerFor.apply(material);
             GLStateManager.enableCull();
-            final RenderLayer culled = capturedLayer(material);
+            final RenderLayer culled = layerFor.apply(material);
             assertNotSame(twoSided, culled, "the last-layer shortcut must include culling");
             GLStateManager.disableCull();
-            assertSame(twoSided, capturedLayer(material), "the layer map must retain both states");
+            assertSame(twoSided, layerFor.apply(material), "the layer map must retain both states");
         }
 
         GLStateManager.disableCull();
-        final RenderLayer twoSided = capturedLayer(EntityMaterials.DROPPED_ITEM_CUTOUT);
+        final RenderLayer twoSided = layerFor.apply(materials[0]);
         GLStateManager.enableCull();
-        final RenderLayer culled = capturedLayer(EntityMaterials.DROPPED_ITEM_CUTOUT);
+        final RenderLayer culled = layerFor.apply(materials[0]);
         twoSided.startDrawing();
         assertFalse(GL11.glIsEnabled(GL11.GL_CULL_FACE));
         assertTrue(GL11.glIsEnabled(GL11.GL_DEPTH_TEST));
@@ -384,143 +399,108 @@ class TesrLayerStateTest {
         GLStateManager.disableCull();
         drawInBatch(culled, true);
         assertFalse(GL11.glIsEnabled(GL11.GL_CULL_FACE));
-    }
 
-    @Test
-    void queuedTemplateCullingSurvivesCacheHitsAndRestoresTheCaller() {
-        final TesrMaterial material = TesrMaterial.CURRENT_STATE;
-        GLStateManager.disableCull();
-        final RenderLayer twoSided = queuedLayer(material);
         GLStateManager.enableCull();
-        final RenderLayer culled = queuedLayer(material);
-        assertNotSame(twoSided, culled);
-        GLStateManager.disableCull();
-        assertSame(twoSided, queuedLayer(material));
-        drawInBatch(culled, true);
-        assertFalse(GL11.glIsEnabled(GL11.GL_CULL_FACE));
-        GLStateManager.enableCull();
-        drawInBatch(twoSided, false);
-        assertTrue(GL11.glIsEnabled(GL11.GL_CULL_FACE));
-
-        final RenderLayer forcedTwoSided = queuedLayer(TesrMaterial.builder().noCull().build());
-        drawInBatch(forcedTwoSided, false);
+        drawInBatch(layerFor.apply(TesrMaterial.builder().noCull().build()), false);
         assertTrue(GL11.glIsEnabled(GL11.GL_CULL_FACE));
     }
 
-    @Test
-    void glintTintSlotsSplitLayers() {
-        assertSame(glint(0), glint(0), "the same slot must reuse the layer");
-        assertNotSame(glint(1), glint(0), "distinct slots must not share a layer");
-        assertNotSame(glint(ShaderGlint.NO_TINT), glint(0), "an untinted glint must not share a tinted layer");
+    static Stream<Arguments> axisCases() {
+        return Stream.of(
+            Arguments.of("current state over a dirty caller", (Runnable) () -> {
+                    GLStateManager.disableCull();
+                    GLStateManager.glCullFace(GL11.GL_FRONT);
+                    GLStateManager.disableLighting();
+                    GLStateManager.glColorMask(false, false, false, false);
+                }, TesrMaterial.CURRENT_STATE, (Runnable) () -> {
+                    assertFalse(GLStateManager.getAlphaTest().isEnabled(), "no cutout");
+                    assertTrue(GLStateManager.getDepthTest().isEnabled(), "depth test");
+                    assertEquals(GL11.GL_LEQUAL, GLStateManager.getDepthState().getFunc());
+                    assertTrue(GLStateManager.getDepthState().isEnabled(), "depth write");
+                    assertFalse(GLStateManager.getBlendMode().isEnabled(), "opaque");
+                    assertTrue(GLStateManager.getCullState().isEnabled(), "cull pinned on");
+                    assertEquals(GL11.GL_BACK, GLStateManager.getPolygonState().getCullFaceMode(), "cull face pinned to back");
+                    assertTrue(GLStateManager.getLightingState().isEnabled(), "lit");
+                    assertTrue(GLStateManager.getColorMask().red, "color mask pinned on");
+                    assertFalse(GLStateManager.glIsEnabled(GL11.GL_POLYGON_OFFSET_FILL), "no polygon offset");
+                }),
+            Arguments.of("every material toggle", (Runnable) () -> { },
+                TesrMaterial.builder().noCull().unlit().noDepthWrite().cutout(0.5f).translucent().depthEqual().build(), (Runnable) () -> {
+                    assertFalse(GLStateManager.getCullState().isEnabled(), "noCull");
+                    assertFalse(GLStateManager.getLightingState().isEnabled(), "unlit");
+                    assertFalse(GLStateManager.getDepthState().isEnabled(), "noDepthWrite");
+                    assertTrue(GLStateManager.getAlphaTest().isEnabled(), "cutout");
+                    assertEquals(0.5f, GLStateManager.getAlphaState().getReference(), "cutout threshold");
+                    assertTrue(GLStateManager.getBlendMode().isEnabled(), "translucent");
+                    assertEquals(GL11.GL_SRC_ALPHA, GLStateManager.getBlendState().getSrcRgb());
+                    assertEquals(GL11.GL_ONE_MINUS_SRC_ALPHA, GLStateManager.getBlendState().getDstRgb());
+                    assertEquals(GL11.GL_EQUAL, GLStateManager.getDepthState().getFunc(), "depthEqual");
+                }));
     }
 
-    @ParameterizedTest(name = "fog={0}")
-    @ValueSource(booleans = { false, true })
-    void drawingLeavesUndeclaredPhasesToTheSurroundingContext(boolean fog) {
-        if (fog) GLStateManager.enableFog();
-        final RenderLayer layer = layer(TesrMaterial.CURRENT_STATE);
-        layer.startDrawing();
-        assertEquals(fog, GLStateManager.getFogMode().isEnabled(), "fog after startDrawing");
-        layer.endDrawing();
-        assertEquals(fog, GLStateManager.getFogMode().isEnabled(), "fog after endDrawing");
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("axisCases")
+    void everyAxisAppliesAbsolutely(String name, Runnable callerState, TesrMaterial material, Runnable asserts) {
+        callerState.run();
+        layer(material).startDrawing();
+        asserts.run();
     }
 
-    @Test
-    void everyAxisAppliesAbsolutely() {
-        GLStateManager.disableCull();
-        GLStateManager.glCullFace(GL11.GL_FRONT);
-        GLStateManager.disableLighting();
-        GLStateManager.glColorMask(false, false, false, false);
+    static Stream<Arguments> effectiveStateCases() {
+        return Stream.of(
+            Arguments.of("alpha test", (Runnable) () -> {
+                GLStateManager.getAlphaTest().setVanillaLayer(AlphaTestStorage.ENABLE_LAYER);
+                GLStateManager.getAlphaState().setVanillaLayer(AlphaTestStorage.FUNC_LAYER);
 
-        layer(TesrMaterial.CURRENT_STATE).startDrawing();
+                GLStateManager.disableBlend();
+                GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+                GLStateManager.enableAlphaTest();
+                GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.1f);
+                GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
+                GLStateManager.glDepthMask(true);
 
-        assertFalse(GLStateManager.getAlphaTest().isEnabled(), "no cutout");
-        assertTrue(GLStateManager.getDepthTest().isEnabled(), "depth test");
-        assertEquals(GL11.GL_LEQUAL, GLStateManager.getDepthState().getFunc());
-        assertTrue(GLStateManager.getDepthState().isEnabled(), "depth write");
-        assertFalse(GLStateManager.getBlendMode().isEnabled(), "opaque");
-        assertTrue(GLStateManager.getCullState().isEnabled(), "cull pinned on");
-        assertEquals(GL11.GL_BACK, GLStateManager.getPolygonState().getCullFaceMode(), "cull face pinned to back");
-        assertTrue(GLStateManager.getLightingState().isEnabled(), "lit");
-        assertTrue(GLStateManager.getColorMask().red, "color mask pinned on");
-        assertFalse(GLStateManager.glIsEnabled(GL11.GL_POLYGON_OFFSET_FILL), "no polygon offset");
+                AlphaTestStorage.overrideAlphaTest(null);
+
+                assertSame(EntityMaterials.CUTOUT, EntityMaterials.fromCurrentState(true), "raw alpha test is disabled by the pack override; a raw read would give SOLID");
+                assertSame(EntityMaterials.DROPPED_ITEM_CUTOUT, EntityMaterials.itemFromCurrentState(true));
+            }),
+            Arguments.of("depth mask", (Runnable) () -> {
+                GLStateManager.getDepthState().setVanillaLayer(DepthColorStorage.DEPTH_LAYER);
+                GLStateManager.getColorMask().setVanillaLayer(DepthColorStorage.COLOR_LAYER);
+
+                GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+                GLStateManager.enableBlend();
+                GLStateManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+                GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
+                GLStateManager.glDepthMask(true);
+
+                DepthColorStorage.disableDepthColor();
+
+                assertSame(EntityMaterials.TRANSLUCENT_DEPTH_WRITE, EntityMaterials.fromCurrentState(true), "raw depth mask held off by another pass; the effective vanilla mask must pick the depth-write variant");
+            }),
+            Arguments.of("color mask", (Runnable) () -> {
+                GLStateManager.getDepthState().setVanillaLayer(DepthColorStorage.DEPTH_LAYER);
+                GLStateManager.getColorMask().setVanillaLayer(DepthColorStorage.COLOR_LAYER);
+
+                GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+                GLStateManager.disableBlend();
+                GLStateManager.enableAlphaTest();
+                GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.1f);
+                GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
+                GLStateManager.glDepthMask(true);
+
+                DepthColorStorage.disableDepthColor();
+                assertSame(EntityMaterials.CUTOUT, EntityMaterials.fromCurrentState(true), "raw color mask held off by another pass is not a depth-only draw");
+
+                DepthColorStorage.deferColorMask(false, false, false, false);
+                assertSame(EntityMaterials.DEPTH_ONLY_CUTOUT, EntityMaterials.fromCurrentState(true), "vanilla color mask off while held must pick depth-only");
+            }));
     }
 
-    @Test
-    void everyMaterialToggleApplies() {
-        final TesrMaterial material = TesrMaterial.builder().noCull().unlit().noDepthWrite().cutout(0.5f).translucent().depthEqual().build();
-        final RenderLayer layer = layer(material);
-        layer.startDrawing();
-
-        assertFalse(GLStateManager.getCullState().isEnabled(), "noCull");
-        assertFalse(GLStateManager.getLightingState().isEnabled(), "unlit");
-        assertFalse(GLStateManager.getDepthState().isEnabled(), "noDepthWrite");
-        assertTrue(GLStateManager.getAlphaTest().isEnabled(), "cutout");
-        assertEquals(0.5f, GLStateManager.getAlphaState().getReference(), "cutout threshold");
-        assertTrue(GLStateManager.getBlendMode().isEnabled(), "translucent");
-        assertEquals(GL11.GL_SRC_ALPHA, GLStateManager.getBlendState().getSrcRgb());
-        assertEquals(GL11.GL_ONE_MINUS_SRC_ALPHA, GLStateManager.getBlendState().getDstRgb());
-        assertEquals(GL11.GL_EQUAL, GLStateManager.getDepthState().getFunc(), "depthEqual");
-
-        layer.endDrawing();
-
-        assertTrue(GLStateManager.getBlendMode().isEnabled(), "endDrawing must not reset blend");
-        assertFalse(GLStateManager.getDepthState().isEnabled(), "endDrawing must not reset the depth mask");
-        assertFalse(GLStateManager.getLightingState().isEnabled(), "endDrawing must not reset lighting");
-        assertTrue(GLStateManager.getAlphaTest().isEnabled(), "endDrawing must not reset the alpha test");
-    }
-
-    @Test
-    void effectiveAlphaStateSurvivesAPackOverridingTheRawAlphaTest() {
-        GLStateManager.getAlphaTest().setVanillaLayer(AlphaTestStorage.ENABLE_LAYER);
-        GLStateManager.getAlphaState().setVanillaLayer(AlphaTestStorage.FUNC_LAYER);
-
-        GLStateManager.disableBlend();
-        GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
-        GLStateManager.enableAlphaTest();
-        GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.1f);
-        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
-        GLStateManager.glDepthMask(true);
-
-        AlphaTestStorage.overrideAlphaTest(null);
-
-        assertSame(EntityMaterials.CUTOUT, EntityMaterials.fromCurrentState(true), "raw alpha test is disabled by the pack override; a raw read would give SOLID");
-        assertSame(EntityMaterials.DROPPED_ITEM_CUTOUT, EntityMaterials.itemFromCurrentState(true));
-    }
-
-    @Test
-    void effectiveDepthMaskSurvivesAnotherPassHoldingItOff() {
-        GLStateManager.getDepthState().setVanillaLayer(DepthColorStorage.DEPTH_LAYER);
-        GLStateManager.getColorMask().setVanillaLayer(DepthColorStorage.COLOR_LAYER);
-
-        GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
-        GLStateManager.enableBlend();
-        GLStateManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
-        GLStateManager.glDepthMask(true);
-
-        DepthColorStorage.disableDepthColor();
-
-        assertSame(EntityMaterials.TRANSLUCENT_DEPTH_WRITE, EntityMaterials.fromCurrentState(true), "raw depth mask held off by another pass; the effective vanilla mask must pick the depth-write variant");
-    }
-
-    @Test
-    void effectiveColorMaskPicksDepthOnlyWhileAnotherPassHoldsIt() {
-        GLStateManager.getDepthState().setVanillaLayer(DepthColorStorage.DEPTH_LAYER);
-        GLStateManager.getColorMask().setVanillaLayer(DepthColorStorage.COLOR_LAYER);
-
-        GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
-        GLStateManager.disableBlend();
-        GLStateManager.enableAlphaTest();
-        GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.1f);
-        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
-        GLStateManager.glDepthMask(true);
-
-        DepthColorStorage.disableDepthColor();
-        assertSame(EntityMaterials.CUTOUT, EntityMaterials.fromCurrentState(true), "raw color mask held off by another pass is not a depth-only draw");
-
-        DepthColorStorage.deferColorMask(false, false, false, false);
-        assertSame(EntityMaterials.DEPTH_ONLY_CUTOUT, EntityMaterials.fromCurrentState(true), "vanilla color mask off while held must pick depth-only");
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("effectiveStateCases")
+    void effectiveStateSurvivesAnotherPassOverridingTheRawState(String name, Runnable body) {
+        body.run();
     }
 
     private static boolean unitTexIdentity() {

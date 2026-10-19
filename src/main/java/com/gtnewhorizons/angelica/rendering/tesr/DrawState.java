@@ -25,16 +25,12 @@ public final class DrawState {
     public static final int ADDITIVE_ALPHA = 3;
     public static final int GLINT = 4;
 
-    private static final int LIGHTMAP_UNIT = 1;
+    static final int LIGHTMAP_UNIT = 1;
 
     private static final ObjectOpenCustomHashSet<DrawState> CACHE = new ObjectOpenCustomHashSet<>(HashStrategy.INSTANCE);
 
     static void clearInterning() {
         CACHE.clear();
-    }
-
-    static int internedStateCount() {
-        return CACHE.size();
     }
 
     @Getter private final int cull;
@@ -112,6 +108,10 @@ public final class DrawState {
         final PolygonState polygon = GLStateManager.getPolygonState();
         final int cull = packCull(GLStateManager.getCullState().isEnabled(), polygon.getCullFaceMode());
         return cull != DISABLED && polygon.getFrontFace() == GL11.GL_CW ? cull | FRONT_FACE_CLOCKWISE : cull;
+    }
+
+    public static int liveCull(TesrMaterial material) {
+        return material.isNoCull() ? DISABLED : liveCull();
     }
 
     public static boolean liveLit(TesrMaterial material) {
