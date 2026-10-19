@@ -739,11 +739,12 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
             }
         }
         toAnchorRelative(group, currentMV);
+        final Matrix4f bakedTexMatrix = atlasSlot != null ? atlasSlot.uvMatrix : texMatrix;
         final InstanceColumns cols = group.templateColumns;
         final int index = cols.size;
         cols.add(template, scratchMat, packedLight, colorABGR, overlayABGR, entityInfo);
-        group.addTexMatrix(texMatrix);
-        if (!group.dirty && !group.snapshot.matches(index, template, cols.matrices, index * 16, packedLight, colorABGR, texMatrix)) {
+        group.addTexMatrix(bakedTexMatrix);
+        if (!group.dirty && !group.snapshot.matches(index, template, cols.matrices, index * 16, packedLight, colorABGR, bakedTexMatrix)) {
             group.dirty = true;
         }
     }

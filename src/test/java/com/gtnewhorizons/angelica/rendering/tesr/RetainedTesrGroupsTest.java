@@ -332,6 +332,23 @@ class RetainedTesrGroupsTest {
     }
 
     @Test
+    void atlasPartPulledOffTheInstancedPathBakesItsSlotUvs() {
+        final EntityTextureAtlas.Slot slot = new EntityTextureAtlas.Slot(new EntityTextureAtlas.Page(new ResourceLocation("angelica", "test_page"), 0), 0, 0, 4, 2);
+        final InstancedTemplateRenderer renderer = new InstancedTemplateRenderer(ring);
+        for (int frame = 0; frame < 2; frame++) {
+            groups.beginPass(new Matrix4f(), 0, 0, 0, renderer);
+            groups.queue(SCOPE + frame, template(), cubes(1), 0.0625f, layer, STREAM, new Matrix4f(), 0, -1, 0, 0L, 5, null, slot);
+            queueBlock(SCOPE + frame, DEPTH_EQUAL_OVERLAY, 5);
+            queueBlock(SCOPE + frame, BAKED_PLAIN_SHADER, 5);
+        }
+
+        final RetainedTesrGroups.Group atlas = groupsOn(groups, layer).get(0);
+        assertFalse(atlas.streamPath, "sanity: a member that cannot instance must pull the atlas writer off the instanced path");
+        assertEquals(1, atlas.instTexMatrices.size(), "sanity: the part must take the retained branch");
+        assertEquals(slot.uvMatrix, atlas.instTexMatrices.get(0), "a baked atlas part must sample its slot, not the whole atlas page");
+    }
+
+    @Test
     void mergedDepthEqualSetsKeepTheInstancedPath() {
         final InstancedTemplateRenderer renderer = new InstancedTemplateRenderer(ring);
         instancedPair(renderer);
