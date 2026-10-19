@@ -194,7 +194,7 @@ public class FontStrategist {
 
     // The splash font renderer can only bind its own ascii texture.
     private static FontProvider findModernGlyph(BatchingFontRenderer me, char chr, boolean forceUnicode) {
-        if (!FontConfig.enableModernFont || forceUnicode || me.isSplash) { return null; }
+        if (!FontConfig.enableModernFont || forceUnicode || me.isSplash || !GLStateManager.isMainThread()) { return null; }
         return FontProviderBitmap.find(chr);
     }
 
