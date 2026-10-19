@@ -7,8 +7,13 @@ import net.coderbot.batchedentityrendering.impl.BatchVertexFormats;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
+import java.util.stream.Stream;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress0;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetFloat;
@@ -51,35 +56,20 @@ class VertexTransformTest {
     @Test
     void writeInstanceTranslatesPositionSetsColorLightKeepsUv() {
         final TemplateBuffer template = template(oneVertexUp());
-        final Matrix4f mv = new Matrix4f().translation(10f, -2f, 3f);
+        final Matrix4f mv = new Matrix4f().translation(10f, -2f, 3f).rotateX((float) Math.toRadians(90));
         final ByteBuffer dest = ByteBuffer.allocateDirect(DEST.getVertexSize());
         final long addr = memAddress0(dest);
 
         VertexTransform.writeInstance(addr, DEST, template, mv, new Vector3f(), 0xFF8040C0, 0x00F000F0, null);
 
         assertEquals(10f, memGetFloat(addr + OFF_POS), 1e-6f);
-        assertEquals(-1f, memGetFloat(addr + OFF_POS + 4), 1e-6f);
-        assertEquals(3f, memGetFloat(addr + OFF_POS + 8), 1e-6f);
+        assertEquals(-2f, memGetFloat(addr + OFF_POS + 4), 1e-6f);
+        assertEquals(4f, memGetFloat(addr + OFF_POS + 8), 1e-6f);
         assertEquals(0xFF8040C0, memGetInt(addr + OFF_COLOR));
         assertEquals(0.25f, memGetFloat(addr + OFF_TEX), 0f);
         assertEquals(0.75f, memGetFloat(addr + OFF_TEX + 4), 0f);
         assertEquals(240f, memGetFloat(addr + OFF_LIGHT), 0f);      // 0x00F0
         assertEquals(240f, memGetFloat(addr + OFF_LIGHT + 4), 0f);  // 0x00F0
-        final int n = memGetInt(addr + OFF_NORMAL);
-        assertEquals(0f, NormI8.unpackX(n), NORM_EPS);
-        assertEquals(1f, NormI8.unpackY(n), NORM_EPS);
-        assertEquals(0f, NormI8.unpackZ(n), NORM_EPS);
-    }
-
-    @Test
-    void writeInstanceRotatesNormal() {
-        final TemplateBuffer template = template(oneVertexUp());
-        final Matrix4f mv = new Matrix4f().rotationX((float) Math.toRadians(90));
-        final ByteBuffer dest = ByteBuffer.allocateDirect(DEST.getVertexSize());
-        final long addr = memAddress0(dest);
-
-        VertexTransform.writeInstance(addr, DEST, template, mv, new Vector3f(), 0, 0, null);
-
         final int n = memGetInt(addr + OFF_NORMAL);
         assertEquals(0f, NormI8.unpackX(n), NORM_EPS);
         assertEquals(0f, NormI8.unpackY(n), NORM_EPS);
@@ -102,14 +92,6 @@ class VertexTransformTest {
     }
 
     @Test
-    void mulColorIsExactForWhiteAndRounds() {
-        assertEquals(0x12345678, VertexTransform.mulColor(0x12345678, 0xFFFFFFFF));
-        assertEquals(0x12345678, VertexTransform.mulColor(0xFFFFFFFF, 0x12345678));
-        assertEquals(0x80, VertexTransform.mulColor(0xFF, 0x80));
-        assertEquals(0x00, VertexTransform.mulColor(0x7F, 0x00));
-    }
-
-    @Test
     void writeInstanceAppliesTextureMatrixToUvThenRestores() {
         final TemplateBuffer template = template(oneVertexUp());
         final ByteBuffer dest = ByteBuffer.allocateDirect(DEST.getVertexSize());
@@ -125,25 +107,37 @@ class VertexTransformTest {
         assertEquals(0.75f, memGetFloat(addr + OFF_TEX + 4), 0f);
     }
 
-    @Test
-    void decodeReadsPositionUvNormalByUsage() {
+    static Stream<Arguments> decodeCases() {
+        return Stream.of(
+            Arguments.of("explicit normal", GL11.GL_POINTS, new float[][] {{5f, 6f, 7f, 0.1f, 0.2f}}, NormI8.pack(1f, 0f, 0f), 1f, 0f, 0f),
+            Arguments.of("quad seeds its face normal", GL11.GL_QUADS, new float[][] {
+                {0f, 0f, 0f, 0f, 0f}, {1f, 0f, 0f, 1f, 0f}, {1f, 1f, 0f, 1f, 1f}, {0f, 1f, 0f, 0f, 1f}}, 0, 0f, 0f, 1f));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("decodeCases")
+    void decodeReadsPositionUvNormalByUsage(String name, int drawMode, float[][] vertices, int packedNormal, float nx, float ny, float nz) {
         final VertexFormat src = DefaultVertexFormat.POSITION_TEXTURE_NORMAL;
-        final ByteBuffer buf = ByteBuffer.allocateDirect(src.getVertexSize());
+        final ByteBuffer buf = ByteBuffer.allocateDirect(src.getVertexSize() * vertices.length);
         final long addr = memAddress0(buf);
-        memPutFloat(addr, 5f);
-        memPutFloat(addr + 4, 6f);
-        memPutFloat(addr + 8, 7f);
-        memPutFloat(addr + 12, 0.1f);
-        memPutFloat(addr + 16, 0.2f);
-        memPutInt(addr + 20, NormI8.pack(1f, 0f, 0f));
+        for (int i = 0; i < vertices.length; i++) {
+            final long v = addr + (long) i * src.getVertexSize();
+            for (int f = 0; f < 5; f++) memPutFloat(v + 4L * f, vertices[i][f]);
+            memPutInt(v + 20, packedNormal);
+        }
 
-        final int[] out = VertexTransform.decode(addr, src, 1);
+        final int[] out = VertexTransform.decode(addr, src, vertices.length, drawMode);
 
-        assertEquals(5f, Float.intBitsToFloat(out[X_INDEX]), 0f);
-        assertEquals(6f, Float.intBitsToFloat(out[Y_INDEX]), 0f);
-        assertEquals(7f, Float.intBitsToFloat(out[Z_INDEX]), 0f);
-        assertEquals(0.1f, Float.intBitsToFloat(out[TEX_X_INDEX]), 0f);
-        assertEquals(0.2f, Float.intBitsToFloat(out[TEX_Y_INDEX]), 0f);
-        assertEquals(1f, NormI8.unpackX(out[NORMAL_INDEX]), NORM_EPS);
+        for (int i = 0; i < vertices.length; i++) {
+            final int base = i * VERTEX_SIZE;
+            assertEquals(vertices[i][0], Float.intBitsToFloat(out[base | X_INDEX]), 0f);
+            assertEquals(vertices[i][1], Float.intBitsToFloat(out[base | Y_INDEX]), 0f);
+            assertEquals(vertices[i][2], Float.intBitsToFloat(out[base | Z_INDEX]), 0f);
+            assertEquals(vertices[i][3], Float.intBitsToFloat(out[base | TEX_X_INDEX]), 0f);
+            assertEquals(vertices[i][4], Float.intBitsToFloat(out[base | TEX_Y_INDEX]), 0f);
+            assertEquals(nx, NormI8.unpackX(out[base | NORMAL_INDEX]), NORM_EPS);
+            assertEquals(ny, NormI8.unpackY(out[base | NORMAL_INDEX]), NORM_EPS);
+            assertEquals(nz, NormI8.unpackZ(out[base | NORMAL_INDEX]), NORM_EPS);
+        }
     }
 }

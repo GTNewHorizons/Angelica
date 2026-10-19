@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.client.rendering.GlUniformFloat3Array;
 import com.gtnewhorizons.angelica.client.rendering.GlUniformFloat4Array;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.StateSet;
+import com.gtnewhorizons.angelica.glsm.ffp.FragmentKey;
 import com.gtnewhorizons.angelica.glsm.states.FogState;
 import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
@@ -51,8 +52,6 @@ final class PortalDrawer {
     private static final int LIGHTMAP_UNIT = 1;
     private static final int FIELD_UNIT = 2;
     private static final int FACE_BYTES = FLOATS_PER_FACE * Float.BYTES;
-    private static final double LN2 = Math.log(2.0);
-    private static final double SQRT_LN2 = Math.sqrt(LN2);
     private static final float[] LAYER_DEPTH = new float[LAYERS];
     private static final float[] LAYER_SCALE = new float[LAYERS];
     private static final float[] LAYER_ANGLE = new float[LAYERS];
@@ -105,26 +104,12 @@ final class PortalDrawer {
         faces[i] = 0.0F;
     }
 
-    private static int fogMode() {
-        if (!GLStateManager.getFogMode().isEnabled()) return 0;
-        return switch (GLStateManager.getFogState().getFogMode()) {
-            case GL11.GL_LINEAR -> 1;
-            case GL11.GL_EXP -> 2;
-            case GL11.GL_EXP2 -> 3;
-            default -> 0;
-        };
-    }
-
     private static void uploadFog(Uniforms uniforms, int fogMode) {
         final FogState fog = GLStateManager.getFogState();
-        final float start = fog.getStart();
-        final float end = fog.getEnd();
-        final float density = fog.getDensity();
-        final float range = end - start;
-        FOG_PARAMS[0] = range != 0.0f ? -1.0f / range : 0.0f;
-        FOG_PARAMS[1] = range != 0.0f ? end / range : 1.0f;
-        FOG_PARAMS[2] = (float) (density / LN2);
-        FOG_PARAMS[3] = (float) (density / SQRT_LN2);
+        FOG_PARAMS[0] = fog.linearScale();
+        FOG_PARAMS[1] = fog.linearBias();
+        FOG_PARAMS[2] = fog.expScale();
+        FOG_PARAMS[3] = fog.exp2Scale();
         uniforms.fogParams.set(FOG_PARAMS);
         uniforms.fogColor.set((float) fog.getFogColor().x, (float) fog.getFogColor().y, (float) fog.getFogColor().z);
         uniforms.fogMode.setInt(fogMode);
@@ -187,9 +172,9 @@ final class PortalDrawer {
     }
 
     void drawDirect(float[] faces, int count, int tunnelTexture, int fieldTexture, Frame frame, boolean fogged) {
-        final int fogMode = fogged ? fogMode() : 0;
+        final int fogMode = fogged ? FragmentKey.activeFogMode(GLStateManager.ctx()) : FragmentKey.FOG_NONE;
         final GlProgram<Uniforms> program;
-        if (fogMode == 0) {
+        if (fogMode == FragmentKey.FOG_NONE) {
             if (direct == null) direct = buildProgram(false, false);
             program = direct;
         } else {
@@ -276,7 +261,7 @@ final class PortalDrawer {
             uniforms.lightmapUv.set(frame.lightmapU, frame.lightmapV);
             uniforms.lightmapEnabled.setFloat(frame.lightmapEnabled ? 1.0F : 0.0F);
             if (uniforms.atlasSize != null) uniforms.atlasSize.setFloat(ATLAS_SIZE);
-            if (fogMode != 0) uploadFog(uniforms, fogMode);
+            if (fogMode != FragmentKey.FOG_NONE) uploadFog(uniforms, fogMode);
 
             GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + FIELD_UNIT);
             GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, fieldTexture);

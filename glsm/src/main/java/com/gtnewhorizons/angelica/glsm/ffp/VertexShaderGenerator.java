@@ -100,9 +100,9 @@ public final class VertexShaderGenerator {
     private static void emitOutputs(StringBuilder sb, VertexKey key) {
         sb.append("// Outputs\n");
         sb.append("out vec4 v_Color;\n");
+        sb.append("invariant gl_Position;\n");
         if (key.instancing().hasInstanceHead()) {
             sb.append("out vec4 v_Overlay;\n");
-            sb.append("invariant gl_Position;\n");
         }
         if (key.lineStipple()) {
             sb.append("flat out vec2 v_LineStart;\n");
@@ -414,18 +414,9 @@ public final class VertexShaderGenerator {
 
     private static void emitFogDistance(StringBuilder sb, VertexKey key) {
         sb.append("  // Fog distance\n");
-        final String own = fogDistance(key, "eyePos");
-        final String fog = key.lineQuads() ? acrossLine(own, fogDistance(key, "lineEyeOther")) : own;
+        final String own = FfpGlsl.fogDistance(key.fogDistanceMode(), "eyePos");
+        final String fog = key.lineQuads() ? acrossLine(own, FfpGlsl.fogDistance(key.fogDistanceMode(), "lineEyeOther")) : own;
         sb.append("  v_FogCoord = ").append(fog).append(";\n");
-    }
-
-    // Mesa ffvertex_prog.c build_fog(): FDM_EYE_RADIAL/EYE_PLANE/EYE_PLANE_ABS
-    private static String fogDistance(VertexKey key, String eye) {
-        return switch (key.fogDistanceMode()) {
-            case 0 -> "length(" + eye + ".xyz)"; // FDM_EYE_RADIAL: Euclidean distance
-            case 1 -> eye + ".z";                // FDM_EYE_PLANE: raw Z (can be negative, clamped by fog factor)
-            default -> "abs(" + eye + ".z)";     // FDM_EYE_PLANE_ABS: absolute Z
-        };
     }
 
     private static void emitClipDistances(StringBuilder sb, VertexKey key) {

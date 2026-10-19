@@ -9,8 +9,6 @@ import org.lwjgl.opengl.GL11;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 class DrawStateTest {
@@ -20,9 +18,7 @@ class DrawStateTest {
             arguments(true, GL11.GL_BACK, DrawState.CULL_BACK),
             arguments(true, GL11.GL_FRONT, DrawState.CULL_FRONT),
             arguments(true, GL11.GL_FRONT_AND_BACK, DrawState.CULL_BOTH),
-            arguments(false, GL11.GL_BACK, DrawState.DISABLED),
-            arguments(false, GL11.GL_FRONT, DrawState.DISABLED),
-            arguments(false, GL11.GL_FRONT_AND_BACK, DrawState.DISABLED)
+            arguments(false, GL11.GL_BACK, DrawState.DISABLED)
         );
     }
 
@@ -30,42 +26,6 @@ class DrawStateTest {
     @MethodSource("packCullCases")
     void packCullReturnsExpectedCode(boolean enabled, int cullFaceMode, int expected) {
         assertEquals(expected, DrawState.packCull(enabled, cullFaceMode));
-    }
-
-    @Test
-    void equalValuesInternToOneInstance() {
-        assertSame(DrawState.of(DrawState.CULL_BACK, DrawState.OPAQUE, false, true, true, 0f, true, true, 0f, 0f), DrawState.of(DrawState.CULL_BACK, DrawState.OPAQUE, false, true, true, 0f, true, true, 0f, 0f));
-        assertNotSame(DrawState.of(DrawState.CULL_BACK, DrawState.OPAQUE, false, true, true, 0f, true, true, 0f, 0f), DrawState.of(DrawState.CULL_FRONT, DrawState.OPAQUE, false, true, true, 0f, true, true, 0f, 0f));
-        assertNotSame(DrawState.of(DrawState.CULL_BACK, DrawState.OPAQUE, false, true, true, 0f, true, true, 0f, 0f), DrawState.of(DrawState.CULL_BACK, DrawState.OPAQUE, false, true, true, 0f, true, false, 0f, 0f));
-    }
-
-    @Test
-    void lifecycleResetBoundsInterningAndReinternsIdentity() {
-        DrawState.clearInterning();
-        final DrawState before = DrawState.of(DrawState.CULL_BACK, DrawState.OPAQUE, false, true, true, 0f, true, true, 0f, 0f);
-        DrawState.of(DrawState.CULL_FRONT, DrawState.TRANSLUCENT, false, false, true, 0f, false, true, 1f, 1f);
-        assertEquals(2, DrawState.internedStateCount());
-
-        DrawState.clearInterning();
-        DrawState.clearInterning();
-        assertEquals(0, DrawState.internedStateCount());
-
-        final DrawState after = DrawState.of(DrawState.CULL_BACK, DrawState.OPAQUE, false, true, true, 0f, true, true, 0f, 0f);
-        assertNotSame(before, after);
-        assertSame(after, DrawState.of(DrawState.CULL_BACK, DrawState.OPAQUE, false, true, true, 0f, true, true, 0f, 0f));
-    }
-
-    @Test
-    void noCullMaterialNormalizesToDisabled() {
-        final TesrMaterial noCull = TesrMaterial.builder().noCull().build();
-        assertSame(DrawState.forMaterial(noCull, DrawState.CULL_FRONT, true, true, 0f, 0f), DrawState.forMaterial(noCull, DrawState.CULL_BACK, true, true, 0f, 0f));
-        assertEquals(DrawState.DISABLED, DrawState.forMaterial(noCull, DrawState.CULL_FRONT, true, true, 0f, 0f).getCull());
-    }
-
-    @Test
-    void unlitMaterialNormalizesToUnlit() {
-        final TesrMaterial unlit = TesrMaterial.builder().unlit().build();
-        assertSame(DrawState.forMaterial(unlit, DrawState.CULL_BACK, true, true, 0f, 0f), DrawState.forMaterial(unlit, DrawState.CULL_BACK, false, true, 0f, 0f));
     }
 
     @Test

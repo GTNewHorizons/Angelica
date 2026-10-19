@@ -80,9 +80,6 @@ public class Uniforms {
     private final Vector3f tempVec3 = new Vector3f();
     private final FloatBuffer clipPlaneBuf = memAllocFloat(32); // 8 planes * vec4
 
-    private static final double LN2 = java.lang.Math.log(2.0);
-    private static final double SQRT_LN2 = java.lang.Math.sqrt(LN2);
-
     public void upload(GLContextState glCtx) {
         boolean dirty = false;
         contentChanged = false;
@@ -233,8 +230,11 @@ public class Uniforms {
         if (projChanged) {
             putMat4(FFPUniformBlock.PROJECTION_MATRIX, proj);
         }
-        proj.mul(mv, mvpMatrix);
-        putMat4(FFPUniformBlock.MVP_MATRIX, mvpMatrix);
+        putMat4(FFPUniformBlock.MVP_MATRIX, modelViewProjection(proj, mv, mvpMatrix));
+    }
+
+    public static Matrix4f modelViewProjection(Matrix4f proj, Matrix4f mv, Matrix4f dest) {
+        return proj.mul(mv, dest);
     }
 
     private void stageNormalMatrix(GLContextState glCtx) {
@@ -343,17 +343,8 @@ public class Uniforms {
         final var secondary = glCtx.secondaryColor;
         putVec3(FFPUniformBlock.SECONDARY_COLOR, secondary.getRed(), secondary.getGreen(), secondary.getBlue());
 
-        // Mesa STATE_FOG_PARAMS_OPTIMIZED
         final FogState fog = glCtx.fogState;
-        final float start = fog.getStart();
-        final float end = fog.getEnd();
-        final float density = fog.getDensity();
-        final float range = end - start;
-        putVec4(FFPUniformBlock.FOG_PARAMS,
-            range != 0.0f ? -1.0f / range : 0.0f,
-            range != 0.0f ? end / range : 1.0f,
-            (float) (density / LN2),
-            (float) (density / SQRT_LN2));
+        putVec4(FFPUniformBlock.FOG_PARAMS, fog.linearScale(), fog.linearBias(), fog.expScale(), fog.exp2Scale());
         putVec4(FFPUniformBlock.FOG_COLOR,
             (float) fog.getFogColor().x, (float) fog.getFogColor().y, (float) fog.getFogColor().z,
             fog.getFogAlpha());

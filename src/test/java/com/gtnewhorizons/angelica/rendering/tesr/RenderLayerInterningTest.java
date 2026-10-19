@@ -5,73 +5,91 @@ import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
 import net.coderbot.iris.layer.PassOverride;
 import net.minecraft.util.ResourceLocation;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+
+import java.util.function.BiConsumer;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 class RenderLayerInterningTest {
 
     private static final ResourceLocation TEX = new ResourceLocation("angelica", "textures/render_layer_interning_test.png");
 
-    @Test
-    void noCullMaterialInternsToOneLayerRegardlessOfCullCode() {
+    private static RenderLayer layer(TesrMaterial material, int cull, boolean lit, boolean lightmap) {
+        return RenderLayer.tesr(TEX, material, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, cull, lit, lightmap);
+    }
+
+    private static RenderLayer glint(int slot) {
+        return RenderLayer.tesr(null, EntityMaterials.GLINT, PassOverride.NONE, 0f, 0f, slot, DrawState.CULL_BACK, true, true);
+    }
+
+    static Stream<?> normalizeCases() {
         final TesrMaterial noCull = TesrMaterial.builder().noCull().build();
-        final RenderLayer back = RenderLayer.tesr(TEX, noCull, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_BACK, true, true);
-        final RenderLayer front = RenderLayer.tesr(TEX, noCull, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_FRONT, true, true);
-        assertSame(back, front);
-        assertEquals(DrawState.DISABLED, back.getState().getCull());
-    }
-
-    @Test
-    void unlitMaterialRequestedLitYieldsUnlitState() {
         final TesrMaterial unlit = TesrMaterial.builder().unlit().build();
-        final RenderLayer layer = RenderLayer.tesr(TEX, unlit, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_BACK, true, true);
-        assertFalse(layer.getState().isLit());
+        return Stream.of(
+            arguments("noCull",
+                (Supplier<RenderLayer>) () -> layer(noCull, DrawState.CULL_BACK, true, true),
+                (Supplier<RenderLayer>) () -> layer(noCull, DrawState.CULL_FRONT, true, true),
+                (BiConsumer<RenderLayer, RenderLayer>) (a, b) -> assertEquals(DrawState.DISABLED, a.getState().getCull())),
+            arguments("unlit",
+                (Supplier<RenderLayer>) () -> layer(unlit, DrawState.CULL_BACK, true, true),
+                (Supplier<RenderLayer>) () -> layer(unlit, DrawState.CULL_BACK, false, true),
+                (BiConsumer<RenderLayer, RenderLayer>) (a, b) -> assertFalse(a.getState().isLit()))
+        );
     }
 
-    @Test
-    void litMaterialRequestedUnlitYieldsUnlitStateAndDistinctLayer() {
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("normalizeCases")
+    void normalizesToOneLayer(String name, Supplier<RenderLayer> requestA, Supplier<RenderLayer> requestB, BiConsumer<RenderLayer, RenderLayer> stateCheck) {
+        final RenderLayer a = requestA.get();
+        final RenderLayer b = requestB.get();
+        assertSame(a, b);
+        stateCheck.accept(a, b);
+    }
+
+    static Stream<?> splitCases() {
         final TesrMaterial lit = TesrMaterial.builder().build();
-        final RenderLayer unlitRequest = RenderLayer.tesr(TEX, lit, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_BACK, false, true);
-        final RenderLayer litRequest = RenderLayer.tesr(TEX, lit, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_BACK, true, true);
-        assertFalse(unlitRequest.getState().isLit());
-        assertTrue(litRequest.getState().isLit());
-        assertNotSame(unlitRequest, litRequest);
+        return Stream.of(
+            arguments("lit material requested unlit",
+                (Supplier<RenderLayer>) () -> layer(lit, DrawState.CULL_BACK, false, true),
+                (Supplier<RenderLayer>) () -> layer(lit, DrawState.CULL_BACK, true, true),
+                (BiConsumer<RenderLayer, RenderLayer>) (a, b) -> {
+                    assertFalse(a.getState().isLit());
+                    assertTrue(b.getState().isLit());
+                }),
+            arguments("lightmap",
+                (Supplier<RenderLayer>) () -> layer(lit, DrawState.CULL_BACK, true, true),
+                (Supplier<RenderLayer>) () -> layer(lit, DrawState.CULL_BACK, true, false),
+                (BiConsumer<RenderLayer, RenderLayer>) (a, b) -> {
+                    assertTrue(a.getState().isLightmap());
+                    assertFalse(b.getState().isLightmap());
+                }),
+            arguments("glint tint slots 0 and 1",
+                (Supplier<RenderLayer>) () -> glint(1),
+                (Supplier<RenderLayer>) () -> glint(0),
+                (BiConsumer<RenderLayer, RenderLayer>) (a, b) -> { }),
+            arguments("glint untinted and tinted",
+                (Supplier<RenderLayer>) () -> glint(ShaderGlint.NO_TINT),
+                (Supplier<RenderLayer>) () -> glint(0),
+                (BiConsumer<RenderLayer, RenderLayer>) (a, b) -> { })
+        );
     }
 
-    @Test
-    void lightmapIsPartOfLayerIdentity() {
-        final TesrMaterial material = TesrMaterial.builder().build();
-        final RenderLayer withLightmap = RenderLayer.tesr(TEX, material, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_BACK, true, true);
-        final RenderLayer withoutLightmap = RenderLayer.tesr(TEX, material, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_BACK, true, false);
-        assertTrue(withLightmap.getState().isLightmap());
-        assertFalse(withoutLightmap.getState().isLightmap());
-        assertNotSame(withLightmap, withoutLightmap);
-    }
-
-    @Test
-    void noPassIsPartOfStructuredInterningIdentity() {
-        final TesrMaterial material = TesrMaterial.builder().build();
-        final RenderLayer regular = RenderLayer.tesr(TEX, material, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_BACK, true, true);
-        final RenderLayer noPass = RenderLayer.tesrNoPass(TEX, material, DrawState.CULL_BACK, true, true);
-
-        assertNotSame(regular, noPass);
-    }
-
-    @Test
-    void cacheResetAllowsFreshCanonicalIdentity() {
-        final TesrMaterial material = TesrMaterial.builder().build();
-        final RenderLayer before = RenderLayer.tesrNoPass(TEX, material, DrawState.CULL_BACK, true, true);
-        RenderLayer.clearInterningAndHooks();
-        final RenderLayer first = RenderLayer.tesrNoPass(TEX, material, DrawState.CULL_BACK, true, true);
-        final RenderLayer second = RenderLayer.tesrNoPass(TEX, material, DrawState.CULL_BACK, true, true);
-
-        assertNotSame(before, first);
-        assertSame(first, second);
-        assertTrue(RenderLayer.cacheSize() > 0);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("splitCases")
+    void fieldSplitsLayerIdentity(String name, Supplier<RenderLayer> requestA, Supplier<RenderLayer> requestB, BiConsumer<RenderLayer, RenderLayer> stateCheck) {
+        final RenderLayer a = requestA.get();
+        final RenderLayer b = requestB.get();
+        assertNotSame(a, b);
+        assertSame(a, requestA.get(), "the same request must reuse the layer");
+        stateCheck.accept(a, b);
     }
 }

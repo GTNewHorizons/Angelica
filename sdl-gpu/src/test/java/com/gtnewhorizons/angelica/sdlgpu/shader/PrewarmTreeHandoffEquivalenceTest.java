@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.PerFrameUniformBlock;
 import com.gtnewhorizons.angelica.glsm.hooks.PerFrameUniformBlock.Member;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess;
+import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
 import com.gtnewhorizons.angelica.glsm.shader.UniformType;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -15,10 +16,13 @@ import org.lwjgl.opengl.GL32;
 import org.taumc.glsl.ShaderParser;
 import org.taumc.glsl.grammar.GLSLParser;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.stream.Stream;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class PrewarmTreeHandoffEquivalenceTest {
 
@@ -104,7 +108,16 @@ class PrewarmTreeHandoffEquivalenceTest {
         GlslVulkanPreprocess.clearCache();
         final ShaderManager.PrewarmTransformResult treeFed = ShaderManager.applyPrewarmTransformsFull(finalSource, tree, HEADER.length(), glShaderType, GLSMHooks.perFrameUniformBlock, GLSMHooks.perPassUniformBlock);
 
-        assertEquals(reparse.source(), treeFed.source(), "tree handoff diverged from re-parse for " + label);
+        assertArrayEquals(spirv(reparse.source(), glShaderType, label), spirv(treeFed.source(), glShaderType, label), "tree handoff compiled differently from re-parse for " + label);
         assertEquals(reparse.boolUniforms(), treeFed.boolUniforms(), "bool uniforms diverged for " + label);
+    }
+
+    private static byte[] spirv(String source, int glShaderType, String label) {
+        final SpirvCompiler.Result result = SpirvCompiler.compile(source, ShaderManager.shaderKindFor(glShaderType), label, SpirvCompiler.Options.vulkanForced460Core(), false);
+        assertNotNull(result.spirv(), () -> label + " failed to compile: " + result.error() + "\n" + source);
+        final ByteBuffer words = result.spirv().duplicate();
+        final byte[] bytes = new byte[words.remaining()];
+        words.get(bytes);
+        return bytes;
     }
 }

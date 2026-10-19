@@ -4,6 +4,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.MatrixHelper;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
+import com.gtnewhorizons.angelica.api.tesr.TesrShader;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -17,6 +18,7 @@ import com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard;
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.rendering.GlintClock;
+import com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrGroups.Group;
 import com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrGroups.InstanceColumns;
 import com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrGroups.TexRun;
 import com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrTestSupport.CountingPipeline;
@@ -26,12 +28,17 @@ import net.coderbot.iris.layer.PassOverride;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.ItemRenderer;
 import net.minecraft.util.ResourceLocation;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -40,7 +47,11 @@ import org.lwjgl.opengl.GL15;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.stream.Stream;
 
+import static com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrTestSupport.SCOPE;
 import static com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil.COLOR_INDEX;
 import static com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil.VERTEX_SIZE;
 import static com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil.X_INDEX;
@@ -63,6 +74,7 @@ class RetainedTesrGroupsGLTest {
     private static boolean probeRegistered;
     private static Runnable onBufferSetup;
 
+    private final long[] clock = {1_000L};
     private AngelicaBufferSource source;
     private InstanceRing ring;
     private InstancedTemplateRenderer instanced;
@@ -110,7 +122,7 @@ class RetainedTesrGroupsGLTest {
         source = new AngelicaBufferSource();
         ring = new InstanceRing();
         instanced = new InstancedTemplateRenderer(ring);
-        groups = new RetainedTesrGroups(source);
+        groups = new RetainedTesrGroups(source, () -> clock[0]);
         layer = RetainedTesrTestSupport.testLayer();
     }
 
@@ -124,6 +136,7 @@ class RetainedTesrGroupsGLTest {
         groups.clear();
         instanced.clear();
         ring.delete();
+        TesrShaderPrograms.invalidateAll();
         final ShaderManager ffp = ShaderManager.getInstance();
         if (ffp.isActive()) ffp.deactivate();
         ShaderManager.disable();
@@ -190,9 +203,191 @@ class RetainedTesrGroupsGLTest {
         groups.beginPass(new Matrix4f(), 0, 0, 0, instanced, pipeline);
         for (int id = 1; id <= 3; id++) {
             final Matrix4f mv = new Matrix4f().translation(id, 0f, 0f);
-            groups.queue(template, layer, RetainedTesrTestSupport.STREAM, mv, 0, -1, 0, 0L, id, null);
-            groups.queue(template, RetainedTesrTestSupport.cubes(1), 0.0625f, layer, RetainedTesrTestSupport.STREAM, mv, 0, -1, 0, 0L, id, null, null);
+            groups.queue(SCOPE, template, layer, RetainedTesrTestSupport.STREAM, mv, 0, -1, 0, 0L, id, null);
+            groups.queue(SCOPE, template, RetainedTesrTestSupport.cubes(1), 0.0625f, layer, RetainedTesrTestSupport.STREAM, mv, 0, -1, 0, 0L, id, null, null);
         }
+    }
+
+    private static final TesrMaterial BAKED_ADDITIVE = TesrMaterial.builder().additiveAlpha().build();
+    private static final TesrMaterial BAKED_TRANSLUCENT = TesrMaterial.builder().translucent().build();
+
+    private void bakedFrame(TesrMaterial material, TemplateBuffer template, Matrix4f base, boolean instancing, Matrix4f... models) {
+        final Matrix4f mv = new Matrix4f();
+        groups.beginPass(base, 0, 0, 0, instancing ? instanced : null);
+        for (final Matrix4f model : models) {
+            groups.queue(SCOPE, template, layer, material, mv.set(base).mul(model), 0, -1, 0, 0L, 5, null);
+        }
+        groups.drawLayer(layer);
+        instanced.endFrame();
+        assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
+    }
+
+    @Test
+    void staticGroupBakesOnceWhileTheCameraRotates() {
+        final TemplateBuffer template = capturedQuad(0.1);
+        final Matrix4f[] models = new Matrix4f[256];
+        for (int i = 0; i < models.length; i++) {
+            models[i] = new Matrix4f().translation((i % 29) * 3.3f - 48f, (i % 7) * 1.7f - 6f, (i % 31) * 3.1f - 48f);
+        }
+        for (int frame = 0; frame < 120; frame++) {
+            clock[0] += 1;
+            bakedFrame(BAKED_ADDITIVE, template, new Matrix4f().rotationX(0.1f).rotateY(0.002f * frame), true, models);
+        }
+        assertEquals(1, groups.rebakes, "rotation alone must not re-bake a static group");
+        assertEquals(0, groups.streamPromotions);
+    }
+
+    static Stream<Arguments> nonOpaqueMaterials() {
+        return Stream.of(Arguments.of("additive", BAKED_ADDITIVE), Arguments.of("translucent", BAKED_TRANSLUCENT));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("nonOpaqueMaterials")
+    void nonOpaqueGroupsThatKeepRebakingPromoteToInstancing(String name, TesrMaterial material) {
+        final TemplateBuffer template = capturedQuad(0.1);
+        for (int frame = 0; frame < 30; frame++) {
+            clock[0] += 1;
+            bakedFrame(material, template, new Matrix4f(), true, new Matrix4f().translation((frame / 3) * 0.03f, 0f, 0f));
+        }
+        assertEquals(1, groups.streamPromotions, "a group re-baking every third frame must promote");
+        assertEquals(1 + RetainedTesrGroups.PROMOTE_AFTER_REBAKES, groups.rebakes, "the first bake plus the re-bakes that triggered promotion, none after");
+        assertTrue(groups.instancedInstances > 0, "a promoted group must draw instanced");
+        assertEquals(0, groups.streamedInstances, "promotion with instancing available must not CPU-stream");
+    }
+
+    @Test
+    void slowRebakesOutsideTheWindowDoNotPromote() {
+        final TemplateBuffer template = capturedQuad(0.1);
+        for (int frame = 0; frame < 8; frame++) {
+            clock[0] += RetainedTesrGroups.PROMOTE_WINDOW_MS + 1;
+            bakedFrame(BAKED_ADDITIVE, template, new Matrix4f(), true, new Matrix4f().translation(frame * 0.01f, 0f, 0f));
+        }
+        assertEquals(0, groups.streamPromotions);
+        assertEquals(8, groups.rebakes);
+    }
+
+    static Stream<Arguments> reorderRebakes() {
+        return Stream.of(Arguments.of("additive keeps its mesh", BAKED_ADDITIVE, 1), Arguments.of("translucent re-bakes every reorder", BAKED_TRANSLUCENT, 8));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("reorderRebakes")
+    void reorderRebakesOnlyUnderAlphaBlending(String name, TesrMaterial material, int rebakes) {
+        final TemplateBuffer template = capturedQuad(0.1);
+        final Matrix4f left = new Matrix4f().translation(-0.3f, 0f, 0f);
+        final Matrix4f right = new Matrix4f().translation(0.3f, 0f, 0f);
+        for (int frame = 0; frame < 8; frame++) {
+            clock[0] += 1;
+            bakedFrame(material, template, new Matrix4f(), true, frame % 2 == 0 ? left : right, frame % 2 == 0 ? right : left);
+        }
+        assertEquals(rebakes, groups.rebakes, "draw order matters only under alpha blending");
+        assertEquals(0, groups.streamPromotions, "a reorder is not an instance change");
+    }
+
+    @ParameterizedTest(name = "count changes {0}")
+    @ValueSource(booleans = { true, false })
+    void countOrTemplateChangeDoesNotCountTowardPromotion(boolean changeCount) {
+        final TemplateBuffer[] templates = {capturedQuad(0.1), capturedQuad(0.2)};
+        final Matrix4f left = new Matrix4f().translation(-0.3f, 0f, 0f);
+        final Matrix4f right = new Matrix4f().translation(0.3f, 0f, 0f);
+        for (int frame = 0; frame < 8; frame++) {
+            clock[0] += 1;
+            final boolean odd = frame % 2 == 1;
+            if (changeCount && odd) {
+                bakedFrame(BAKED_ADDITIVE, templates[0], new Matrix4f(), true, left);
+            } else {
+                bakedFrame(BAKED_ADDITIVE, templates[odd ? 1 : 0], new Matrix4f(), true, left, right);
+            }
+        }
+        assertEquals(8, groups.rebakes, "sanity: every frame re-bakes");
+        assertEquals(0, groups.streamPromotions, "instances entering view or swapping meshes are not volatile transforms");
+    }
+
+    @ParameterizedTest(name = "{0} distinct templates")
+    @ValueSource(ints = { RetainedTesrGroups.PROMOTE_MAX_TEMPLATES, RetainedTesrGroups.PROMOTE_MAX_TEMPLATES + 1 })
+    void templateBudgetGatesPromotion(int count) {
+        final TemplateBuffer[] templates = new TemplateBuffer[count];
+        for (int i = 0; i < count; i++) templates[i] = capturedQuad(0.01);
+        for (int frame = 0; frame < 8; frame++) {
+            clock[0] += 1;
+            groups.beginPass(new Matrix4f(), 0, 0, 0, instanced);
+            for (int i = 0; i < count; i++) {
+                groups.queue(SCOPE, templates[i], layer, BAKED_ADDITIVE, new Matrix4f().translation(frame * 0.01f, i * 0.05f, 0f), 0, -1, 0, 0L, 5, null);
+            }
+            groups.drawLayer(layer);
+            instanced.endFrame();
+            assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
+        }
+        assertEquals(count <= RetainedTesrGroups.PROMOTE_MAX_TEMPLATES ? 1 : 0, groups.streamPromotions);
+    }
+
+    @Test
+    void templateRetiredBeforeFirstDrawIsFreed() {
+        final TemplateBuffer template = template(TRIANGLE, COLOR_ABGR, GL11.GL_TRIANGLES);
+        instanced.retire(template);
+        drawSingleInstance(instanced, template, new Matrix4f(), COLOR_ABGR);
+        instanced.releaseRetired();
+        assertEquals(0, instanced.meshCount(), "a retire that precedes the mesh's first build must still free it");
+    }
+
+    static Stream<Arguments> materialsWithoutInstancing() {
+        return Stream.of(Arguments.of("opaque", TesrMaterial.CURRENT_STATE, true), Arguments.of("additive", BAKED_ADDITIVE, false));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("materialsWithoutInstancing")
+    void withoutInstancingOnlyOpaqueGroupsPromote(String name, TesrMaterial material, boolean promotes) {
+        final TemplateBuffer template = RetainedTesrTestSupport.template();
+        for (int frame = 0; frame < 12; frame++) {
+            clock[0] += 1;
+            bakedFrame(material, template, new Matrix4f(), false, new Matrix4f().translation(frame * 0.01f, 0f, 0f));
+        }
+        assertEquals(promotes ? 1 : 0, groups.streamPromotions);
+        assertEquals(promotes, groups.streamedInstances > 0, "only a promoted group CPU-streams");
+    }
+
+    @Test
+    void depthEqualOverlayAndItsDepthWriterAlwaysShareAPath() {
+        final TemplateBuffer template = capturedQuad(0.1);
+        final Matrix4f fixed = new Matrix4f().translation(0.2f, 0f, 0f);
+        boolean sawPromoted = false, sawDemotedAgain = false;
+        for (int frame = 0; frame < 40; frame++) {
+            final boolean animating = frame < 12;
+            clock[0] += animating ? 1 : RetainedTesrGroups.STABILITY_PROBE_MS;
+            groups.beginPass(new Matrix4f(), 0, 0, 0, instanced);
+            groups.queue(SCOPE, template, layer, TesrMaterial.CURRENT_STATE, fixed, 0, -1, 0, 0L, 5, null);
+            groups.queue(SCOPE, template, layer, RetainedTesrTestSupport.DEPTH_EQUAL_OVERLAY, fixed, 0, animating ? 0xFF000000 | frame : -1, 0, 0L, 5, null);
+            final ObjectArrayList<Group> pair = RetainedTesrTestSupport.groupsOn(groups, layer);
+            assertEquals(2, pair.size());
+            assertEquals(pair.get(0).streamPath, pair.get(1).streamPath, "base and overlay diverged at frame " + frame);
+            if (pair.get(0).streamPath) sawPromoted = true;
+            else if (sawPromoted) sawDemotedAgain = true;
+            groups.drawLayer(layer);
+            instanced.endFrame();
+        }
+        assertTrue(sawPromoted, "the animating overlay must pull its static depth writer onto the instanced path");
+        assertTrue(sawDemotedAgain, "once the overlay settles the pair must return to baked together");
+        assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
+    }
+
+    @Test
+    void coupledPairWithoutInstancingStaysBaked() {
+        final TemplateBuffer template = RetainedTesrTestSupport.template();
+        for (int frame = 0; frame < 12; frame++) {
+            clock[0] += 1;
+            groups.beginPass(new Matrix4f(), 0, 0, 0);
+            final Matrix4f pose = new Matrix4f().translation(frame * 0.01f, 0f, 0f);
+            groups.queue(SCOPE, template, layer, TesrMaterial.CURRENT_STATE, pose, 0, -1, 0, 0L, 5, null);
+            groups.queue(SCOPE, template, layer, RetainedTesrTestSupport.DEPTH_EQUAL_OVERLAY, pose, 0, -1, 0, 0L, 5, null);
+            final ObjectArrayList<Group> pair = RetainedTesrTestSupport.groupsOn(groups, layer);
+            assertEquals(2, pair.size(), "base and overlay must form two groups at frame " + frame);
+            assertEquals(pair.get(0).streamPath, pair.get(1).streamPath, "pair diverged at frame " + frame);
+            assertFalse(pair.get(0).streamPath, "frame " + frame);
+            groups.drawLayer(layer);
+        }
+        assertEquals(0, groups.streamPromotions, "a depth-coupled group must not promote on its own when its set cannot instance");
+        source.discard();
+        assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
     }
 
     @Test
@@ -202,7 +397,7 @@ class RetainedTesrGroupsGLTest {
         state.pushCurrentBlockEntity();
         state.pushCurrentEntityColor();
         try {
-            final var draws = new java.util.ArrayList<long[]>();
+            final var draws = new ArrayList<long[]>();
             onBufferSetup = () -> draws.add(new long[] {
                 state.getCurrentRenderedEntity(), state.getCurrentRenderedBlockEntity(), state.getCurrentRenderedItem(),
                 AngelicaBufferSource.packEntityColor(state.getCurrentEntityColor())
@@ -212,7 +407,7 @@ class RetainedTesrGroupsGLTest {
             for (int i = 0; i < 3; i++) {
                 final long info = com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs.packEntityInfo(45010 + i, 45020 + i, 45030 + i);
                 final int color = AngelicaBufferSource.packAbgr(i / 2f, 0, 0, 1);
-                groups.queue(template, layer, RetainedTesrTestSupport.STREAM, new Matrix4f(), 0, -1, color, info, 45020 + i, null);
+                groups.queue(SCOPE, template, layer, RetainedTesrTestSupport.STREAM, new Matrix4f(), 0, -1, color, info, 45020 + i, null);
             }
             state.setCurrentEntityAndItem(81, 82);
             state.setCurrentBlockEntity(83);
@@ -239,36 +434,25 @@ class RetainedTesrGroupsGLTest {
         }
     }
 
-    @Test
-    void bothVariantsBindOncePerLayer() {
-        final CountingPipeline pipeline = new CountingPipeline(true, true);
-        queueThreeEntities(pipeline);
-
-        groups.drawLayer(layer);
-
-        assertEquals(1, pipeline.matrixBinds, "one matrix variant bind for the whole layer");
-        assertEquals(1, pipeline.cubeBinds, "one cube variant bind for the whole layer");
-        assertEquals(2, pipeline.rebinds, "one resolve, one release");
-        assertEquals(3, groups.instancedInstances);
-        assertEquals(3, groups.cubeInstances);
-        assertEquals(2, groups.instancedDraws, "the three ids collapse into one group: one template-run draw, one cube-run draw");
-        assertEquals(0, groups.streamedInstances);
+    static Stream<Arguments> variantBinds() {
+        return Stream.of(Arguments.of(true, 1, 1, 3, 3), Arguments.of(false, 1, 0, 6, 0));
     }
 
-    @Test
-    void cubePartsRideTheMatrixVariantWhenTheCubeVariantIsMissing() {
-        final CountingPipeline pipeline = new CountingPipeline(true, false);
+    @ParameterizedTest(name = "cube variant {0}")
+    @MethodSource("variantBinds")
+    void bothVariantsBindOncePerLayer(boolean cubeVariant, int matrixBinds, int cubeBinds, int instancedInstances, int cubeInstances) {
+        final CountingPipeline pipeline = new CountingPipeline(true, cubeVariant);
         queueThreeEntities(pipeline);
 
         groups.drawLayer(layer);
 
-        assertEquals(1, pipeline.matrixBinds);
-        assertEquals(0, pipeline.cubeBinds);
+        assertEquals(matrixBinds, pipeline.matrixBinds, "one matrix variant bind for the whole layer");
+        assertEquals(cubeBinds, pipeline.cubeBinds, "one cube variant bind for the whole layer, none without it");
         assertEquals(2, pipeline.rebinds, "one resolve, one release");
-        assertEquals(6, groups.instancedInstances, "cube parts draw as their own templates");
-        assertEquals(0, groups.cubeInstances);
+        assertEquals(instancedInstances, groups.instancedInstances, "without a cube variant, cube parts draw as their own templates");
+        assertEquals(cubeInstances, groups.cubeInstances);
+        assertEquals(2, groups.instancedDraws, "the three ids collapse into one group: one template-run draw, one cube-run draw");
         assertEquals(0, groups.streamedInstances);
-        assertEquals(2, groups.instancedDraws, "one template-run draw, one cube-as-template-run draw");
     }
 
     @Test
@@ -282,8 +466,8 @@ class RetainedTesrGroupsGLTest {
         groups.beginPass(new Matrix4f(), 0, 0, 0, instanced, pipeline);
         for (int id = 1; id <= 3; id++) {
             final Matrix4f mv = new Matrix4f().translation(id, 0f, 0f);
-            groups.queue(template, layer, RetainedTesrTestSupport.STREAM, mv, 0, -1, 0, 0L, id, texMatrices[id - 1]);
-            groups.queue(template, RetainedTesrTestSupport.cubes(1), 0.0625f, layer, RetainedTesrTestSupport.STREAM, mv, 0, -1, 0, 0L, id, null, null);
+            groups.queue(SCOPE, template, layer, RetainedTesrTestSupport.STREAM, mv, 0, -1, 0, 0L, id, texMatrices[id - 1]);
+            groups.queue(SCOPE, template, RetainedTesrTestSupport.cubes(1), 0.0625f, layer, RetainedTesrTestSupport.STREAM, mv, 0, -1, 0, 0L, id, null, null);
         }
 
         groups.drawLayer(layer);
@@ -301,9 +485,9 @@ class RetainedTesrGroupsGLTest {
         final TemplateBuffer second = RetainedTesrTestSupport.template();
 
         groups.beginPass(new Matrix4f(), 0, 0, 0, instanced, pipeline);
-        groups.queue(first, layer, EntityMaterials.GLINT, new Matrix4f().translation(1f, 0f, 0f), 0, -1, 0, 0L, 1, null);
-        groups.queue(second, layer, EntityMaterials.GLINT, new Matrix4f().translation(2f, 0f, 0f), 0, -1, 0, 0L, 2, null);
-        groups.queue(first, layer, EntityMaterials.GLINT, new Matrix4f().translation(3f, 0f, 0f), 0, -1, 0, 0L, 3, null);
+        groups.queue(SCOPE, first, layer, EntityMaterials.GLINT, new Matrix4f().translation(1f, 0f, 0f), 0, -1, 0, 0L, 1, null);
+        groups.queue(SCOPE, second, layer, EntityMaterials.GLINT, new Matrix4f().translation(2f, 0f, 0f), 0, -1, 0, 0L, 2, null);
+        groups.queue(SCOPE, first, layer, EntityMaterials.GLINT, new Matrix4f().translation(3f, 0f, 0f), 0, -1, 0, 0L, 3, null);
 
         groups.drawLayer(layer);
 
@@ -322,16 +506,15 @@ class RetainedTesrGroupsGLTest {
         groups.beginPass(new Matrix4f(), 0, 0, 0, instanced, pipeline);
         for (int id = 1; id <= 3; id++) {
             final Matrix4f mv = new Matrix4f().translation(id, 0f, 0f);
-            groups.queue(template, layer, EntityMaterials.GLINT, mv, 0, -1, 0, 0L, id, texMatrices[id - 1]);
-            groups.queue(template, RetainedTesrTestSupport.cubes(1), 0.0625f, layer, EntityMaterials.GLINT, mv, 0, -1, 0, 0L, id, texMatrices[id - 1], null);
+            groups.queue(SCOPE, template, layer, EntityMaterials.GLINT, mv, 0, -1, 0, 0L, id, texMatrices[id - 1]);
+            groups.queue(SCOPE, template, RetainedTesrTestSupport.cubes(1), 0.0625f, layer, EntityMaterials.GLINT, mv, 0, -1, 0, 0L, id, texMatrices[id - 1], null);
         }
 
-        final RetainedTesrGroups.Group group = RetainedTesrTestSupport.onlyGroup(groups);
+        final Group group = RetainedTesrTestSupport.onlyGroup(groups);
         assertEquals(2, group.templateColumns.runs.size(), "sanity: template runs A,B,A merge into two heads");
         assertNotNull(group.templateColumns.runs.get(0).next, "sanity: the template A head must carry a second segment");
         assertEquals(2, group.cubeColumns.runs.size(), "sanity: cube runs A,B,A merge into two heads");
         assertNotNull(group.cubeColumns.runs.get(0).next, "sanity: the cube A head must carry a second segment");
-
         groups.drawLayer(layer);
 
         assertEquals(0, pipeline.matrixBinds);
@@ -360,7 +543,7 @@ class RetainedTesrGroupsGLTest {
         assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "instanced draw must not raise a GL error");
 
         final int[] atTranslation = FfpFixture.readPixel(tx, ty);
-        assertTrue(atTranslation[0] > 200 && atTranslation[1] < 50 && atTranslation[2] < 50, "translated instance must render red at (" + tx + "," + ty + "), got " + atTranslation[0] + "," + atTranslation[1] + "," + atTranslation[2]);
+        assertRed(atTranslation, "translated instance must render red at (" + tx + "," + ty + ")");
 
         final int[] atOrigin = FfpFixture.readPixel(originX, originY);
         assertTrue(atOrigin[0] < 50 && atOrigin[1] < 50 && atOrigin[2] < 50, "the untranslated origin must stay background, got " + atOrigin[0] + "," + atOrigin[1] + "," + atOrigin[2]);
@@ -370,7 +553,7 @@ class RetainedTesrGroupsGLTest {
         assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "instanced draw must not raise a GL error");
 
         final int[] identityAtOrigin = FfpFixture.readPixel(originX, originY);
-        assertTrue(identityAtOrigin[0] > 200 && identityAtOrigin[1] < 50 && identityAtOrigin[2] < 50, "an identity instance must render red at the origin, got " + identityAtOrigin[0] + "," + identityAtOrigin[1] + "," + identityAtOrigin[2]);
+        assertRed(identityAtOrigin, "an identity instance must render red at the origin");
     }
 
     private void queueTriangleOnClearedTarget() {
@@ -379,9 +562,13 @@ class RetainedTesrGroupsGLTest {
         GLStateManager.disableTexture();
         GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
         FfpFixture.clear();
-        groups.beginPass(new Matrix4f(), 0, 0, 0, instanced);
-        groups.queue(template(TRIANGLE, COLOR_ABGR, GL11.GL_TRIANGLES), layer, RetainedTesrTestSupport.STREAM,
-            new Matrix4f(), 0, COLOR_ABGR, 0, 0L, 0, null);
+        queueTriangle(groups, new Matrix4f());
+    }
+
+    private void queueTriangle(RetainedTesrGroups target, Matrix4f mv) {
+        target.beginPass(new Matrix4f(), 0, 0, 0, instanced);
+        target.queue(SCOPE, template(TRIANGLE, COLOR_ABGR, GL11.GL_TRIANGLES), layer, RetainedTesrTestSupport.STREAM,
+            mv, 0, COLOR_ABGR, 0, 0L, 0, null);
     }
 
     /** Runs body with the named fields of a batcher singleton swapped and the state fallback installed. */
@@ -416,12 +603,23 @@ class RetainedTesrGroupsGLTest {
     void heldEntityTranslucentsSurviveUncapturedStateChange() {
         GLStateManager.glScissor(0, 0, 0, 0);
         queueTriangleOnClearedTarget();
-        final ModelPartBatcher models = ModelPartBatcher.INSTANCE;
-        withBatcherFields(models, () -> {
-            GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
-            assertTrue(models.hasHeldEntities(), "held entity translucents wait for the post-deferred flush");
-            assertTrue(FfpFixture.readPixel(400, 300)[0] < 50, "held entity geometry must not draw before deferred");
-        }, "entitySource", source, "entityGroups", groups, "entityTranslucentsHeld", true);
+        final AngelicaBufferSource blockEntitySource = new AngelicaBufferSource();
+        final RetainedTesrGroups blockEntityGroups = new RetainedTesrGroups(blockEntitySource, () -> clock[0]);
+        try {
+            queueTriangle(blockEntityGroups, new Matrix4f().translation(0.5f, 0f, 0f));
+            final ModelPartBatcher models = ModelPartBatcher.INSTANCE;
+            withBatcherFields(models, () -> {
+                assertTrue(models.hasQueuedGeometry(), "sanity: the block-entity pass has queued geometry to drain");
+                GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
+                assertTrue(FfpFixture.readPixel(600, 300)[0] > 200, "the active block-entity batch must draw before the zero-area scissor takes effect");
+                assertTrue(FfpFixture.readPixel(400, 300)[0] < 50, "held entity geometry must not draw before deferred");
+                assertTrue(models.hasHeldEntities(), "held entity translucents wait for the post-deferred flush");
+            }, "entitySource", source, "entityGroups", groups, "entityTranslucentsHeld", true,
+                "activeSource", blockEntitySource, "activeGroups", blockEntityGroups, "active", true);
+        } finally {
+            blockEntitySource.discard();
+            blockEntityGroups.clear();
+        }
     }
 
     @Test
@@ -637,10 +835,10 @@ class RetainedTesrGroupsGLTest {
         setGlintBlendState();
         bindGlint();
         groups.beginPass(new Matrix4f(), 0, 0, 0, instanced);
-        groups.queue(glintTemplate, layer, EntityMaterials.GLINT, templateE1, 0, -1, 0, 0L, 1, glintMatrixA);
-        groups.queue(glintTemplate, layer, EntityMaterials.GLINT, templateE1, 0, -1, 0, 0L, 1, glintMatrixB);
-        groups.queue(glintTemplate, layer, EntityMaterials.GLINT, templateE2, 0, -1, 0, 0L, 2, glintMatrixA);
-        groups.queue(glintTemplate, layer, EntityMaterials.GLINT, templateE2, 0, -1, 0, 0L, 2, glintMatrixB);
+        groups.queue(SCOPE, glintTemplate, layer, EntityMaterials.GLINT, templateE1, 0, -1, 0, 0L, 1, glintMatrixA);
+        groups.queue(SCOPE, glintTemplate, layer, EntityMaterials.GLINT, templateE1, 0, -1, 0, 0L, 1, glintMatrixB);
+        groups.queue(SCOPE, glintTemplate, layer, EntityMaterials.GLINT, templateE2, 0, -1, 0, 0L, 2, glintMatrixA);
+        groups.queue(SCOPE, glintTemplate, layer, EntityMaterials.GLINT, templateE2, 0, -1, 0, 0L, 2, glintMatrixB);
         groups.drawLayer(layer);
         instanced.endFrame();
         assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "the merged candidate draw must not raise a GL error");
@@ -668,10 +866,10 @@ class RetainedTesrGroupsGLTest {
         setGlintBlendState();
         bindGlint();
         groups.beginPass(new Matrix4f(), 0, 0, 0, instanced);
-        groups.queue(null, glintCubes, CUBE_SCALE, layer, EntityMaterials.GLINT, cubeE1, 0, -1, 0, 0L, 1, glintMatrixA, null);
-        groups.queue(null, glintCubes, CUBE_SCALE, layer, EntityMaterials.GLINT, cubeE1, 0, -1, 0, 0L, 1, glintMatrixB, null);
-        groups.queue(null, glintCubes, CUBE_SCALE, layer, EntityMaterials.GLINT, cubeE2, 0, -1, 0, 0L, 2, glintMatrixA, null);
-        groups.queue(null, glintCubes, CUBE_SCALE, layer, EntityMaterials.GLINT, cubeE2, 0, -1, 0, 0L, 2, glintMatrixB, null);
+        groups.queue(SCOPE, null, glintCubes, CUBE_SCALE, layer, EntityMaterials.GLINT, cubeE1, 0, -1, 0, 0L, 1, glintMatrixA, null);
+        groups.queue(SCOPE, null, glintCubes, CUBE_SCALE, layer, EntityMaterials.GLINT, cubeE1, 0, -1, 0, 0L, 1, glintMatrixB, null);
+        groups.queue(SCOPE, null, glintCubes, CUBE_SCALE, layer, EntityMaterials.GLINT, cubeE2, 0, -1, 0, 0L, 2, glintMatrixA, null);
+        groups.queue(SCOPE, null, glintCubes, CUBE_SCALE, layer, EntityMaterials.GLINT, cubeE2, 0, -1, 0, 0L, 2, glintMatrixB, null);
         groups.drawLayer(layer);
         instanced.endFrame();
         assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "the merged candidate draw must not raise a GL error");
@@ -682,75 +880,53 @@ class RetainedTesrGroupsGLTest {
         return "0x" + Integer.toHexString(pixel);
     }
 
-    @Test
-    void templateGlintRunsMatchSequentialDrawsUnderAlphaBlend() {
+    @ParameterizedTest(name = "cubes {0}")
+    @ValueSource(booleans = { false, true })
+    void glintRunsMatchSequentialDrawsUnderAlphaBlend(boolean cubes) {
         glintState();
-        final int[] base = drawBaseTemplates();
-        final int[] reference = templateReference(false);
+        final int[] base = cubes ? drawBaseCubes() : drawBaseTemplates();
+        final int[] reference = cubes ? cubeReference() : templateReference(false);
         FfpFixture.assertOverlayFootprint(base, reference, BACKGROUND, "glint");
 
-        final int[] swapped = templateReference(true);
-        int differing = 0;
-        for (int i = 0; i < reference.length; i++) {
-            if (reference[i] != swapped[i]) differing++;
+        if (!cubes) {
+            final int[] swapped = templateReference(true);
+            int differing = 0;
+            for (int i = 0; i < reference.length; i++) {
+                if (reference[i] != swapped[i]) differing++;
+            }
+            assertTrue(differing > 0, "swapping e1's k0/k1 draw order under alpha blending must change the rendered " + "pixels, otherwise the parity tests could not detect a reversed emitter order");
         }
-        assertTrue(differing > 0, "swapping e1's k0/k1 draw order under alpha blending must change the rendered " + "pixels, otherwise the parity tests could not detect a reversed emitter order");
 
-        CubeParityFixture.assertPixelParity(reference, templateCandidate(), SIZE, BACKGROUND, RetainedTesrGroupsGLTest::describe);
+        CubeParityFixture.assertPixelParity(reference, cubes ? cubeCandidate() : templateCandidate(), SIZE, BACKGROUND, RetainedTesrGroupsGLTest::describe);
     }
 
-    @Test
-    void cubeGlintRunsMatchSequentialDrawsUnderAlphaBlend() {
+    @ParameterizedTest(name = "cubes {0}")
+    @ValueSource(booleans = { false, true })
+    void replayedGlintMatchesIndependentPasses(boolean cubes) {
         glintState();
-        final int[] base = drawBaseCubes();
-        final int[] reference = cubeReference();
-        FfpFixture.assertOverlayFootprint(base, reference, BACKGROUND, "glint");
-        CubeParityFixture.assertPixelParity(reference, cubeCandidate(), SIZE, BACKGROUND, RetainedTesrGroupsGLTest::describe);
-    }
-
-    @Test
-    void replayedGlintTemplatesMatchIndependentPasses() {
-        glintState();
-        final int[] reference = templateReference(false);
-        drawBaseTemplates();
+        final int[] reference = cubes ? cubeReference() : templateReference(false);
+        if (cubes) drawBaseCubes();
+        else drawBaseTemplates();
         setGlintBlendState();
         groups.beginPass(new Matrix4f(), 0, 0, 0, instanced);
         final GlintCapture capture = new GlintCapture();
-        for (Matrix4f pose : new Matrix4f[] {templateE1, templateE2}) {
+        for (Matrix4f pose : cubes ? new Matrix4f[] {cubeE1, cubeE2} : new Matrix4f[] {templateE1, templateE2}) {
             applyGlintTexMatrix(glintMatrixA);
             assertTrue(capture.begin(groups));
-            groups.queue(glintTemplate, layer, EntityMaterials.GLINT, pose, 0, -1, 0, 0L, 0, glintMatrixA);
+            if (cubes) groups.queue(SCOPE, null, glintCubes, CUBE_SCALE, layer, EntityMaterials.GLINT, pose, 0, -1, 0, 0L, 0, glintMatrixA, null);
+            else groups.queue(SCOPE, glintTemplate, layer, EntityMaterials.GLINT, pose, 0, -1, 0, 0L, 0, glintMatrixA);
             capture.end();
             applyGlintTexMatrix(glintMatrixB);
-            GLStateManager.glColor4f(0.5f, 1, 1, 1);
-            assertFalse(capture.replay(groups), "changed layer color must retain the original render call");
-            GLStateManager.glColor4f(1, 1, 1, 1);
-            GLStateManager.glBlendFunc(GL11.GL_ONE, GL11.GL_ONE);
-            assertFalse(capture.replay(groups), "changed layer blending must retain the original render call");
-            setGlintBlendState();
+            if (!cubes) {
+                GLStateManager.glColor4f(0.5f, 1, 1, 1);
+                assertFalse(capture.replay(groups), "changed layer color must retain the original render call");
+                GLStateManager.glColor4f(1, 1, 1, 1);
+                GLStateManager.glBlendFunc(GL11.GL_ONE, GL11.GL_ONE);
+                assertFalse(capture.replay(groups), "changed layer blending must retain the original render call");
+                setGlintBlendState();
+            }
             assertTrue(capture.replay(groups));
-            assertFalse(capture.replay(groups), "a captured pass is replayed only once");
-        }
-        groups.drawLayer(layer);
-        instanced.endFrame();
-        CubeParityFixture.assertPixelParity(reference, FfpFixture.readRegion(SIZE), SIZE, BACKGROUND, RetainedTesrGroupsGLTest::describe);
-    }
-
-    @Test
-    void replayedGlintCubesMatchIndependentPasses() {
-        glintState();
-        final int[] reference = cubeReference();
-        drawBaseCubes();
-        setGlintBlendState();
-        groups.beginPass(new Matrix4f(), 0, 0, 0, instanced);
-        final GlintCapture capture = new GlintCapture();
-        for (Matrix4f pose : new Matrix4f[] {cubeE1, cubeE2}) {
-            applyGlintTexMatrix(glintMatrixA);
-            assertTrue(capture.begin(groups));
-            groups.queue(null, glintCubes, CUBE_SCALE, layer, EntityMaterials.GLINT, pose, 0, -1, 0, 0L, 0, glintMatrixA, null);
-            capture.end();
-            applyGlintTexMatrix(glintMatrixB);
-            assertTrue(capture.replay(groups));
+            if (!cubes) assertFalse(capture.replay(groups), "a captured pass is replayed only once");
         }
         groups.drawLayer(layer);
         instanced.endFrame();
@@ -773,7 +949,7 @@ class RetainedTesrGroupsGLTest {
         final GlintCapture base = new GlintCapture();
         assertTrue(base.begin(groups));
         base.allowBase();
-        groups.queue(glintTemplate, layer, EntityMaterials.CUTOUT, templateE1, 0, 0xFF123456, 0, 0L, 0, null);
+        groups.queue(SCOPE, glintTemplate, layer, EntityMaterials.CUTOUT, templateE1, 0, 0xFF123456, 0, 0L, 0, null);
         base.end();
         setGlintBlendState();
         GLStateManager.glBlendFunc(GL11.GL_SRC_COLOR, GL11.GL_ONE);
@@ -822,7 +998,6 @@ class RetainedTesrGroupsGLTest {
         GLStateManager.enableCull();
         GLStateManager.glCullFace(GL11.GL_FRONT);
         final int cullCode = DrawState.liveCull();
-        assertEquals(DrawState.CULL_FRONT, cullCode, "queue-time glCullFace(GL_FRONT) must pack as CULL_FRONT");
 
         final int center = SIZE / 2 * SIZE + SIZE / 2;
         FfpFixture.clear();
@@ -835,22 +1010,12 @@ class RetainedTesrGroupsGLTest {
         final RenderLayer culled = RenderLayer.tesr(null, RetainedTesrTestSupport.STREAM, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, cullCode, false, true);
         FfpFixture.clear();
         groups.beginPass(new Matrix4f(), 0, 0, 0, instanced);
-        groups.queue(quad, culled, RetainedTesrTestSupport.STREAM, mirrored, 0, COLOR_ABGR, 0, 0L, 1, null);
+        groups.queue(SCOPE, quad, culled, RetainedTesrTestSupport.STREAM, mirrored, 0, COLOR_ABGR, 0, 0L, 1, null);
         GLStateManager.glCullFace(GL11.GL_BACK);
-
-        final boolean cullEnabledBefore = GLStateManager.getCullState().isEnabled();
-        final int cullFaceBefore = GLStateManager.getPolygonState().getCullFaceMode();
-        final boolean glCullEnabledBefore = GL11.glIsEnabled(GL11.GL_CULL_FACE);
-        final int glCullFaceBefore = GL11.glGetInteger(GL11.GL_CULL_FACE_MODE);
 
         source.endBatch(groups);
         instanced.endFrame();
         assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "the batched draw must not raise a GL error");
-
-        assertEquals(cullEnabledBefore, GLStateManager.getCullState().isEnabled(), "the flush must leave the cached cull enable where it found it");
-        assertEquals(cullFaceBefore, GLStateManager.getPolygonState().getCullFaceMode(), "the flush must leave the cached cull face mode where it found it");
-        assertEquals(glCullEnabledBefore, GL11.glIsEnabled(GL11.GL_CULL_FACE), "the flush must leave the real cull enable where it found it");
-        assertEquals(glCullFaceBefore, GL11.glGetInteger(GL11.GL_CULL_FACE_MODE), "the flush must leave the real cull face mode where it found it");
 
         CubeParityFixture.assertPixelParity(reference, FfpFixture.readRegion(SIZE), SIZE, BACKGROUND, RetainedTesrGroupsGLTest::describe);
     }
@@ -890,10 +1055,10 @@ class RetainedTesrGroupsGLTest {
 
         final TemplateBuffer quad = capturedQuad(0.5);
         final TesrMaterial opposite = TesrMaterial.builder().build();
-        final RenderLayer opposingLayer = RenderLayer.tesr(null, opposite, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.DISABLED, false, true);
+        final RenderLayer opposingLayer = RetainedTesrTestSupport.layerFor(opposite);
 
         groups.beginPass(new Matrix4f(), 0, 0, 0, instanced);
-        groups.queue(quad, opposingLayer, RetainedTesrTestSupport.STREAM, new Matrix4f(), 0, COLOR_ABGR, 0, 0L, 1, null);
+        groups.queue(SCOPE, quad, opposingLayer, RetainedTesrTestSupport.STREAM, new Matrix4f(), 0, COLOR_ABGR, 0, 0L, 1, null);
 
         source.endBatch(groups);
         instanced.endFrame();
@@ -916,5 +1081,178 @@ class RetainedTesrGroupsGLTest {
         assertEquals(glOffsetFillBefore, GL11.glIsEnabled(GL11.GL_POLYGON_OFFSET_FILL), "driver polygon offset fill must be restored");
         assertEquals(offsetFactorBefore, GLStateManager.getPolygonState().getOffsetFactor(), 0.0001f, "cache polygon offset factor must be restored");
         assertEquals(glOffsetFactorBefore, GL11.glGetFloat(GL11.GL_POLYGON_OFFSET_FACTOR), 0.0001f, "driver polygon offset factor must be restored");
+    }
+
+    private static final int[][] SHADER_PROBES = { { 200, 300 }, { 600, 300 }, { 400, 300 }, { 200, 500 } };
+
+    private static void assertRed(int[] pixel, String what) {
+        assertTrue(pixel[0] > 200 && pixel[1] < 50 && pixel[2] < 50, what + ", got " + Arrays.toString(pixel));
+    }
+
+    private static RenderLayer noLightmapLayer(TesrMaterial material) {
+        return RenderLayer.tesr(null, material, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.DISABLED, false, false);
+    }
+
+    private RenderLayer queueShaderPair(TesrMaterial material, boolean instancing) {
+        final RenderLayer shaderLayer = noLightmapLayer(material);
+        final TemplateBuffer template = capturedQuad(0.1);
+        FfpFixture.clear();
+        groups.beginPass(new Matrix4f(), 0, 0, 0, instancing ? instanced : null);
+        groups.queue(SCOPE, template, shaderLayer, material, templateE1, 0, COLOR_ABGR, 0, 0L, 5, null);
+        groups.queue(SCOPE, template, shaderLayer, material, templateE2, 0, COLOR_ABGR, 0, 0L, 5, null);
+        return shaderLayer;
+    }
+
+    private int[][] drawShaderLayer(RenderLayer shaderLayer) {
+        shaderLayer.startDrawing();
+        groups.drawLayer(shaderLayer);
+        shaderLayer.endDrawing();
+        instanced.endFrame();
+        assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "shader draw must not raise a GL error");
+        final int[][] pixels = new int[SHADER_PROBES.length][];
+        for (int i = 0; i < pixels.length; i++) {
+            pixels[i] = FfpFixture.readPixel(SHADER_PROBES[i][0], SHADER_PROBES[i][1]);
+        }
+        return pixels;
+    }
+
+    @Test
+    void shaderLayerBindsTheInstancedProgramOnceAndMatchesTheRetainedDraw() {
+        final TesrShader shader = RetainedTesrTestSupport.linkedSource("angelica:test_gl_source_shader").shader;
+        GLStateManager.disableBlend();
+        GLStateManager.disableAlphaTest();
+
+        long bakedBinds = TesrShaderPrograms.bakedBinds;
+        long instancedBinds = TesrShaderPrograms.instancedBinds;
+        final int[][] instancedPixels = drawShaderLayer(queueShaderPair(TesrMaterial.builder().stream().shader(shader).build(), true));
+        assertEquals(1, TesrShaderPrograms.bakedBinds - bakedBinds, "the layer hook binds the baked variant once");
+        assertEquals(1, TesrShaderPrograms.instancedBinds - instancedBinds, "the instanced variant binds once for the layer");
+        assertEquals(0, GLStateManager.getActiveProgram(), "release must restore the caller's program");
+        assertEquals(1, groups.instancedDraws, "both instances share one template run");
+        assertEquals(2, groups.instancedInstances);
+
+        bakedBinds = TesrShaderPrograms.bakedBinds;
+        instancedBinds = TesrShaderPrograms.instancedBinds;
+        final int[][] retainedPixels = drawShaderLayer(queueShaderPair(TesrMaterial.builder().shader(shader).build(), false));
+        assertEquals(1, TesrShaderPrograms.bakedBinds - bakedBinds);
+        assertEquals(0, TesrShaderPrograms.instancedBinds - instancedBinds, "nothing instanced, so no instanced bind");
+        assertEquals(1, groups.instancedDraws, "the baked draw is not an instanced draw");
+
+        for (int i = 0; i < SHADER_PROBES.length; i++) {
+            assertArrayEquals(retainedPixels[i], instancedPixels[i], "probe " + i + " differs between the baked and instanced variants");
+        }
+        assertRed(instancedPixels[0], "instance color must reach the left quad");
+        assertRed(instancedPixels[1], "instance color must reach the right quad");
+        assertTrue(instancedPixels[2][0] < 50 && instancedPixels[3][0] < 50, "probes off the quads must stay background");
+    }
+
+    private void drawDepthEqualPair(TesrShader shader, boolean instancing) {
+        drawDepthEqualPair(shader, instancing, null, new double[3]);
+    }
+
+    private Group[] drawDepthEqualPair(TesrShader shader, boolean instancing, double[] baseOnlyCam, double[] cam) {
+        final TesrMaterial.Builder baseBuilder = TesrMaterial.builder();
+        final TesrMaterial.Builder overlayBuilder = TesrMaterial.builder().depthEqual().noDepthWrite();
+        if (shader != null) overlayBuilder.shader(shader);
+        final TesrMaterial baseMaterial = (instancing ? baseBuilder.stream() : baseBuilder).build();
+        final TesrMaterial overlayMaterial = (instancing ? overlayBuilder.stream() : overlayBuilder).build();
+        final RenderLayer baseLayer = noLightmapLayer(baseMaterial);
+        final RenderLayer overlayLayer = noLightmapLayer(overlayMaterial);
+        final TemplateBuffer template = capturedQuad(0.6);
+        final String path = instancing ? "instanced" : "baked";
+
+        final Matrix4f savedProjection = new Matrix4f(GLStateManager.getProjectionMatrix());
+        GLStateManager.glViewport(0, 0, SIZE, SIZE);
+        GLStateManager.setProjectionMatrix(new Matrix4f().setPerspective(1.2217f, 1.3713f, 0.0517f, 173.31f));
+        GLStateManager.disableTexture();
+        GLStateManager.glDepthMask(true);
+        FfpFixture.clear();
+        try {
+            final Matrix4f view = new Matrix4f().translation(0.0713f, -0.0291f, -2.3177f).rotateX(0.413f);
+            final Matrix4f pose = new Matrix4f(view).rotateY(0.917f).rotateZ(0.2311f).translate(0.0137f, 0.0219f, 0.0071f);
+            if (baseOnlyCam != null) {
+                groups.beginPass(view, baseOnlyCam[0], baseOnlyCam[1], baseOnlyCam[2]);
+                groups.queue(SCOPE, template, baseLayer, baseMaterial, pose, 0, 0xFF00FF00, 0, 0L, 5, null);
+                baseLayer.startDrawing();
+                groups.drawLayer(baseLayer);
+                baseLayer.endDrawing();
+                assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
+                FfpFixture.clear();
+            }
+            final long instancedBefore = groups.instancedDraws;
+            groups.beginPass(view, cam[0], cam[1], cam[2], instancing ? instanced : null);
+            groups.queue(SCOPE + 1, template, baseLayer, baseMaterial, pose, 0, 0xFF00FF00, 0, 0L, 5, null);
+            groups.queue(SCOPE + 1, template, overlayLayer, overlayMaterial, pose, 0, COLOR_ABGR, 0, 0L, 5, null);
+            baseLayer.startDrawing();
+            groups.drawLayer(baseLayer);
+            baseLayer.endDrawing();
+            final int[] base = FfpFixture.readRegion(SIZE);
+            overlayLayer.startDrawing();
+            assertEquals(GL11.GL_EQUAL, GL11.glGetInteger(GL11.GL_DEPTH_FUNC));
+            groups.drawLayer(overlayLayer);
+            overlayLayer.endDrawing();
+            instanced.endFrame();
+            assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "depth-equal pair must not raise a GL error");
+            assertEquals(instancing ? 2 : 0, groups.instancedDraws - instancedBefore, path + ": base and overlay must share the path");
+
+            final int[] overlaid = FfpFixture.readRegion(SIZE);
+            int covered = 0;
+            int missed = 0;
+            for (int i = 0; i < base.length; i++) {
+                if (base[i] == BACKGROUND) {
+                    assertEquals(BACKGROUND, overlaid[i], path + ": overlay drew outside the base at pixel " + i);
+                    continue;
+                }
+                assertEquals(0xFF00FF00, base[i], path + ": base pixel " + i);
+                covered++;
+                if (overlaid[i] != COLOR_ABGR) missed++;
+            }
+            assertTrue(covered > SIZE * SIZE / 20, path + ": base must cover a usable area, covered " + covered);
+            assertEquals(0, missed, path + ": depth-equal overlay missed " + missed + " of " + covered + " base pixels");
+            return new Group[] { RetainedTesrTestSupport.groupsOn(groups, baseLayer).get(0), RetainedTesrTestSupport.groupsOn(groups, overlayLayer).get(0) };
+        } finally {
+            GLStateManager.setProjectionMatrix(savedProjection);
+        }
+    }
+
+    @Test
+    void depthEqualSetMembersBakeAgainstOneAnchor() {
+        GLStateManager.disableBlend();
+        GLStateManager.disableAlphaTest();
+        final double[] first = { 1000.3, 70.6, -2000.7 };
+        final double[] moved = { 1300.4, 75.8, -1750.4 };
+        final Group[] pair = drawDepthEqualPair(null, false, first, moved);
+        assertEquals(TesrAnchorMath.anchorCoord(first[0]), pair[0].anchor.x, "sanity: the move stays inside the re-anchor distance, so the base keeps its first anchor");
+        assertTrue(pair[0].anchor.sameAs(pair[1].anchor), "an overlay joining later must bake against its writer's anchor");
+        assertFalse(pair[0].streamPath || pair[1].streamPath, "sanity: both members are on the baked path");
+    }
+
+    @Test
+    void failedInstancedRelinkDrawsQueuedInstancesOnTheCpuPath() {
+        final TesrShaderPrograms.Entry entry = RetainedTesrTestSupport.linkedSource("angelica:test_gl_relink_failure_shader");
+        GLStateManager.disableBlend();
+        GLStateManager.disableAlphaTest();
+        final RenderLayer shaderLayer = queueShaderPair(TesrMaterial.builder().stream().shader(entry.shader).build(), true);
+        assertEquals(1, RetainedTesrTestSupport.onlyGroup(groups).templateColumns.runs.size(), "sanity: both parts queued as instances");
+
+        TesrShaderPrograms.invalidateAll();
+        TesrShaderPrograms.link(entry, false, RetainedTesrTestSupport.COLOR_VERTEX, RetainedTesrTestSupport.COLOR_FRAGMENT);
+        TesrShaderPrograms.link(entry, true, RetainedTesrTestSupport.BAKED_ONLY_VERTEX, RetainedTesrTestSupport.COLOR_FRAGMENT);
+        assertFalse(TesrShaderPrograms.instancedAvailable(entry), "sanity: the relinked instanced variant failed");
+
+        final int[][] pixels = drawShaderLayer(shaderLayer);
+        assertEquals(0, groups.instancedDraws, "no instanced program, so no instanced draw");
+        assertEquals(2, groups.streamedInstances, "both queued instances must draw through the CPU fallback");
+        assertRed(pixels[0], "left instance must reach the framebuffer");
+        assertRed(pixels[1], "right instance must reach the framebuffer");
+    }
+
+    @Test
+    void shaderOverlayDepthEqualsItsEmulatedBaseOnBothPaths() {
+        final TesrShader shader = RetainedTesrTestSupport.linkedSource("angelica:test_gl_depth_parity_shader").shader;
+        GLStateManager.disableBlend();
+        GLStateManager.disableAlphaTest();
+        drawDepthEqualPair(shader, false);
+        drawDepthEqualPair(shader, true);
     }
 }

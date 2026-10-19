@@ -1,0 +1,39 @@
+# OpenComputers screen text fade scene, for a shader pack run. ~ is the flight start; ground-standing level is ~-2. Yaw 0 faces south (+z).
+# Use with FLYBY_ORIGIN=x,z,-21 SMOKE_PITCH=15 SMOKE_WARMUP_TICKS=300. Shot 4 (north) holds all three walls.
+
+define BUFFER_3X2 {width:24,height:8,depth:1,buffer:["ANGELICA TESR FLYBY TEST","RED GREEN BLUE YELLOW ok","0123456789ABCDEF01234567","========================","abcdefghijklmnopqrstuvwx","The quick brown fox jump","+-*/=<>#%&!?.+-*/=<>#%&!","screen1 3x2 16 color pal"],color:[11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,3599,3599,3599,2063,1295,1295,1295,1295,1295,2063,783,783,783,783,2063,1039,1039,1039,1039,1039,1039,2063,2063,2063,7,263,519,775,1031,1287,1543,1807,2055,2311,2567,2823,3079,3335,3591,3847,7,263,519,775,1031,1287,1543,1807,3840,3840,3841,3842,3842,3843,3844,3844,3845,3846,3846,3847,3848,3848,3849,3850,3850,3851,3852,3852,3853,3854,3854,3855,1039,1039,1039,1039,1039,1039,1039,1039,1039,1039,1039,1039,1039,1039,1039,1039,1039,1039,1039,1039,1039,1039,1039,1039,1295,1295,1295,1295,1295,1295,1295,1295,1295,1295,1295,1295,1295,1295,1295,1295,1295,1295,1295,1295,1295,1295,1295,1295,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,266,266,266,266,266,266,266,266,266,266,266,266,266,266,266,266,266,266,266,266,266,266,266,266]}
+
+# setup
+gamerule doMobSpawning false
+gamerule doFireTick false
+difficulty 1
+
+# south: test ISBRH
+setblock ~0 ~-2 ~5 angelica:test_isbrh
+
+# north, near: full text
+setblock ~-2 ~-2 ~-7 OpenComputers:caseCreative
+setblock ~-5 ~-2 ~-7 OpenComputers:screen1 0 replace {buffer:${BUFFER_3X2}}
+setblock ~-4 ~-2 ~-7 OpenComputers:screen1 0 replace {buffer:${BUFFER_3X2}}
+setblock ~-3 ~-2 ~-7 OpenComputers:screen1 0 replace {buffer:${BUFFER_3X2}}
+setblock ~-5 ~-1 ~-7 OpenComputers:screen1 0 replace {buffer:${BUFFER_3X2}}
+setblock ~-4 ~-1 ~-7 OpenComputers:screen1 0 replace {buffer:${BUFFER_3X2}}
+setblock ~-3 ~-1 ~-7 OpenComputers:screen1 0 replace {buffer:${BUFFER_3X2}}
+
+# north, mid: fading text
+setblock ~2 ~-2 ~-26 OpenComputers:caseCreative
+setblock ~-1 ~-2 ~-26 OpenComputers:screen1 0 replace {buffer:${BUFFER_3X2}}
+setblock ~0 ~-2 ~-26 OpenComputers:screen1 0 replace {buffer:${BUFFER_3X2}}
+setblock ~1 ~-2 ~-26 OpenComputers:screen1 0 replace {buffer:${BUFFER_3X2}}
+setblock ~-1 ~-1 ~-26 OpenComputers:screen1 0 replace {buffer:${BUFFER_3X2}}
+setblock ~0 ~-1 ~-26 OpenComputers:screen1 0 replace {buffer:${BUFFER_3X2}}
+setblock ~1 ~-1 ~-26 OpenComputers:screen1 0 replace {buffer:${BUFFER_3X2}}
+
+# north, far: no text
+setblock ~10 ~-2 ~-32 OpenComputers:caseCreative
+setblock ~7 ~-2 ~-32 OpenComputers:screen1 0 replace {buffer:${BUFFER_3X2}}
+setblock ~8 ~-2 ~-32 OpenComputers:screen1 0 replace {buffer:${BUFFER_3X2}}
+setblock ~9 ~-2 ~-32 OpenComputers:screen1 0 replace {buffer:${BUFFER_3X2}}
+setblock ~7 ~-1 ~-32 OpenComputers:screen1 0 replace {buffer:${BUFFER_3X2}}
+setblock ~8 ~-1 ~-32 OpenComputers:screen1 0 replace {buffer:${BUFFER_3X2}}
+setblock ~9 ~-1 ~-32 OpenComputers:screen1 0 replace {buffer:${BUFFER_3X2}}

@@ -19,6 +19,7 @@ import com.gtnewhorizons.angelica.rendering.particles.ParticleInstancer;
 import com.gtnewhorizons.angelica.rendering.tesr.AngelicaTesrMeshCache;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
+import com.gtnewhorizons.angelica.rendering.tesr.TesrShaderPrograms;
 import net.coderbot.iris.pipeline.ShadowRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.WorldRenderer;
@@ -76,7 +77,7 @@ public final class TracyFramePlots {
     private static final long P_FFP_PROGRAMS = Tracy.plotHandle("ffp.programs");
     private static final PlotDelta P_FFP_VARIANT_SWITCHES = new PlotDelta("ffp.variantSwitches");
 
-    private static final PlotDelta P_TESR_REBUILDS = new PlotDelta("tesr.rebuilds");
+    private static final PlotDelta P_TESR_REBAKES = new PlotDelta("tesr.rebakes");
     private static final PlotDelta P_TESR_RETAINED_DRAWS = new PlotDelta("tesr.retainedDraws");
     private static final PlotDelta P_TESR_INSTANCED_DRAWS = new PlotDelta("tesr.instancedDraws");
     private static final PlotDelta P_TESR_INSTANCED_INSTANCES = new PlotDelta("tesr.instancedInstances");
@@ -88,6 +89,10 @@ public final class TracyFramePlots {
     private static final long P_TESR_BUFFER_SOURCE_BYTES = Tracy.plotHandle("tesr.bufferSourceBytes", TracyBackend.PLOT_FORMAT_MEMORY);
     private static final PlotDelta P_TESR_CACHE_HITS = new PlotDelta("tesr.cacheHits");
     private static final PlotDelta P_TESR_CACHE_MISSES = new PlotDelta("tesr.cacheMisses");
+    private static final PlotDelta P_TESR_SHADER_BAKED_BINDS = new PlotDelta("tesr.shaderBakedBinds");
+    private static final PlotDelta P_TESR_SHADER_INSTANCED_BINDS = new PlotDelta("tesr.shaderInstancedBinds");
+    private static final PlotDelta P_TESR_SHADER_FALLBACKS = new PlotDelta("tesr.shaderFallbacks");
+    private static final PlotDelta P_TESR_SHADER_LINK_FAILURES = new PlotDelta("tesr.shaderLinkFailures");
     private static final PlotDelta P_TESR_MODEL_PARTS = new PlotDelta("tesr.modelParts");
     private static final PlotDelta P_ARMOR_BASE_REUSES = new PlotDelta("glint.armorBaseReuses");
     private static final PlotDelta P_GLINT_PASS_REUSES = new PlotDelta("glint.passReuses");
@@ -227,7 +232,7 @@ public final class TracyFramePlots {
         final TesrBatchRenderer tesr = TesrBatchRenderer.INSTANCE;
         final ModelPartBatcher batcher = ModelPartBatcher.INSTANCE;
 
-        P_TESR_REBUILDS.plot(tesr.statRebuilds());
+        P_TESR_REBAKES.plot(tesr.statRebakes());
         P_TESR_RETAINED_DRAWS.plot(tesr.statRetainedDraws());
         P_TESR_INSTANCED_DRAWS.plot(tesr.statInstancedDraws() + batcher.statInstancedDraws());
         P_TESR_INSTANCED_INSTANCES.plot(tesr.statInstancedInstances() + batcher.statInstancedInstances());
@@ -241,6 +246,10 @@ public final class TracyFramePlots {
         }
         P_TESR_CACHE_HITS.plot(AngelicaTesrMeshCache.cacheHits);
         P_TESR_CACHE_MISSES.plot(AngelicaTesrMeshCache.cacheMisses);
+        P_TESR_SHADER_BAKED_BINDS.plot(TesrShaderPrograms.bakedBinds);
+        P_TESR_SHADER_INSTANCED_BINDS.plot(TesrShaderPrograms.instancedBinds);
+        P_TESR_SHADER_FALLBACKS.plot(TesrShaderPrograms.fallbacks);
+        P_TESR_SHADER_LINK_FAILURES.plot(TesrShaderPrograms.linkFailures);
         P_TESR_MODEL_PARTS.plot(batcher.statParts());
         P_ARMOR_BASE_REUSES.plot(batcher.statArmorBaseReuses());
         P_GLINT_PASS_REUSES.plot(batcher.statGlintPassReuses());

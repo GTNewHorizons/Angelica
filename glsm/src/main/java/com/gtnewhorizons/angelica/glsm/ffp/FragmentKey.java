@@ -65,6 +65,16 @@ public final class FragmentKey {
     public static final int FOG_EXP    = 2;
     public static final int FOG_EXP2   = 3;
 
+    public static int activeFogMode(GLContextState glCtx) {
+        if (!glCtx.fogMode.isEnabled()) return FOG_NONE;
+        return switch (glCtx.fogState.getFogMode()) {
+            case GL11.GL_LINEAR -> FOG_LINEAR;
+            case GL11.GL_EXP    -> FOG_EXP;
+            case GL11.GL_EXP2   -> FOG_EXP2;
+            default -> FOG_NONE;
+        };
+    }
+
     private static final int GLOBAL_BITS = 14;
     private static final int BIT_COMBINED_GLINT = 61;
     private static final int BIT_GLINT_REPLACE_ALPHA = 62;
@@ -117,15 +127,7 @@ public final class FragmentKey {
         if (CombinedGlint.replacesAlpha()) global |= 1L << BIT_GLINT_REPLACE_ALPHA;
 
         // Fog
-        if (glCtx.fogMode.isEnabled()) {
-            final int fogMode = switch (glCtx.fogState.getFogMode()) {
-                case GL11.GL_LINEAR -> FOG_LINEAR;
-                case GL11.GL_EXP    -> FOG_EXP;
-                case GL11.GL_EXP2   -> FOG_EXP2;
-                default -> FOG_NONE;
-            };
-            global |= (long) fogMode;
-        }
+        global |= activeFogMode(glCtx);
 
         // Alpha test
         if (glCtx.alphaTest.isEnabled()) {

@@ -296,7 +296,7 @@ public final class ShaderManager {
         return shaderKindFor(obj.type);
     }
 
-    private static int shaderKindFor(int glShaderType) {
+    static int shaderKindFor(int glShaderType) {
         if (glShaderType == GL20.GL_VERTEX_SHADER) return Shaderc.shaderc_vertex_shader;
         if (glShaderType == GL32.GL_GEOMETRY_SHADER) return Shaderc.shaderc_geometry_shader;
         if (glShaderType == GL43.GL_COMPUTE_SHADER) return Shaderc.shaderc_compute_shader;
@@ -311,14 +311,20 @@ public final class ShaderManager {
     }
 
     private static PrewarmTransformResult transformOrNull(String transformedSource, int glShaderType, String debugName, PerFrameUniformBlock perFrame, PerFrameUniformBlock perPass) {
+        final String source = preprocessed(transformedSource, glShaderType);
         final GLSLParser.Translation_unitContext root;
         try {
-            root = GlslTransformUtils.parseFullQuiet(transformedSource);
+            root = GlslTransformUtils.parseFullQuiet(source);
         } catch (Exception e) {
             LOG.warn("glsl-transformation-lib parse failed for '{}': {}", debugName, e.getMessage());
             return null;
         }
-        return transform(transformedSource, 0, root, glShaderType, debugName, perFrame, perPass);
+        return transform(source, 0, root, glShaderType, debugName, perFrame, perPass);
+    }
+
+    static String preprocessed(String source, int glShaderType) {
+        final String preprocessed = SpirvCompiler.preprocess(source, shaderKindFor(glShaderType), "transform", SpirvCompiler.Options.vulkanForced460Core());
+        return preprocessed != null ? preprocessed : source;
     }
 
     public static PrewarmTransformResult applyPrewarmTransformsFull(String finalSource, GLSLParser.Translation_unitContext bodyTree, int headerLen, int glShaderType, PerFrameUniformBlock perFrame, PerFrameUniformBlock perPass) {
@@ -333,8 +339,8 @@ public final class ShaderManager {
             PerFrameBlockInjector.collectEdits(index, perFrame, perPass, edits);
         }
         final GlslVulkanPreprocess.Metadata meta = GlslVulkanPreprocess.collectEdits(index, glShaderType, debugName, true, edits);
-        if (glShaderType == GL20.GL_VERTEX_SHADER) {
-            ClipZRemap.collectEdits(tree, edits);
+        if (glShaderType == GL20.GL_VERTEX_SHADER && !ClipZRemap.collectEdits(tree, edits)) {
+            LOG.warn("No main() found in vertex shader '{}'; its clip-space depth stays in OpenGL's -1..1 range", debugName);
         }
         final List<TextureDeclarations.Declaration> textureDeclarations = TextureDeclarations.collect(index);
         final Set<String> strippedSamplers = SamplerStripper.collectEdits(index, textureDeclarations, edits);
