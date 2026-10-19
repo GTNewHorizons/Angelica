@@ -28,6 +28,7 @@ public class SmoothBiomeColorCache extends BiomeColorCache<BiomeGenBase, SmoothB
     private final double[] temperatureNoise;
     private NoiseGeneratorPerlin noiseSource;
     private int minX, minZ, waterY;
+    BiomeVertexBlender armedBlender;
     private static final ThreadLocal<SmoothBiomeColorCache> activeCache = new ThreadLocal<>();
 
     private static final class Slice extends BoxBlur.ColorBuffer {
