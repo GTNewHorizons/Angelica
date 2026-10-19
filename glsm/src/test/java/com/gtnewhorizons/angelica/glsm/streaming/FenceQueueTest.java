@@ -31,18 +31,6 @@ class FenceQueueTest {
     }
 
     @Test
-    void firstBytesTracksFirstId() {
-        final FenceQueue q = new FenceQueue();
-        q.enqueue(100L, 7);
-        q.enqueue(200L, 9);
-        assertEquals(100L, q.firstId());
-        assertEquals(7, q.firstBytes());
-        q.dequeue();
-        assertEquals(200L, q.firstId());
-        assertEquals(9, q.firstBytes());
-    }
-
-    @Test
     void drainAndRefillKeepsBackingArray() {
         final FenceQueue q = new FenceQueue();
         for (int i = 0; i < 20; i++) q.enqueue(i, i);

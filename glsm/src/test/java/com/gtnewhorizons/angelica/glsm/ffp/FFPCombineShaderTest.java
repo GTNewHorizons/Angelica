@@ -124,12 +124,7 @@ class FFPCombineShaderTest {
 
     @Test
     void testSingleUnitCombineCompiles() {
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.enableTexture();
-        bindUnitTexture();
-        GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL13.GL_COMBINE);
-        GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_COMBINE_RGB, GL11.GL_MODULATE);
-        GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_COMBINE_ALPHA, GL11.GL_MODULATE);
+        enableCombineUnit(GL13.GL_TEXTURE0, GL11.GL_MODULATE, GL11.GL_MODULATE);
 
         FragmentKey fk = FragmentKey.fromState();
         String fragSource = FragmentShaderGenerator.generate(fk);
@@ -181,12 +176,7 @@ class FFPCombineShaderTest {
     @ParameterizedTest(name = "COMBINE function {0}")
     @MethodSource("allCombineFunctions")
     void testAllCombineFunctionsCompile(String name, int glFunc, int numArgs) {
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.enableTexture();
-        bindUnitTexture();
-        GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL13.GL_COMBINE);
-        GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_COMBINE_RGB, glFunc);
-        GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_COMBINE_ALPHA, GL11.GL_REPLACE);
+        enableCombineUnit(GL13.GL_TEXTURE0, glFunc, GL11.GL_REPLACE);
 
         // Set up appropriate sources
         GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_SOURCE0_RGB, GL11.GL_TEXTURE);
@@ -215,12 +205,7 @@ class FFPCombineShaderTest {
 
     @Test
     void testCombineScopeDeclaresColorOutsideBlock() {
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.enableTexture();
-        bindUnitTexture();
-        GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL13.GL_COMBINE);
-        GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_COMBINE_RGB, GL11.GL_MODULATE);
-        GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_COMBINE_ALPHA, GL11.GL_MODULATE);
+        enableCombineUnit(GL13.GL_TEXTURE0, GL11.GL_MODULATE, GL11.GL_MODULATE);
 
         FragmentKey fk = FragmentKey.fromState();
         String src = FragmentShaderGenerator.generate(fk);
@@ -270,14 +255,18 @@ class FFPCombineShaderTest {
      * Unit 2: COMBINE, RGB=ADD, SRC0=TEXTURE/SRC_COLOR, SRC1=PREVIOUS/SRC_COLOR
      * Unit 3: MODULATE (simple)
      */
-    private void setupXaeroState() {
-        // Unit 0: COMBINE / SUBTRACT
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+    private void enableCombineUnit(int unit, int rgbFunc, int alphaFunc) {
+        GLStateManager.glActiveTexture(unit);
         GLStateManager.enableTexture();
         bindUnitTexture();
         GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL13.GL_COMBINE);
-        GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_COMBINE_RGB, GL13.GL_SUBTRACT);
-        GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_COMBINE_ALPHA, GL11.GL_REPLACE);
+        GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_COMBINE_RGB, rgbFunc);
+        GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_COMBINE_ALPHA, alphaFunc);
+    }
+
+    private void setupXaeroState() {
+        // Unit 0: COMBINE / SUBTRACT
+        enableCombineUnit(GL13.GL_TEXTURE0, GL13.GL_SUBTRACT, GL11.GL_REPLACE);
         GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_SOURCE0_RGB, GL11.GL_TEXTURE);
         GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_OPERAND0_RGB, GL11.GL_SRC_COLOR);
         GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_SOURCE1_RGB, GL13.GL_PRIMARY_COLOR);
@@ -288,12 +277,7 @@ class FFPCombineShaderTest {
         // Unit 1: disabled (skip — default is disabled)
 
         // Unit 2: COMBINE / ADD
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE2);
-        GLStateManager.enableTexture();
-        bindUnitTexture();
-        GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL13.GL_COMBINE);
-        GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_COMBINE_RGB, GL11.GL_ADD);
-        GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_COMBINE_ALPHA, GL11.GL_REPLACE);
+        enableCombineUnit(GL13.GL_TEXTURE2, GL11.GL_ADD, GL11.GL_REPLACE);
         GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_SOURCE0_RGB, GL11.GL_TEXTURE);
         GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_OPERAND0_RGB, GL11.GL_SRC_COLOR);
         GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_SOURCE1_RGB, GL13.GL_PREVIOUS);

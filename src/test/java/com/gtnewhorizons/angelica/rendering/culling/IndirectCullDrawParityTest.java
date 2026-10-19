@@ -34,6 +34,8 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
@@ -663,12 +665,9 @@ class IndirectCullDrawParityTest {
         }
     }
 
-    @Test
-    void cutoutAndTranslucentShareOneChainedDispatchWithoutSolid() {
-        unsortedAndTranslucentShareOneChainedDispatch(true);
-    }
-
-    private void unsortedAndTranslucentShareOneChainedDispatch(boolean cutout) {
+    @ParameterizedTest(name = "cutout={0}")
+    @ValueSource(booleans = {false, true})
+    void unsortedAndTranslucentShareOneChainedDispatch(boolean cutout) {
         assumeTrue(RenderSystem.supportsCompute() && RenderSystem.supportsMultiDrawIndirect(),
             "compute-driven indirect culling unsupported");
 

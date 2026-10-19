@@ -605,14 +605,18 @@ class ParticleInstancingGLTest {
         capture.addVertexWithUV(1.0, 0.0, 0.0, 1.0, 1.0);
     }
 
-    @Test
-    void aSecondQuadAfterASelfDrawSpillsIntoItsOwnBatchWhenTheRunIsNotDrawing() {
-        final RecordingTessellator run = new RecordingTessellator();
+    private static ParticleCaptureTessellator capturedQuad(RecordingTessellator run) {
         final ParticleCaptureTessellator capture = new ParticleCaptureTessellator();
-
         capture.begin(100, run, GLStateManager.getModelViewMatrix());
         capture.setColorRGBA(5, 6, 7, 8);
         feedQuad(capture);
+        return capture;
+    }
+
+    @Test
+    void aSecondQuadAfterASelfDrawSpillsIntoItsOwnBatchWhenTheRunIsNotDrawing() {
+        final RecordingTessellator run = new RecordingTessellator();
+        final ParticleCaptureTessellator capture = capturedQuad(run);
         capture.draw();
         run.log.clear();
 
@@ -630,11 +634,7 @@ class ParticleInstancingGLTest {
     @Test
     void aClosedSpillReplaysInTheSameOrder() {
         final RecordingTessellator run = new RecordingTessellator();
-        final ParticleCaptureTessellator capture = new ParticleCaptureTessellator();
-
-        capture.begin(100, run, GLStateManager.getModelViewMatrix());
-        capture.setColorRGBA(5, 6, 7, 8);
-        feedQuad(capture);
+        final ParticleCaptureTessellator capture = capturedQuad(run);
         capture.draw();
         run.isDrawing = true;
         run.log.clear();
@@ -658,11 +658,7 @@ class ParticleInstancingGLTest {
     @Test
     void aFifthVertexSpillsAndForwardsRemainingCallsToRun() {
         final RecordingTessellator run = new RecordingTessellator();
-        final ParticleCaptureTessellator capture = new ParticleCaptureTessellator();
-
-        capture.begin(100, run, GLStateManager.getModelViewMatrix());
-        capture.setColorRGBA(5, 6, 7, 8);
-        feedQuad(capture);
+        final ParticleCaptureTessellator capture = capturedQuad(run);
         assertFalse(capture.spilled());
 
         capture.addVertexWithUV(2.0, 2.0, 0.0, 0.5, 0.5);

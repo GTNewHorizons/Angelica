@@ -1379,6 +1379,37 @@ public class SDLGPURenderBackend extends RenderBackend {
         resourceManager.markBufferContentsDefined(dstGlId);
         readbackShadows.invalidate(dstGlId, writeOffset);
 
+        final ByteBuffer dstUboShadow = resourceManager.getUboShadow(dstGlId);
+        if (dstUboShadow != null) {
+            final ByteBuffer dstSlice = dstUboShadow.duplicate();
+            dstSlice.position((int) writeOffset).limit((int) (writeOffset + size));
+            if (!readUboStore(srcGlId, readOffset, dstSlice, (int) size)) {
+                final long srcHandle = resourceManager.getBufferHandle(srcGlId);
+                if (srcHandle != 0) downloadBufferBlocking(srcHandle, (int) readOffset, (int) size, dstSlice);
+            }
+            s().uboRangeGen++;
+            return;
+        }
+        if (resourceManager.getUboShadow(srcGlId) != null) {
+            final long dstHandle = resourceManager.getBufferHandle(dstGlId);
+            if (dstHandle != 0) {
+                final ByteBuffer buf = MemoryUtil.memAlloc((int) size);
+                try {
+                    if (readUboStore(srcGlId, readOffset, buf, (int) size)) {
+                        buf.position(0).limit((int) size);
+                        if (s().deferUploads) {
+                            enqueuePreCopied(buf, dstHandle, writeOffset, false);
+                        } else if (frameManager.getCommandBuffer() != 0) {
+                            resourceManager.uploadToBuffer(frameManager.ensureCopyPass(), buf, dstHandle, writeOffset, false);
+                        }
+                    }
+                } finally {
+                    MemoryUtil.memFree(buf);
+                }
+                return;
+            }
+        }
+
         if (s().deferUploads) {
             final long dstHandle = resourceManager.getBufferHandle(dstGlId);
             if (dstHandle != 0) {
@@ -2998,6 +3029,7 @@ public class SDLGPURenderBackend extends RenderBackend {
                 final ByteBuffer shadow = resourceManager.getOrAllocUboShadow(glId, (int) size);
                 shadow.position(0).limit((int) size);
                 for (int i = 0; i < (int) size; i += 8) shadow.putLong(i, 0L);
+                cs.uboRangeGen++;
             }
             return;
         }
@@ -3053,6 +3085,7 @@ public class SDLGPURenderBackend extends RenderBackend {
                 shadow.position(0).limit((int) dataSize);
                 shadow.put(src);
                 shadow.position(0).limit((int) dataSize);
+                cs.uboRangeGen++;
             }
             return;
         }
@@ -3138,12 +3171,13 @@ public class SDLGPURenderBackend extends RenderBackend {
         if (target == GL31.GL_UNIFORM_BUFFER) {
             final ByteBuffer shadow = resourceManager.getUboShadow(glId);
             if (shadow != null) {
-                if (offset < 0 || offset + data.remaining() > shadow.capacity()) {
+                if (offset < 0 || offset + data.remaining() > resourceManager.getBufferSize(glId)) {
                     warnInvalidBufferOp("glBufferSubData out of range on uniform buffer", glId);
                     return;
                 }
                 shadow.position(0);
                 ByteRegionCopy.copyByteRegion(data, data.position(), shadow, (int) offset, data.remaining());
+                cs.uboRangeGen++;
             }
             return;
         }
@@ -3252,6 +3286,7 @@ public class SDLGPURenderBackend extends RenderBackend {
                 shadow.put(staging);
                 shadow.position(0).limit(shadow.capacity());
                 resourceManager.markBufferContentsDefined(glId);
+                cs.uboRangeGen++;
             }
             MemoryUtil.memFree(staging);
             return true;
@@ -3340,6 +3375,10 @@ public class SDLGPURenderBackend extends RenderBackend {
 
     private void seedMappedStaging(int target, int glId, long offset, long length, ByteBuffer staging) {
         final int len = (int) length;
+        if (readUboStore(glId, offset, staging, len)) {
+            staging.position(0).limit(len);
+            return;
+        }
         final long handle = resourceManager.getBufferHandle(glId);
 
         if (handle == 0 || resourceManager.hasUndefinedContents(glId)) {
@@ -3348,7 +3387,6 @@ public class SDLGPURenderBackend extends RenderBackend {
         }
 
         final ByteBuffer direct = switch (target) {
-            case GL31.GL_UNIFORM_BUFFER -> resourceManager.getUboShadow(glId);
             case GL30.GL_PIXEL_UNPACK_BUFFER -> resourceManager.getPboStaging(glId);
             default -> null;
         };
@@ -3452,14 +3490,28 @@ public class SDLGPURenderBackend extends RenderBackend {
     @Override public void getBufferSubData(int target, long offset, ByteBuffer data) {
         final int glId = getBoundBuffer(target);
         if (glId == 0 || data == null) return;
+        final int rem = data.remaining();
+        if (readUboStore(glId, offset, data, rem)) return;
         final long handle = resourceManager.getBufferHandle(glId);
         if (handle == 0) return;
-        final int rem = data.remaining();
 
         if (readbackShadows.serve(glId, offset, data, rem)) return;
         if (readBufferRangeCpuFirst(target, glId, handle, offset, data, rem)) return;
 
         downloadBufferBlocking(handle, (int) offset, rem, data);
+    }
+
+    private boolean readUboStore(int glId, long offset, ByteBuffer dst, int len) {
+        final ByteBuffer shadow = resourceManager.getUboShadow(glId);
+        if (shadow == null) return false;
+        final PersistentMapping pm = resourceManager.getPersistentMapping(glId);
+        if (pm != null && pm.covers(offset, len)) {
+            serveFromShadow(pm.staging, (int) pm.stagingIndex(offset), dst, len);
+            return true;
+        }
+        if (offset < 0 || offset + len > resourceManager.getBufferSize(glId)) return false;
+        serveFromShadow(shadow, (int) offset, dst, len);
+        return true;
     }
 
     private void downloadBufferBlocking(long handle, int offset, int size, ByteBuffer out) {
@@ -4237,10 +4289,19 @@ public class SDLGPURenderBackend extends RenderBackend {
             warnInvalidBufferOp("glClearBufferSubData out of range", glId);
             return;
         }
+        final int elemBytes = Math.max(1, PixelOps.glPixelSize(format, type));
+        final ByteBuffer uboShadow = resourceManager.getUboShadow(glId);
+        if (uboShadow != null) {
+            for (int i = 0; i < (int) size; i++) {
+                final int e = i % elemBytes;
+                uboShadow.put((int) offset + i, data != null && e < data.remaining() ? data.get(data.position() + e) : 0);
+            }
+            s().uboRangeGen++;
+            return;
+        }
         final long handle = resourceManager.getBufferHandle(glId);
         if (handle == 0 || frameManager.getCommandBuffer() == 0) return;
 
-        final int elemBytes = Math.max(1, PixelOps.glPixelSize(format, type));
         final boolean defer = s().deferUploads && target != GL43.GL_SHADER_STORAGE_BUFFER;
         // Undeferred clears stage one large pattern and upload it repeatedly
         final int chunkBytes = (int) Math.min(size, defer ? CLEAR_CHUNK_BYTES : FILL_CHUNK_BYTES);

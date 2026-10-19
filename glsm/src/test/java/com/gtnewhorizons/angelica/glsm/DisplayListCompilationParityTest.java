@@ -101,22 +101,6 @@ class DisplayListCompilationParityTest {
 
     @ParameterizedTest
     @EnumSource(Caller.class)
-    void compile_doesNotChangeState(Caller c) {
-        testList = GL11.glGenLists(1);
-        c.newList(testList, GL11.GL_COMPILE);
-        c.enable(GL11.GL_BLEND);
-
-        assertFalse(GL11.glIsEnabled(GL11.GL_BLEND), "During GL_COMPILE: state unchanged");
-
-        c.endList();
-        assertFalse(GL11.glIsEnabled(GL11.GL_BLEND), "After GL_COMPILE: state unchanged");
-
-        c.callList(testList);
-        assertTrue(GL11.glIsEnabled(GL11.GL_BLEND), "After playback: state changed");
-    }
-
-    @ParameterizedTest
-    @EnumSource(Caller.class)
     void compileAndExecute_changesStateImmediately(Caller c) {
         testList = GL11.glGenLists(1);
         c.newList(testList, GL11.GL_COMPILE_AND_EXECUTE);
@@ -186,6 +170,9 @@ class DisplayListCompilationParityTest {
         c.enable(GL11.GL_BLEND);
         c.enable(GL11.GL_DEPTH_TEST);
         c.enable(GL11.GL_CULL_FACE);
+
+        assertFalse(GL11.glIsEnabled(GL11.GL_BLEND), "During GL_COMPILE: BLEND unchanged");
+
         c.endList();
 
         assertFalse(GL11.glIsEnabled(GL11.GL_BLEND), "After GL_COMPILE: BLEND unchanged");

@@ -2,8 +2,13 @@ package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizons.angelica.glsm.stacks.BooleanStateStack;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
+
+import java.util.stream.Stream;
 
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyIsEnabled;
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyState;
@@ -37,22 +42,6 @@ public class GLSM_PopAttribMaskFidelity_GLTest {
             GLStateManager.glPopAttrib();
 
             verifyIsEnabled(GL11.GL_CULL_FACE, true, "Cull - Not a GL_COLOR_BUFFER_BIT member, must stay toggled");
-        } finally {
-            GLStateManager.glDisable(GL11.GL_CULL_FACE);
-        }
-    }
-
-    @Test
-    void enableBitRestoresCull() {
-        try {
-            verifyIsEnabled(GL11.GL_CULL_FACE, false, "Cull - Initial");
-
-            GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
-            GLStateManager.glEnable(GL11.GL_CULL_FACE);
-            verifyIsEnabled(GL11.GL_CULL_FACE, true, "Cull - After enable");
-            GLStateManager.glPopAttrib();
-
-            verifyIsEnabled(GL11.GL_CULL_FACE, false, "Cull - GL_ENABLE_BIT member, must restore");
         } finally {
             GLStateManager.glDisable(GL11.GL_CULL_FACE);
         }
@@ -154,21 +143,28 @@ public class GLSM_PopAttribMaskFidelity_GLTest {
         }
     }
 
-    @Test
-    void transformBitPopRestoresClipPlaneAndMask() {
+    static Stream<Arguments> clipPlanePops() {
+        return Stream.of(
+            Arguments.of("GL_TRANSFORM_BIT", GL11.GL_TRANSFORM_BIT, GL11.GL_CLIP_PLANE1, true),
+            Arguments.of("GL_COLOR_BUFFER_BIT", GL11.GL_COLOR_BUFFER_BIT, GL11.GL_CLIP_PLANE2, false));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource
+    void clipPlanePops(String bitName, int bit, int plane, boolean member) {
         try {
             verifyClipPlaneMask("Initial");
 
-            GLStateManager.glPushAttrib(GL11.GL_TRANSFORM_BIT);
-            GLStateManager.glEnable(GL11.GL_CLIP_PLANE1);
-            verifyIsEnabled(GL11.GL_CLIP_PLANE1, true, "Clip1 - After enable inside GL_TRANSFORM_BIT");
-            verifyClipPlaneMask("After enable inside GL_TRANSFORM_BIT");
+            GLStateManager.glPushAttrib(bit);
+            GLStateManager.glEnable(plane);
+            verifyIsEnabled(plane, true, "After enable inside " + bitName);
+            verifyClipPlaneMask("After enable inside " + bitName);
 
             GLStateManager.glPopAttrib();
-            verifyIsEnabled(GL11.GL_CLIP_PLANE1, false, "Clip1 - GL_TRANSFORM_BIT member, must restore");
-            verifyClipPlaneMask("After GL_TRANSFORM_BIT pop");
+            verifyIsEnabled(plane, !member, member ? bitName + " member, must restore" : "Not a " + bitName + " member, must stay toggled");
+            verifyClipPlaneMask("After " + bitName + " pop");
         } finally {
-            GLStateManager.glDisable(GL11.GL_CLIP_PLANE1);
+            GLStateManager.glDisable(plane);
         }
     }
 
@@ -229,24 +225,6 @@ public class GLSM_PopAttribMaskFidelity_GLTest {
             verifyState(GL11.GL_DEPTH_CLEAR_VALUE, 1.0f, "Depth clear value - glClearDepth(2.0) must clamp to 1.0");
         } finally {
             GLStateManager.glClearDepth(1.0);
-        }
-    }
-
-    @Test
-    void colorBufferBitPopDoesNotRestoreClipPlaneButMaskStaysFaithful() {
-        try {
-            verifyClipPlaneMask("Initial");
-
-            GLStateManager.glPushAttrib(GL11.GL_COLOR_BUFFER_BIT);
-            GLStateManager.glEnable(GL11.GL_CLIP_PLANE2);
-            verifyIsEnabled(GL11.GL_CLIP_PLANE2, true, "Clip2 - After enable inside GL_COLOR_BUFFER_BIT");
-            verifyClipPlaneMask("After enable inside GL_COLOR_BUFFER_BIT");
-
-            GLStateManager.glPopAttrib();
-            verifyIsEnabled(GL11.GL_CLIP_PLANE2, true, "Clip2 - Not a GL_COLOR_BUFFER_BIT member, must stay toggled");
-            verifyClipPlaneMask("After GL_COLOR_BUFFER_BIT pop");
-        } finally {
-            GLStateManager.glDisable(GL11.GL_CLIP_PLANE2);
         }
     }
 }

@@ -62,12 +62,7 @@ class GLSM_DisplayList_FormatOptimization_Test {
         GLStateManager.glNewList(displayList, GL11.GL_COMPILE);
 
         // First draw: position only
-        GLStateManager.glBegin(GL11.GL_QUADS);
-        GLStateManager.glVertex3f(0, 0, 0);
-        GLStateManager.glVertex3f(1, 0, 0);
-        GLStateManager.glVertex3f(1, 1, 0);
-        GLStateManager.glVertex3f(0, 1, 0);
-        GLStateManager.glEnd();
+        DisplayListTestHelper.immediateQuad(1.0f);
 
         // Second draw: position + color
         GLStateManager.glBegin(GL11.GL_QUADS);

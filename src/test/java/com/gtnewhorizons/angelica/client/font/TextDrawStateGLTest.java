@@ -8,10 +8,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
@@ -135,6 +137,18 @@ class TextDrawStateGLTest {
         final int depth = GLStateManager.pushState(set);
         moved.apply();
         GLStateManager.popStateTo(depth);
+
+        final ByteBuffer driverColorMask = BufferUtils.createByteBuffer(16);
+        GL11.glGetBoolean(GL11.GL_COLOR_WRITEMASK, driverColorMask);
+        assertFalse(GL11.glIsEnabled(GL11.GL_DEPTH_TEST), "driver depth test");
+        assertEquals(GL11.GL_LESS, GL11.glGetInteger(GL11.GL_DEPTH_FUNC), "driver depth func");
+        assertTrue(GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK), "driver depth mask");
+        for (int i = 0; i < 4; i++) assertNotEquals(0, driverColorMask.get(i), "driver color mask channel " + i);
+        assertFalse(GL11.glIsEnabled(GL11.GL_CULL_FACE), "driver cull face enable");
+        assertEquals(GL11.GL_BACK, GL11.glGetInteger(GL11.GL_CULL_FACE_MODE), "driver cull face mode");
+        assertEquals(GL11.GL_CCW, GL11.glGetInteger(GL11.GL_FRONT_FACE), "driver front face");
+        assertFalse(GL11.glIsEnabled(GL11.GL_POLYGON_OFFSET_FILL), "driver polygon offset fill");
+        assertEquals(0.0f, GL11.glGetFloat(GL11.GL_POLYGON_OFFSET_FACTOR), "driver polygon offset factor");
 
         final TextDrawState after = capture();
         for (Field field : stateFields()) {

@@ -55,36 +55,7 @@ class FeedbackManagerTest {
         FeedbackManager.glFeedbackBuffer(GL11.GL_2D, buf);
         FeedbackManager.glRenderMode(GL11.GL_FEEDBACK);
 
-        // Set up identity matrices and a viewport
-        GLStateManager.getModelViewMatrix().identity();
-        GLStateManager.getProjectionMatrix().identity();
-        GLStateManager.getViewportState().setViewPort(0, 0, 800, 600);
-        GLStateManager.getViewportState().setDepthRange(0.0, 1.0);
-
-        // Upload 3 vertices to a VBO and draw
-        final int vao = GL30.glGenVertexArrays();
-        GLStateManager.glBindVertexArray(vao);
-
-        final float[] verts = { 0f, 0f, 0f, 1f, 0f, 0f, 0f, 1f, 0f };
-        final FloatBuffer vertBuf = BufferUtils.createFloatBuffer(9);
-        vertBuf.put(verts).flip();
-
-        final int vbo = GL15.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, vertBuf, GL15.GL_STATIC_DRAW);
-        GLStateManager.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 12, 0);
-        GLStateManager.glEnableVertexAttribArray(0);
-
-        FeedbackManager.processDrawArrays(GL11.GL_TRIANGLES, 0, 3);
-
-        final int result = FeedbackManager.glRenderMode(GL11.GL_RENDER);
-        assertEquals(-1, result, "Overflow should return -1");
-
-        // Cleanup
-        GLStateManager.glDisableVertexAttribArray(0);
-        GLStateManager.glBindVertexArray(0);
-        GL15.glDeleteBuffers(vbo);
-        GLStateManager.glDeleteVertexArrays(vao);
+        assertEquals(-1, feedbackDraw(GL11.GL_TRIANGLES, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 1f, 0f), "Overflow should return -1");
     }
 
     @Test
@@ -122,37 +93,13 @@ class FeedbackManagerTest {
         FeedbackManager.glFeedbackBuffer(GL11.GL_2D, buf);
         FeedbackManager.glRenderMode(GL11.GL_FEEDBACK);
 
-        GLStateManager.getModelViewMatrix().identity();
-        GLStateManager.getProjectionMatrix().identity();
-        GLStateManager.getViewportState().setViewPort(0, 0, 800, 600);
-        GLStateManager.getViewportState().setDepthRange(0.0, 1.0);
-
-        final int vao = GL30.glGenVertexArrays();
-        GLStateManager.glBindVertexArray(vao);
-
-        final FloatBuffer vertBuf = BufferUtils.createFloatBuffer(verts.length);
-        vertBuf.put(verts).flip();
-
-        final int vbo = GL15.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, vertBuf, GL15.GL_STATIC_DRAW);
-        GLStateManager.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 12, 0);
-        GLStateManager.glEnableVertexAttribArray(0);
-
-        FeedbackManager.processDrawArrays(mode, 0, verts.length / 3);
-
-        final int count = FeedbackManager.glRenderMode(GL11.GL_RENDER);
+        final int count = feedbackDraw(mode, verts);
 
         // GL_2D: POLYGON_TOKEN, vertex count, then x, y per vertex
         assertEquals(expected.length, count, name + " float count");
         for (int i = 0; i < expected.length; i++) {
             assertEquals(expected[i], buf.get(i), 0.01f, name + " feedback value " + i);
         }
-
-        GLStateManager.glDisableVertexAttribArray(0);
-        GLStateManager.glBindVertexArray(0);
-        GL15.glDeleteBuffers(vbo);
-        GLStateManager.glDeleteVertexArrays(vao);
     }
 
     @Test
@@ -161,28 +108,7 @@ class FeedbackManagerTest {
         FeedbackManager.glFeedbackBuffer(GL11.GL_3D, buf);
         FeedbackManager.glRenderMode(GL11.GL_FEEDBACK);
 
-        GLStateManager.getModelViewMatrix().identity();
-        GLStateManager.getProjectionMatrix().identity();
-        GLStateManager.getViewportState().setViewPort(0, 0, 800, 600);
-        GLStateManager.getViewportState().setDepthRange(0.0, 1.0);
-
-        final int vao = GL30.glGenVertexArrays();
-        GLStateManager.glBindVertexArray(vao);
-
-        // Single point at NDC origin (0,0,0)
-        final float[] verts = { 0f, 0f, 0f };
-        final FloatBuffer vertBuf = BufferUtils.createFloatBuffer(3);
-        vertBuf.put(verts).flip();
-
-        final int vbo = GL15.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, vertBuf, GL15.GL_STATIC_DRAW);
-        GLStateManager.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 12, 0);
-        GLStateManager.glEnableVertexAttribArray(0);
-
-        FeedbackManager.processDrawArrays(GL11.GL_POINTS, 0, 1);
-
-        final int count = FeedbackManager.glRenderMode(GL11.GL_RENDER);
+        final int count = feedbackDraw(GL11.GL_POINTS, 0f, 0f, 0f);
 
         // GL_3D point: POINT_TOKEN, x, y, z = 4 floats
         assertEquals(4, count);
@@ -191,11 +117,31 @@ class FeedbackManagerTest {
         assertEquals(400.0f, buf.get(1), 0.01f);
         assertEquals(300.0f, buf.get(2), 0.01f);
         assertEquals(0.5f, buf.get(3), 0.01f);
+    }
 
-        // Cleanup
-        GLStateManager.glDisableVertexAttribArray(0);
-        GLStateManager.glBindVertexArray(0);
-        GL15.glDeleteBuffers(vbo);
-        GLStateManager.glDeleteVertexArrays(vao);
+    private static int feedbackDraw(int mode, float... verts) {
+        GLStateManager.getModelViewMatrix().identity();
+        GLStateManager.getProjectionMatrix().identity();
+        GLStateManager.getViewportState().setViewPort(0, 0, 800, 600);
+        GLStateManager.getViewportState().setDepthRange(0.0, 1.0);
+
+        final int vao = GL30.glGenVertexArrays();
+        GLStateManager.glBindVertexArray(vao);
+        final FloatBuffer vertBuf = BufferUtils.createFloatBuffer(verts.length);
+        vertBuf.put(verts).flip();
+        final int vbo = GL15.glGenBuffers();
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, vertBuf, GL15.GL_STATIC_DRAW);
+        GLStateManager.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 12, 0);
+        GLStateManager.glEnableVertexAttribArray(0);
+        try {
+            FeedbackManager.processDrawArrays(mode, 0, verts.length / 3);
+            return FeedbackManager.glRenderMode(GL11.GL_RENDER);
+        } finally {
+            GLStateManager.glDisableVertexAttribArray(0);
+            GLStateManager.glBindVertexArray(0);
+            GL15.glDeleteBuffers(vbo);
+            GLStateManager.glDeleteVertexArrays(vao);
+        }
     }
 }

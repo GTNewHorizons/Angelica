@@ -186,19 +186,15 @@ class AtlasPackPolicyTest {
         assertEquals(sorted, known);
     }
 
-    @Test
-    void eligibleDomainsTrustsConfiguredPackClass() {
-        AngelicaConfig.atlasTrustedPacks = new String[] { FakePack.class.getName() };
-
+    private static SimpleReloadableResourceManager managerWith(String domain, IResourcePack... packs) {
         final IMetadataSerializer serializer = new IMetadataSerializer();
         final SimpleReloadableResourceManager manager = new SimpleReloadableResourceManager(serializer);
-        final FallbackResourceManager domain = new FallbackResourceManager(serializer);
-        domain.resourcePacks.add(new FakePack(new ResourceLocation("tinker", "unrelated.png")));
-        manager.domainResourceManagers.put("domainB", domain);
-
-        final Map<String, List<IResourcePack>> result = AtlasPackPolicy.eligibleDomains(manager);
-        assertTrue(result.containsKey("domainB"));
-        assertTrue(result.get("domainB").isEmpty());
+        final FallbackResourceManager fallback = new FallbackResourceManager(serializer);
+        for (IResourcePack pack : packs) {
+            fallback.resourcePacks.add(pack);
+        }
+        manager.domainResourceManagers.put(domain, fallback);
+        return manager;
     }
 
     private static final class ForeignDomainManager implements IResourceManager {
@@ -224,25 +220,18 @@ class AtlasPackPolicyTest {
     void eligibleDomainsSkipsForeignDomainManager() {
         AngelicaConfig.atlasTrustedPacks = new String[] { FakePack.class.getName() };
 
-        final IMetadataSerializer serializer = new IMetadataSerializer();
-        final SimpleReloadableResourceManager manager = new SimpleReloadableResourceManager(serializer);
-        final FallbackResourceManager domain = new FallbackResourceManager(serializer);
-        domain.resourcePacks.add(new FakePack(new ResourceLocation("tinker", "unrelated.png")));
-        manager.domainResourceManagers.put("domainD", domain);
+        final SimpleReloadableResourceManager manager = managerWith("domainD", new FakePack(new ResourceLocation("tinker", "unrelated.png")));
         ((Map) manager.domainResourceManagers).put("sound_x", new ForeignDomainManager());
 
         final Map<String, List<IResourcePack>> result = AtlasPackPolicy.eligibleDomains(manager);
         assertTrue(result.containsKey("domainD"));
         assertFalse(result.containsKey("sound_x"));
+        assertTrue(result.get("domainD").isEmpty());
     }
 
     @Test
     void eligibleDomainsRecordsUnknownPackOnce() {
-        final IMetadataSerializer serializer = new IMetadataSerializer();
-        final SimpleReloadableResourceManager manager = new SimpleReloadableResourceManager(serializer);
-        final FallbackResourceManager domain = new FallbackResourceManager(serializer);
-        domain.resourcePacks.add(new FakePack(new ResourceLocation("tinker", "unrelated.png")));
-        manager.domainResourceManagers.put("domainC", domain);
+        final SimpleReloadableResourceManager manager = managerWith("domainC", new FakePack(new ResourceLocation("tinker", "unrelated.png")));
 
         assertFalse(AtlasPackPolicy.eligibleDomains(manager).containsKey("domainC"));
         final String[] recorded = AngelicaConfig.atlasObservedPacks;

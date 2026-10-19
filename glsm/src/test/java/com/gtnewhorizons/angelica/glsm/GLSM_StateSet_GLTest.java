@@ -464,6 +464,7 @@ public class GLSM_StateSet_GLTest {
         GLStateManager.popStateTo(d);
         assertEquals(d, GLStateManager.getAttribDepth());
         assertEquals(GL11.GL_ONE, GLStateManager.getBlendState().getSrcRgb(), "popStateTo repairs the unbalanced non-member push and carries the change through to the BLEND member pop, restoring the pre-bracket baseline");
+        assertEquals(GL11.GL_ONE, GL11.glGetInteger(GL14.GL_BLEND_SRC_RGB), "driver blend src rgb");
     }
 
     @Test

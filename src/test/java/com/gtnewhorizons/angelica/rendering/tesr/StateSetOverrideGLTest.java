@@ -29,14 +29,17 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL20;
 
 import java.lang.reflect.Constructor;
+import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.function.IntSupplier;
 import java.util.stream.Stream;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -76,6 +79,17 @@ class StateSetOverrideGLTest {
         if (otherProgram != 0) GLStateManager.glDeleteProgram(otherProgram);
     }
 
+    private static int[] driverBlendFunc() {
+        return new int[] {GL11.glGetInteger(GL14.GL_BLEND_SRC_RGB), GL11.glGetInteger(GL14.GL_BLEND_DST_RGB),
+            GL11.glGetInteger(GL14.GL_BLEND_SRC_ALPHA), GL11.glGetInteger(GL14.GL_BLEND_DST_ALPHA)};
+    }
+
+    private static boolean[] driverColorMask() {
+        final ByteBuffer mask = BufferUtils.createByteBuffer(16);
+        GL11.glGetBoolean(GL11.GL_COLOR_WRITEMASK, mask);
+        return new boolean[] {mask.get(0) != 0, mask.get(1) != 0, mask.get(2) != 0, mask.get(3) != 0};
+    }
+
     /** Vanilla blend is enabled SRC_ALPHA/ONE_MINUS_SRC_ALPHA/ONE/ZERO under an Iris override. */
     private static void overrideVanillaBlend() {
         VanillaLayerRig.installBlend();
@@ -107,6 +121,10 @@ class StateSetOverrideGLTest {
 
         final boolean liveEnabledBefore = GLStateManager.getBlendMode().isEnabled();
         final BlendState liveBefore = new BlendState().set(GLStateManager.getBlendState());
+        final boolean driverEnabledBefore = GL11.glIsEnabled(GL11.GL_BLEND);
+        final int[] driverFuncBefore = driverBlendFunc();
+        assertTrue(driverEnabledBefore, "driver blend enable carries the override");
+        assertArrayEquals(new int[] {GL11.GL_ONE, GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE}, driverFuncBefore, "driver blend func carries the override");
 
         final int d = GLStateManager.pushState(StateSet.BLEND);
         final boolean vanillaEnabledBefore = BlendModeStorage.ENABLE_LAYER.getVanilla();
@@ -114,6 +132,9 @@ class StateSetOverrideGLTest {
         assertNotEquals(vanillaEnabledBefore, BlendModeStorage.ENABLE_LAYER.getVanilla(), "the defer branch changes the vanilla shadow immediately");
         setBlendFunc.run();
         GLStateManager.popStateTo(d);
+
+        assertEquals(driverEnabledBefore, GL11.glIsEnabled(GL11.GL_BLEND), "driver blend enable left untouched by the bracket");
+        assertArrayEquals(driverFuncBefore, driverBlendFunc(), "driver blend func left untouched by the bracket");
 
         assertTrue(BlendModeStorage.ENABLE_LAYER.getVanilla(), "vanilla shadow enable restored to the pre-bracket value");
         final BlendState vanillaAfter = new BlendState();
@@ -176,11 +197,18 @@ class StateSetOverrideGLTest {
 
         final boolean liveMaskBefore = GLStateManager.getDepthState().isEnabled();
         final ColorMask liveColorBefore = new ColorMask().set(GLStateManager.getColorMask());
+        final boolean driverDepthBefore = GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
+        final boolean[] driverColorBefore = driverColorMask();
+        assertFalse(driverDepthBefore, "driver depth mask carries the held-off value");
+        assertFalse(driverColorBefore[0] || driverColorBefore[1] || driverColorBefore[2] || driverColorBefore[3], "driver color mask carries the held-off value");
 
         final int d = GLStateManager.pushState(StateSet.MASKS);
         GLStateManager.glDepthMask(false);
         GLStateManager.glColorMask(true, true, true, true);
         GLStateManager.popStateTo(d);
+
+        assertEquals(driverDepthBefore, GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK), "driver depth mask left untouched by the bracket");
+        assertArrayEquals(driverColorBefore, driverColorMask(), "driver color mask left untouched by the bracket");
 
         final DepthState vanillaDepthAfter = new DepthState();
         DepthColorStorage.DEPTH_LAYER.readVanilla(vanillaDepthAfter);

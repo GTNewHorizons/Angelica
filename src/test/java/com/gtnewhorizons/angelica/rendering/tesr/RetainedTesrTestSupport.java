@@ -19,7 +19,7 @@ import static com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil.X_
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-final class RetainedTesrTestSupport {
+public final class RetainedTesrTestSupport {
 
     private RetainedTesrTestSupport() {}
 
@@ -57,7 +57,7 @@ final class RetainedTesrTestSupport {
         return byLayer(groups).get(layer);
     }
 
-    static TemplateBuffer template() {
+    public static TemplateBuffer template() {
         final int[] data = new int[4 * VERTEX_SIZE];
         for (int v = 0; v < 4; v++) {
             final int base = v * VERTEX_SIZE;

@@ -61,132 +61,44 @@ class Std140WriterTest {
         }
     }
 
-    @Test
-    void scalarArray_writesEachAtStride16() {
-        final FloatBuffer ubo = outBuf(16);
-        try {
-            Std140Writer.write(ubo, array(/*off*/ 0, /*stride*/ 16, /*len*/ 4, 1, 1), new float[]{1, 2, 3, 4}, 4);
-            assertEq(1f, ubo.get(0), "elem0");
-            assertEq(0f, ubo.get(1), "elem0 pad");
-            assertEq(2f, ubo.get(4), "elem1");
-            assertEq(3f, ubo.get(8), "elem2");
-            assertEq(4f, ubo.get(12), "elem3");
-        } finally {
-            MemoryUtil.memFree(ubo);
-        }
+    private static float[] ramp(int n) {
+        final float[] out = new float[n];
+        for (int i = 0; i < n; i++) out[i] = i + 1;
+        return out;
     }
 
-    @Test
-    void vec3Array_eachElementAtStride16_zeroPaddedFourthLane() {
-
-        final FloatBuffer ubo = outBuf(16);
-        try {
-            Std140Writer.write(ubo, array(/*off*/ 0, /*stride*/ 16, /*len*/ 4, 3, 1),
-                new float[]{1, 2, 3,  10, 20, 30,  100, 200, 300,  -1, -2, -3}, 4);
-            assertEq(1f, ubo.get(0), "e0.x"); assertEq(2f, ubo.get(1), "e0.y"); assertEq(3f, ubo.get(2), "e0.z");
-            assertEq(0f, ubo.get(3), "e0.pad");
-            assertEq(10f, ubo.get(4), "e1.x"); assertEq(20f, ubo.get(5), "e1.y"); assertEq(30f, ubo.get(6), "e1.z");
-            assertEq(0f, ubo.get(7), "e1.pad");
-            assertEq(100f, ubo.get(8), "e2.x"); assertEq(200f, ubo.get(9), "e2.y"); assertEq(300f, ubo.get(10), "e2.z");
-            assertEq(0f, ubo.get(11), "e2.pad");
-            assertEq(-1f, ubo.get(12), "e3.x"); assertEq(-2f, ubo.get(13), "e3.y"); assertEq(-3f, ubo.get(14), "e3.z");
-            assertEq(0f, ubo.get(15), "e3.pad");
-        } finally {
-            MemoryUtil.memFree(ubo);
-        }
+    static Stream<Arguments> layouts() {
+        final float[] mat3Src = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+        final float[] mat3Ubo = {1, 2, 3, 0, 4, 5, 6, 0, 7, 8, 9, 0};
+        return Stream.of(
+            Arguments.of("scalar array at stride 16", array(0, 16, 4, 1, 1), new float[]{1, 2, 3, 4}, 4,
+                new float[]{1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 4, 0, 0, 0}),
+            Arguments.of("vec3 array zero-pads the fourth lane", array(0, 16, 4, 3, 1),
+                new float[]{1, 2, 3, 10, 20, 30, 100, 200, 300, -1, -2, -3}, 4,
+                new float[]{1, 2, 3, 0, 10, 20, 30, 0, 100, 200, 300, 0, -1, -2, -3, 0}),
+            Arguments.of("vec4 array needs no padding", array(0, 16, 2, 4, 1), ramp(8), 2, ramp(8)),
+            Arguments.of("mat2 columns are vec4 each", single(0, 32, 2, 2), new float[]{1, 2, 3, 4}, 1,
+                new float[]{1, 2, 0, 0, 3, 4, 0, 0}),
+            Arguments.of("mat3 columns padded to vec4", single(0, 48, 3, 3), mat3Src, 1, mat3Ubo),
+            Arguments.of("mat3 padded when reflection under-reports size", single(0, 36, 3, 3), mat3Src, 1, mat3Ubo),
+            Arguments.of("mat4 needs no padding", single(0, 64, 4, 4), ramp(16), 1, ramp(16)),
+            Arguments.of("mat3 array pads each matrix", array(0, 48, 2, 3, 3),
+                new float[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, 40, 50, 60, 70, 80, 90}, 2,
+                new float[]{1, 2, 3, 0, 4, 5, 6, 0, 7, 8, 9, 0, 10, 20, 30, 0, 40, 50, 60, 0, 70, 80, 90, 0}),
+            Arguments.of("mat4 array at stride 64", array(0, 64, 2, 4, 4), ramp(32), 2, ramp(32)),
+            Arguments.of("srcCount clamped to array length", array(0, 16, 2, 1, 1), new float[]{1, 2, 3, 4}, 4,
+                new float[]{1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}),
+            Arguments.of("srcCount clamped to source size", array(0, 16, 4, 1, 1), new float[]{7, 8}, 4,
+                new float[]{7, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}));
     }
 
-    @Test
-    void vec4Array_eachElementAtStride16_noPaddingNeeded() {
-        final FloatBuffer ubo = outBuf(8);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("layouts")
+    void writesLayout(String name, ShaderManager.UniformMemberInfo info, float[] src, int srcCount, float[] expectedUbo) {
+        final FloatBuffer ubo = outBuf(expectedUbo.length);
         try {
-            Std140Writer.write(ubo, array(/*off*/ 0, /*stride*/ 16, /*len*/ 2, 4, 1), new float[]{1, 2, 3, 4,  5, 6, 7, 8}, 2);
-            assertEq(1f, ubo.get(0)); assertEq(2f, ubo.get(1)); assertEq(3f, ubo.get(2)); assertEq(4f, ubo.get(3));
-            assertEq(5f, ubo.get(4)); assertEq(6f, ubo.get(5)); assertEq(7f, ubo.get(6)); assertEq(8f, ubo.get(7));
-        } finally {
-            MemoryUtil.memFree(ubo);
-        }
-    }
-
-    @Test
-    void mat2_threeColsTimesVec4Each() {
-        final FloatBuffer ubo = outBuf(8);
-        try {
-            Std140Writer.write(ubo, single(/*off*/ 0, /*size*/ 32, /*rows*/ 2, /*cols*/ 2), new float[]{1, 2, 3, 4}, 1);
-            assertEq(1f, ubo.get(0), "c0.x"); assertEq(2f, ubo.get(1), "c0.y");
-            assertEq(0f, ubo.get(2), "c0.pad2"); assertEq(0f, ubo.get(3), "c0.pad3");
-            assertEq(3f, ubo.get(4), "c1.x"); assertEq(4f, ubo.get(5), "c1.y");
-            assertEq(0f, ubo.get(6), "c1.pad2"); assertEq(0f, ubo.get(7), "c1.pad3");
-        } finally {
-            MemoryUtil.memFree(ubo);
-        }
-    }
-
-    @Test
-    void mat3_threeColsEachPaddedToVec4() {
-        final FloatBuffer ubo = outBuf(12);
-        try {
-            Std140Writer.write(ubo, single(/*off*/ 0, /*size*/ 48, 3, 3), new float[]{1, 2, 3, 4, 5, 6, 7, 8, 9}, 1);
-            assertEq(1f, ubo.get(0)); assertEq(2f, ubo.get(1)); assertEq(3f, ubo.get(2)); assertEq(0f, ubo.get(3));
-            assertEq(4f, ubo.get(4)); assertEq(5f, ubo.get(5)); assertEq(6f, ubo.get(6)); assertEq(0f, ubo.get(7));
-            assertEq(7f, ubo.get(8)); assertEq(8f, ubo.get(9)); assertEq(9f, ubo.get(10)); assertEq(0f, ubo.get(11));
-        } finally {
-            MemoryUtil.memFree(ubo);
-        }
-    }
-
-    @Test
-    void mat3_reflectionUnderreportsSize_paddingStillApplied() {
-        final FloatBuffer ubo = outBuf(12);
-        try {
-            Std140Writer.write(ubo, single(/*off*/ 0, /*size*/ 36, 3, 3), new float[]{1, 2, 3, 4, 5, 6, 7, 8, 9}, 1);
-            assertEq(1f, ubo.get(0)); assertEq(2f, ubo.get(1)); assertEq(3f, ubo.get(2)); assertEq(0f, ubo.get(3));
-            assertEq(4f, ubo.get(4)); assertEq(5f, ubo.get(5)); assertEq(6f, ubo.get(6)); assertEq(0f, ubo.get(7));
-            assertEq(7f, ubo.get(8)); assertEq(8f, ubo.get(9)); assertEq(9f, ubo.get(10)); assertEq(0f, ubo.get(11));
-        } finally {
-            MemoryUtil.memFree(ubo);
-        }
-    }
-
-    @Test
-    void mat4_fourColsNoPaddingNeeded() {
-        final FloatBuffer ubo = outBuf(16);
-        try {
-            Std140Writer.write(ubo, single(/*off*/ 0, /*size*/ 64, 4, 4), new float[]{1, 2, 3, 4,  5, 6, 7, 8,  9, 10, 11, 12,  13, 14, 15, 16}, 1);
-            for (int i = 0; i < 16; i++) assertEq(i + 1, ubo.get(i), "[" + i + "]");
-        } finally {
-            MemoryUtil.memFree(ubo);
-        }
-    }
-
-    @Test
-    void mat3Array_perElementStride48_eachMatrixGetsItsOwnPadding() {
-        final FloatBuffer ubo = outBuf(24);
-        try {
-            Std140Writer.write(ubo, array(/*off*/ 0, /*stride*/ 48, /*len*/ 2, 3, 3),
-                new float[]{
-                    1, 2, 3, 4, 5, 6, 7, 8, 9,        // matrix 0 (col-major packed)
-                    10, 20, 30, 40, 50, 60, 70, 80, 90 // matrix 1
-                }, 2);
-            assertEq(1f, ubo.get(0)); assertEq(2f, ubo.get(1)); assertEq(3f, ubo.get(2)); assertEq(0f, ubo.get(3));
-            assertEq(4f, ubo.get(4)); assertEq(5f, ubo.get(5)); assertEq(6f, ubo.get(6)); assertEq(0f, ubo.get(7));
-            assertEq(7f, ubo.get(8)); assertEq(8f, ubo.get(9)); assertEq(9f, ubo.get(10)); assertEq(0f, ubo.get(11));
-            assertEq(10f, ubo.get(12)); assertEq(20f, ubo.get(13)); assertEq(30f, ubo.get(14)); assertEq(0f, ubo.get(15));
-            assertEq(40f, ubo.get(16)); assertEq(50f, ubo.get(17)); assertEq(60f, ubo.get(18)); assertEq(0f, ubo.get(19));
-            assertEq(70f, ubo.get(20)); assertEq(80f, ubo.get(21)); assertEq(90f, ubo.get(22)); assertEq(0f, ubo.get(23));
-        } finally {
-            MemoryUtil.memFree(ubo);
-        }
-    }
-
-    @Test
-    void mat4Array_perElementStride64() {
-        final FloatBuffer ubo = outBuf(32);
-        try {
-            final float[] data = new float[32];
-            for (int i = 0; i < 32; i++) data[i] = i;
-            Std140Writer.write(ubo, array(/*off*/ 0, /*stride*/ 64, /*len*/ 2, 4, 4), data, 2);
-            for (int i = 0; i < 32; i++) assertEq(i, ubo.get(i), "[" + i + "]");
+            Std140Writer.write(ubo, info, src, srcCount);
+            for (int i = 0; i < expectedUbo.length; i++) assertEq(expectedUbo[i], ubo.get(i), "[" + i + "]");
         } finally {
             MemoryUtil.memFree(ubo);
         }
@@ -203,34 +115,6 @@ class Std140WriterTest {
             assertEq(2f, ubo.get(9));
             assertEq(3f, ubo.get(10));
             assertEq(-7f, ubo.get(11), "preserved (vec3 leaves 4th lane untouched)");
-        } finally {
-            MemoryUtil.memFree(ubo);
-        }
-    }
-
-    @Test
-    void srcCount_clampedToArrayLen() {
-        final FloatBuffer ubo = outBuf(16);
-        try {
-            Std140Writer.write(ubo, array(/*off*/ 0, /*stride*/ 16, /*len*/ 2, 1, 1), new float[]{1, 2, 3, 4}, 4);
-            assertEq(1f, ubo.get(0));
-            assertEq(2f, ubo.get(4));
-            assertEq(0f, ubo.get(8));   // not written
-            assertEq(0f, ubo.get(12));  // not written
-        } finally {
-            MemoryUtil.memFree(ubo);
-        }
-    }
-
-    @Test
-    void srcCount_clampedToSrcSize() {
-        final FloatBuffer ubo = outBuf(16);
-        try {
-            Std140Writer.write(ubo, array(/*off*/ 0, /*stride*/ 16, /*len*/ 4, 1, 1), new float[]{7, 8}, 4);
-            assertEq(7f, ubo.get(0));
-            assertEq(8f, ubo.get(4));
-            assertEq(0f, ubo.get(8));   // beyond src
-            assertEq(0f, ubo.get(12));
         } finally {
             MemoryUtil.memFree(ubo);
         }

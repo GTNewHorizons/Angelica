@@ -67,18 +67,24 @@ class ShaderTransformerTest {
         return Integer.parseInt(m.group(1));
     }
 
+    private static final String PASSTHROUGH_VERTEX = "#version 330 core\nvoid main(){ gl_Position = vec4(0.0); }";
+
+    private static Map<PatchShaderType, String> composite(String fragment) {
+        final Map<PatchShaderType, String> out = TransformPatcher.patchComposite(PASSTHROUGH_VERTEX, null, fragment);
+        assertNotNull(out);
+        return out;
+    }
+
     @Test
     void storageImageRewrite_hoistsEmittedVersion() {
         SamplerToStorageImageRewriter.setActiveCandidates(Set.of(new SamplerToStorageImageRewriter.Candidate("voxel_sampler", "voxel_img", "r16ui", 3, false)));
-        final String vertex = "#version 330 core\nvoid main(){ gl_Position = vec4(0.0); }";
         final String fragment = String.join("\n",
             "#version 330 core",
             "uniform usampler3D voxel_sampler;",
             "void main(){ gl_FragColor = vec4(float(texelFetch(voxel_sampler, ivec3(0), 0).r)); }",
             "");
 
-        final Map<PatchShaderType, String> out = TransformPatcher.patchComposite(vertex, null, fragment);
-        assertNotNull(out);
+        final Map<PatchShaderType, String> out = composite(fragment);
         final String fsh = out.get(PatchShaderType.FRAGMENT);
         final String vsh = out.get(PatchShaderType.VERTEX);
 
@@ -92,15 +98,13 @@ class ShaderTransformerTest {
     @Test
     void filteredRead_doesNotHoistVersion() {
         SamplerToStorageImageRewriter.setActiveCandidates(Set.of(new SamplerToStorageImageRewriter.Candidate("voxel_sampler", "voxel_img", "r16ui", 3, false)));
-        final String vertex = "#version 330 core\nvoid main(){ gl_Position = vec4(0.0); }";
         final String fragment = String.join("\n",
             "#version 330 core",
             "uniform usampler3D voxel_sampler;",
             "void main(){ gl_FragColor = vec4(float(texture(voxel_sampler, vec3(0.5)).r)); }",
             "");
 
-        final Map<PatchShaderType, String> out = TransformPatcher.patchComposite(vertex, null, fragment);
-        assertNotNull(out);
+        final Map<PatchShaderType, String> out = composite(fragment);
         final String fsh = out.get(PatchShaderType.FRAGMENT);
 
         assertTrue(fsh.contains("usampler3D voxel_sampler"), "rewrite must abort on a filtered read\n\n" + fsh);
@@ -110,11 +114,9 @@ class ShaderTransformerTest {
 
     @Test
     void noCandidates_versionUnchanged() {
-        final String vertex = "#version 330 core\nvoid main(){ gl_Position = vec4(0.0); }";
         final String fragment = "#version 330 core\nvoid main(){ gl_FragColor = vec4(1.0); }";
 
-        final Map<PatchShaderType, String> out = TransformPatcher.patchComposite(vertex, null, fragment);
-        assertNotNull(out);
+        final Map<PatchShaderType, String> out = composite(fragment);
         assertTrue(out.get(PatchShaderType.VERTEX).startsWith("#version 330 core\n"), out.get(PatchShaderType.VERTEX));
         assertTrue(out.get(PatchShaderType.FRAGMENT).startsWith("#version 330 core\n"), out.get(PatchShaderType.FRAGMENT));
     }
@@ -138,15 +140,13 @@ class ShaderTransformerTest {
 
     @Test
     void packDeclaredImageTypeHoistsWithoutImageLoad() {
-        final String vertex = "#version 330 core\nvoid main(){ gl_Position = vec4(0.0); }";
         final String fragment = String.join("\n",
             "#version 330 core",
             "layout(r16ui) readonly uniform uimage3D voxel_img;",
             "void main(){ gl_FragColor = vec4(float(imageSize(voxel_img).x)); }",
             "");
 
-        final Map<PatchShaderType, String> out = TransformPatcher.patchComposite(vertex, null, fragment);
-        assertNotNull(out);
+        final Map<PatchShaderType, String> out = composite(fragment);
         final String fsh = out.get(PatchShaderType.FRAGMENT);
         assertTrue(versionOf(fsh) >= 420, "uimage3D declaration alone must hoist to 420\n\n" + fsh);
     }

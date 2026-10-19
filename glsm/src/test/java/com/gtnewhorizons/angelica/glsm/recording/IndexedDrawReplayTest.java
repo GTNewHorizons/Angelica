@@ -79,6 +79,7 @@ class IndexedDrawReplayTest extends DisplayListTestFixture {
         GLStateManager.glBindVertexArray(vaoOf(batch));
         assertEquals(batch.getSharedEBO(), GLStateManager.getBoundEBO(),
             "batched VAO's EBO binding corrupted");
+        assertEquals(batch.getSharedEBO(), GL11.glGetInteger(GL15.GL_ELEMENT_ARRAY_BUFFER_BINDING));
         GLStateManager.glBindVertexArray(0);
     }
 

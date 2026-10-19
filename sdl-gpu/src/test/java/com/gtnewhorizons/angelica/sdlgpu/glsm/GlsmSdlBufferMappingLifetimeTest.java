@@ -7,6 +7,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL30;
@@ -181,6 +182,7 @@ class GlsmSdlBufferMappingLifetimeTest {
         final int ubo = GLStateManager.glGenBuffers();
         final ByteBuffer data = MemoryUtil.memAlloc(256);
         final ByteBuffer big = MemoryUtil.memAlloc(64);
+        ByteBuffer out = null;
         try {
             fill(data, 6);
             fill(big, 7);
@@ -194,10 +196,70 @@ class GlsmSdlBufferMappingLifetimeTest {
                 big.clear();
                 GLStateManager.glBufferSubData(GL31.GL_UNIFORM_BUFFER, -8, big);
             });
+            out = readBack(GL31.GL_UNIFORM_BUFFER, 256);
+            assertPattern(out, 6);
         } finally {
+            if (out != null) MemoryUtil.memFree(out);
             MemoryUtil.memFree(data);
             MemoryUtil.memFree(big);
             GLStateManager.glDeleteBuffers(ubo);
+        }
+    }
+
+    @Test
+    void uniformBufferMapForReadSeesItsContents() {
+        final int ubo = GLStateManager.glGenBuffers();
+        final ByteBuffer data = MemoryUtil.memAlloc(256);
+        try {
+            fill(data, 7);
+            GLStateManager.glBindBuffer(GL31.GL_UNIFORM_BUFFER, ubo);
+            GLStateManager.glBufferData(GL31.GL_UNIFORM_BUFFER, data, GL15.GL_DYNAMIC_DRAW);
+            final ByteBuffer mapped = GLStateManager.glMapBufferRange(GL31.GL_UNIFORM_BUFFER, 0, 256, GL30.GL_MAP_READ_BIT);
+            assertNotNull(mapped);
+            assertPattern(mapped, 7);
+            assertTrue(GLStateManager.glUnmapBuffer(GL31.GL_UNIFORM_BUFFER));
+        } finally {
+            MemoryUtil.memFree(data);
+            GLStateManager.glDeleteBuffers(ubo);
+        }
+    }
+
+    @Test
+    void copyBufferSubDataMovesBytesIntoAndOutOfAUniformBuffer() {
+        final int src = GLStateManager.glGenBuffers();
+        final int ubo = GLStateManager.glGenBuffers();
+        final int dst = GLStateManager.glGenBuffers();
+        final ByteBuffer srcData = MemoryUtil.memAlloc(256);
+        final ByteBuffer uboData = MemoryUtil.memAlloc(256);
+        ByteBuffer outUbo = null;
+        ByteBuffer outDst = null;
+        try {
+            fill(srcData, 5);
+            fill(uboData, 6);
+            GLStateManager.glBindBuffer(GL31.GL_COPY_READ_BUFFER, src);
+            GLStateManager.glBufferData(GL31.GL_COPY_READ_BUFFER, srcData, GL15.GL_STATIC_DRAW);
+            GLStateManager.glBindBuffer(GL31.GL_UNIFORM_BUFFER, ubo);
+            GLStateManager.glBufferData(GL31.GL_UNIFORM_BUFFER, uboData, GL15.GL_DYNAMIC_DRAW);
+            GLStateManager.glCopyBufferSubData(GL31.GL_COPY_READ_BUFFER, GL31.GL_UNIFORM_BUFFER, 64, 64, 64);
+            outUbo = readBack(GL31.GL_UNIFORM_BUFFER, 256);
+            for (int i = 0; i < 256; i++) {
+                final boolean copied = i >= 64 && i < 128;
+                assertEquals(copied ? srcData.get(i) : uboData.get(i), outUbo.get(i), (copied ? "copied" : "untouched") + " byte " + i);
+            }
+
+            GLStateManager.glBindBuffer(GL31.GL_COPY_WRITE_BUFFER, dst);
+            GLStateManager.glBufferData(GL31.GL_COPY_WRITE_BUFFER, 64L, GL15.GL_STATIC_DRAW);
+            GLStateManager.glCopyBufferSubData(GL31.GL_UNIFORM_BUFFER, GL31.GL_COPY_WRITE_BUFFER, 0, 0, 64);
+            outDst = readBack(GL31.GL_COPY_WRITE_BUFFER, 64);
+            assertPattern(outDst, 6);
+        } finally {
+            if (outUbo != null) MemoryUtil.memFree(outUbo);
+            if (outDst != null) MemoryUtil.memFree(outDst);
+            MemoryUtil.memFree(srcData);
+            MemoryUtil.memFree(uboData);
+            GLStateManager.glDeleteBuffers(src);
+            GLStateManager.glDeleteBuffers(ubo);
+            GLStateManager.glDeleteBuffers(dst);
         }
     }
 
@@ -227,24 +289,25 @@ class GlsmSdlBufferMappingLifetimeTest {
         }
     }
 
-    @Test
-    void outOfRangeClearBufferSubDataIsIgnored() {
+    @ParameterizedTest(name = "target {0}")
+    @ValueSource(ints = {GL43.GL_SHADER_STORAGE_BUFFER, GL31.GL_UNIFORM_BUFFER})
+    void outOfRangeClearBufferSubDataIsIgnored(int target) {
         final int clearStart = 64;
         final int clearEnd = 96;
-        final int ssbo = GLStateManager.glGenBuffers();
+        final int buffer = GLStateManager.glGenBuffers();
         final ByteBuffer data = MemoryUtil.memAlloc(256);
         ByteBuffer out = null;
         try {
             fill(data, 8);
-            GLStateManager.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, ssbo);
-            GLStateManager.glBufferData(GL43.GL_SHADER_STORAGE_BUFFER, data, GL15.GL_DYNAMIC_DRAW);
-            GLStateManager.glClearBufferSubData(GL43.GL_SHADER_STORAGE_BUFFER, GL30.GL_R8, clearStart, clearEnd - clearStart, GL11.GL_RED, GL11.GL_UNSIGNED_BYTE, null);
-            GLStateManager.glClearBufferSubData(GL43.GL_SHADER_STORAGE_BUFFER, GL30.GL_R8, 200, 128, GL11.GL_RED, GL11.GL_UNSIGNED_BYTE, null);
-            GLStateManager.glClearBufferSubData(GL43.GL_SHADER_STORAGE_BUFFER, GL30.GL_R8, -4, 16, GL11.GL_RED, GL11.GL_UNSIGNED_BYTE, null);
-            GLStateManager.glClearBufferSubData(GL43.GL_SHADER_STORAGE_BUFFER, GL30.GL_R8, 1024, 16, GL11.GL_RED, GL11.GL_UNSIGNED_BYTE, null);
+            GLStateManager.glBindBuffer(target, buffer);
+            GLStateManager.glBufferData(target, data, GL15.GL_DYNAMIC_DRAW);
+            GLStateManager.glClearBufferSubData(target, GL30.GL_R8, clearStart, clearEnd - clearStart, GL11.GL_RED, GL11.GL_UNSIGNED_BYTE, null);
+            GLStateManager.glClearBufferSubData(target, GL30.GL_R8, 200, 128, GL11.GL_RED, GL11.GL_UNSIGNED_BYTE, null);
+            GLStateManager.glClearBufferSubData(target, GL30.GL_R8, -4, 16, GL11.GL_RED, GL11.GL_UNSIGNED_BYTE, null);
+            GLStateManager.glClearBufferSubData(target, GL30.GL_R8, 1024, 16, GL11.GL_RED, GL11.GL_UNSIGNED_BYTE, null);
             GlsmSdlHeadlessRig.endFrame();
             GlsmSdlHeadlessRig.beginFrame();
-            out = readBack(GL43.GL_SHADER_STORAGE_BUFFER, 256);
+            out = readBack(target, 256);
             for (int i = 0; i < 256; i++) {
                 final boolean cleared = i >= clearStart && i < clearEnd;
                 assertEquals(cleared ? 0 : data.get(i), out.get(i), cleared ? "in-range clear did not zero byte " + i : "out-of-range clear touched byte " + i);
@@ -252,7 +315,7 @@ class GlsmSdlBufferMappingLifetimeTest {
         } finally {
             if (out != null) MemoryUtil.memFree(out);
             MemoryUtil.memFree(data);
-            GLStateManager.glDeleteBuffers(ssbo);
+            GLStateManager.glDeleteBuffers(buffer);
         }
     }
 

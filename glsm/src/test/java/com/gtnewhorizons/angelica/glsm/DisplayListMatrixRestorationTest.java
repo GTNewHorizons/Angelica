@@ -197,6 +197,7 @@ class DisplayListMatrixRestorationTest extends DisplayListTestFixture {
             GLStateManager.glCallList(list);
             String context = "compileMode=" + compileMode;
             assertEquals(GL13.GL_TEXTURE0, GLStateManager.glGetInteger(GL13.GL_ACTIVE_TEXTURE), context);
+            assertEquals(GL13.GL_TEXTURE0, GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE), context);
             assertEquals(3f, translation(GL11.GL_MODELVIEW_MATRIX), context);
             assertEquals(0f, translation(GL11.GL_TEXTURE_MATRIX), context);
             GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);

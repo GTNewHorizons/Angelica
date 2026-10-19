@@ -7,8 +7,13 @@ import org.embeddedt.embeddium.impl.render.viewport.frustum.Frustum;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import static net.coderbot.iris.shadows.frustum.ShadowFrustumTestSupport.SUN_UP;
 import static net.coderbot.iris.shadows.frustum.ShadowFrustumTestSupport.culler;
@@ -33,33 +38,46 @@ class ShadowFrustumIntersectAabTest {
         return frustum;
     }
 
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("triStateRows")
+    void intersectAabReportsTriState(String label, Supplier<Frustum> frustum, int expected, float[] box) {
+        assertEquals(expected, frustum.get().intersectAab(box[0], box[1], box[2], box[3], box[4], box[5]));
+    }
+
+    private static Stream<Arguments> triStateRows() {
+        final Supplier<Frustum> boxCulling = () -> {
+            final BoxCullingFrustum frustum = new BoxCullingFrustum(new BoxCuller(64.0));
+            frustum.setPosition(8.0, 8.0, 8.0);
+            return frustum;
+        };
+        final Supplier<Frustum> advancedNoCuller = () -> advanced(null);
+        final Supplier<Frustum> advancedCuller = () -> advanced(culler(64.0));
+        final Supplier<Frustum> safeZoneSmallVoxel = () -> safeZone(culler(16.0), culler(96.0));
+        final Supplier<Frustum> safeZoneLargeVoxel = () -> safeZone(culler(96.0), culler(16.0));
+        return Stream.of(
+            Arguments.of("boxCulling fully", boxCulling, Frustum.FULLY_INSIDE, new float[] {-16, -16, -16, 16, 16, 16}),
+            Arguments.of("boxCulling partially", boxCulling, Frustum.PARTIALLY_INSIDE, new float[] {-16, -16, -16, 16, 16, 100}),
+            Arguments.of("boxCulling outside", boxCulling, Frustum.OUTSIDE, new float[] {-16, -16, 80, 16, 16, 100}),
+            Arguments.of("advanced no culler fully", advancedNoCuller, Frustum.FULLY_INSIDE, new float[] {-1, -1, -51, 1, 1, -49}),
+            Arguments.of("advanced no culler partially", advancedNoCuller, Frustum.PARTIALLY_INSIDE, new float[] {-1, -60, -51, 1, -40, -49}),
+            Arguments.of("advanced no culler outside", advancedNoCuller, Frustum.OUTSIDE, new float[] {-1, -1, 99, 1, 1, 101}),
+            Arguments.of("advanced culler fully", advancedCuller, Frustum.FULLY_INSIDE, new float[] {-1, -1, -51, 1, 1, -49}),
+            Arguments.of("advanced culler downgrades to partially", advancedCuller, Frustum.PARTIALLY_INSIDE, new float[] {-1, -1, -80, 1, 1, -60}),
+            Arguments.of("advanced culler outside", advancedCuller, Frustum.OUTSIDE, new float[] {-1, -1, -200, 1, 1, -190}),
+            Arguments.of("safeZone 16/96 fully", safeZoneSmallVoxel, Frustum.FULLY_INSIDE, new float[] {-1, -1, -11, 1, 1, -9}),
+            Arguments.of("safeZone 16/96 partially", safeZoneSmallVoxel, Frustum.PARTIALLY_INSIDE, new float[] {-1, -60, -51, 1, -40, -49}),
+            Arguments.of("safeZone 16/96 outside near", safeZoneSmallVoxel, Frustum.OUTSIDE, new float[] {-1, -1, 50, 1, 1, 60}),
+            Arguments.of("safeZone 16/96 outside far", safeZoneSmallVoxel, Frustum.OUTSIDE, new float[] {-1, -1, -200, 1, 1, -190}),
+            Arguments.of("safeZone 96/16 wide box partially", safeZoneLargeVoxel, Frustum.PARTIALLY_INSIDE, new float[] {-30, -1, -1, 30, 1, 1}),
+            Arguments.of("safeZone 96/16 narrow box fully", safeZoneLargeVoxel, Frustum.FULLY_INSIDE, new float[] {-1, -1, -11, 1, 1, -9}));
+    }
+
     @Test
-    void boxCullingFrustumReportsTriState() {
+    void boxCullingFrustumAgreesWithTestAab() {
         final BoxCullingFrustum frustum = new BoxCullingFrustum(new BoxCuller(64.0));
         frustum.setPosition(8.0, 8.0, 8.0);
 
-        assertEquals(Frustum.FULLY_INSIDE, frustum.intersectAab(-16, -16, -16, 16, 16, 16));
-        assertEquals(Frustum.PARTIALLY_INSIDE, frustum.intersectAab(-16, -16, -16, 16, 16, 100));
-        assertEquals(Frustum.OUTSIDE, frustum.intersectAab(-16, -16, 80, 16, 16, 100));
         assertConsistent(frustum, 1L);
-    }
-
-    @Test
-    void advancedReportsTriStateWithoutABoxCuller() {
-        final AdvancedShadowCullingFrustum frustum = advanced(null);
-
-        assertEquals(Frustum.FULLY_INSIDE, frustum.intersectAab(-1, -1, -51, 1, 1, -49));
-        assertEquals(Frustum.PARTIALLY_INSIDE, frustum.intersectAab(-1, -60, -51, 1, -40, -49));
-        assertEquals(Frustum.OUTSIDE, frustum.intersectAab(-1, -1, 99, 1, 1, 101));
-    }
-
-    @Test
-    void advancedDowngradesToPartialOutsideTheBoxCuller() {
-        final AdvancedShadowCullingFrustum frustum = advanced(culler(64.0));
-
-        assertEquals(Frustum.FULLY_INSIDE, frustum.intersectAab(-1, -1, -51, 1, 1, -49));
-        assertEquals(Frustum.PARTIALLY_INSIDE, frustum.intersectAab(-1, -1, -80, 1, 1, -60));
-        assertEquals(Frustum.OUTSIDE, frustum.intersectAab(-1, -1, -200, 1, 1, -190));
     }
 
     @Test
@@ -81,28 +99,10 @@ class ShadowFrustumIntersectAabTest {
     }
 
     @Test
-    void safeZoneReportsTriState() {
-        final SafeZoneCullingFrustum frustum = safeZone(culler(16.0), culler(96.0));
-
-        assertEquals(Frustum.FULLY_INSIDE, frustum.intersectAab(-1, -1, -11, 1, 1, -9));
-        assertEquals(Frustum.PARTIALLY_INSIDE, frustum.intersectAab(-1, -60, -51, 1, -40, -49));
-        assertEquals(Frustum.OUTSIDE, frustum.intersectAab(-1, -1, 50, 1, 1, 60));
-        assertEquals(Frustum.OUTSIDE, frustum.intersectAab(-1, -1, -200, 1, 1, -190));
-    }
-
-    @Test
     void safeZoneAgreesWithTestAab() {
         assertConsistent(safeZone(culler(16.0), culler(96.0)), 20250908L);
         assertConsistent(safeZone(culler(16.0), null), 20250909L);
         assertConsistent(safeZone(culler(96.0), culler(16.0)), 20250910L);
-    }
-
-    @Test
-    void safeZoneLargerThanDistanceIsOnlyPartiallyInside() {
-        final SafeZoneCullingFrustum frustum = safeZone(culler(96.0), culler(16.0));
-
-        assertEquals(Frustum.PARTIALLY_INSIDE, frustum.intersectAab(-30, -1, -1, 30, 1, 1));
-        assertEquals(Frustum.FULLY_INSIDE, frustum.intersectAab(-1, -1, -11, 1, 1, -9));
     }
 
     @Test

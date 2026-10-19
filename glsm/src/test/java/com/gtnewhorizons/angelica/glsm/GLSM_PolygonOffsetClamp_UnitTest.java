@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.glsm;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.lwjgl.opengl.GL11;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -24,6 +25,8 @@ public class GLSM_PolygonOffsetClamp_UnitTest {
         GLStateManager.glPolygonOffsetClamp(1.5f, 2.5f, 0.0f);
         assertEquals(1.5f, GLStateManager.ctx().polygonState.getOffsetFactor());
         assertEquals(2.5f, GLStateManager.ctx().polygonState.getOffsetUnits());
+        assertEquals(1.5f, GL11.glGetFloat(GL11.GL_POLYGON_OFFSET_FACTOR));
+        assertEquals(2.5f, GL11.glGetFloat(GL11.GL_POLYGON_OFFSET_UNITS));
         assertEquals(0.0f, cachedClamp());
     }
 

@@ -5,17 +5,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.stacks.BooleanStateStack;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.lwjgl.opengl.GL11;
 
 import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Set;
-import java.util.function.IntSupplier;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -38,22 +33,6 @@ public class GLSM_SplashCachingCoverage_UnitTest {
         GLStateManager.glCullFace(GL11.GL_BACK);
     }
 
-    static Stream<Arguments> stateSetDuringSplash() {
-        return Stream.of(
-            Arguments.of("depth func", (Runnable) () -> GLStateManager.glDepthFunc(GL11.GL_LEQUAL), GL11.GL_LEQUAL,
-                (IntSupplier) () -> GLStateManager.getDepthState().getFunc()),
-            Arguments.of("cull face", (Runnable) () -> GLStateManager.glCullFace(GL11.GL_FRONT), GL11.GL_FRONT,
-                (IntSupplier) () -> GLStateManager.getPolygonState().getCullFaceMode()));
-    }
-
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("stateSetDuringSplash")
-    void stateSetDuringSplashLandsInCache(String name, Runnable set, int expected, IntSupplier cached) {
-        set.run();
-
-        assertEquals(expected, cached.getAsInt(), "cache write dropped while caching=false");
-    }
-
     @Test
     void popAttribDoesNotRevertDepthFuncSetDuringSplash() throws IllegalAccessException {
         GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
@@ -65,6 +44,7 @@ public class GLSM_SplashCachingCoverage_UnitTest {
         GLStateManager.glPopAttrib();
 
         assertEquals(GL11.GL_LEQUAL, GLStateManager.getDepthState().getFunc(), "popAttrib reverted to the stale default");
+        assertEquals(GL11.GL_LEQUAL, GL11.glGetInteger(GL11.GL_DEPTH_FUNC));
     }
 
     @Test
@@ -99,6 +79,8 @@ public class GLSM_SplashCachingCoverage_UnitTest {
     void replayPushesCachedStateWithoutDisturbingIt() {
         GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
         GLStateManager.glCullFace(GL11.GL_FRONT);
+        assertEquals(GL11.GL_LEQUAL, GLStateManager.getDepthState().getFunc(), "cache write dropped while caching=false");
+        assertEquals(GL11.GL_FRONT, GLStateManager.getPolygonState().getCullFaceMode(), "cache write dropped while caching=false");
 
         GLStateManager.replayStateToBackend();
 

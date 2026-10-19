@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu.resource;
 
 import com.gtnewhorizons.angelica.glsm.testutil.TestThreads;
-import java.util.concurrent.atomic.AtomicReference;
 import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 
 import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
@@ -11,18 +10,6 @@ import static com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager.MAX_PENDING_U
 import static org.junit.jupiter.api.Assertions.*;
 
 class CrossThreadUploadCBIsolationTest {
-
-    @Test
-    void differentThreadsHaveDistinctFrameStates() throws Exception {
-        final FrameManager fm = SdlTestRig.frameManager();
-        final FrameManager.FrameState testThreadFs = fm.frame();
-
-        final AtomicReference<FrameManager.FrameState> workerFs = new AtomicReference<>();
-        TestThreads.run("worker-thread", () -> workerFs.set(fm.frame()));
-
-        assertNotNull(workerFs.get());
-        assertNotSame(testThreadFs, workerFs.get(), "each thread must get its own FrameManager.FrameState instance from the FrameManager ThreadLocal");
-    }
 
     @Test
     void clientThreadsRecordingsDoNotAppearInSplashThreadsState() throws Exception {

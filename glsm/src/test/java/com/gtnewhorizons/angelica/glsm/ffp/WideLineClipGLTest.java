@@ -39,8 +39,7 @@ class WideLineClipGLTest {
         GLStateManager.wideLineEmulationEnabled = true;
 
         FfpFixture.resetFfpState();
-        ShaderManager.enable();
-        ShaderManager.getInstance().activate();
+        FfpFixture.activateFfp();
         GLStateManager.glViewport(0, 0, SIZE, SIZE);
         GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
         GLStateManager.glLoadIdentity();

@@ -25,6 +25,7 @@ import com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrTestSupport.Countin
 import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
 import net.coderbot.batchedentityrendering.impl.AngelicaBufferSource;
 import net.coderbot.iris.layer.PassOverride;
+import net.coderbot.iris.uniforms.CapturedStateScope;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.ItemRenderer;
 import net.minecraft.util.ResourceLocation;
@@ -393,44 +394,40 @@ class RetainedTesrGroupsGLTest {
     @Test
     void cpuFallbackRestoresEveryIdAndTintBeforeDrawingAndRestoresTheCaller() {
         final var state = net.coderbot.iris.uniforms.CapturedRenderingState.INSTANCE;
-        state.pushCurrentEntityAndItem();
-        state.pushCurrentBlockEntity();
-        state.pushCurrentEntityColor();
-        try {
-            final var draws = new ArrayList<long[]>();
-            onBufferSetup = () -> draws.add(new long[] {
-                state.getCurrentRenderedEntity(), state.getCurrentRenderedBlockEntity(), state.getCurrentRenderedItem(),
-                AngelicaBufferSource.packEntityColor(state.getCurrentEntityColor())
-            });
-            groups.beginPass(new Matrix4f(), 0, 0, 0, instanced, new CountingPipeline(false, false));
-            final TemplateBuffer template = capturedQuad(0.1);
-            for (int i = 0; i < 3; i++) {
-                final long info = com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs.packEntityInfo(45010 + i, 45020 + i, 45030 + i);
-                final int color = AngelicaBufferSource.packAbgr(i / 2f, 0, 0, 1);
-                groups.queue(SCOPE, template, layer, RetainedTesrTestSupport.STREAM, new Matrix4f(), 0, -1, color, info, 45020 + i, null);
+        try (CapturedStateScope ignored = new CapturedStateScope()) {
+            try {
+                final var draws = new ArrayList<long[]>();
+                onBufferSetup = () -> draws.add(new long[] {
+                    state.getCurrentRenderedEntity(), state.getCurrentRenderedBlockEntity(), state.getCurrentRenderedItem(),
+                    AngelicaBufferSource.packEntityColor(state.getCurrentEntityColor())
+                });
+                groups.beginPass(new Matrix4f(), 0, 0, 0, instanced, new CountingPipeline(false, false));
+                final TemplateBuffer template = capturedQuad(0.1);
+                for (int i = 0; i < 3; i++) {
+                    final long info = com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs.packEntityInfo(45010 + i, 45020 + i, 45030 + i);
+                    final int color = AngelicaBufferSource.packAbgr(i / 2f, 0, 0, 1);
+                    groups.queue(SCOPE, template, layer, RetainedTesrTestSupport.STREAM, new Matrix4f(), 0, -1, color, info, 45020 + i, null);
+                }
+                state.setCurrentEntityAndItem(81, 82);
+                state.setCurrentBlockEntity(83);
+                state.setCurrentEntityColor(0, 1, 0, 0.5f);
+                draws.clear();
+                assertEquals(GL11.GL_QUADS, template.drawMode);
+                groups.drawLayer(layer);
+                assertEquals(3, draws.size(), "only differing uniform values split the CPU fallback");
+                for (int i = 0; i < 3; i++) {
+                    assertArrayEquals(new long[] {45010 + i, 45020 + i, 45030 + i,
+                        AngelicaBufferSource.packAbgr(i / 2f, 0, 0, 1)}, draws.get(i));
+                }
+                source.discard();
+                assertEquals(81, state.getCurrentRenderedEntity());
+                assertEquals(82, state.getCurrentRenderedItem());
+                assertEquals(83, state.getCurrentRenderedBlockEntity());
+                assertTrue(state.getCurrentEntityColor().equals(0, 1, 0, 0.5f));
+            } finally {
+                onBufferSetup = null;
+                source.discard();
             }
-            state.setCurrentEntityAndItem(81, 82);
-            state.setCurrentBlockEntity(83);
-            state.setCurrentEntityColor(0, 1, 0, 0.5f);
-            draws.clear();
-            assertEquals(GL11.GL_QUADS, template.drawMode);
-            groups.drawLayer(layer);
-            assertEquals(3, draws.size(), "only differing uniform values split the CPU fallback");
-            for (int i = 0; i < 3; i++) {
-                assertArrayEquals(new long[] {45010 + i, 45020 + i, 45030 + i,
-                    AngelicaBufferSource.packAbgr(i / 2f, 0, 0, 1)}, draws.get(i));
-            }
-            source.discard();
-            assertEquals(81, state.getCurrentRenderedEntity());
-            assertEquals(82, state.getCurrentRenderedItem());
-            assertEquals(83, state.getCurrentRenderedBlockEntity());
-            assertTrue(state.getCurrentEntityColor().equals(0, 1, 0, 0.5f));
-        } finally {
-            onBufferSetup = null;
-            source.discard();
-            state.popCurrentEntityColor();
-            state.popCurrentBlockEntity();
-            state.popCurrentEntityAndItem();
         }
     }
 

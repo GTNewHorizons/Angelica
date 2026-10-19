@@ -10,6 +10,7 @@ import net.coderbot.batchedentityrendering.impl.AngelicaBufferSource;
 import net.coderbot.batchedentityrendering.impl.BufferSegment;
 import net.coderbot.batchedentityrendering.impl.BufferSourceProbe;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
+import net.coderbot.iris.uniforms.CapturedStateScope;
 import net.minecraft.util.ResourceLocation;
 import org.joml.Matrix4f;
 import org.junit.jupiter.api.BeforeEach;
@@ -72,10 +73,7 @@ class RetainedTesrGroupsTest {
     @Test
     void retainedGroupsSeparateTheFullIdTupleAndTintAndReuseStableKeys() {
         final var state = CapturedRenderingState.INSTANCE;
-        state.pushCurrentEntityAndItem();
-        state.pushCurrentBlockEntity();
-        state.pushCurrentEntityColor();
-        try {
+        try (CapturedStateScope ignored = new CapturedStateScope()) {
             for (int frame = 0; frame < 2; frame++) {
                 groups.beginPass(new Matrix4f(), 0, 0, 0);
                 for (int entity : new int[] {11, 12}) {
@@ -92,20 +90,13 @@ class RetainedTesrGroupsTest {
                 }
                 assertEquals(16, groups.groupCount(), "only distinct ID/tint combinations allocate groups, including across frames");
             }
-        } finally {
-            state.popCurrentEntityColor();
-            state.popCurrentBlockEntity();
-            state.popCurrentEntityAndItem();
         }
     }
 
     @Test
     void instancedGroupsKeepFullIdsAndTintPerInstanceWithoutSplitting() {
         final var state = CapturedRenderingState.INSTANCE;
-        state.pushCurrentEntityAndItem();
-        state.pushCurrentBlockEntity();
-        state.pushCurrentEntityColor();
-        try {
+        try (CapturedStateScope ignored = new CapturedStateScope()) {
             groups.beginPass(new Matrix4f(), 0, 0, 0, new InstancedTemplateRenderer(ring), new RetainedTesrTestSupport.CountingPipeline(true, true));
             for (int i = 0; i < 100; i++) {
                 state.setCurrentEntityAndItem(i, i + 200);
@@ -122,10 +113,6 @@ class RetainedTesrGroupsTest {
                 assertEquals(InstancedAttribs.packEntityInfo(i, i + 100, i + 200), group.templateColumns.infos.getLong(i));
                 assertEquals(AngelicaBufferSource.packAbgr(i / 100f, 0, 0, 1), group.templateColumns.overlays.getInt(i));
             }
-        } finally {
-            state.popCurrentEntityColor();
-            state.popCurrentBlockEntity();
-            state.popCurrentEntityAndItem();
         }
     }
 

@@ -83,13 +83,24 @@ public class GLSM_ImageUnitBindingCache_UnitTest {
 
     @Test
     void deletingTheBoundTextureClearsTheImageUnit() {
+        final boolean driverHasImages = GLStateManager.capabilities != null && GLStateManager.capabilities.OpenGL42;
         final int tex = GL11.glGenTextures();
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex);
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
         try {
             GLStateManager.glBindImageTexture(1, tex, 0, true, 0, GL15.GL_READ_WRITE, GL30.GL_R32UI);
             assertEquals(tex, GLStateManager.glGetInteger(GL42.GL_IMAGE_BINDING_NAME, 1));
+            if (driverHasImages) assertEquals(tex, GL30.glGetInteger(GL42.GL_IMAGE_BINDING_NAME, 1));
 
             GLStateManager.glDeleteTextures(tex);
             assertEquals(0, GLStateManager.glGetInteger(GL42.GL_IMAGE_BINDING_NAME, 1), "GL unbinds a deleted texture from every image unit");
+            if (driverHasImages) assertEquals(0, GL30.glGetInteger(GL42.GL_IMAGE_BINDING_NAME, 1), "driver unbinds a deleted texture from every image unit");
+            assertEquals(GL15.GL_READ_ONLY, GLStateManager.glGetInteger(GL42.GL_IMAGE_BINDING_ACCESS, 1));
+            assertEquals(GL30.GL_R8, GLStateManager.glGetInteger(GL42.GL_IMAGE_BINDING_FORMAT, 1));
+            if (driverHasImages) {
+                assertEquals(GL30.glGetInteger(GL42.GL_IMAGE_BINDING_ACCESS, 1), GLStateManager.glGetInteger(GL42.GL_IMAGE_BINDING_ACCESS, 1));
+                assertEquals(GL30.glGetInteger(GL42.GL_IMAGE_BINDING_FORMAT, 1), GLStateManager.glGetInteger(GL42.GL_IMAGE_BINDING_FORMAT, 1));
+            }
         } finally {
             unbind(1);
         }
@@ -151,9 +162,29 @@ public class GLSM_ImageUnitBindingCache_UnitTest {
             assertEquals(GL30.glGetInteger(GL42.GL_IMAGE_BINDING_NAME, 1), GLStateManager.glGetInteger(GL42.GL_IMAGE_BINDING_NAME, 1));
             assertEquals(GL30.glGetInteger(GL42.GL_IMAGE_BINDING_ACCESS, 1), GLStateManager.glGetInteger(GL42.GL_IMAGE_BINDING_ACCESS, 1));
             assertEquals(GL30.glGetInteger(GL42.GL_IMAGE_BINDING_FORMAT, 1), GLStateManager.glGetInteger(GL42.GL_IMAGE_BINDING_FORMAT, 1));
+
+            assertEquals(GL30.glGetInteger(GL42.GL_IMAGE_BINDING_NAME, 3), GLStateManager.glGetInteger(GL42.GL_IMAGE_BINDING_NAME, 3));
+            assertEquals(GL30.glGetInteger(GL42.GL_IMAGE_BINDING_ACCESS, 3), GLStateManager.glGetInteger(GL42.GL_IMAGE_BINDING_ACCESS, 3));
+            assertEquals(GL30.glGetInteger(GL42.GL_IMAGE_BINDING_FORMAT, 3), GLStateManager.glGetInteger(GL42.GL_IMAGE_BINDING_FORMAT, 3));
         } finally {
             unbind(1);
             GLStateManager.glDeleteTextures(tex);
+        }
+    }
+
+    @Test
+    void bindingTextureZeroClearsLayeredAndLayer() {
+        try {
+            GLStateManager.glBindImageTexture(2, 0, 0, true, 3, GL15.GL_READ_WRITE, GL11.GL_RGBA8);
+
+            assertEquals(GL11.GL_FALSE, GLStateManager.glGetInteger(GL42.GL_IMAGE_BINDING_LAYERED, 2));
+            assertEquals(0, GLStateManager.glGetInteger(GL42.GL_IMAGE_BINDING_LAYER, 2));
+            if (GLStateManager.capabilities != null && GLStateManager.capabilities.OpenGL42) {
+                assertEquals(GL30.glGetInteger(GL42.GL_IMAGE_BINDING_LAYERED, 2), GLStateManager.glGetInteger(GL42.GL_IMAGE_BINDING_LAYERED, 2));
+                assertEquals(GL30.glGetInteger(GL42.GL_IMAGE_BINDING_LAYER, 2), GLStateManager.glGetInteger(GL42.GL_IMAGE_BINDING_LAYER, 2));
+            }
+        } finally {
+            unbind(2);
         }
     }
 }

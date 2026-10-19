@@ -1,8 +1,8 @@
 package com.gtnewhorizons.angelica.glsm.backend;
 
 import org.junit.jupiter.api.Test;
-
-import java.util.function.Predicate;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -17,60 +17,38 @@ class BackendPolicyTest {
         assertFalse(VSyncMode.OFF.tearFree());
     }
 
-    private static final Predicate<VSyncMode> NO_MAILBOX = mode -> mode != VSyncMode.MAILBOX;
-    private static final Predicate<VSyncMode> EVERYTHING = mode -> true;
-
-    @Test
-    void mailboxIsTakenWhenTheBackendOffersIt() {
-        assertEquals(VSyncMode.MAILBOX, RenderBackend.resolveTearFreeMode(null, EVERYTHING));
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({
+        "mailbox is taken when the backend offers it, , true, MAILBOX",
+        "vsync is the fallback when mailbox is unsupported, , false, ON",
+        "an unsupported mailbox preference falls back to vsync, MAILBOX, false, ON",
+        "an explicit supported vsync preference wins, ON, true, ON",
+        "an explicit supported mailbox preference wins, MAILBOX, true, MAILBOX",
+        "off is never a tear-free preference with mailbox, OFF, true, MAILBOX",
+        "off is never a tear-free preference without mailbox, OFF, false, ON",
+    })
+    void tearFreeModeResolution(String label, VSyncMode preference, boolean mailboxSupported, VSyncMode expected) {
+        assertEquals(expected, RenderBackend.resolveTearFreeMode(preference, mode -> mailboxSupported || mode != VSyncMode.MAILBOX));
     }
 
-    @Test
-    void vsyncIsTheFallbackWhenMailboxIsUnsupported() {
-        assertEquals(VSyncMode.ON, RenderBackend.resolveTearFreeMode(null, NO_MAILBOX));
-        assertEquals(VSyncMode.ON, RenderBackend.resolveTearFreeMode(VSyncMode.MAILBOX, NO_MAILBOX));
+    @ParameterizedTest(name = "{0}/{1} or {2} Hz -> {3} ns")
+    @CsvSource({
+        "60000, 1001, 0.0, 16683333",
+        "144, 1, 0.0, 6944444",
+        "0, 0, 59.94, 16683350",
+        "0, 0, 60.0, 16666667",
+        "0, 0, 0.0, 0",
+        "-1, -1, -1.0, 0",
+        "144, 0, 0.0, 0",
+    })
+    void periodPrefersTheExactRationalThenTheFloatRate(int numerator, int denominator, float hz, long expected) {
+        assertEquals(expected, RenderBackend.periodFromRational(numerator, denominator, hz));
     }
 
-    @Test
-    void anExplicitSupportedPreferenceWins() {
-        assertEquals(VSyncMode.ON, RenderBackend.resolveTearFreeMode(VSyncMode.ON, EVERYTHING));
-        assertEquals(VSyncMode.MAILBOX, RenderBackend.resolveTearFreeMode(VSyncMode.MAILBOX, EVERYTHING));
-    }
-
-    @Test
-    void offIsNeverATearFreePreference() {
-        assertEquals(VSyncMode.MAILBOX, RenderBackend.resolveTearFreeMode(VSyncMode.OFF, EVERYTHING));
-        assertEquals(VSyncMode.ON, RenderBackend.resolveTearFreeMode(VSyncMode.OFF, NO_MAILBOX));
-    }
-
-    @Test
-    void periodPrefersTheExactRational() {
-        assertEquals(16_683_333L, RenderBackend.periodFromRational(60000, 1001, 0.0f));
-        assertEquals(6_944_444L, RenderBackend.periodFromRational(144, 1, 0.0f));
-    }
-
-    @Test
-    void periodFallsBackToTheFloatRate() {
-        assertEquals(16_683_350L, RenderBackend.periodFromRational(0, 0, 59.94f));
-        assertEquals(16_666_667L, RenderBackend.periodFromRational(0, 0, 60.0f));
-    }
-
-    @Test
-    void periodIsZeroWhenUnknown() {
-        assertEquals(0L, RenderBackend.periodFromRational(0, 0, 0.0f));
-        assertEquals(0L, RenderBackend.periodFromRational(-1, -1, -1.0f));
-        assertEquals(0L, RenderBackend.periodFromRational(144, 0, 0.0f));
-    }
-
-    @Test
-    void integerNtscRatesAreAdjusted() {
-        assertEquals(16_683_333L, RenderBackend.periodFromIntegerHz(59));
-        assertEquals(6_951_389L, RenderBackend.periodFromIntegerHz(143));
-        assertEquals(16_666_667L, RenderBackend.periodFromIntegerHz(60));
-        assertEquals(6_944_444L, RenderBackend.periodFromIntegerHz(144));
-        assertEquals(0L, RenderBackend.periodFromIntegerHz(0));
-        assertEquals(0L, RenderBackend.periodFromIntegerHz(-60));
-        assertEquals(60, RenderBackend.hzFromPeriod(RenderBackend.periodFromIntegerHz(59)));
+    @ParameterizedTest(name = "{0} Hz -> {1} ns")
+    @CsvSource({"59, 16683333", "143, 6951389", "60, 16666667", "144, 6944444", "0, 0", "-60, 0"})
+    void integerNtscRatesAreAdjusted(int hz, long expected) {
+        assertEquals(expected, RenderBackend.periodFromIntegerHz(hz));
     }
 
     @Test
@@ -79,6 +57,7 @@ class BackendPolicyTest {
         assertEquals(144, RenderBackend.hzFromPeriod(6_944_444L));
         assertEquals(0, RenderBackend.hzFromPeriod(0L));
         assertEquals(0, RenderBackend.hzFromPeriod(-1L));
+        assertEquals(60, RenderBackend.hzFromPeriod(RenderBackend.periodFromIntegerHz(59)));
     }
 
     @Test

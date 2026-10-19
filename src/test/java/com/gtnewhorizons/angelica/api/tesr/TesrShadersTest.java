@@ -2,6 +2,8 @@ package com.gtnewhorizons.angelica.api.tesr;
 
 import net.minecraft.util.ResourceLocation;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -15,12 +17,10 @@ class TesrShadersTest {
         assertThrows(IllegalStateException.class, () -> TesrShaders.register("test:duplicate", NOOP, NOOP));
     }
 
-    @Test
-    void malformedNamesThrow() {
-        assertThrows(IllegalArgumentException.class, () -> TesrShaders.register("nonamespace", NOOP, NOOP));
-        assertThrows(IllegalArgumentException.class, () -> TesrShaders.register(":path", NOOP, NOOP));
-        assertThrows(IllegalArgumentException.class, () -> TesrShaders.register("ns:", NOOP, NOOP));
-        assertThrows(IllegalArgumentException.class, () -> TesrShaders.register("a:b:c", NOOP, NOOP));
+    @ParameterizedTest
+    @ValueSource(strings = {"nonamespace", ":path", "ns:", "a:b:c"})
+    void malformedNamesThrow(String name) {
+        assertThrows(IllegalArgumentException.class, () -> TesrShaders.register(name, NOOP, NOOP));
     }
 
     @Test

@@ -4,7 +4,9 @@ import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL14;
 
+import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyIsEnabled;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -23,6 +25,7 @@ public class GLSM_WorkerContextStacks_GLTest {
             GLStateManager.popStateTo(d);
 
             assertFalse(GLStateManager.glIsEnabled(GL11.GL_CULL_FACE), "cull face restored on the worker context");
+            verifyIsEnabled(GL11.GL_CULL_FACE, false, "driver cull face restored on the worker context");
         } finally {
             GLStateManager.glDisable(GL11.GL_CULL_FACE);
             GLStateManager.exitWorkerContext();
@@ -42,7 +45,9 @@ public class GLSM_WorkerContextStacks_GLTest {
             GLStateManager.popStateTo(d);
 
             assertFalse(GLStateManager.glIsEnabled(GL11.GL_BLEND), "blend enable restored on the worker context");
+            verifyIsEnabled(GL11.GL_BLEND, false, "driver blend enable restored on the worker context");
             assertEquals(GL11.GL_ONE, GLStateManager.getBlendState().getSrcRgb(), "blend src rgb restored on the worker context");
+            assertEquals(GL11.GL_ONE, GL11.glGetInteger(GL14.GL_BLEND_SRC_RGB), "driver blend src rgb restored on the worker context");
         } finally {
             GLStateManager.disableBlend();
             GLStateManager.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE, GL11.GL_ZERO);

@@ -330,8 +330,10 @@ public class GLSM_SharedDrawableContext_GLTest {
         GLStateManager.glBindVertexArray(bound);
         GLStateManager.glCallList(foreignList);
         assertEquals(bound, GLStateManager.getBoundVAO());
+        assertEquals(bound, GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING));
         GLStateManager.glCallList(localList);
         assertEquals(local, GLStateManager.getBoundVAO());
+        assertEquals(local, GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING));
 
         GLStateManager.glBindVertexArray(0);
         GLStateManager.glDeleteVertexArrays(bound);

@@ -147,9 +147,7 @@ class InstancedFFPDrawGLTest {
         GLStateManager.glViewport(0, 0, PARITY_SIZE, PARITY_SIZE);
         CubeParityFixture.setupScene(lightmap, lit);
 
-        final ShaderManager sm = ShaderManager.getInstance();
-        ShaderManager.enable();
-        sm.activate();
+        FfpFixture.activateFfp();
 
         final CubeParityFixture.Spec[] specs = CubeParityFixture.specs();
 
@@ -172,9 +170,7 @@ class InstancedFFPDrawGLTest {
         GLStateManager.glViewport(0, 0, PARITY_SIZE, PARITY_SIZE);
         ParticleParityFixture.setupScene(true);
 
-        final ShaderManager sm = ShaderManager.getInstance();
-        ShaderManager.enable();
-        sm.activate();
+        FfpFixture.activateFfp();
 
         final ParticleParityFixture.Particle[] particles = ParticleParityFixture.particles();
 
@@ -237,20 +233,7 @@ class InstancedFFPDrawGLTest {
 
     @Test
     void twoInstancesDrawWithDistinctTransformsAndColors() {
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glViewport(0, 0, 800, 600);
-        GLStateManager.disableDepthTest();
-        GLStateManager.disableCull();
-
-        buildTemplate();
-        uploadInstances(0xFF0000FF, 0, 0xFF00FF00, 0);
-
-        final ShaderManager sm = ShaderManager.getInstance();
-        ShaderManager.enable();
-        sm.activate();
+        prepareTwoInstances(0xFF0000FF, 0, 0xFF00FF00, 0);
 
         GLStateManager.glClearColor(0f, 0f, 0f, 1f);
         GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
@@ -267,20 +250,7 @@ class InstancedFFPDrawGLTest {
 
     @Test
     void instancedAlphaTestDiscardsLowAlphaInstance() {
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glViewport(0, 0, 800, 600);
-        GLStateManager.disableDepthTest();
-        GLStateManager.disableCull();
-
-        buildTemplate();
-        uploadInstances(0xFF0000FF, 0, 0x0D0000FF, 0);
-
-        final ShaderManager sm = ShaderManager.getInstance();
-        ShaderManager.enable();
-        sm.activate();
+        prepareTwoInstances(0xFF0000FF, 0, 0x0D0000FF, 0);
         GLStateManager.enableAlphaTest();
         GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.1f);
 
@@ -311,9 +281,7 @@ class InstancedFFPDrawGLTest {
         buildTemplate();
         uploadInstances(0xFF0000FF, 0, 0xFF00FF00, 0);
 
-        final ShaderManager sm = ShaderManager.getInstance();
-        ShaderManager.enable();
-        sm.activate();
+        FfpFixture.activateFfp();
 
         GLStateManager.glClearColor(0f, 0f, 0f, 1f);
         GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
@@ -340,20 +308,7 @@ class InstancedFFPDrawGLTest {
 
     @Test
     void perInstanceOverlayMixesOnlyTintedInstances() {
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glViewport(0, 0, 800, 600);
-        GLStateManager.disableDepthTest();
-        GLStateManager.disableCull();
-
-        buildTemplate();
-        uploadInstances(0xFFFFFFFF, 0, 0xFFFFFFFF, 0xFF0000FF);
-
-        final ShaderManager sm = ShaderManager.getInstance();
-        ShaderManager.enable();
-        sm.activate();
+        prepareTwoInstances(0xFFFFFFFF, 0, 0xFFFFFFFF, 0xFF0000FF);
 
         GLStateManager.glClearColor(0f, 0f, 0f, 1f);
         GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
@@ -368,6 +323,19 @@ class InstancedFFPDrawGLTest {
         final int[] right = FfpFixture.readPixel(600, 300);
         assertTrue(left[0] > 200 && left[1] > 200 && left[2] > 200, "left instance overlay alpha 0 keeps its base color, got " + left[0] + "," + left[1] + "," + left[2]);
         assertTrue(right[0] > 200 && right[1] < 50 && right[2] < 50, "right instance is mixed to its own opaque red overlay, got " + right[0] + "," + right[1] + "," + right[2]);
+    }
+
+    private void prepareTwoInstances(int leftColor, int leftOverlay, int rightColor, int rightOverlay) {
+        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
+        GLStateManager.glLoadIdentity();
+        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLStateManager.glLoadIdentity();
+        GLStateManager.glViewport(0, 0, 800, 600);
+        GLStateManager.disableDepthTest();
+        GLStateManager.disableCull();
+        buildTemplate();
+        uploadInstances(leftColor, leftOverlay, rightColor, rightOverlay);
+        FfpFixture.activateFfp();
     }
 
     private void uploadInstances(int leftColor, int leftOverlay, int rightColor, int rightOverlay) {
