@@ -26,6 +26,7 @@ public abstract class MixinRenderBlocks {
     @Shadow public IBlockAccess blockAccess;
     @Shadow public abstract boolean hasOverrideBlockTexture();
     @Unique private final BiomeVertexBlender angelica$vertexBlender = new BiomeVertexBlender();
+    @Unique private boolean angelica$blending;
 
     @Surround(method = {"renderStandardBlock", "renderBlockLiquid"}, id = "blendBlock")
     private void angelica$blendBlock(Block block, int x, int y, int z) {
@@ -34,8 +35,10 @@ public abstract class MixinRenderBlocks {
         BiomeBlendTessellator tessellator = null;
         @Surround.Carry("previous")
         BiomeVertexBlender previous = null;
-        @Surround.Carry
+        @Surround.Carry("blend")
         boolean blend = false;
+        @Surround.Carry("wasBlending")
+        final boolean wasBlending = angelica$blending;
         if (cache != null && ClientProxy.options().quality.biomeBlendMode == BiomeBlendMode.FANCY && SmoothBiomeColorCache.configuredRadius() != 0) {
             tessellator = (BiomeBlendTessellator) TessellatorManager.get();
             previous = tessellator.angelica$getBiomeBlender();
@@ -45,11 +48,13 @@ public abstract class MixinRenderBlocks {
             if (blend) angelica$vertexBlender.setup(cache, type, x, y, z);
             tessellator.angelica$setBiomeBlender(blend ? angelica$vertexBlender : null);
         }
+        angelica$blending = blend;
     }
 
     @Surround.Finally("blendBlock")
     private void angelica$endBlendBlock(@Surround.Carry("tessellator") BiomeBlendTessellator tessellator, @Surround.Carry("previous") BiomeVertexBlender previous,
-                                        @Surround.Carry boolean blend) {
+                                        @Surround.Carry("blend") boolean blend, @Surround.Carry("wasBlending") boolean wasBlending) {
+        angelica$blending = wasBlending;
         if (tessellator == null) return;
         tessellator.angelica$setBiomeBlender(previous);
         if (blend) angelica$vertexBlender.clear();
@@ -66,13 +71,14 @@ public abstract class MixinRenderBlocks {
     @Surround(method = {"renderStandardBlock", "renderBlockLiquid"}, id = "deferTint",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/block/Block;colorMultiplier(Lnet/minecraft/world/IBlockAccess;III)I"))
     private void angelica$deferTintEnter() {
-        @Surround.Skip
-        final boolean defer = ((BiomeBlendTessellator) TessellatorManager.get()).angelica$getBiomeBlender() == angelica$vertexBlender;
+        @Surround.Carry
+        final boolean armed = angelica$blending;
+        if (armed) angelica$vertexBlender.arm();
     }
 
-    @Surround.Skipped("deferTint")
-    private int angelica$deferTint() {
-        return angelica$vertexBlender.deferBlockTint();
+    @Surround.Finally("deferTint")
+    private void angelica$deferTintExit(@Surround.Carry boolean armed) {
+        if (armed) angelica$vertexBlender.disarm();
     }
 
     @Surround(method = {"renderStandardBlockWithAmbientOcclusion", "renderStandardBlockWithAmbientOcclusionPartial", "renderStandardBlockWithColorMultiplier"}, id = "faceYNeg",

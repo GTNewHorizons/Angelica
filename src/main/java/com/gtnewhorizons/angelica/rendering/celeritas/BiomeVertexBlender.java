@@ -71,9 +71,18 @@ public final class BiomeVertexBlender {
         return blender != null && blender.isActive();
     }
 
-    public int deferBlockTint() {
+    public void arm() {
+        cache.armedBlender = this;
+    }
+
+    public void disarm() {
+        cache.armedBlender = null;
+    }
+
+    private boolean tryDefer(SmoothBiomeColorCache.ColorType type, int x, int y, int z) {
+        if (this.type != type || blockX != x || blockY != y || blockZ != z) return false;
         replacedBlockTint = true;
-        return 0xFFFFFF;
+        return true;
     }
 
     public boolean beginFace(RenderBlocks renderer, int face, double x, double y, double z, IIcon icon) {
@@ -129,7 +138,11 @@ public final class BiomeVertexBlender {
 
     public static long smoothColor(IBlockAccess access, SmoothBiomeColorCache.ColorType type, int x, int y, int z) {
         final SmoothBiomeColorCache cache = SmoothBiomeColorCache.getActiveCache();
-        if (cache != null) return cache.getColor(type, x, y, z) & 0xFFFFFFFFL;
+        if (cache != null) {
+            final BiomeVertexBlender armed = cache.armedBlender;
+            if (armed != null && armed.tryDefer(type, x, y, z)) return 0xFFFFFFL;
+            return cache.getColor(type, x, y, z) & 0xFFFFFFFFL;
+        }
         if (access instanceof WorldClientExtension ext) return ext.celeritas$getSmoothBiomeColorCache().getColor(type, x, y, z) & 0xFFFFFFFFL;
         return -1L;
     }
