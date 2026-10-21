@@ -331,19 +331,9 @@ public final class ResourceManager {
             fboAttachedGlIds.remove(glId);
             for (FboState fbo : fboStates.values()) {
                 for (int i = 0; i < ContextState.MAX_COLOR_ATTACHMENTS; i++) {
-                    if (fbo.colorGlIds[i] == glId) {
-                        fbo.colorTextures[i] = 0;
-                        fbo.colorGlIds[i] = 0;
-                        fbo.colorFormats[i] = 0;
-                        fbo.targetsDirty = true;
-                    }
+                    if (fbo.colorGlIds[i] == glId) fbo.detachColor(i);
                 }
-                if (fbo.depthGlId == glId) {
-                    fbo.depthTexture = 0;
-                    fbo.depthGlId = 0;
-                    fbo.depthFormat = 0;
-                    fbo.targetsDirty = true;
-                }
+                if (fbo.depthGlId == glId) fbo.detachDepth();
             }
             texSamplerStates.remove(glId);
         } finally {
@@ -514,6 +504,7 @@ public final class ResourceManager {
                     if (fbo.colorGlIds[i] == glId) {
                         fbo.colorTextures[i] = newHandle;
                         fbo.targetsDirty = true;
+                        fbo.cachedFormatsDirty = true;
                         if (meta != null) {
                             fbo.colorFormats[i] = meta.sdlFormat();
                             if (i == 0) {
