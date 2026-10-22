@@ -4660,9 +4660,7 @@ public class SDLGPURenderBackend extends RenderBackend {
 
     @Override
     public void renderbufferStorage(int target, int internalformat, int width, int height) {
-        if (boundRenderbufferId == 0) return;
-        resourceManager.deleteTexture(boundRenderbufferId);
-        resourceManager.createTexture(boundRenderbufferId, GL11.GL_TEXTURE_2D, internalformat, width, height, 1, 1);
+        texStorageImpl(s(), boundRenderbufferId, GL11.GL_TEXTURE_2D, internalformat, width, height, 1, 1);
     }
 
     private boolean warnedMSAARenderbuffer = false;
