@@ -286,9 +286,9 @@ public class AngelicaConfig {
     @Config.RangeInt(min = 256, max = 1024)
     public static int itemRendererCacheSize;
 
-    @Config.Comment("Render distance for the spinning mob inside mod spawners")
+    @Config.Comment("Render distance for the spinning mob inside mob spawners. Set to 0 to disable rendering.")
     @Config.DefaultDouble(16D)
-    @Config.RangeDouble(min = 16D, max = 64D)
+    @Config.RangeDouble(min = 0D, max = 64D)
     public static double mobSpawnerRenderDistance;
 
     @Config.Comment("Allows unicode languages to use an odd gui scale")

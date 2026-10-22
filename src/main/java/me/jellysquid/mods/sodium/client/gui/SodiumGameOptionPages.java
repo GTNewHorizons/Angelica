@@ -643,7 +643,7 @@ public class SodiumGameOptionPages {
                 .add(OptionImpl.createBuilder(int.class, angelicaOpts)
                         .setName(I18n.format("options.angelica.mobSpawnerRenderDistance"))
                         .setTooltip(I18n.format("options.angelica.mobSpawnerRenderDistance.tooltip"))
-                        .setControl(option -> new SliderControl(option, 16, 64, 1, ControlValueFormatter.number()))
+                        .setControl(option -> new SliderControl(option, 0, 64, 1, ControlValueFormatter.number()))
                         .setBinding((options, value) -> AngelicaConfig.mobSpawnerRenderDistance = value, options -> (int) AngelicaConfig.mobSpawnerRenderDistance)
                         .setImpact(OptionImpact.MEDIUM)
                         .build())
