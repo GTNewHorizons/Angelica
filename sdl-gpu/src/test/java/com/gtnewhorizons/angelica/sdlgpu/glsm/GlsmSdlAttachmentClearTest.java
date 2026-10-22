@@ -455,6 +455,27 @@ class GlsmSdlAttachmentClearTest {
         GlsmSdlHeadlessRig.bindTarget();
     }
 
+    @Test
+    void clearReachesARenderbufferRespecifiedWhileAttached() {
+        final int rb = GLStateManager.glGenRenderbuffers();
+        GLStateManager.glBindRenderbuffer(GL30.GL_RENDERBUFFER, rb);
+        GLStateManager.glRenderbufferStorage(GL30.GL_RENDERBUFFER, GL11.GL_RGBA8, SIZE / 4, SIZE / 4);
+        final int fbo = GLStateManager.glGenFramebuffers();
+        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
+        GLStateManager.glFramebufferRenderbuffer(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL30.GL_RENDERBUFFER, rb);
+
+        GLStateManager.glRenderbufferStorage(GL30.GL_RENDERBUFFER, GL11.GL_RGBA8, SIZE, SIZE);
+        GLStateManager.glViewport(0, 0, SIZE, SIZE);
+        GLStateManager.glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
+
+        GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTarget(), RED, "respecified renderbuffer must stay attached");
+
+        GLStateManager.glDeleteFramebuffers(fbo);
+        GLStateManager.glDeleteRenderbuffers(rb);
+        GlsmSdlHeadlessRig.bindTarget();
+    }
+
     private static int createColorTexture() {
         return createColorTexture(GL11.GL_RGBA8, GL11.GL_RGBA);
     }

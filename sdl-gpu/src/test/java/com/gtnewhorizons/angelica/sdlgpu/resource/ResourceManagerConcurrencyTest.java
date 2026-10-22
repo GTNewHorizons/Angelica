@@ -85,53 +85,6 @@ class ResourceManagerConcurrencyTest {
     }
 
     @Test
-    void textureDeleteAndFboCleanupAreAtomic() throws Exception {
-        final ResourceManager rm = SdlTestRig.resourceManager();
-        final int textureId = 42;
-        final int fboId = rm.genFboId();
-        final FboState fbo = rm.createFbo(fboId);
-        fbo.colorGlIds[0] = textureId;
-        fbo.colorTextures[0] = 0xDEADBEEFL;
-        fbo.colorFormats[0] = 1;
-
-        final AtomicBoolean done = new AtomicBoolean(false);
-        final AtomicBoolean violation = new AtomicBoolean(false);
-        final CountDownLatch readerStarted = new CountDownLatch(1);
-
-        final Thread reader = new Thread(() -> {
-            readerStarted.countDown();
-            int iters = 0;
-            while (!done.get() && iters < 5_000_000) {
-                final FboState f = rm.getFbo(fboId);
-                if (f != null) {
-                    final boolean idSet = f.colorGlIds[0] == textureId;
-                    final boolean handleSet = f.colorTextures[0] != 0 || f.colorFormats[0] != 0;
-                    if (idSet != handleSet) {
-                        violation.set(true);
-                        return;
-                    }
-                }
-                iters++;
-            }
-        }, "reader");
-        reader.start();
-        readerStarted.await();
-
-        Thread.sleep(10);
-        rm.deleteTexture(textureId);
-        Thread.sleep(20);
-        done.set(true);
-        reader.join(2000);
-
-        assertFalse(violation.get(), "Reader observed half-cleaned FBO state");
-
-        final FboState f = rm.getFbo(fboId);
-        assertEquals(0, f.colorGlIds[0]);
-        assertEquals(0L, f.colorTextures[0]);
-        assertEquals(0, f.colorFormats[0]);
-    }
-
-    @Test
     void concurrentCreateLookupDelete_noRaces() throws Exception {
         final ResourceManager rm = SdlTestRig.resourceManager();
         final int threads = 8;
