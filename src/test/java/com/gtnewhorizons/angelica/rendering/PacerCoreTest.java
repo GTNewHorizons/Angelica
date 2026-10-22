@@ -28,15 +28,15 @@ class PacerCoreTest {
         final PacerCore core;
         final List<Long> presents = new ArrayList<>();
 
-        Rig(long refreshPeriodNanos, boolean tearFree, int capHz) {
-            this(refreshPeriodNanos, tearFree, tearFree, capHz);
+        Rig(long refreshPeriodNanos, boolean fifo, int capHz) {
+            this(refreshPeriodNanos, fifo, fifo, capHz);
         }
 
-        Rig(long refreshPeriodNanos, boolean tearFree, boolean vsyncOn, int capHz) {
+        Rig(long refreshPeriodNanos, boolean fifo, boolean vsyncOn, int capHz) {
             final PacerSleeper sleeper = new PacerSleeper(time.clock(), time.parker(), false);
             core = new PacerCore(time.clock(), sleeper);
             core.setRefreshPeriodNanos(refreshPeriodNanos);
-            core.setTearFree(tearFree);
+            core.setFifo(fifo);
             core.setVsyncOn(vsyncOn);
             core.setCap(capHz);
         }
@@ -100,22 +100,22 @@ class PacerCoreTest {
         return Stream.of(
             Arguments.of("a cap at the refresh rate collapses onto the refresh period", 60, P5994, true, P5994),
             Arguments.of("a cap near the refresh rate collapses onto the refresh period", 58, P60, true, P60),
-            Arguments.of("no cap uses the refresh period when tear free", 0, P60, true, P60),
+            Arguments.of("no cap uses the refresh period under fifo", 0, P60, true, P60),
             Arguments.of("a cap above the refresh rate collapses onto the refresh period", 240, P60, true, P60),
             Arguments.of("a cap far from every multiple keeps its literal period", 45, P60, true, 1_000_000_000L / 45),
             Arguments.of("a cap far from every multiple keeps its literal period", 100, P144, true, 1_000_000_000L / 100),
             Arguments.of("a cap near a vblank multiple snaps to that multiple", 30, P60, true, 2 * P60),
             Arguments.of("a cap near a vblank multiple snaps to that multiple", 50, P144, true, 3 * P144),
-            Arguments.of("a tearing mode ignores the refresh period", 100, P60, false, 10 * MS),
-            Arguments.of("a tearing mode with no cap is unpaced", 0, P60, false, 0L),
+            Arguments.of("a non-fifo mode ignores the refresh period", 100, P60, false, 10 * MS),
+            Arguments.of("a non-fifo mode with no cap is unpaced", 0, P60, false, 0L),
             Arguments.of("a zero refresh period with no cap is unpaced", 0, 0L, true, 0L),
             Arguments.of("a zero refresh period keeps the literal cap", 100, 0L, true, 10 * MS));
     }
 
     @ParameterizedTest(name = "{0}: cadencePeriodNanos({1}, {2}, {3}) -> {4}")
     @MethodSource("cadencePeriods")
-    void cadencePeriodNanos(String name, int capHz, long refreshPeriodNanos, boolean tearFree, long expected) {
-        assertEquals(expected, PacerCore.cadencePeriodNanos(capHz, refreshPeriodNanos, tearFree));
+    void cadencePeriodNanos(String name, int capHz, long refreshPeriodNanos, boolean fifo, long expected) {
+        assertEquals(expected, PacerCore.cadencePeriodNanos(capHz, refreshPeriodNanos, fifo));
     }
 
     @Test
@@ -390,15 +390,23 @@ class PacerCoreTest {
     }
 
     @Test
-    void mailboxIsNeverProbedAndNeverLocks() {
-        final Rig rig = new Rig(P60, true, false, 0);
+    void mailboxIsNeverProbedNeverLocksAndIsUncapped() {
+        final Rig rig = new Rig(P60, false, false, 0);
         for (int i = 0; i < 40; i++) {
             final long end = 20 * MS + i * P60;
             rig.feed(end, 5 * MS, end);
             assertFalse(rig.core.probing());
         }
         assertFalse(rig.core.locked());
-        assertEquals(P60, cadenceNanos(rig.core));
+        assertFalse(rig.core.paced(), "mailbox must render past the refresh rate");
+        assertEquals(0L, cadenceNanos(rig.core));
+    }
+
+    @Test
+    void aMailboxCapIsLiteralRatherThanSnappedToTheRefreshRate() {
+        final Rig rig = new Rig(P60, false, false, 240);
+        rig.frame(MS);
+        assertEquals(1_000_000_000L / 240, cadenceNanos(rig.core));
     }
 
     @Test

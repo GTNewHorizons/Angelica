@@ -192,7 +192,7 @@ class PacerCoreSimTest {
     private static final class Sim {
         long refreshPeriod = P60;
         long displayPeriod;
-        boolean tearFree = true;
+        boolean fifo = true;
         boolean vsyncOn = true;
         int cap;
         Mode mode = Mode.FIFO;
@@ -265,7 +265,7 @@ class PacerCoreSimTest {
         final PacerSleeper sleeper = new PacerSleeper(clock.clock(), parker, false);
         final PacerCore core = new PacerCore(clock.clock(), sleeper);
         core.setRefreshPeriodNanos(sim.refreshPeriod);
-        core.setTearFree(sim.tearFree);
+        core.setFifo(sim.fifo);
         core.setVsyncOn(sim.vsyncOn);
         core.setCap(sim.cap);
 
@@ -379,7 +379,7 @@ class PacerCoreSimTest {
 
     private static Sim tearingSim(String name, int cap) {
         final Sim sim = new Sim().named(name);
-        sim.tearFree = false;
+        sim.fifo = false;
         sim.vsyncOn = false;
         sim.mode = Mode.IMMEDIATE;
         sim.gate = Gate.NONE;
@@ -504,18 +504,21 @@ class PacerCoreSimTest {
     }
 
     @Test
-    void mailboxIsPacedToTheRefreshRateInsteadOfBeatingAgainstIt() {
+    void mailboxRendersPastTheRefreshRateAndShowsTheNewestFrame() {
         final Sim sim = new Sim().named("mailbox144");
         sim.refreshPeriod = P144;
         sim.mode = Mode.MAILBOX;
         sim.gate = Gate.SWAP;
+        sim.fifo = false;
         sim.vsyncOn = false;
         sim.work = 3 * MS;
         sim.gpuTail = MS;
         final Result r = run(sim);
 
-        assertTrue(r.dropped <= 1, r + " must not drop presents it paid to render");
-        assertTrue(r.intervalSd < 200 * US, r.toString());
+        assertEquals(0L, r.cadence, r + " mailbox must not be capped");
+        assertTrue(r.meanInterval < P144 * 3 / 4, r + " must render past the refresh rate");
+        assertEquals(0, r.repeats, r + " must have a fresh frame for every vblank");
+        assertTrue(r.dropped > 0, r + " surplus frames are replaced in the mailbox");
     }
 
     @Test
