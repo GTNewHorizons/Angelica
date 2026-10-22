@@ -1557,8 +1557,8 @@ public class SDLGPURenderBackend extends RenderBackend {
         return isProxyTarget(target) ? 0 : st.boundTextures[st.activeTextureUnit];
     }
 
-    private int requestedMipLevels(int glId) {
-        return Math.max(1, resourceManager.getOrCreateTexSamplerState(glId).maxLevel + 1);
+    private int requestedMipLevels(int glId, int width, int height) {
+        return Math.max(1, Math.min(resourceManager.getOrCreateTexSamplerState(glId).maxLevel + 1, PixelOps.defaultMipLevels(width, height)));
     }
 
     private int fullMipLevels(int glId, int width, int height) {
@@ -1576,7 +1576,7 @@ public class SDLGPURenderBackend extends RenderBackend {
     }
 
     private void ensureLevel0Storage(ContextState st, int glId, int target, int internalFormat, int width, int height, int depth, int format, boolean mipmapped) {
-        final int numLevels = mipmapped ? requestedMipLevels(glId) : 1;
+        final int numLevels = mipmapped ? requestedMipLevels(glId, width, height) : 1;
         final boolean bgraSwizzle = format == GL12.GL_BGRA && (internalFormat == GL11.GL_RGBA || internalFormat == GL11.GL_RGBA8);
         final int targetSdlFormat = bgraSwizzle
             ? SDLGPU.SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM
@@ -1592,6 +1592,15 @@ public class SDLGPURenderBackend extends RenderBackend {
             resourceManager.createTexture(glId, target, internalFormat, width, height, depth, numLevels);
         }
         resourceManager.refreshTextureReferences(glId);
+    }
+
+    private boolean dropStorageIfEmpty(ContextState st, int glId, int level, int width, int height, int depth) {
+        if (width > 0 && height > 0 && depth > 0) return false;
+        if (level == 0) {
+            textureOps.releaseTextureForRealloc(st, glId);
+            resourceManager.refreshTextureReferences(glId);
+        }
+        return true;
     }
 
     private static boolean canReuseTexture(ResourceManager.TextureMeta m, long handle, int target, int glFormat, int sdlFormat, int w, int h, int d, int levels) {
@@ -1613,7 +1622,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             return;
         }
         final int glId = st.boundTextures[st.activeTextureUnit];
-        if (glId == 0) return;
+        if (glId == 0 || dropStorageIfEmpty(st, glId, level, width, height, 1)) return;
 
         if (level == 0) {
             ensureLevel0Storage(st, glId, target, internalFormat, width, height, 1, format, true);
@@ -1639,7 +1648,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             return;
         }
         final int glId = st.boundTextures[st.activeTextureUnit];
-        if (glId == 0) return;
+        if (glId == 0 || dropStorageIfEmpty(st, glId, level, width, height, depth)) return;
 
         if (level == 0) {
             ensureLevel0Storage(st, glId, target, internalFormat, width, height, depth, GL11.GL_NONE, false);
@@ -1669,7 +1678,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             return;
         }
         final int glId = st.boundTextures[st.activeTextureUnit];
-        if (glId == 0) return;
+        if (glId == 0 || dropStorageIfEmpty(st, glId, level, width, 1, 1)) return;
 
         if (level == 0) {
             ensureLevel0Storage(st, glId, target, internalFormat, width, 1, 1, GL11.GL_NONE, false);
@@ -1685,7 +1694,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             return;
         }
         final int glId = st.boundTextures[st.activeTextureUnit];
-        if (glId == 0) return;
+        if (glId == 0 || dropStorageIfEmpty(st, glId, level, width, height, 1)) return;
 
         if (level == 0) {
             ensureLevel0Storage(st, glId, target, internalFormat, width, height, 1, format, true);
@@ -1768,7 +1777,7 @@ public class SDLGPURenderBackend extends RenderBackend {
     @Override public void copyTexImage2D(int target, int level, int internalFormat, int x, int y, int width, int height, int border) {
         final ContextState cs = s();
         final int destGlId = boundTextureFor(cs, target);
-        if (destGlId == 0) return;
+        if (destGlId == 0 || dropStorageIfEmpty(cs, destGlId, level, width, height, 1)) return;
 
         if (level == 0) {
             ensureLevel0Storage(cs, destGlId, target, internalFormat, width, height, 1, GL11.GL_NONE, true);
@@ -2021,6 +2030,18 @@ public class SDLGPURenderBackend extends RenderBackend {
                 cs.pipeline.markOutputDirty();
             }
         }
+    }
+
+    @Override public void framebufferTexture1D(int target, int attachment, int textarget, int texture, int level) {
+        framebufferTexture2D(target, attachment, GL11.GL_TEXTURE_2D, texture, level);
+    }
+
+    @Override public void framebufferTexture3D(int target, int attachment, int textarget, int texture, int level, int zoffset) {
+        throw new UnsupportedOperationException("SDL-GPU FboState attachments store only texture and mip level; no depth-plane (layer_or_depth_plane) slot for glFramebufferTexture3D");
+    }
+
+    @Override public void framebufferTextureLayer(int target, int attachment, int texture, int level, int layer) {
+        throw new UnsupportedOperationException("SDL-GPU FboState attachments store only texture and mip level; no array-layer slot for glFramebufferTextureLayer");
     }
 
     @Override public void framebufferTexture(int target, int attachment, int texture, int level) {
@@ -3832,6 +3853,7 @@ public class SDLGPURenderBackend extends RenderBackend {
     @Override public void textureImage2DEXT(int texture, int target, int level, int internalformat, int width, int height, int border, int format, int type, ByteBuffer pixels) {
         if (texture == 0) return;
         final ContextState st = s();
+        if (dropStorageIfEmpty(st, texture, level, width, height, 1)) return;
         if (level == 0) {
             ensureLevel0Storage(st, texture, target, internalformat, width, height, 1, format, true);
         } else if (!growForLevel(texture, level)) {
@@ -4068,7 +4090,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             case GL11.GL_TEXTURE_WRAP_S -> ss.wrapS;
             case GL11.GL_TEXTURE_WRAP_T -> ss.wrapT;
             case GL12.GL_TEXTURE_WRAP_R -> ss.wrapR;
-            case GL12.GL_TEXTURE_MAX_LEVEL -> ss.maxLevel;
+            case GL12.GL_TEXTURE_MAX_LEVEL -> ss.maxLevel < 0 ? 1000 : ss.maxLevel;
             default -> 0;
         };
     }

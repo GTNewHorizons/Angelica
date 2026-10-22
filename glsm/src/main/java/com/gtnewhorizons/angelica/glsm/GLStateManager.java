@@ -75,8 +75,14 @@ import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import com.gtnewhorizons.angelica.glsm.texture.TextureStaging;
+import com.gtnewhorizons.angelica.glsm.texture.TextureTargets;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2LongMap;
+import it.unimi.dsi.fastutil.ints.Int2LongMaps;
+import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongIterator;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.SneakyThrows;
@@ -106,6 +112,7 @@ import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL31;
 import org.lwjgl.opengl.GL32;
 import org.lwjgl.opengl.GL33;
+import org.lwjgl.opengl.GL40;
 import org.lwjgl.opengl.GL42;
 import org.lwjgl.opengl.GL43;
 import org.lwjgl.opengl.GLContext;
@@ -430,8 +437,24 @@ public class GLStateManager {
     }
     // Deferred texture deletion: names kept valid until glGenTextures recycles them.
     // Emulates Mesa/compat-profile behavior where delete-then-bind doesn't error.
-    private static final IntOpenHashSet deferredDeleteTextures = new IntOpenHashSet();
-    private static final IntOpenHashSet unshrinkableTextures = new IntOpenHashSet();
+    private static final Int2LongOpenHashMap deferredDeleteTextures = new Int2LongOpenHashMap();
+    private static final long DEFERRED_ABSENT = Long.MIN_VALUE;
+    private static final long DEFERRED_ATTACHED = -1;
+    private static final long DEFERRED_RELEASED = -2;
+    private static final int RELEASE_DELAY_FRAMES = 3;
+    private static long frameIndex;
+    private static long nextReleaseFrame = Long.MAX_VALUE;
+    private static final Int2IntOpenHashMap non2DTextureTargets = new Int2IntOpenHashMap();
+    private static final Int2IntOpenHashMap textureFramebufferRefs = new Int2IntOpenHashMap();
+    private static final FloatBuffer TRANSPARENT_BLACK = BufferUtils.createFloatBuffer(4);
+    private static final Tracy.ZoneId Z_TEX_DELETE = Tracy.zoneId("texDelete", Tracy.COLOR_FFP);
+    private static final Tracy.ZoneId Z_TEX_RELEASE_STORAGE = Tracy.zoneId("texReleaseStorage", Tracy.COLOR_FFP);
+    private static final Tracy.ZoneId Z_TEX_RESCUE_RESET = Tracy.zoneId("texRescueReset", Tracy.COLOR_FFP);
+    private static final Tracy.ZoneId Z_TEX_FLUSH_DELETES = Tracy.zoneId("texFlushDeletes", Tracy.COLOR_FFP);
+    static {
+        deferredDeleteTextures.defaultReturnValue(DEFERRED_ABSENT);
+        non2DTextureTargets.defaultReturnValue(GL11.GL_TEXTURE_2D);
+    }
     private static final IntOpenHashSet writeMappedBuffers = new IntOpenHashSet();
 
     @Getter private static Vendor VENDOR;
@@ -2376,18 +2399,28 @@ public class GLStateManager {
             }
         }
         // Rebinding a deferred-delete texture rescues it (Mesa/compat-profile behavior)
+        long rescued = DEFERRED_ABSENT;
+        boolean rejected = false;
         if (texture != 0) {
             final boolean locked = acquireDrawLock();
             try {
-                deferredDeleteTextures.remove(texture);
-                if (target != GL11.GL_TEXTURE_2D) unshrinkableTextures.add(texture);
+                final long state = deferredDeleteTextures.isEmpty() ? DEFERRED_ABSENT : deferredDeleteTextures.get(texture);
+                if (state == DEFERRED_ABSENT) {
+                    recordTarget(texture, target);
+                } else if (non2DTextureTargets.get(texture) == target) {
+                    rescued = deferredDeleteTextures.remove(texture);
+                } else {
+                    rejected = true;
+                }
             } finally {
                 if (locked) releaseDrawLock();
             }
         }
+        if (rejected) return;
 
         if (!isCachingEnabled()) {
             RENDER_BACKEND.bindTexture(target, texture);
+            if (rescued != DEFERRED_ABSENT) resetRescuedTexture(target, texture, rescued);
             return;
         }
 
@@ -2413,6 +2446,54 @@ public class GLStateManager {
                 glCtx.lockBindCallback = false;
             }
         }
+        if (rescued != DEFERRED_ABSENT) resetRescuedTexture(target, texture, rescued);
+    }
+
+    private static void bindTextureUnitByName(int unit, int texture) {
+        if (isDeferredDelete(texture)) return;
+        final CommandRecorder paused = DisplayListManager.pauseRecording();
+        final int saved = getActiveTextureUnit();
+        try {
+            glActiveTexture(GL13.GL_TEXTURE0 + unit);
+            if (texture == 0) {
+                // Read before the 2D unbind, which overwrites the unit's cached target.
+                final int target = ctx().textures.getTextureUnitBindings(unit).getTarget();
+                glBindTexture(GL11.GL_TEXTURE_2D, 0);
+                if (!is2D(target)) glBindTexture(target, 0);
+            } else {
+                glBindTexture(non2DTextureTargets.get(texture), texture);
+            }
+        } finally {
+            glActiveTexture(GL13.GL_TEXTURE0 + saved);
+            if (paused != null) DisplayListManager.resumeRecording(paused);
+        }
+    }
+
+    public static void glBindTextures(int first, int count, IntBuffer textures) {
+        if (first < 0 || !isValidTextureUnit(first + count - 1, GL13.GL_TEXTURE0 + first + count - 1, "glBindTextures")) return;
+        if (textures != null) requireRemaining(textures, count);
+        for (int i = 0; i < count; i++) bindTextureUnitByName(first + i, textures == null ? 0 : textures.get(textures.position() + i));
+    }
+
+    public static void glBindTextures(int first, IntBuffer textures) {
+        if (textures != null) glBindTextures(first, textures.remaining(), textures);
+    }
+
+    public static void glBindTextures(int first, int[] textures) {
+        if (textures != null) glBindTextures(first, textures.length, IntBuffer.wrap(textures));
+    }
+
+    public static void glBindTextureUnit(int unit, int texture) {
+        if (isValidTextureUnit(unit, GL13.GL_TEXTURE0 + unit, "glBindTextureUnit")) bindTextureUnitByName(unit, texture);
+    }
+
+    public static void glBindMultiTextureEXT(int texunit, int target, int texture) {
+        if (DisplayListManager.isRecording()) throw DisplayListManager.unsupportedInList("glBindMultiTextureEXT");
+        if (!isValidTextureUnit(texunit - GL13.GL_TEXTURE0, texunit, "glBindMultiTextureEXT")) return;
+        final int saved = getActiveTextureUnit();
+        glActiveTexture(texunit);
+        glBindTexture(target, texture);
+        glActiveTexture(GL13.GL_TEXTURE0 + saved);
     }
 
     private static int changeFormatIfDeprecated(int internalformat) {
@@ -2620,15 +2701,26 @@ public class GLStateManager {
     }
 
     public static void glDeleteTextures(int id) {
-        deferDeleteTexture(id);
-        onDeleteTexture(id);
+        deleteTexture(id);
     }
 
     public static void glDeleteTextures(IntBuffer ids) {
         for (int i = 0; i < ids.remaining(); i++) {
-            final int id = ids.get(ids.position() + i);
+            deleteTexture(ids.get(ids.position() + i));
+        }
+    }
+
+    public static void glDeleteTextures(int[] ids) {
+        for (int id : ids) deleteTexture(id);
+    }
+
+    private static void deleteTexture(int id) {
+        if (Tracy.ENABLED) Tracy.beginZone(Z_TEX_DELETE);
+        try {
             deferDeleteTexture(id);
             onDeleteTexture(id);
+        } finally {
+            if (Tracy.ENABLED) Tracy.endZone();
         }
     }
 
@@ -2637,17 +2729,12 @@ public class GLStateManager {
      * Why you might ask?  In compat profile if you bind a texture that doesn't exist, ie a deleted texture,
      * mesa will silently create it for you, in core this is an error.  Why would you be binding a deleted texture?
      * Damned if I know, but vanilla and mods do it... they create one, delete it, and then bind it....
-     *
-     * So... we shrink the texture to 1x1 to free GPU memory, unbind from all units, but keep the name valid.
      * */
     private static void deferDeleteTexture(int id) {
         final GLContextState glCtx = ctx();
         if (id == 0) return;
 
         final int savedUnit = glCtx.activeTextureUnit.getValue();
-        final TextureBindingStack savedUnitBindings = glCtx.textures.getTextureUnitBindings(savedUnit);
-        final int savedBinding = savedUnitBindings.getBinding();
-        final int savedTarget = savedUnitBindings.getTarget();
         boolean changedUnit = false;
 
         // Unbind from all units that have this texture
@@ -2670,48 +2757,245 @@ public class GLStateManager {
             }
         }
 
-        // Restore active unit, then shrink the texture via a temporary bind
         if (changedUnit) {
             RENDER_BACKEND.activeTexture(GL13.GL_TEXTURE0 + savedUnit);
         }
 
-        final boolean shrinkable;
+        final TextureBindingStack savedBindings = glCtx.textures.getTextureUnitBindings(savedUnit);
+        if (!is2D(savedBindings.getTarget()) && previous2D(savedBindings) == id) restoreUnitAfter2DBind(savedBindings, id, id);
+
         final boolean locked = acquireDrawLock();
         try {
-            shrinkable = !unshrinkableTextures.contains(id);
-            deferredDeleteTextures.add(id);
+            detachFromFramebuffer(glCtx, GL30.GL_DRAW_FRAMEBUFFER, glCtx.drawFramebuffer, id);
+            if (glCtx.readFramebuffer != glCtx.drawFramebuffer) detachFromFramebuffer(glCtx, GL30.GL_READ_FRAMEBUFFER, glCtx.readFramebuffer, id);
+            if (textureFramebufferRefs.get(id) > 0) deferredDeleteTextures.put(id, DEFERRED_ATTACHED);
+            else scheduleRelease(id);
         } finally {
             if (locked) releaseDrawLock();
         }
-        if (!shrinkable) return;
+    }
 
-        RENDER_BACKEND.bindTexture(GL11.GL_TEXTURE_2D, id);
-        RENDER_BACKEND.texParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 0);
+    private static void scheduleRelease(int id) {
+        deferredDeleteTextures.put(id, frameIndex);
+        nextReleaseFrame = Math.min(nextReleaseFrame, frameIndex + RELEASE_DELAY_FRAMES);
+    }
+
+    private static boolean isDeferredDelete(int texture) {
+        if (texture == 0 || deferredDeleteTextures.isEmpty()) return false;
+        final boolean locked = acquireDrawLock();
+        try {
+            return deferredDeleteTextures.containsKey(texture);
+        } finally {
+            if (locked) releaseDrawLock();
+        }
+    }
+
+    public static void onFrameEnd() {
+        frameIndex++;
+        if (!splashComplete || frameIndex < nextReleaseFrame) return;
+        nextReleaseFrame = Long.MAX_VALUE;
+        for (Int2LongMap.Entry entry : Int2LongMaps.fastIterable(deferredDeleteTextures)) {
+            final long since = entry.getLongValue();
+            if (since < 0) continue;
+            if (frameIndex - since < RELEASE_DELAY_FRAMES) {
+                nextReleaseFrame = Math.min(nextReleaseFrame, since + RELEASE_DELAY_FRAMES);
+                continue;
+            }
+            final int id = entry.getIntKey();
+            if (non2DTextureTargets.get(id) == GL11.GL_TEXTURE_2D) releaseStorage2D(id);
+            entry.setValue(DEFERRED_RELEASED);
+        }
+    }
+
+    public static int deferredTexturesAwaitingRelease() {
+        int count = 0;
+        final LongIterator it = deferredDeleteTextures.values().iterator();
+        while (it.hasNext()) {
+            if (it.nextLong() != DEFERRED_RELEASED) count++;
+        }
+        return count;
+    }
+
+    private static void releaseStorage2D(int id) {
+        if (Tracy.ENABLED) Tracy.beginZone(Z_TEX_RELEASE_STORAGE);
+        try {
+            final TextureBindingStack unit = ctx().textures.getTextureUnitBindings(getActiveTextureUnit());
+            final int previous2D = previous2D(unit);
+            RENDER_BACKEND.bindTexture(GL11.GL_TEXTURE_2D, id);
+            if (bindTook(GL11.GL_TEXTURE_2D, id)) releaseBoundStorage2D();
+            restoreUnitAfter2DBind(unit, id, previous2D);
+        } finally {
+            if (Tracy.ENABLED) Tracy.endZone();
+        }
+    }
+
+    private static void restoreUnitAfter2DBind(TextureBindingStack unit, int deleted, int previous2D) {
+        RENDER_BACKEND.bindTexture(GL11.GL_TEXTURE_2D, previous2D == deleted ? 0 : previous2D);
+        final int target = unit.getTarget();
+        if (is2D(target)) return;
+        RENDER_BACKEND.bindTexture(target, unit.getBinding() == deleted ? 0 : unit.getBinding());
+    }
+
+    private static boolean is2D(int target) {
+        return target == 0 || target == GL11.GL_TEXTURE_2D;
+    }
+
+    private static int previous2D(TextureBindingStack unit) {
+        return is2D(unit.getTarget()) ? unit.getBinding() : RENDER_BACKEND.getInteger(GL11.GL_TEXTURE_BINDING_2D);
+    }
+
+    private static void recordTarget(int texture, int target) {
+        if (target != GL11.GL_TEXTURE_2D) non2DTextureTargets.put(texture, target);
+    }
+
+    private static void releaseBoundStorage2D() {
+        if (RenderSystem.supportsTextureStorage() && RENDER_BACKEND.getTexParameteri(GL11.GL_TEXTURE_2D, GL42.GL_TEXTURE_IMMUTABLE_FORMAT) != 0) return;
+        final int size = Math.max(RENDER_BACKEND.getTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH), RENDER_BACKEND.getTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT));
+        final int levels = Math.max(1, 32 - Integer.numberOfLeadingZeros(size));
         suspendPixelUnpackBuffer();
-        RENDER_BACKEND.texImage2D(GL11.GL_TEXTURE_2D, 0, GL30.GL_R8, 1, 1, 0, GL11.GL_RED, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+        for (int level = 0; level < levels; level++) {
+            RENDER_BACKEND.texImage2D(GL11.GL_TEXTURE_2D, level, GL11.GL_RGBA8, 0, 0, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+        }
         restorePixelUnpackBuffer();
+    }
 
-        // Restore previous binding on active unit
-        final boolean savedIs2D = savedTarget == GL11.GL_TEXTURE_2D || savedTarget == 0;
-        RENDER_BACKEND.bindTexture(GL11.GL_TEXTURE_2D, savedBinding == id || !savedIs2D ? 0 : savedBinding);
+    private static boolean bindTook(int target, int texture) {
+        return RENDER_BACKEND.getInteger(TextureTargets.bindingQuery(target)) == texture;
+    }
+
+    private static void resetRescuedTexture(int target, int texture, long state) {
+        if (Tracy.ENABLED) Tracy.beginZone(Z_TEX_RESCUE_RESET);
+        try {
+            if (!bindTook(target, texture)) return;
+            if (target == GL11.GL_TEXTURE_2D && state >= 0) releaseBoundStorage2D();
+            if (target == GL31.GL_TEXTURE_BUFFER || target == GL32.GL_TEXTURE_2D_MULTISAMPLE || target == GL32.GL_TEXTURE_2D_MULTISAMPLE_ARRAY) return;
+            final boolean rectangle = target == GL31.GL_TEXTURE_RECTANGLE;
+            final int wrap = rectangle ? GL12.GL_CLAMP_TO_EDGE : GL11.GL_REPEAT;
+            RENDER_BACKEND.texParameteri(target, GL11.GL_TEXTURE_MIN_FILTER, rectangle ? GL11.GL_LINEAR : GL11.GL_NEAREST_MIPMAP_LINEAR);
+            RENDER_BACKEND.texParameteri(target, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+            RENDER_BACKEND.texParameteri(target, GL11.GL_TEXTURE_WRAP_S, wrap);
+            RENDER_BACKEND.texParameteri(target, GL11.GL_TEXTURE_WRAP_T, wrap);
+            RENDER_BACKEND.texParameteri(target, GL12.GL_TEXTURE_WRAP_R, wrap);
+            RENDER_BACKEND.texParameteri(target, GL12.GL_TEXTURE_BASE_LEVEL, 0);
+            if (!rectangle) RENDER_BACKEND.texParameteri(target, GL12.GL_TEXTURE_MAX_LEVEL, 1000);
+            RENDER_BACKEND.texParameterf(target, GL12.GL_TEXTURE_MIN_LOD, -1000.0f);
+            RENDER_BACKEND.texParameterf(target, GL12.GL_TEXTURE_MAX_LOD, 1000.0f);
+            RENDER_BACKEND.texParameteri(target, GL14.GL_TEXTURE_COMPARE_MODE, GL11.GL_NONE);
+            RENDER_BACKEND.texParameteri(target, GL14.GL_TEXTURE_COMPARE_FUNC, GL11.GL_LEQUAL);
+            RENDER_BACKEND.texParameteri(target, GL33.GL_TEXTURE_SWIZZLE_R, GL11.GL_RED);
+            RENDER_BACKEND.texParameteri(target, GL33.GL_TEXTURE_SWIZZLE_G, GL11.GL_GREEN);
+            RENDER_BACKEND.texParameteri(target, GL33.GL_TEXTURE_SWIZZLE_B, GL11.GL_BLUE);
+            RENDER_BACKEND.texParameteri(target, GL33.GL_TEXTURE_SWIZZLE_A, GL11.GL_ALPHA);
+            if (!RenderSystem.isGLES()) {
+                RENDER_BACKEND.texParameterf(target, GL14.GL_TEXTURE_LOD_BIAS, 0.0f);
+                RENDER_BACKEND.texParameterfv(target, GL11.GL_TEXTURE_BORDER_COLOR, TRANSPARENT_BLACK);
+            }
+            if (RenderSystem.supportsStencilTexturing()) RENDER_BACKEND.texParameteri(target, GL43.GL_DEPTH_STENCIL_TEXTURE_MODE, GL11.GL_DEPTH_COMPONENT);
+            if (RENDER_BACKEND.isAnisotropicSupported()) RENDER_BACKEND.texParameterf(target, EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT, 1.0f);
+        } finally {
+            if (Tracy.ENABLED) Tracy.endZone();
+        }
     }
 
     /** Flush deferred deletes so the driver can recycle names. */
     private static void flushDeferredTextureDeletes() {
         if (!splashComplete || deferredDeleteTextures.isEmpty()) return;
-        final GLContextState primary = primaryContext();
-        final GLContextState[] drawables = drawableContextStates;
-        final var it = deferredDeleteTextures.iterator();
-        while (it.hasNext()) {
-            final int id = it.nextInt();
-            RENDER_BACKEND.deleteTextures(id);
-            unshrinkableTextures.remove(id);
-            clearTextureBindings(primary, id);
-            for (int i = 0; i < drawables.length; i++) {
-                clearTextureBindings(drawables[i], id);
+        if (Tracy.ENABLED) Tracy.beginZone(Z_TEX_FLUSH_DELETES);
+        try {
+            final GLContextState primary = primaryContext();
+            final GLContextState[] drawables = drawableContextStates;
+            final var it = Int2LongMaps.fastIterator(deferredDeleteTextures);
+            while (it.hasNext()) {
+                final Int2LongMap.Entry entry = it.next();
+                if (entry.getLongValue() == DEFERRED_ATTACHED) continue;
+                final int id = entry.getIntKey();
+                it.remove();
+                RENDER_BACKEND.deleteTextures(id);
+                non2DTextureTargets.remove(id);
+                clearTextureBindings(primary, id);
+                for (int i = 0; i < drawables.length; i++) {
+                    clearTextureBindings(drawables[i], id);
+                }
             }
+        } finally {
+            if (Tracy.ENABLED) Tracy.endZone();
         }
-        deferredDeleteTextures.clear();
+    }
+
+    private static final int DEPTH_SLOT = 16;
+    private static final int STENCIL_SLOT = 17;
+    private static final int FRAMEBUFFER_SLOTS = 18;
+
+    private static int attachmentSlot(int attachment) {
+        return switch (attachment) {
+            case GL30.GL_DEPTH_ATTACHMENT -> DEPTH_SLOT;
+            case GL30.GL_STENCIL_ATTACHMENT -> STENCIL_SLOT;
+            default -> attachment >= GL30.GL_COLOR_ATTACHMENT0 && attachment <= GL30.GL_COLOR_ATTACHMENT15 ? attachment - GL30.GL_COLOR_ATTACHMENT0 : -1;
+        };
+    }
+
+    private static int slotAttachment(int slot) {
+        return switch (slot) {
+            case DEPTH_SLOT -> GL30.GL_DEPTH_ATTACHMENT;
+            case STENCIL_SLOT -> GL30.GL_STENCIL_ATTACHMENT;
+            default -> GL30.GL_COLOR_ATTACHMENT0 + slot;
+        };
+    }
+
+    private static boolean beginAttach(int target, int attachment, int texture) {
+        final GLContextState glCtx = ctx();
+        return beginAttach(glCtx, target == GL30.GL_READ_FRAMEBUFFER ? glCtx.readFramebuffer : glCtx.drawFramebuffer, attachment, texture);
+    }
+
+    private static boolean beginAttach(GLContextState glCtx, int framebuffer, int attachment, int texture) {
+        if (isDeferredDelete(texture)) return false;
+        TextureInfoCache.INSTANCE.onWrittenOutsideUploads(texture);
+        trackFramebufferAttachment(glCtx, framebuffer, attachment, texture);
+        return true;
+    }
+
+    private static void trackFramebufferAttachment(GLContextState glCtx, int framebuffer, int attachment, int texture) {
+        if (framebuffer == 0) return;
+        if (attachment == GL30.GL_DEPTH_STENCIL_ATTACHMENT) {
+            trackFramebufferAttachment(glCtx, framebuffer, GL30.GL_DEPTH_ATTACHMENT, texture);
+            trackFramebufferAttachment(glCtx, framebuffer, GL30.GL_STENCIL_ATTACHMENT, texture);
+            return;
+        }
+        final int slot = attachmentSlot(attachment);
+        if (slot < 0) return;
+        int[] slots = glCtx.framebufferTextures.get(framebuffer);
+        if (slots == null) {
+            if (texture == 0) return;
+            slots = new int[FRAMEBUFFER_SLOTS];
+            glCtx.framebufferTextures.put(framebuffer, slots);
+        }
+        setFramebufferSlot(slots, slot, texture);
+    }
+
+    private static void setFramebufferSlot(int[] slots, int slot, int texture) {
+        final int previous = slots[slot];
+        if (previous == texture) return;
+        slots[slot] = texture;
+        final boolean locked = acquireDrawLock();
+        try {
+            if (texture != 0) textureFramebufferRefs.addTo(texture, 1);
+            if (previous != 0 && textureFramebufferRefs.addTo(previous, -1) == 1) {
+                textureFramebufferRefs.remove(previous);
+                if (deferredDeleteTextures.get(previous) == DEFERRED_ATTACHED) scheduleRelease(previous);
+            }
+        } finally {
+            if (locked) releaseDrawLock();
+        }
+    }
+
+    private static void detachFromFramebuffer(GLContextState glCtx, int target, int framebuffer, int texture) {
+        final int[] slots = glCtx.framebufferTextures.get(framebuffer);
+        if (slots == null) return;
+        for (int slot = 0; slot < slots.length; slot++) {
+            if (slots[slot] != texture) continue;
+            RENDER_BACKEND.framebufferTexture2D(target, slotAttachment(slot), GL11.GL_TEXTURE_2D, 0, 0);
+            setFramebufferSlot(slots, slot, 0);
+        }
     }
 
     public static int glGenTextures() {
@@ -2724,6 +3008,32 @@ public class GLStateManager {
         requireContext("glGenTextures");
         flushDeferredTextureDeletes();
         RENDER_BACKEND.genTextures(textures);
+    }
+
+    public static void glGenTextures(int[] textures) {
+        requireContext("glGenTextures");
+        flushDeferredTextureDeletes();
+        for (int i = 0; i < textures.length; i++) textures[i] = RENDER_BACKEND.genTextures();
+    }
+
+    public static int glCreateTextures(int target) {
+        requireContext("glCreateTextures");
+        final int id = RENDER_BACKEND.createTextures(target);
+        final boolean locked = acquireDrawLock();
+        try {
+            recordTarget(id, target);
+        } finally {
+            if (locked) releaseDrawLock();
+        }
+        return id;
+    }
+
+    public static void glCreateTextures(int target, IntBuffer textures) {
+        for (int i = textures.position(); i < textures.limit(); i++) textures.put(i, glCreateTextures(target));
+    }
+
+    public static void glCreateTextures(int target, int[] textures) {
+        for (int i = 0; i < textures.length; i++) textures[i] = glCreateTextures(target);
     }
 
     public static void enableTexture() {
@@ -5891,14 +6201,6 @@ public class GLStateManager {
     }
     public static void glTexStorage2D(int target, int levels, int internalFormat, int width, int height) {
         RENDER_BACKEND.texStorage2D(target, levels, internalFormat, width, height);
-        if (target == GL11.GL_TEXTURE_2D) {
-            final boolean locked = acquireDrawLock();
-            try {
-                unshrinkableTextures.add(getBoundTextureForServerState());
-            } finally {
-                if (locked) releaseDrawLock();
-            }
-        }
         TextureInfoCache.INSTANCE.onTexStorage2D(target, internalFormat, width, height);
     }
     public static void glClearTexImage(int texture, int level, int format, int type, ByteBuffer data) {
@@ -5950,11 +6252,13 @@ public class GLStateManager {
             for (int i = 0; i < count; i++) glBindSampler(first + i, 0);
             return;
         }
-        if (samplers.remaining() < count) {
-            throw new IllegalArgumentException("Number of remaining buffer elements is " + samplers.remaining() + ", must be at least " + count);
-        }
+        requireRemaining(samplers, count);
         final int base = samplers.position();
         for (int i = 0; i < count; i++) glBindSampler(first + i, samplers.get(base + i));
+    }
+
+    private static void requireRemaining(IntBuffer buffer, int count) {
+        if (buffer.remaining() < count) throw new IllegalArgumentException("Number of remaining buffer elements is " + buffer.remaining() + ", must be at least " + count);
     }
 
     public static void glBindSamplers(int first, IntBuffer samplers) {
@@ -7739,7 +8043,7 @@ public class GLStateManager {
     public static void glClearBufferSubData(int target, int internalFormat, long offset, long size, int format, int type, ByteBuffer data) { onBufferRespec(target); RENDER_BACKEND.clearBufferSubData(target, internalFormat, offset, size, format, type, data); }
     public static void glClearBufferData(int target, int internalformat, int format, int type, ByteBuffer data) { onBufferRespec(target); RENDER_BACKEND.clearBufferData(target, internalformat, format, type, data); }
     public static boolean glIsBuffer(int buffer) { return RENDER_BACKEND.isBuffer(buffer); }
-    public static boolean glIsTexture(int texture) { return RENDER_BACKEND.isTexture(texture); }
+    public static boolean glIsTexture(int texture) { return !isDeferredDelete(texture) && RENDER_BACKEND.isTexture(texture); }
     public static boolean glIsFramebuffer(int framebuffer) { return RENDER_BACKEND.isFramebuffer(framebuffer); }
     public static boolean glIsRenderbuffer(int renderbuffer) { return RENDER_BACKEND.isRenderbuffer(renderbuffer); }
     public static boolean glIsSampler(int sampler) { return RENDER_BACKEND.isSampler(sampler); }
@@ -7872,7 +8176,19 @@ public class GLStateManager {
         final GLContextState glCtx = ctx();
         if (glCtx.drawFramebuffer == framebuffer) { glCtx.drawFramebuffer = 0; glCtx.drawFramebufferGeneration++; }
         if (glCtx.readFramebuffer == framebuffer) glCtx.readFramebuffer = 0;
+        final int[] slots = glCtx.framebufferTextures.remove(framebuffer);
+        if (slots != null) {
+            for (int slot = 0; slot < slots.length; slot++) setFramebufferSlot(slots, slot, 0);
+        }
         RENDER_BACKEND.deleteFramebuffers(framebuffer);
+    }
+
+    public static void glDeleteFramebuffers(IntBuffer framebuffers) {
+        for (int i = framebuffers.position(); i < framebuffers.limit(); i++) glDeleteFramebuffers(framebuffers.get(i));
+    }
+
+    public static void glDeleteFramebuffers(int[] framebuffers) {
+        for (int framebuffer : framebuffers) glDeleteFramebuffers(framebuffer);
     }
 
     public static int glGenFramebuffers() {
@@ -7889,16 +8205,91 @@ public class GLStateManager {
     }
 
     public static void glFramebufferTexture2D(int target, int attachment, int textarget, int texture, int level) {
-        TextureInfoCache.INSTANCE.onWrittenOutsideUploads(texture);
+        if (!beginAttach(target, attachment, texture)) return;
         RENDER_BACKEND.framebufferTexture2D(target, attachment, textarget, texture, level);
     }
 
+    public static void glFramebufferTexture1D(int target, int attachment, int textarget, int texture, int level) {
+        if (!beginAttach(target, attachment, texture)) return;
+        RENDER_BACKEND.framebufferTexture1D(target, attachment, textarget, texture, level);
+    }
+
+    public static void glFramebufferTexture3D(int target, int attachment, int textarget, int texture, int level, int zoffset) {
+        if (!beginAttach(target, attachment, texture)) return;
+        RENDER_BACKEND.framebufferTexture3D(target, attachment, textarget, texture, level, zoffset);
+    }
+
+    public static void glFramebufferTextureLayer(int target, int attachment, int texture, int level, int layer) {
+        if (!beginAttach(target, attachment, texture)) return;
+        RENDER_BACKEND.framebufferTextureLayer(target, attachment, texture, level, layer);
+    }
+
     public static void glFramebufferTexture(int target, int attachment, int texture, int level) {
-        TextureInfoCache.INSTANCE.onWrittenOutsideUploads(texture);
+        if (!beginAttach(target, attachment, texture)) return;
         RENDER_BACKEND.framebufferTexture(target, attachment, texture, level);
     }
 
+    public static void glFramebufferTextureFace(int target, int attachment, int texture, int level, int face) {
+        glFramebufferTexture2D(target, attachment, face, texture, level);
+    }
+
+    public static void glNamedFramebufferTexture(int framebuffer, int attachment, int texture, int level) {
+        if (!beginAttach(ctx(), framebuffer, attachment, texture)) return;
+        RENDER_BACKEND.namedFramebufferTexture(framebuffer, attachment, texture, level);
+    }
+
+    private static int swapDrawFramebuffer(int framebuffer) {
+        final GLContextState glCtx = ctx();
+        final int previous = glCtx.drawFramebuffer;
+        glCtx.drawFramebuffer = framebuffer;
+        RENDER_BACKEND.bindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, framebuffer);
+        return previous;
+    }
+
+    public static void glNamedFramebufferTextureLayer(int framebuffer, int attachment, int texture, int level, int layer) {
+        final int previous = swapDrawFramebuffer(framebuffer);
+        glFramebufferTextureLayer(GL30.GL_DRAW_FRAMEBUFFER, attachment, texture, level, layer);
+        swapDrawFramebuffer(previous);
+    }
+
+    public static void glNamedFramebufferRenderbuffer(int framebuffer, int attachment, int renderbuffertarget, int renderbuffer) {
+        final int previous = swapDrawFramebuffer(framebuffer);
+        glFramebufferRenderbuffer(GL30.GL_DRAW_FRAMEBUFFER, attachment, renderbuffertarget, renderbuffer);
+        swapDrawFramebuffer(previous);
+    }
+
+    public static void glNamedFramebufferTexture1DEXT(int framebuffer, int attachment, int textarget, int texture, int level) {
+        final int previous = swapDrawFramebuffer(framebuffer);
+        glFramebufferTexture1D(GL30.GL_DRAW_FRAMEBUFFER, attachment, textarget, texture, level);
+        swapDrawFramebuffer(previous);
+    }
+
+    public static void glNamedFramebufferTexture2DEXT(int framebuffer, int attachment, int textarget, int texture, int level) {
+        final int previous = swapDrawFramebuffer(framebuffer);
+        glFramebufferTexture2D(GL30.GL_DRAW_FRAMEBUFFER, attachment, textarget, texture, level);
+        swapDrawFramebuffer(previous);
+    }
+
+    public static void glNamedFramebufferTexture3DEXT(int framebuffer, int attachment, int textarget, int texture, int level, int zoffset) {
+        final int previous = swapDrawFramebuffer(framebuffer);
+        glFramebufferTexture3D(GL30.GL_DRAW_FRAMEBUFFER, attachment, textarget, texture, level, zoffset);
+        swapDrawFramebuffer(previous);
+    }
+
+    public static void glNamedFramebufferTextureEXT(int framebuffer, int attachment, int texture, int level) {
+        final int previous = swapDrawFramebuffer(framebuffer);
+        glFramebufferTexture(GL30.GL_DRAW_FRAMEBUFFER, attachment, texture, level);
+        swapDrawFramebuffer(previous);
+    }
+
+    public static void glNamedFramebufferTextureFaceEXT(int framebuffer, int attachment, int texture, int level, int face) {
+        glNamedFramebufferTexture2DEXT(framebuffer, attachment, face, texture, level);
+    }
+
     public static void attachTextureForReading(int attachment, int texture) {
+        if (isDeferredDelete(texture)) return;
+        final GLContextState glCtx = ctx();
+        trackFramebufferAttachment(glCtx, glCtx.readFramebuffer, attachment, texture);
         RENDER_BACKEND.framebufferTexture2D(GL30.GL_READ_FRAMEBUFFER, attachment, GL11.GL_TEXTURE_2D, texture, 0);
     }
 
@@ -7910,7 +8301,10 @@ public class GLStateManager {
     public static void glBindRenderbuffer(int target, int renderbuffer) { RENDER_BACKEND.bindRenderbuffer(target, renderbuffer); }
     public static void glRenderbufferStorage(int target, int internalformat, int width, int height) { RENDER_BACKEND.renderbufferStorage(target, internalformat, width, height); }
     public static void glRenderbufferStorageMultisample(int target, int samples, int internalformat, int width, int height) { RENDER_BACKEND.renderbufferStorageMultisample(target, samples, internalformat, width, height); }
-    public static void glFramebufferRenderbuffer(int target, int attachment, int renderbuffertarget, int renderbuffer) { RENDER_BACKEND.framebufferRenderbuffer(target, attachment, renderbuffertarget, renderbuffer); }
+    public static void glFramebufferRenderbuffer(int target, int attachment, int renderbuffertarget, int renderbuffer) {
+        beginAttach(target, attachment, 0);
+        RENDER_BACKEND.framebufferRenderbuffer(target, attachment, renderbuffertarget, renderbuffer);
+    }
 
     public static void glGenQueries(IntBuffer ids) {
         requireContext("glGenQueries");
@@ -8713,6 +9107,7 @@ public class GLStateManager {
     }
 
     public static void glBindImageTexture(int unit, int texture, int level, boolean layered, int layer, int access, int format) {
+        if (isDeferredDelete(texture)) return;
         final GLContextState glCtx = ctx();
         final ImageUnitBinding binding = glCtx.imageUnits.get(unit);
         if (binding == null) {
@@ -8723,6 +9118,50 @@ public class GLStateManager {
         }
         if (access != GL15.GL_READ_ONLY) TextureInfoCache.INSTANCE.onWrittenOutsideUploads(texture);
         RENDER_BACKEND.bindImageTexture(unit, texture, level, layered, layer, access, format);
+    }
+
+    public static void glBindImageTextures(int first, int count, IntBuffer textures) {
+        if (first < 0 || first + count > ctx().imageUnits.size()) return;
+        if (textures == null) {
+            for (int i = 0; i < count; i++) bindImageUnitByName(first + i, 0);
+            return;
+        }
+        requireRemaining(textures, count);
+        for (int i = 0; i < count; i++) bindImageUnitByName(first + i, textures.get(textures.position() + i));
+    }
+
+    public static void glBindImageTextures(int first, IntBuffer textures) {
+        if (textures != null) glBindImageTextures(first, textures.remaining(), textures);
+    }
+
+    public static void glBindImageTextures(int first, int[] textures) {
+        if (textures != null) glBindImageTextures(first, textures.length, IntBuffer.wrap(textures));
+    }
+
+    private static void bindImageUnitByName(int unit, int texture) {
+        if (texture == 0) {
+            glBindImageTexture(unit, 0, 0, false, 0, GL15.GL_READ_ONLY, GL30.GL_R8);
+            return;
+        }
+        if (isDeferredDelete(texture)) return;
+        final int format = TextureInfoCache.INSTANCE.getInfo(texture).getInternalFormat();
+        if (!isImageFormat(format)) return;
+        final boolean layered = switch (non2DTextureTargets.get(texture)) {
+            case GL30.GL_TEXTURE_1D_ARRAY, GL30.GL_TEXTURE_2D_ARRAY, GL12.GL_TEXTURE_3D, GL13.GL_TEXTURE_CUBE_MAP, GL40.GL_TEXTURE_CUBE_MAP_ARRAY, GL32.GL_TEXTURE_2D_MULTISAMPLE_ARRAY -> true;
+            default -> false;
+        };
+        glBindImageTexture(unit, texture, 0, layered, 0, GL15.GL_READ_WRITE, format);
+    }
+
+    private static boolean isImageFormat(int format) {
+        return switch (format) {
+            case GL30.GL_RGBA32F, GL30.GL_RGBA16F, GL30.GL_RG32F, GL30.GL_RG16F, GL30.GL_R11F_G11F_B10F, GL30.GL_R32F, GL30.GL_R16F,
+                 GL30.GL_RGBA32UI, GL30.GL_RGBA16UI, GL33.GL_RGB10_A2UI, GL30.GL_RGBA8UI, GL30.GL_RG32UI, GL30.GL_RG16UI, GL30.GL_RG8UI, GL30.GL_R32UI, GL30.GL_R16UI, GL30.GL_R8UI,
+                 GL30.GL_RGBA32I, GL30.GL_RGBA16I, GL30.GL_RGBA8I, GL30.GL_RG32I, GL30.GL_RG16I, GL30.GL_RG8I, GL30.GL_R32I, GL30.GL_R16I, GL30.GL_R8I,
+                 GL11.GL_RGBA16, GL11.GL_RGB10_A2, GL11.GL_RGBA8, GL30.GL_RG16, GL30.GL_RG8, GL30.GL_R16, GL30.GL_R8,
+                 GL31.GL_RGBA16_SNORM, GL31.GL_RGBA8_SNORM, GL31.GL_RG16_SNORM, GL31.GL_RG8_SNORM, GL31.GL_R16_SNORM, GL31.GL_R8_SNORM -> true;
+            default -> false;
+        };
     }
 
     public static ImageUnitBinding getImageUnitBinding(int unit) {

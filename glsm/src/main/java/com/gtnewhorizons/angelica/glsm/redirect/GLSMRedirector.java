@@ -167,6 +167,14 @@ public class GLSMRedirector {
     private static final String EXTTimerQuery = "org/lwjgl/opengl/EXTTimerQuery";
     private static final String ARBSamplerObjects = "org/lwjgl/opengl/ARBSamplerObjects";
     private static final String ARBMultiBind = "org/lwjgl/opengl/ARBMultiBind";
+    private static final String ARBDirectStateAccess = "org/lwjgl/opengl/ARBDirectStateAccess";
+    private static final String ARBGeometryShader4 = "org/lwjgl/opengl/ARBGeometryShader4";
+    private static final String EXTGeometryShader4 = "org/lwjgl/opengl/EXTGeometryShader4";
+    private static final String NVGeometryProgram4 = "org/lwjgl/opengl/NVGeometryProgram4";
+    private static final String EXTTextureArray = "org/lwjgl/opengl/EXTTextureArray";
+    private static final String EXTDirectStateAccess = "org/lwjgl/opengl/EXTDirectStateAccess";
+    private static final String ARBShaderImageLoadStore = "org/lwjgl/opengl/ARBShaderImageLoadStore";
+    private static final String EXTShaderImageLoadStore = "org/lwjgl/opengl/EXTShaderImageLoadStore";
 
     // Redirect VAO related calls from NHLib
     private static final String UniversalVAO = "com/gtnewhorizon/gtnhlib/client/opengl/UniversalVAO";
@@ -513,7 +521,10 @@ public class GLSMRedirector {
             .add("glDeleteFramebuffers")
             .add("glGenFramebuffers")
             .add("glCheckFramebufferStatus")
+            .add("glFramebufferTexture1D")
             .add("glFramebufferTexture2D")
+            .add("glFramebufferTexture3D")
+            .add("glFramebufferTextureLayer")
             .add("glVertexAttribIPointer")
             .add("glGenerateMipmap")
             .add("glGetFramebufferAttachmentParameteri")
@@ -567,11 +578,18 @@ public class GLSMRedirector {
         final var gl44 = RedirectMap.newMap()
             .add("glBufferStorage")
             .add("glBindSamplers")
-            .add("glClearTexImage");
+            .add("glClearTexImage")
+            .add("glBindTextures")
+            .add("glBindImageTextures");
         final var gl45 = RedirectMap.newMap()
             .add("glCreateBuffers")
             .add("glNamedBufferData")
-            .add("glNamedBufferSubData");
+            .add("glNamedBufferSubData")
+            .add("glNamedFramebufferTexture")
+            .add("glNamedFramebufferTextureLayer")
+            .add("glNamedFramebufferRenderbuffer")
+            .add("glCreateTextures")
+            .add("glBindTextureUnit");
         final var gl46 = RedirectMap.newMap()
             .add("glPolygonOffsetClamp")
             .add("glMultiDrawArraysIndirectCount")
@@ -630,7 +648,10 @@ public class GLSMRedirector {
             .add("glDeleteFramebuffers")
             .add("glGenFramebuffers")
             .add("glCheckFramebufferStatus")
+            .add("glFramebufferTexture1D")
             .add("glFramebufferTexture2D")
+            .add("glFramebufferTexture3D")
+            .add("glFramebufferTextureLayer")
             .add("glBindRenderbuffer")
             .add("glDeleteRenderbuffers")
             .add("glGenRenderbuffers")
@@ -643,7 +664,9 @@ public class GLSMRedirector {
             .add("glDeleteFramebuffersEXT", "glDeleteFramebuffers")
             .add("glGenFramebuffersEXT", "glGenFramebuffers")
             .add("glCheckFramebufferStatusEXT", "glCheckFramebufferStatus")
+            .add("glFramebufferTexture1DEXT", "glFramebufferTexture1D")
             .add("glFramebufferTexture2DEXT", "glFramebufferTexture2D")
+            .add("glFramebufferTexture3DEXT", "glFramebufferTexture3D")
             .add("glBindRenderbufferEXT", "glBindRenderbuffer")
             .add("glDeleteRenderbuffersEXT", "glDeleteRenderbuffers")
             .add("glGenRenderbuffersEXT", "glGenRenderbuffers")
@@ -793,6 +816,45 @@ public class GLSMRedirector {
         );
         methodRedirects.put(ARBMultiBind, RedirectMap.newMap()
             .add("glBindSamplers")
+            .add("glBindTextures")
+            .add("glBindImageTextures")
+        );
+        methodRedirects.put(ARBDirectStateAccess, RedirectMap.newMap()
+            .add("glNamedFramebufferTexture")
+            .add("glNamedFramebufferTextureLayer")
+            .add("glNamedFramebufferRenderbuffer")
+            .add("glCreateTextures")
+            .add("glBindTextureUnit")
+        );
+        methodRedirects.put(ARBGeometryShader4, RedirectMap.newMap()
+            .add("glFramebufferTextureARB", "glFramebufferTexture")
+            .add("glFramebufferTextureLayerARB", "glFramebufferTextureLayer")
+            .add("glFramebufferTextureFaceARB", "glFramebufferTextureFace")
+        );
+        final var geometryShader4 = RedirectMap.newMap()
+            .add("glFramebufferTextureEXT", "glFramebufferTexture")
+            .add("glFramebufferTextureLayerEXT", "glFramebufferTextureLayer")
+            .add("glFramebufferTextureFaceEXT", "glFramebufferTextureFace");
+        methodRedirects.put(EXTGeometryShader4, geometryShader4);
+        methodRedirects.put(NVGeometryProgram4, geometryShader4);
+        methodRedirects.put(EXTTextureArray, RedirectMap.newMap()
+            .add("glFramebufferTextureLayerEXT", "glFramebufferTextureLayer")
+        );
+        methodRedirects.put(EXTDirectStateAccess, RedirectMap.newMap()
+            .add("glNamedFramebufferTexture1DEXT")
+            .add("glNamedFramebufferTexture2DEXT")
+            .add("glNamedFramebufferTexture3DEXT")
+            .add("glNamedFramebufferTextureEXT")
+            .add("glNamedFramebufferTextureLayerEXT", "glNamedFramebufferTextureLayer")
+            .add("glNamedFramebufferTextureFaceEXT")
+            .add("glNamedFramebufferRenderbufferEXT", "glNamedFramebufferRenderbuffer")
+            .add("glBindMultiTextureEXT")
+        );
+        methodRedirects.put(ARBShaderImageLoadStore, RedirectMap.newMap()
+            .add("glBindImageTexture")
+        );
+        methodRedirects.put(EXTShaderImageLoadStore, RedirectMap.newMap()
+            .add("glBindImageTextureEXT", "glBindImageTexture")
         );
 
         // APPLE

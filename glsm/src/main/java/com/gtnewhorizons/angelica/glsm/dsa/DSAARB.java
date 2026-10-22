@@ -128,7 +128,7 @@ public class DSAARB extends DSAUnsupported {
 
     @Override
     public void framebufferTexture2D(int fb, int fbtarget, int attachment, int target, int texture, int levels) {
-        RENDER_BACKEND.namedFramebufferTexture(fb, attachment, texture, levels);
+        GLStateManager.glNamedFramebufferTexture(fb, attachment, texture, levels);
     }
 
     @Override
@@ -139,7 +139,6 @@ public class DSAARB extends DSAUnsupported {
 
     @Override
     public int createTexture(int target) {
-        GLStateManager.requireContext("glCreateTextures");
-        return RENDER_BACKEND.createTextures(target);
+        return GLStateManager.glCreateTextures(target);
     }
 }

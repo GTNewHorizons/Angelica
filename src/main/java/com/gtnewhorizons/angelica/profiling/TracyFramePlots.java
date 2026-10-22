@@ -35,6 +35,7 @@ public final class TracyFramePlots {
     private static final PlotDelta P_GL_DRAW_CALLS = new PlotDelta("gl.drawCalls");
     private static final PlotDelta P_GL_TEX_BIND_MISSES = new PlotDelta("gl.texBindMisses");
     private static final PlotDelta P_GL_PROGRAM_SWITCHES = new PlotDelta("gl.programSwitches");
+    private static final long P_GL_TEX_AWAITING_RELEASE = Tracy.plotHandle("gl.texAwaitingRelease");
     private static final PlotDelta P_GLSM_BRACKETS = new PlotDelta("glsm.brackets");
     private static final PlotDelta P_GLSM_COW_SLOTS = new PlotDelta("glsm.cowSlots");
     private static final PlotDelta P_GLSM_POP_RESTORES = new PlotDelta("glsm.popRestores");
@@ -191,6 +192,7 @@ public final class TracyFramePlots {
         P_GL_DRAW_CALLS.plot(GLStateManager.drawCalls);
         P_GL_TEX_BIND_MISSES.plot(GLStateManager.texBindMisses);
         P_GL_PROGRAM_SWITCHES.plot(GLStateManager.programSwitches);
+        Tracy.plotInt(P_GL_TEX_AWAITING_RELEASE, GLStateManager.deferredTexturesAwaitingRelease());
         P_GLSM_BRACKETS.plot(GLStateManager.attribPushes);
         P_GLSM_COW_SLOTS.plot(GLStateManager.attribSlotsSaved);
         P_GLSM_POP_RESTORES.plot(GLStateManager.attribValueRestores);

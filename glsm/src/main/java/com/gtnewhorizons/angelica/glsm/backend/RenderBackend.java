@@ -457,6 +457,9 @@ public abstract class RenderBackend {
     public abstract void deleteFramebuffers(int framebuffer);
     public abstract void bindFramebuffer(int target, int framebuffer);
     public abstract void framebufferTexture2D(int target, int attachment, int textarget, int texture, int level);
+    public abstract void framebufferTexture1D(int target, int attachment, int textarget, int texture, int level);
+    public abstract void framebufferTexture3D(int target, int attachment, int textarget, int texture, int level, int zoffset);
+    public abstract void framebufferTextureLayer(int target, int attachment, int texture, int level, int layer);
     public abstract void framebufferTexture(int target, int attachment, int texture, int level);
     public abstract int genRenderbuffers();
     public abstract void deleteRenderbuffers(int renderbuffer);

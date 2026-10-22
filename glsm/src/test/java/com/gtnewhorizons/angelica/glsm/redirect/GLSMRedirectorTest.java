@@ -230,6 +230,7 @@ class GLSMRedirectorTest {
     @ParameterizedTest(name = "{0}.{1}{2}")
     @CsvSource(delimiter = '|', value = {
         "org/lwjgl/opengl/EXTFramebufferObject | glBindFramebufferEXT | (II)V | glBindFramebuffer",
+        "org/lwjgl/opengl/EXTFramebufferObject | glFramebufferTexture3DEXT | (IIIIII)V | glFramebufferTexture3D",
         "org/lwjgl/opengl/ARBFramebufferObject | glGenerateMipmap | (I)V | glGenerateMipmap",
         "org/lwjgl/opengl/EXTFramebufferObject | glGenerateMipmapEXT | (I)V | glGenerateMipmap",
         "org/lwjgl/opengl/GL11 | glReadPixels | (IIIIIILjava/nio/IntBuffer;)V | glReadPixels",
@@ -261,9 +262,15 @@ class GLSMRedirectorTest {
         "org/lwjgl/opengl/GL11 | glLoadMatrixf | (Ljava/nio/FloatBuffer;)V | glLoadMatrix",
         "org/lwjgl/opengl/ARBVertexArrayObject | glGenVertexArrays | ()I | glGenVertexArrays",
         "org/lwjgl/opengl/APPLEVertexArrayObject | glGenVertexArraysAPPLE | ()I | glGenVertexArrays",
+        "org/lwjgl/opengl/ARBGeometryShader4 | glFramebufferTextureFaceARB | (IIIII)V | glFramebufferTextureFace",
+        "org/lwjgl/opengl/EXTGeometryShader4 | glFramebufferTextureEXT | (IIII)V | glFramebufferTexture",
+        "org/lwjgl/opengl/EXTTextureArray | glFramebufferTextureLayerEXT | (IIIII)V | glFramebufferTextureLayer",
+        "org/lwjgl/opengl/EXTShaderImageLoadStore | glBindImageTextureEXT | (IIIZIII)V | glBindImageTexture",
+        "org/lwjgl/opengl/EXTFramebufferObject | glDeleteFramebuffersEXT | (Ljava/nio/IntBuffer;)V | glDeleteFramebuffers",
     })
-    void aliasIsRedirected(String owner, String name, String desc, String expectedName) {
+    void aliasIsRedirected(String owner, String name, String desc, String expectedName) throws ClassNotFoundException {
         assertEquals(desc, assertRedirected(owner, name, desc, expectedName).desc);
+        assertTrue(glsmDeclares(expectedName, desc), () -> "GLStateManager lacks " + expectedName + desc);
         assertTrue(debugSeen().isEmpty());
     }
 
@@ -303,6 +310,32 @@ class GLSMRedirectorTest {
         "org/lwjgl/opengl/ARBSamplerObjects | glSamplerParameteri | (III)V",
         "org/lwjgl/opengl/ARBSamplerObjects | glSamplerParameterf | (IIF)V",
         "org/lwjgl/opengl/GL43 | glGetDebugMessageLog | (ILjava/nio/IntBuffer;Ljava/nio/IntBuffer;Ljava/nio/IntBuffer;Ljava/nio/IntBuffer;Ljava/nio/IntBuffer;Ljava/nio/ByteBuffer;)I",
+        "org/lwjgl/opengl/GL30 | glFramebufferTexture1D | (IIIII)V",
+        "org/lwjgl/opengl/GL30 | glFramebufferTexture3D | (IIIIII)V",
+        "org/lwjgl/opengl/GL30 | glFramebufferTextureLayer | (IIIII)V",
+        "org/lwjgl/opengl/GL30C | glDeleteFramebuffers | ([I)V",
+        "org/lwjgl/opengl/GL11C | glDeleteTextures | ([I)V",
+        "org/lwjgl/opengl/GL11C | glGenTextures | ([I)V",
+        "org/lwjgl/opengl/GL44 | glBindTextures | (IILjava/nio/IntBuffer;)V",
+        "org/lwjgl/opengl/GL44C | glBindTextures | (ILjava/nio/IntBuffer;)V",
+        "org/lwjgl/opengl/GL44 | glBindTextures | (I[I)V",
+        "org/lwjgl/opengl/GL44 | glBindImageTextures | (IILjava/nio/IntBuffer;)V",
+        "org/lwjgl/opengl/GL44C | glBindImageTextures | (ILjava/nio/IntBuffer;)V",
+        "org/lwjgl/opengl/GL44 | glBindImageTextures | (I[I)V",
+        "org/lwjgl/opengl/GL45 | glBindTextureUnit | (II)V",
+        "org/lwjgl/opengl/GL45 | glCreateTextures | (I)I",
+        "org/lwjgl/opengl/GL45C | glCreateTextures | (ILjava/nio/IntBuffer;)V",
+        "org/lwjgl/opengl/GL45C | glCreateTextures | (I[I)V",
+        "org/lwjgl/opengl/GL45 | glNamedFramebufferTexture | (IIII)V",
+        "org/lwjgl/opengl/GL45 | glNamedFramebufferTextureLayer | (IIIII)V",
+        "org/lwjgl/opengl/ARBDirectStateAccess | glNamedFramebufferRenderbuffer | (IIII)V",
+        "org/lwjgl/opengl/EXTDirectStateAccess | glNamedFramebufferTexture1DEXT | (IIIII)V",
+        "org/lwjgl/opengl/EXTDirectStateAccess | glNamedFramebufferTexture2DEXT | (IIIII)V",
+        "org/lwjgl/opengl/EXTDirectStateAccess | glNamedFramebufferTexture3DEXT | (IIIIII)V",
+        "org/lwjgl/opengl/EXTDirectStateAccess | glNamedFramebufferTextureEXT | (IIII)V",
+        "org/lwjgl/opengl/EXTDirectStateAccess | glNamedFramebufferTextureFaceEXT | (IIIII)V",
+        "org/lwjgl/opengl/EXTDirectStateAccess | glBindMultiTextureEXT | (III)V",
+        "org/lwjgl/opengl/ARBShaderImageLoadStore | glBindImageTexture | (IIIZIII)V",
     })
     void redirectsToADeclaredGlsmTarget(String owner, String name, String desc) throws ClassNotFoundException {
         for (boolean aware : new boolean[]{false, true}) {

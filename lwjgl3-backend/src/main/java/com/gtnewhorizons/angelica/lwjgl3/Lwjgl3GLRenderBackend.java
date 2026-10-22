@@ -748,6 +748,21 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public void framebufferTexture1D(int target, int attachment, int textarget, int texture, int level) {
+        GL30C.glFramebufferTexture1D(target, attachment, textarget, texture, level);
+    }
+
+    @Override
+    public void framebufferTexture3D(int target, int attachment, int textarget, int texture, int level, int zoffset) {
+        GL30C.glFramebufferTexture3D(target, attachment, textarget, texture, level, zoffset);
+    }
+
+    @Override
+    public void framebufferTextureLayer(int target, int attachment, int texture, int level, int layer) {
+        GL30C.glFramebufferTextureLayer(target, attachment, texture, level, layer);
+    }
+
+    @Override
     public void framebufferTexture(int target, int attachment, int texture, int level) {
         GL32C.glFramebufferTexture(target, attachment, texture, level);
     }

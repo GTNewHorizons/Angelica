@@ -26,6 +26,7 @@ public final class FrameHooks {
     }
 
     public static void frameEnd() {
+        GLStateManager.onFrameEnd();
         popFrameGroup();
         RENDER_BACKEND.onFrameEnd();
     }
