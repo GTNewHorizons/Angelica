@@ -323,7 +323,7 @@ public class BatchingFontRenderer {
 
     public static void endFrame() {
         if (streamRing != null) {
-            streamRing.postDraw();
+            streamRing.endFrame();
         }
     }
 

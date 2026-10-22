@@ -60,7 +60,6 @@ public final class ParticleInstancer {
     private static DeferredWorldRenderingPipeline unavailableFor;
     private static DeferredWorldRenderingPipeline deferred;
     private static Tessellator run;
-    private static boolean ringUsedThisLayer;
 
     private static float rotX;
     private static float rotXZ;
@@ -180,7 +179,6 @@ public final class ParticleInstancer {
         }
         layerActive = false;
         Throwable failure = null;
-        ringUsedThisLayer = false;
         try {
             if (groupCount > 0) {
                 restoreDepth = GLStateManager.pushState(StateSet.BATCH);
@@ -212,13 +210,6 @@ public final class ParticleInstancer {
                     }
                 }
             }
-            if (ringUsedThisLayer) {
-                try {
-                    ring().postDraw();
-                } catch (Throwable t) {
-                    failure = RenderFailures.suppress(failure, t);
-                }
-            }
             for (int i = 0; i < groupCount; i++) {
                 final ByteBuffer list = GROUP_POOL.get(i).list;
                 if (list != null) list.clear();
@@ -227,7 +218,6 @@ public final class ParticleInstancer {
             deferred = null;
             run = null;
             layerStarted = false;
-            ringUsedThisLayer = false;
         }
         RenderFailures.rethrowWrapped(failure);
     }
@@ -253,7 +243,6 @@ public final class ParticleInstancer {
         run = null;
         unavailableFor = null;
         groupCount = 0;
-        ringUsedThisLayer = false;
         for (int i = 0; i < GROUP_POOL.size(); i++) {
             GROUP_POOL.get(i).list = null;
         }
@@ -297,7 +286,6 @@ public final class ParticleInstancer {
             }
         }
 
-        ringUsedThisLayer = true;
         final long base = ring().upload(list, STRIDE);
         list.clear();
 

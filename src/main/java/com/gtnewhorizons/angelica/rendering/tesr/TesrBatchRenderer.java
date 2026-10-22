@@ -59,7 +59,6 @@ public final class TesrBatchRenderer {
 
     private static final Tracy.ZoneId Z_TESR_OPAQUE = Tracy.zoneId("tesrOpaque", Tracy.COLOR_CLIENT);
     private static final Tracy.ZoneId Z_TESR_BATCH = Tracy.zoneId("tesrBatch", Tracy.COLOR_CLIENT);
-    private static final Tracy.ZoneId Z_TESR_INSTANCED = Tracy.zoneId("tesrInstanced", Tracy.COLOR_CLIENT);
     private static final Tracy.ZoneId Z_TESR_TEXT = Tracy.zoneId("tesrText", Tracy.COLOR_CLIENT);
     private static final Tracy.ZoneId Z_TESR_DEFERRED = Tracy.zoneId("tesrDeferred", Tracy.COLOR_CLIENT);
 
@@ -388,7 +387,6 @@ public final class TesrBatchRenderer {
         deferredFlushPending = false;
         pendingDeferredHook = null;
         bufferSource.endBatch(hook);
-        instancedRenderer.endFrame();
         BatchingFontRenderer.flushDeferredText();
     }
 
@@ -410,12 +408,6 @@ public final class TesrBatchRenderer {
         if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_BATCH);
         try {
             bufferSource.endBatch(hook);
-        } finally {
-            if (Tracy.ENABLED) Tracy.endZone();
-        }
-        if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_INSTANCED);
-        try {
-            instancedRenderer.endFrame();
         } finally {
             if (Tracy.ENABLED) Tracy.endZone();
         }
@@ -462,7 +454,6 @@ public final class TesrBatchRenderer {
                 }
                 try {
                     bufferSource.endBatch(hook);
-                    instancedRenderer.endFrame();
                     AngelicaBufferSource.rebindPass();
                     BatchingFontRenderer.flushDeferredText();
                 } finally {

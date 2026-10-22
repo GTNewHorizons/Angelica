@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.profiling.TracyBackend;
+import com.gtnewhorizons.angelica.glsm.streaming.PersistentStreamingBuffer;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import com.gtnewhorizons.angelica.rendering.FramePacer;
@@ -45,6 +46,7 @@ public final class TracyFramePlots {
     private static final PlotDelta P_GL_ORPHAN_FALLBACKS = new PlotDelta("gl.orphanFallbacks");
     private static final PlotDelta P_GL_STREAM_CONTIGUOUS = new PlotDelta("gl.streamContiguous");
     private static final PlotDelta P_GL_RING_WRAPS = new PlotDelta("gl.ringWraps");
+    private static final PlotDelta P_GL_ALL_RING_FENCES = new PlotDelta("gl.allRingFences");
     private static final long P_GL_SECTION_META_BYTES = Tracy.plotHandle("gl.sectionMetaBytes", TracyBackend.PLOT_FORMAT_MEMORY);
 
     private static final long P_SHADOW_RELAY_FRAMES = Tracy.plotHandle("shadow.relayFrames");
@@ -200,6 +202,7 @@ public final class TracyFramePlots {
         P_GL_ORPHAN_FALLBACKS.plot(TessellatorStreamingDrawer.orphanFallbacks);
         P_GL_STREAM_CONTIGUOUS.plot(TessellatorStreamingDrawer.streamContiguous);
         P_GL_RING_WRAPS.plot(TessellatorStreamingDrawer.ringWraps());
+        P_GL_ALL_RING_FENCES.plot(PersistentStreamingBuffer.getFencesIssuedByAllRings());
         Tracy.plotInt(P_GL_SECTION_META_BYTES, TerrainDrawStats.takeSectionMetaBytes());
         Tracy.plotInt(P_SHADOW_RELAY_FRAMES, ShadowRenderer.SHADOW_TERRAIN_RELAID ? 1 : 0);
         Tracy.plotInt(P_TERRAIN_DRAW_COMMANDS, TerrainDrawStats.takeCommandsSubmitted());

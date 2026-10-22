@@ -311,10 +311,6 @@ final class InstancedTemplateRenderer {
         return extVbo;
     }
 
-    void endFrame() {
-        ring.postDraw();
-    }
-
     void retire(TemplateBuffer template) {
         retired.add(template);
     }

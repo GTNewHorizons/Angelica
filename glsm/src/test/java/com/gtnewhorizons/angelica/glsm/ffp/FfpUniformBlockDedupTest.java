@@ -102,6 +102,24 @@ class FfpUniformBlockDedupTest {
         }
     }
 
+    @Test
+    void unchangedContentStillWritesAfterFrameEnd() {
+        resetState();
+        final Uniforms uniforms = new Uniforms();
+        try {
+            uniforms.upload(GLStateManager.ctx());
+            final int firstOffset = boundRangeStart();
+            uniforms.endFrame();
+
+            uniforms.upload(GLStateManager.ctx());
+            assertEquals(1, uniforms.blockWrites, "the frame-end fence owns the old range, so the next frame must not reuse it");
+            assertNotEquals(firstOffset, boundRangeStart());
+        } finally {
+            uniforms.destroy();
+            resetState();
+        }
+    }
+
     @TestFactory
     List<DynamicTest> everyStagingCategoryForcesAWrite() {
         final List<DynamicTest> tests = new ArrayList<>();

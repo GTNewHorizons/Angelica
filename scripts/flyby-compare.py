@@ -8,7 +8,7 @@ import sys
 CSVEXPORT = os.environ.get("TRACY_CSVEXPORT", os.path.expanduser("~/dev/mc/tracy/csvexport/build/tracy-csvexport"))
 
 PLOTS = [
-    "gl.drawCalls", "gl.listPlaybacks", "gl.streamDraws", "entitiesRendered", "blockEntitiesRendered", "tesr.modelParts", "tesr.retainedDraws", "tesr.cacheMisses", "tesr.instancedDraws", "tesr.instancedInstances", "tesr.cubeInstances",
+    "gl.drawCalls", "gl.listPlaybacks", "gl.streamDraws", "gl.allRingFences", "entitiesRendered", "blockEntitiesRendered", "tesr.modelParts", "tesr.retainedDraws", "tesr.cacheMisses", "tesr.instancedDraws", "tesr.instancedInstances", "tesr.cubeInstances",
     "tesr.streamedInstances", "tesr.texMatrixRuns", "tesr.liveFallbacks", "tesr.bail.foreignProgram",
     "tesr.bail.material", "tesr.bail.texture", "entity.shadowQuads", "entity.shadowDraws", "items.instanced", "items.fallback", "items.glintInstanced",
     "items.bail.ineligible", "items.bail.material", "items.bail.isbrh", "items.bail.blockState", "items.bail.notAllowed", "items.bail.template", "items.bail.queue",
@@ -16,7 +16,7 @@ PLOTS = [
     "sdl.acquireWaitUs",
     "weather.strength", "weather.quads", "weather.drawCalls", "weather.micros",
 ]
-ZONES = ["entityModelParts", "tesrBatch", "tesrInstanced", "entityLayerLoop", "tesrOpaque", "particlePass", "cl:weather"]
+ZONES = ["entityModelParts", "tesrBatch", "entityLayerLoop", "entityDeferred", "tesrOpaque", "particlePass", "cl:weather", "streamingEndFrame"]
 CLOCK = "gl.drawCalls"
 
 
