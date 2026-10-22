@@ -83,6 +83,7 @@ public final class ModelPartBatcher {
     private static final long SWEEP_INTERVAL_MS = 5_000L;
 
     private static final Tracy.ZoneId Z_ENTITY_LAYER_LOOP = Tracy.zoneId("entityLayerLoop", Tracy.COLOR_CLIENT);
+    private static final Tracy.ZoneId Z_ENTITY_DEFERRED = Tracy.zoneId("entityDeferred", Tracy.COLOR_CLIENT);
 
     private final AngelicaBufferSource bufferSource = new AngelicaBufferSource();
     private final AngelicaBufferSource entitySource = new AngelicaBufferSource();
@@ -309,9 +310,6 @@ public final class ModelPartBatcher {
                 if (wrapEntities) GbufferPrograms.endEntities();
             }
         }
-        if (instancedThisCycle && !hold) {
-            TesrBatchRenderer.INSTANCE.instancedRenderer.endFrame();
-        }
         if (!TesrBatchRenderer.INSTANCE.hasPendingGeometry()) {
             BatchingFontRenderer.flushDeferredText();
         }
@@ -337,6 +335,7 @@ public final class ModelPartBatcher {
         if (!entityTranslucentsHeld) return;
         entityTranslucentsHeld = false;
         BatchStateGuard.suspend();
+        if (Tracy.ENABLED) Tracy.beginZone(Z_ENTITY_DEFERRED);
         try {
             final EntityRenderer entityRenderer = Minecraft.getMinecraft().entityRenderer;
             final int deferredDepth = GLStateManager.pushState(StateSet.BATCH);
@@ -352,9 +351,6 @@ public final class ModelPartBatcher {
                 if (wrap) GbufferPrograms.beginEntities();
                 try {
                     entitySource.endBatch(entityGroups);
-                    if (instancedThisCycle) {
-                        TesrBatchRenderer.INSTANCE.instancedRenderer.endFrame();
-                    }
                     recycleAtlas();
                     AngelicaBufferSource.rebindPass();
                 } finally {

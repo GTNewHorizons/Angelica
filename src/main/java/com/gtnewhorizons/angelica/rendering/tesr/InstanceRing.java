@@ -10,7 +10,6 @@ public final class InstanceRing {
     private PersistentStreamingBuffer persistentRing;
     private OrphanStreamingBuffer orphanRing;
     private boolean initialized;
-    private boolean usedThisFrame;
     private boolean lastUploadKept;
     private int bufferId;
 
@@ -19,7 +18,6 @@ public final class InstanceRing {
             initialized = true;
             persistentRing = PersistentStreamingBuffer.createOrNull(PersistentStreamingBuffer.DEFAULT_CAPACITY);
         }
-        usedThisFrame = true;
         if (persistentRing != null) {
             final int index = persistentRing.upload(data, stride);
             if (index >= 0) {
@@ -36,18 +34,19 @@ public final class InstanceRing {
     }
 
     public int keptUploadsEpoch() {
-        return lastUploadKept && persistentRing != null ? persistentRing.getWraps() : -1;
+        if (!lastUploadKept || persistentRing == null) return -1;
+        // Once a fence covers an upload, the ring may reuse that range while a later redraw still reads it.
+        return persistentRing.getFencesIssued() & Integer.MAX_VALUE;
     }
 
     public int bufferId() {
         return bufferId;
     }
 
-    public void postDraw() {
-        if (usedThisFrame && persistentRing != null) {
-            persistentRing.postDraw();
+    public void endFrame() {
+        if (persistentRing != null) {
+            persistentRing.endFrame();
         }
-        usedThisFrame = false;
     }
 
     public void delete() {
@@ -60,7 +59,6 @@ public final class InstanceRing {
             orphanRing = null;
         }
         initialized = false;
-        usedThisFrame = false;
         lastUploadKept = false;
         bufferId = 0;
     }

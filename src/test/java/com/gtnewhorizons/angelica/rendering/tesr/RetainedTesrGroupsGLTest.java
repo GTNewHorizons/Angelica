@@ -8,6 +8,7 @@ import com.gtnewhorizons.angelica.api.tesr.TesrShader;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.ffp.CubeParams;
 import com.gtnewhorizons.angelica.glsm.ffp.CubeParityFixture;
@@ -16,6 +17,7 @@ import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard;
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
+import com.gtnewhorizons.angelica.glsm.streaming.PersistentStreamingBuffer;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.rendering.GlintClock;
 import com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrGroups.Group;
@@ -33,6 +35,7 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -196,7 +199,6 @@ class RetainedTesrGroupsGLTest {
         final InstanceColumns cols = new InstanceColumns();
         cols.add(template, mv, 0, colorABGR, 0, 0L);
         renderer.drawTemplates(cols, run(1, 1), System.currentTimeMillis());
-        renderer.endFrame();
     }
 
     private void queueThreeEntities(CountingPipeline pipeline) {
@@ -219,7 +221,7 @@ class RetainedTesrGroupsGLTest {
             groups.queue(SCOPE, template, layer, material, mv.set(base).mul(model), 0, -1, 0, 0L, 5, null);
         }
         groups.drawLayer(layer);
-        instanced.endFrame();
+        ring.endFrame();
         assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
     }
 
@@ -316,7 +318,7 @@ class RetainedTesrGroupsGLTest {
                 groups.queue(SCOPE, templates[i], layer, BAKED_ADDITIVE, new Matrix4f().translation(frame * 0.01f, i * 0.05f, 0f), 0, -1, 0, 0L, 5, null);
             }
             groups.drawLayer(layer);
-            instanced.endFrame();
+            ring.endFrame();
             assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
         }
         assertEquals(count <= RetainedTesrGroups.PROMOTE_MAX_TEMPLATES ? 1 : 0, groups.streamPromotions);
@@ -364,7 +366,7 @@ class RetainedTesrGroupsGLTest {
             if (pair.get(0).streamPath) sawPromoted = true;
             else if (sawPromoted) sawDemotedAgain = true;
             groups.drawLayer(layer);
-            instanced.endFrame();
+            ring.endFrame();
         }
         assertTrue(sawPromoted, "the animating overlay must pull its static depth writer onto the instanced path");
         assertTrue(sawDemotedAgain, "once the overlay settles the pair must return to baked together");
@@ -706,6 +708,34 @@ class RetainedTesrGroupsGLTest {
         return new int[][] { basePixels, glintPixels };
     }
 
+    @Test
+    void glintReuseStopsWhenAnUploadIsFenced() {
+        Assumptions.assumeTrue(RenderSystem.supportsBufferStorage(), "Persistent mapping required");
+        final PersistentStreamingBuffer persistent = PersistentStreamingBuffer.createOrNull(1024);
+        assertNotNull(persistent);
+        Reflect.set(ring, "persistentRing", persistent);
+        Reflect.set(ring, "initialized", true);
+        final ByteBuffer data = BufferUtils.createByteBuffer(256);
+        data.limit(16);
+        assertEquals(0, ring.upload(data, 16));
+        final int baseEpoch = instanced.ringEpoch();
+        final int baseBuffer = instanced.ringBuffer();
+        assertTrue(instanced.canRedraw(baseEpoch, baseBuffer));
+
+        data.limit(240);
+        assertEquals(16, ring.upload(data, 16));
+        assertTrue(instanced.canRedraw(baseEpoch, baseBuffer), "later uploads can share an unfenced range");
+
+        final int fences = persistent.getFencesIssued();
+        data.limit(16);
+        assertEquals(256, ring.upload(data, 16));
+        assertEquals(fences + 1, persistent.getFencesIssued());
+        assertEquals(0, persistent.getWraps(), "the ring has not overwritten the earlier upload");
+        assertEquals(baseBuffer, instanced.ringBuffer());
+        assertFalse(instanced.canRedraw(baseEpoch, baseBuffer), "a new draw must not outlive its range's earlier fence");
+        assertTrue(instanced.canRedraw(instanced.ringEpoch(), baseBuffer), "the newest upload is still unfenced");
+    }
+
     private void glintState() {
         GLStateManager.glViewport(0, 0, SIZE, SIZE);
         layer = RenderLayer.tesr(GLINT_TEXTURE, TesrMaterial.CURRENT_STATE, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.DISABLED, false, true);
@@ -789,7 +819,6 @@ class RetainedTesrGroupsGLTest {
         cols.add(glintTemplate, templateE1, 0, 0xFFFFFFFF, 0, 0L);
         cols.add(glintTemplate, templateE2, 0, 0xFFFFFFFF, 0, 0L);
         instanced.drawTemplates(cols, run(2, 2), System.currentTimeMillis());
-        instanced.endFrame();
         return FfpFixture.readRegion(SIZE);
     }
 
@@ -800,7 +829,6 @@ class RetainedTesrGroupsGLTest {
         cols.addCubes(null, glintCubes, CUBE_SCALE, cubeE1, 0, 0xFFFFFFFF, 0, 0L, null);
         cols.addCubes(null, glintCubes, CUBE_SCALE, cubeE2, 0, 0xFFFFFFFF, 0, 0L, null);
         instanced.drawCubes(cols, run(2, 2 * glintCubes.length));
-        instanced.endFrame();
         return FfpFixture.readRegion(SIZE);
     }
 
@@ -808,7 +836,6 @@ class RetainedTesrGroupsGLTest {
         final InstanceColumns cols = new InstanceColumns();
         cols.addCubes(null, glintCubes, CUBE_SCALE, mv, 0, 0xFFFFFFFF, 0, 0L, null);
         instanced.drawCubes(cols, run(1, glintCubes.length));
-        instanced.endFrame();
     }
 
     private int[] templateReference(boolean swapFirstEmitter) {
@@ -837,7 +864,6 @@ class RetainedTesrGroupsGLTest {
         groups.queue(SCOPE, glintTemplate, layer, EntityMaterials.GLINT, templateE2, 0, -1, 0, 0L, 2, glintMatrixA);
         groups.queue(SCOPE, glintTemplate, layer, EntityMaterials.GLINT, templateE2, 0, -1, 0, 0L, 2, glintMatrixB);
         groups.drawLayer(layer);
-        instanced.endFrame();
         assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "the merged candidate draw must not raise a GL error");
         return FfpFixture.readRegion(SIZE);
     }
@@ -868,7 +894,6 @@ class RetainedTesrGroupsGLTest {
         groups.queue(SCOPE, null, glintCubes, CUBE_SCALE, layer, EntityMaterials.GLINT, cubeE2, 0, -1, 0, 0L, 2, glintMatrixA, null);
         groups.queue(SCOPE, null, glintCubes, CUBE_SCALE, layer, EntityMaterials.GLINT, cubeE2, 0, -1, 0, 0L, 2, glintMatrixB, null);
         groups.drawLayer(layer);
-        instanced.endFrame();
         assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "the merged candidate draw must not raise a GL error");
         return FfpFixture.readRegion(SIZE);
     }
@@ -926,7 +951,6 @@ class RetainedTesrGroupsGLTest {
             if (!cubes) assertFalse(capture.replay(groups), "a captured pass is replayed only once");
         }
         groups.drawLayer(layer);
-        instanced.endFrame();
         CubeParityFixture.assertPixelParity(reference, FfpFixture.readRegion(SIZE), SIZE, BACKGROUND, RetainedTesrGroupsGLTest::describe);
     }
 
@@ -965,7 +989,6 @@ class RetainedTesrGroupsGLTest {
             glint.end();
             assertTrue(glint.replay(groups, glintMatrixB), "the second layer can be queued without rerunning legacy texture setup");
             groups.drawLayer(Reflect.get(batcher, "lastLayer"));
-            instanced.endFrame();
             final int[] actual = FfpFixture.readRegion(SIZE);
             int error = 0;
             for (int p = 0; p < actual.length; p++) for (int shift = 0; shift < 24; shift += 8) {
@@ -1011,7 +1034,6 @@ class RetainedTesrGroupsGLTest {
         GLStateManager.glCullFace(GL11.GL_BACK);
 
         source.endBatch(groups);
-        instanced.endFrame();
         assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "the batched draw must not raise a GL error");
 
         CubeParityFixture.assertPixelParity(reference, FfpFixture.readRegion(SIZE), SIZE, BACKGROUND, RetainedTesrGroupsGLTest::describe);
@@ -1058,7 +1080,6 @@ class RetainedTesrGroupsGLTest {
         groups.queue(SCOPE, quad, opposingLayer, RetainedTesrTestSupport.STREAM, new Matrix4f(), 0, COLOR_ABGR, 0, 0L, 1, null);
 
         source.endBatch(groups);
-        instanced.endFrame();
         assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "the flush must not raise a GL error");
 
         assertEquals(cullEnabledBefore, GLStateManager.getCullState().isEnabled(), "cache cull enable must be restored");
@@ -1104,7 +1125,6 @@ class RetainedTesrGroupsGLTest {
         shaderLayer.startDrawing();
         groups.drawLayer(shaderLayer);
         shaderLayer.endDrawing();
-        instanced.endFrame();
         assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "shader draw must not raise a GL error");
         final int[][] pixels = new int[SHADER_PROBES.length][];
         for (int i = 0; i < pixels.length; i++) {
@@ -1188,7 +1208,6 @@ class RetainedTesrGroupsGLTest {
             assertEquals(GL11.GL_EQUAL, GL11.glGetInteger(GL11.GL_DEPTH_FUNC));
             groups.drawLayer(overlayLayer);
             overlayLayer.endDrawing();
-            instanced.endFrame();
             assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "depth-equal pair must not raise a GL error");
             assertEquals(instancing ? 2 : 0, groups.instancedDraws - instancedBefore, path + ": base and overlay must share the path");
 

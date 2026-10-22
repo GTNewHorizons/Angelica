@@ -411,6 +411,7 @@ public class Uniforms {
         if (ring != null) {
             ring.endFrame();
         }
+        invalidateBinding();
         lastFrameBlockWrites = blockWrites;
         lastFrameBlockSkips = blockSkips;
         lastFrameStagedMatrices = stagedMatrices;

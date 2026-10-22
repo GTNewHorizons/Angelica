@@ -330,7 +330,7 @@ public class TessellatorStreamingDrawer {
 
     public static void endFrame() {
         if (persistentBuffer != null) {
-            persistentBuffer.postDraw();
+            persistentBuffer.endFrame();
         }
     }
 

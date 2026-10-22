@@ -25,6 +25,7 @@ final class GlStreamingRing {
 
     private static final long SYNC_WAIT_SLICE_NANOS = 10_000_000L;
     private static final long SYNC_WAIT_TOTAL_NANOS = 5_000_000_000L;
+    private static long totalFencesIssued;
 
     private final FenceQueue fences = new FenceQueue();
     private int writePos;
@@ -68,6 +69,9 @@ final class GlStreamingRing {
     /** Byte offset of a reserved range, or -1 when it can never be served. */
     long reserve(int bytes, int alignment) {
         if (bytes > capacity) return -1;
+        if (pendingBytes >= capacity / 4) {
+            fence();
+        }
         if (remaining < capacity / 2) {
             reclaim();
         }
@@ -82,9 +86,6 @@ final class GlStreamingRing {
         writePos = offset + bytes;
         remaining -= waste + bytes;
         pendingBytes += waste + bytes;
-        if (pendingBytes >= capacity / 4) {
-            fence();
-        }
         return offset;
     }
 
@@ -104,6 +105,7 @@ final class GlStreamingRing {
             fences.enqueue(GLStateManager.glFenceSync(GL32.GL_SYNC_GPU_COMMANDS_COMPLETE, 0), pendingBytes);
             pendingBytes = 0;
             fencesIssued++;
+            totalFencesIssued++;
         }
     }
 
@@ -154,6 +156,7 @@ final class GlStreamingRing {
     int remaining() { return remaining; }
     int wraps() { return wraps; }
     int fencesIssued() { return fencesIssued; }
+    static long totalFencesIssued() { return totalFencesIssued; }
     int forcedReclaims() { return forcedReclaims; }
 
     void destroy() {
