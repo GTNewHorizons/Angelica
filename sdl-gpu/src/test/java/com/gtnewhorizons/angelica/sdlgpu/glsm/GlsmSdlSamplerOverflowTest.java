@@ -47,6 +47,7 @@ class GlsmSdlSamplerOverflowTest {
     private static final int FETCH_GREEN = 17;
     private static final int FILTERED_BLUE = 15;
     private static final int EXPECTED = 0xFF4080C0;
+    private static final int RELEASE_DELAY_FRAMES = Reflect.getStatic(GLStateManager.class, "RELEASE_DELAY_FRAMES");
 
     private final int[] textures = new int[SAMPLERS];
     private int program;
@@ -282,9 +283,12 @@ class GlsmSdlSamplerOverflowTest {
 
         GLStateManager.glDeleteTextures(textures[FETCH_RED]);
         textures[FETCH_RED] = 0;
-        GlsmSdlHeadlessRig.beginFrame();
-        GlsmSdlHeadlessRig.endFrame();
-        assertEquals(beforeDelete - 1, liveTextureCount(), "the copy is released while GLSM retains a 1x1 placeholder for the deleted name");
+        for (int i = 0; i < RELEASE_DELAY_FRAMES; i++) {
+            GlsmSdlHeadlessRig.beginFrame();
+            GLStateManager.onFrameEnd();
+            GlsmSdlHeadlessRig.endFrame();
+        }
+        assertEquals(beforeDelete - 2, liveTextureCount(), "the deleted texture and its copy are released after the delay");
     }
 
     @Test
