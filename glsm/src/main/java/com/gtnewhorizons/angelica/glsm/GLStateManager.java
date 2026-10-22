@@ -2735,15 +2735,15 @@ public class GLStateManager {
         if (id == 0) return;
 
         final int savedUnit = glCtx.activeTextureUnit.getValue();
-        boolean changedUnit = false;
+        int activeUnit = savedUnit;
 
         // Unbind from all units that have this texture
         for (int i = 0; i <= glCtx.maxBoundTextureUnit; i++) {
             final TextureBindingStack unitBindings = glCtx.textures.getTextureUnitBindings(i);
             if (unitBindings.getBinding() == id) {
-                if (i != savedUnit) {
+                if (i != activeUnit) {
                     RENDER_BACKEND.activeTexture(GL13.GL_TEXTURE0 + i);
-                    changedUnit = true;
+                    activeUnit = i;
                 }
                 final int unitTarget = unitBindings.getTarget();
                 RENDER_BACKEND.bindTexture(unitTarget == 0 ? GL11.GL_TEXTURE_2D : unitTarget, 0);
@@ -2757,7 +2757,7 @@ public class GLStateManager {
             }
         }
 
-        if (changedUnit) {
+        if (activeUnit != savedUnit) {
             RENDER_BACKEND.activeTexture(GL13.GL_TEXTURE0 + savedUnit);
         }
 
