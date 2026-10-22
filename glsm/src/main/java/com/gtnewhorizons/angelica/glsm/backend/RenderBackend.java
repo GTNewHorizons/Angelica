@@ -99,7 +99,7 @@ public abstract class RenderBackend {
 
     static VSyncMode resolveTearFreeMode(VSyncMode preferred, Predicate<VSyncMode> supported) {
         if (preferred != null && preferred.tearFree() && supported.test(preferred)) return preferred;
-        return supported.test(VSyncMode.MAILBOX) ? VSyncMode.MAILBOX : VSyncMode.ON;
+        return VSyncMode.ON;
     }
 
     protected abstract VSyncMode applyVSyncMode(VSyncMode preferred);

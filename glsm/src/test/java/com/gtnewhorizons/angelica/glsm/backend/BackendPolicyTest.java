@@ -19,12 +19,12 @@ class BackendPolicyTest {
 
     @ParameterizedTest(name = "{0}")
     @CsvSource({
-        "mailbox is taken when the backend offers it, , true, MAILBOX",
-        "vsync is the fallback when mailbox is unsupported, , false, ON",
+        "vsync is the default even when the backend offers mailbox, , true, ON",
+        "vsync is the default when mailbox is unsupported, , false, ON",
         "an unsupported mailbox preference falls back to vsync, MAILBOX, false, ON",
         "an explicit supported vsync preference wins, ON, true, ON",
         "an explicit supported mailbox preference wins, MAILBOX, true, MAILBOX",
-        "off is never a tear-free preference with mailbox, OFF, true, MAILBOX",
+        "off is never a tear-free preference with mailbox, OFF, true, ON",
         "off is never a tear-free preference without mailbox, OFF, false, ON",
     })
     void tearFreeModeResolution(String label, VSyncMode preference, boolean mailboxSupported, VSyncMode expected) {
