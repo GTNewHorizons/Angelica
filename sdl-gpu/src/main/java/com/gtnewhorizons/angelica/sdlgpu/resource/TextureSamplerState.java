@@ -33,7 +33,8 @@ public final class TextureSamplerState {
             case GL11.GL_TEXTURE_WRAP_S -> { if (wrapS == param) return false; wrapS = param; }
             case GL11.GL_TEXTURE_WRAP_T -> { if (wrapT == param) return false; wrapT = param; }
             case GL12.GL_TEXTURE_WRAP_R -> { if (wrapR == param) return false; wrapR = param; }
-            case GL12.GL_TEXTURE_MAX_LEVEL -> { maxLevel = param; return false; }
+            // 1000 must map to unset, or every rescued texture allocates a full mip chain.
+            case GL12.GL_TEXTURE_MAX_LEVEL -> { maxLevel = param >= 1000 ? -1 : param; return false; }
             case GL14.GL_TEXTURE_COMPARE_MODE -> { if (compareMode == param) return false; compareMode = param; }
             case GL14.GL_TEXTURE_COMPARE_FUNC -> { if (compareFunc == param) return false; compareFunc = param; }
             case GL12.GL_TEXTURE_MIN_LOD, GL12.GL_TEXTURE_MAX_LOD, EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT -> { return setf(pname, (float) param); }

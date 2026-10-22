@@ -46,6 +46,8 @@ public class RenderSystem {
     private static boolean supportsMultiDrawIndirect;
     private static boolean supportsBufferStorage;
     private static boolean supportsClearTexture;
+    private static boolean supportsStencilTexturing;
+    private static boolean supportsTextureStorage;
     private static boolean supportsTesselation;
     private static boolean supportsSamplerObjects;
     private static boolean supportsProgramBinary;
@@ -128,6 +130,8 @@ public class RenderSystem {
         supportsMultiDrawIndirect = GLStateManager.capabilities.OpenGL43 || GLStateManager.capabilities.GL_ARB_multi_draw_indirect;
         supportsBufferStorage = !isGLES && (GLStateManager.capabilities.OpenGL44 || GLStateManager.capabilities.GL_ARB_buffer_storage);
         supportsClearTexture = GLStateManager.capabilities.OpenGL44 || GLStateManager.capabilities.GL_ARB_clear_texture;
+        supportsStencilTexturing = GLStateManager.capabilities.OpenGL43 || GLStateManager.capabilities.GL_ARB_stencil_texturing;
+        supportsTextureStorage = isGLES ? glesVersion >= 300 : GLStateManager.capabilities.OpenGL42 || GLStateManager.capabilities.GL_ARB_texture_storage;
         hasClipCullDistance = !isGLES || hasExtension("GL_EXT_clip_cull_distance");
 
         // Cache maximum image units
@@ -307,14 +311,14 @@ public class RenderSystem {
     }
 
     public static void texImage1D(int texture, int target, int level, int internalformat, int width, int border, int format, int type, ByteBuffer pixels) {
-        RENDER_BACKEND.bindTexture(target, texture);
+        GLStateManager.glBindTexture(target, texture);
         GLStateManager.suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage1D(target, level, internalformat, width, border, format, type, pixels);
         GLStateManager.restorePixelUnpackBuffer();
     }
 
     public static void texImage3D(int texture, int target, int level, int internalformat, int width, int height, int depth, int border, int format, int type, ByteBuffer pixels) {
-        RENDER_BACKEND.bindTexture(target, texture);
+        GLStateManager.glBindTexture(target, texture);
         GLStateManager.suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage3D(target, level, internalformat, width, height, depth, border, format, type, pixels);
         GLStateManager.restorePixelUnpackBuffer();
@@ -363,7 +367,6 @@ public class RenderSystem {
     }
 
     public static void framebufferTexture2D(int fb, int fbtarget, int attachment, int target, int texture, int levels) {
-        TextureInfoCache.INSTANCE.onWrittenOutsideUploads(texture);
         dsaState.framebufferTexture2D(fb, fbtarget, attachment, target, texture, levels);
     }
 
@@ -457,6 +460,14 @@ public class RenderSystem {
 
     public static boolean supportsClearTexture() {
         return supportsClearTexture;
+    }
+
+    public static boolean supportsStencilTexturing() {
+        return supportsStencilTexturing;
+    }
+
+    public static boolean supportsTextureStorage() {
+        return supportsTextureStorage;
     }
 
     public static int getMaxSSBOBindings() {

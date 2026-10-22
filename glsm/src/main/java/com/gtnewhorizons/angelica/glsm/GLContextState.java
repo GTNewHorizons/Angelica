@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.glsm;
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import com.gtnewhorizons.angelica.glsm.stacks.AlphaStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.BlendStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.BooleanStateStack;
@@ -257,6 +258,7 @@ public class GLContextState {
     public boolean vanillaBlendEnabledBefore;
     public int drawFramebuffer = 0;
     public int readFramebuffer = 0;
+    public final Int2ObjectOpenHashMap<int[]> framebufferTextures = new Int2ObjectOpenHashMap<>();
     public int texGenGeneration;
     public int defaultVAO;
     public final VAOManager vaos = new VAOManager();

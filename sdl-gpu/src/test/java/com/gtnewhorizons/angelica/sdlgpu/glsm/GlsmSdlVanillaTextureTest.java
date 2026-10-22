@@ -1,6 +1,9 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
+import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
+import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -11,6 +14,7 @@ import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL14;
 
+import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 
 import static com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig.SIZE;
@@ -18,6 +22,7 @@ import static com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig.describe
 import static com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig.pixelAt;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Tag("glsm-sdl")
@@ -37,6 +42,7 @@ class GlsmSdlVanillaTextureTest {
     };
 
     private static final int LIGHTMAP_SIZE = 16;
+    private static final int RELEASE_DELAY_FRAMES = Reflect.getStatic(GLStateManager.class, "RELEASE_DELAY_FRAMES");
     private static final int CLEAR_COLOR = 0xFF000000;
 
     private static int atlasTexture;
@@ -259,4 +265,66 @@ class GlsmSdlVanillaTextureTest {
         final int actual = center();
         assertColorNear(expected, actual, 2, "display list with bindings outside");
     }
+
+    private static void texImageEmpty(int level) {
+        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, level, GL11.GL_RGBA8, 0, 0, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+    }
+
+    @Test
+    void zeroSizedLevelZeroDropsStorageAndRespecifyRecreatesIt() {
+        final ResourceManager rm = GlsmSdlHeadlessRig.resourceManager();
+        final int tex = GlsmSdlHeadlessRig.newNearestTexture();
+        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 2);
+        GlsmSdlHeadlessRig.uploadSolidLevel(0, 4, LEVEL_COLORS[0]);
+        assertEquals(3, rm.getTextureMeta(tex).levels(), "MAX_LEVEL 2 allocates the 4x4 chain");
+        final long handle = rm.getTextureHandle(tex);
+
+        texImageEmpty(1);
+        assertEquals(handle, rm.getTextureHandle(tex), "zero-sized level 1 must leave storage alone");
+
+        texImageEmpty(0);
+        assertEquals(0L, rm.getTextureHandle(tex), "zero-sized level 0 must release the handle");
+        assertNull(rm.getTextureMeta(tex), "zero-sized level 0 must drop the meta");
+        texImageEmpty(1);
+        assertEquals(0L, rm.getTextureHandle(tex), "zero-sized level 1 on an empty texture must not allocate");
+
+        GlsmSdlHeadlessRig.uploadSolidLevel(0, 4, LEVEL_COLORS[0]);
+        assertNotEquals(0L, rm.getTextureHandle(tex), "respecified level 0 must recreate storage");
+        assertEquals(4, rm.getTextureMeta(tex).width(), "recreated width");
+        assertEquals(3, rm.getTextureMeta(tex).levels(), "MAX_LEVEL survives the release");
+        GLStateManager.glDeleteTextures(tex);
+    }
+
+    @Test
+    void rescuedTextureAllocatesOneLevelUntilAHigherLevelIsUploaded() {
+        final ResourceManager rm = GlsmSdlHeadlessRig.resourceManager();
+        final int tex = GlsmSdlHeadlessRig.newNearestTexture();
+        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 2);
+        GLStateManager.glDeleteTextures(tex);
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex);
+        GlsmSdlHeadlessRig.uploadSolidLevel(0, 4, LEVEL_COLORS[0]);
+        assertEquals(1, rm.getTextureMeta(tex).levels(), "level-0 upload");
+        GlsmSdlHeadlessRig.uploadSolidLevel(1, 2, LEVEL_COLORS[1]);
+        assertEquals(3, rm.getTextureMeta(tex).levels(), "level-1 upload grows to the full chain");
+        GLStateManager.glDeleteTextures(tex);
+    }
+
+    @Test
+    void deletingA2DTextureKeepsTheUnitsNon2DBinding() {
+        final ResourceManager rm = GlsmSdlHeadlessRig.resourceManager();
+        final int deleted = GlsmSdlHeadlessRig.newNearestTexture();
+        GlsmSdlHeadlessRig.uploadSolidLevel(0, 4, LEVEL_COLORS[0]);
+        final int volume = GLStateManager.glGenTextures();
+        GLStateManager.glBindTexture(GL12.GL_TEXTURE_3D, volume);
+
+        GLStateManager.glDeleteTextures(deleted);
+        assertEquals(volume, BackendManager.RENDER_BACKEND.getInteger(GL12.GL_TEXTURE_BINDING_3D), "after the delete");
+        for (int i = 0; i < RELEASE_DELAY_FRAMES; i++) GLStateManager.onFrameEnd();
+
+        assertEquals(0L, rm.getTextureHandle(deleted), "the frame-end release must have run");
+        assertEquals(volume, BackendManager.RENDER_BACKEND.getInteger(GL12.GL_TEXTURE_BINDING_3D), "after the release");
+        GLStateManager.glBindTexture(GL12.GL_TEXTURE_3D, 0);
+        GLStateManager.glDeleteTextures(volume);
+    }
+
 }
