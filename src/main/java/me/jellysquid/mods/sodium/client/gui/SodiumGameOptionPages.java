@@ -847,6 +847,29 @@ public class SodiumGameOptionPages {
                 .build());
         }
 
+        groups.add(OptionGroup.createBuilder()
+                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.menuBlur"))
+                        .setTooltip(I18n.format("options.angelica.menuBlur.tooltip"))
+                        .setControl(TickBoxControl::new)
+                        .setImpact(OptionImpact.LOW)
+                        .setBinding((opts, value) -> AngelicaConfig.enableMenuBlur = value, opts -> AngelicaConfig.enableMenuBlur)
+                        .build())
+                .add(OptionImpl.createBuilder(int.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.menuBlurRadius"))
+                        .setTooltip(I18n.format("options.angelica.menuBlurRadius.tooltip"))
+                        .setControl(option -> new SliderControl(option, 1, 100, 1, ControlValueFormatter.number()))
+                        .setImpact(OptionImpact.LOW)
+                        .setBinding((opts, value) -> AngelicaConfig.menuBlurRadius = value, opts -> AngelicaConfig.menuBlurRadius)
+                        .build())
+                .add(OptionImpl.createBuilder(int.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.menuBlurFadeTime"))
+                        .setTooltip(I18n.format("options.angelica.menuBlurFadeTime.tooltip"))
+                        .setControl(option -> new SliderControl(option, 0, 2000, 50, ControlValueFormatter.milliseconds()))
+                        .setBinding((opts, value) -> AngelicaConfig.menuBlurFadeTime = value, opts -> AngelicaConfig.menuBlurFadeTime)
+                        .build())
+                .build());
+
         return new OptionPage(I18n.format("sodium.options.pages.appearance"), ImmutableList.copyOf(groups));
     }
 

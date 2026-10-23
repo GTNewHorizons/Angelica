@@ -617,6 +617,14 @@ public enum Mixins implements IMixins {
             "angelica.zoom.MixinMouseFilter"
         )),
 
+    ANGELICA_MENU_BLUR(new MixinBuilder("Blur the world behind open GUIs")
+        .setPhase(Phase.EARLY)
+        .addExcludedMod(TargetedMod.BLUR)
+        .addClientMixins(
+            "angelica.blur.MixinEntityRenderer_MenuBlur",
+            "angelica.blur.MixinGuiScreen_MenuBlur"
+        )),
+
     ANGELICA_FPS_REDUCER(new MixinBuilder("Reduce frame rate and volume while unfocused, minimized, or idle")
         .setPhase(Phase.EARLY)
         .addClientMixins(

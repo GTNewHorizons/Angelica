@@ -276,6 +276,32 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableZoom;
 
+    @Config.Comment("Blur the world behind open GUIs.")
+    @Config.DefaultBoolean(false)
+    public static boolean enableMenuBlur;
+
+    @Config.Comment("How strong the menu blur is, in pixels.")
+    @Config.DefaultInt(12)
+    @Config.RangeInt(min = 1, max = 100)
+    public static int menuBlurRadius;
+
+    @Config.Comment("How long the menu blur takes to fade in, in milliseconds.")
+    @Config.DefaultInt(200)
+    @Config.RangeInt(min = 0, max = 2000)
+    public static int menuBlurFadeTime;
+
+    @Config.Comment("GUI classes that never get the menu blur.")
+    @Config.DefaultStringList({"net.minecraft.client.gui.GuiChat"})
+    public static String[] menuBlurExcludedGuis;
+
+    @Config.Comment("Top color of the GUI background gradient while the menu blur is showing, as ARGB hex.")
+    @Config.DefaultString("75000000")
+    public static String menuBlurGradientTopColor;
+
+    @Config.Comment("Bottom color of the GUI background gradient while the menu blur is showing, as ARGB hex.")
+    @Config.DefaultString("75000000")
+    public static String menuBlurGradientBottomColor;
+
     @Config.Comment("Optimizes in-world item rendering")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart

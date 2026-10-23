@@ -17,7 +17,7 @@
 * HUD caching
 * Custom fonts and text effects
 * MCPatcher - connected textures, custom item textures, custom colors, random mobs, better skies
-* Bundled NotFine, zoom, FPS reducer
+* Bundled NotFine, zoom, FPS reducer, menu blur
 
 ## Status
 * OpenGL + Celeritas terrain - Default
@@ -129,5 +129,7 @@ Targets GL 3.3+ core profile
   * FFP vertex shader generation inspired by ffvertex_prog.c (Copyright 2007 VMware, Inc.)
   * FFP fragment shader generation inspired by ff_fragment_shader.c (Copyright 2007, 2009 VMware, Inc. / 2010-2011 Intel Corporation)
   * Fog parameter optimization inspired by st_nir_lower_fog.c (Copyright 2023 Google LLC) and prog_statevars.c (Copyright 1999-2007 Brian Paul)
+* Blur
+  * tterrag for [Blur](https://github.com/tterrag1098/Blur) - Menu blur based on Blur under the MIT license
 * RGSS Terrain Texture Filtering
   * Indiesoft for [defold-sharp-sprite](https://github.com/indiesoftby/defold-sharp-sprite), used as the reference implementation under the MIT license
