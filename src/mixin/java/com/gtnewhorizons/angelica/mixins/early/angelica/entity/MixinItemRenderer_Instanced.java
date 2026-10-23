@@ -5,7 +5,7 @@ import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.rendering.GlintClock;
 import com.gtnewhorizons.angelica.rendering.SkippedGlintBlock;
 import com.gtnewhorizons.angelica.rendering.items.DroppedItemInstancer;
-import com.gtnewhorizons.angelica.rendering.items.HeldItemGlint;
+import com.gtnewhorizons.angelica.rendering.items.ItemGlint;
 import com.gtnewhorizons.angelica.rendering.tesr.EntityMaterials;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import net.minecraft.block.Block;
@@ -78,7 +78,7 @@ public abstract class MixinItemRenderer_Instanced {
         try {
             // A later pass without glint covers the deferred glint of an earlier one, as vanilla draws it after that glint.
             final boolean afterGlint = angelica$deferredGlintStack != null && stack == angelica$deferredGlintStack && !stack.hasEffect(angelica$pass);
-            return DroppedItemInstancer.icon(angelica$batchable(angelica$type) && !HeldItemGlint.needsImmediateBase(stack, angelica$pass) ? stack : null, afterGlint, maxU, minV, minU, maxV, width, height, thickness);
+            return DroppedItemInstancer.icon(angelica$batchable(angelica$type) && !ItemGlint.needsImmediateBase(stack, angelica$pass) ? stack : null, afterGlint, maxU, minV, minU, maxV, width, height, thickness);
         } catch (Throwable t) {
             if (Tracy.FINE_ZONES) Tracy.endZone();
             throw t;
@@ -91,7 +91,7 @@ public abstract class MixinItemRenderer_Instanced {
         remap = false
     )
     private boolean angelica$queueHeldGlintBlock(boolean hasEffect) {
-        if (!hasEffect || !HeldItemGlint.eligible() || !DroppedItemInstancer.queueSkippedGlint(angelica$iconWidth, angelica$iconHeight)) return hasEffect;
+        if (!hasEffect || !ItemGlint.eligible() || !DroppedItemInstancer.queueSkippedGlint(angelica$iconWidth, angelica$iconHeight, EntityMaterials.ITEM_GLINT)) return hasEffect;
         angelica$deferredGlintStack = angelica$stack;
         angelica$deferredGlintPass = angelica$pass;
         SkippedGlintBlock.applyHeldItemExitState();

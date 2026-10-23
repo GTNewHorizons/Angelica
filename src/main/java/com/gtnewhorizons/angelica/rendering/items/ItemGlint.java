@@ -16,15 +16,15 @@ import org.lwjgl.opengl.GL11;
 import javax.imageio.ImageIO;
 import java.io.IOException;
 
-/** One draw for the two vanilla held-item layers; modified glint sequences retain their original draws. */
-public final class HeldItemGlint {
+/** One draw for the two vanilla held and dropped item layers; modified glint sequences retain their original draws. */
+public final class ItemGlint {
     private static final ResourceLocation TEXTURE = new ResourceLocation("textures/misc/enchanted_item_glint.png");
     private static final Matrix4f first = new Matrix4f();
     private static final Matrix4f second = new Matrix4f();
     private static long matrixTime = Long.MIN_VALUE;
     private static boolean listening, checked, opaque;
 
-    private HeldItemGlint() {}
+    private ItemGlint() {}
 
     private static boolean batchedGlintGuarded() {
         return ModelPartBatcher.INSTANCE.entityPassActive() && ModelPartBatcher.INSTANCE.canQueueGlint() && canResetStencil();
