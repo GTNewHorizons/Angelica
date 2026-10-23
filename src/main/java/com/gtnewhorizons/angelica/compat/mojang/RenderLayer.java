@@ -140,7 +140,7 @@ public final class RenderLayer implements BlendingStateHolder {
 
     private static Hook hookFor(TesrMaterial material, PassOverride pass, int glintSlot, boolean lightmap) {
         switch (material.special()) {
-            case GLINT -> {
+            case GLINT, ITEM_GLINT -> {
                 return glintHook(glintSlot);
             }
             case BEACON_BEAM -> {

@@ -33,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -112,20 +113,23 @@ class TesrLayerStateTest {
         return RenderLayer.tesr(null, material, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_BACK, true, true);
     }
 
-    @Test
-    void batchBracketRestoresCallerDepthAfterGlint() {
+    @ParameterizedTest
+    @ValueSource(booleans = { false, true })
+    void batchBracketRestoresCallerDepthAfterGlint(boolean held) {
         for (boolean enabled : new boolean[] { true, false }) {
             GLStateManager.getDepthTest().setEnabled(enabled);
             GLStateManager.glDepthFunc(GL11.GL_GREATER);
             final int depth = GLStateManager.pushState(StateSet.BATCH);
             final RenderLayer base = layer(EntityMaterials.DROPPED_ITEM_CUTOUT);
-            final RenderLayer glint = glint(ShaderGlint.NO_TINT);
+            final RenderLayer glint = layer(held ? EntityMaterials.ITEM_GLINT : EntityMaterials.GLINT);
             base.startDrawing();
             assertDepth(true, GL11.GL_LEQUAL);
             base.endDrawing();
             glint.startDrawing();
             assertDepth(true, GL11.GL_EQUAL);
+            assertSame(SpecialCondition.GLINT, GbufferPrograms.getSpecialCondition());
             glint.endDrawing();
+            assertNull(GbufferPrograms.getSpecialCondition());
             GLStateManager.popStateTo(depth);
             assertDepth(enabled, GL11.GL_GREATER);
         }

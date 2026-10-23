@@ -30,14 +30,18 @@ public final class EntityMaterials {
     static final TesrMaterial DEPTH_ONLY = TesrMaterial.builder().depthOnly().stream().build();
     static final TesrMaterial DEPTH_ONLY_CUTOUT = TesrMaterial.builder().depthOnly().cutout(0.1f).stream().build();
     static final TesrMaterial OVERLAY = TesrMaterial.builder().translucent().depthEqual().stream().build();
-    public static final TesrMaterial GLINT = TesrMaterial.builder().glint().depthEqual().noDepthWrite().unlit().stream().special(TesrMaterial.SpecialRender.GLINT).build();
-    public static final TesrMaterial ITEM_GLINT = TesrMaterial.builder().glint().depthEqual().noDepthWrite().unlit().stream().special(TesrMaterial.SpecialRender.GLINT).build();
+    public static final TesrMaterial GLINT = glintMaterial(TesrMaterial.SpecialRender.GLINT);
+    public static final TesrMaterial ITEM_GLINT = glintMaterial(TesrMaterial.SpecialRender.ITEM_GLINT);
 
     private static final BlendState effectiveBlend = new BlendState();
     private static final AlphaState effectiveAlpha = new AlphaState();
     private static final ColorMask effectiveColorMask = new ColorMask();
 
     private EntityMaterials() {}
+
+    private static TesrMaterial glintMaterial(TesrMaterial.SpecialRender special) {
+        return TesrMaterial.builder().glint().depthEqual().noDepthWrite().unlit().stream().special(special).build();
+    }
 
     static TesrMaterial fromCurrentState(boolean texIdentity) {
         final boolean textured = GLStateManager.getTextures().getTextureUnitStates(0).isEnabled();

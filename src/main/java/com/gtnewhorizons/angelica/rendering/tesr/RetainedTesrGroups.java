@@ -1136,10 +1136,10 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
             if (!live(group) || !queuedInstanced(group)) continue;
             if (group.templateColumns.hasInstances()) {
                 final boolean fixedFunction = deferred == null && GLStateManager.getActiveProgram() == 0;
-                drawTemplateRuns(group.templateColumns, group.material.special() == TesrMaterial.SpecialRender.GLINT && fixedFunction, group.material == EntityMaterials.ITEM_GLINT);
+                drawTemplateRuns(group.templateColumns, group.material.special().isGlint() && fixedFunction, group.material == EntityMaterials.ITEM_GLINT);
             }
             if (!cubeAvailable && group.cubeColumns.hasInstances() && !group.cubeColumns.anyAtlasSlot) {
-                drawTemplateRuns(group.cubeColumns, group.material == EntityMaterials.GLINT && deferred == null, false);
+                drawTemplateRuns(group.cubeColumns, group.material.special().isGlint() && deferred == null, false);
             }
         }
         restoreTexMatrix();
@@ -1281,7 +1281,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
         for (int r = 0, n = cols.runs.size(); r < n; r++) {
             final TexRun run = cols.runs.get(r);
             applyTexMatrix(run);
-            final boolean combined = group.material == EntityMaterials.GLINT && deferred == null && r + 1 < n && combineRuns(cols, run, cols.runs.get(r + 1));
+            final boolean combined = group.material.special().isGlint() && deferred == null && r + 1 < n && combineRuns(cols, run, cols.runs.get(r + 1));
             try {
                 if (canRedraw(run)) {
                     instanced.redrawCubes(run.sourceRun.uploadOffset, run.instances, run.color);

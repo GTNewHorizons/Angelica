@@ -625,7 +625,7 @@ public final class ModelPartBatcher {
         final PolygonState polygon = GLStateManager.getPolygonState();
         final float offsetFactor = offset ? polygon.getOffsetFactor() : 0.0f;
         final float offsetUnits = offset ? polygon.getOffsetUnits() : 0.0f;
-        final int glintSlot = material.special() == TesrMaterial.SpecialRender.GLINT ? lastBoundGlintSlot : ShaderGlint.NO_TINT;
+        final int glintSlot = material.special().isGlint() ? lastBoundGlintSlot : ShaderGlint.NO_TINT;
         final int cullCode = DrawState.liveCull(material);
         final boolean lit = DrawState.liveLit(material);
         final EntityTextureAtlas.Slot atlasSlot = texMatrix == null && cubesInsideTexture ? atlasSlotFor(material) : null;
