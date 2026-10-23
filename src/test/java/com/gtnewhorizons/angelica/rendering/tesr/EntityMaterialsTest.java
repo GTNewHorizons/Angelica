@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.rendering.tesr;
 
 import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -9,6 +10,7 @@ import org.lwjgl.opengl.GL11;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -16,6 +18,12 @@ class EntityMaterialsTest {
 
     private static final int SA = GL11.GL_SRC_ALPHA;
     private static final int OMSA = GL11.GL_ONE_MINUS_SRC_ALPHA;
+
+    @Test
+    void armorAndHeldGlintRemainDistinctWhenMaterialsAreInterned() {
+        assertNotSame(EntityMaterials.GLINT, EntityMaterials.ITEM_GLINT,
+            "only held glint uses the per-item stencil guard");
+    }
 
     private static Arguments row(String name, TesrMaterial expected, boolean textured, boolean blend, Boolean texAnimated, int srcRgb, int dstRgb, boolean alphaTest, int alphaFunc, float alphaRef, int depthFunc, boolean depthMask) {
         return Arguments.of(name, expected, textured, blend, texAnimated, srcRgb, dstRgb, alphaTest, alphaFunc, alphaRef, depthFunc, depthMask);

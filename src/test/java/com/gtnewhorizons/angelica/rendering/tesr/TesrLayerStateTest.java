@@ -12,6 +12,7 @@ import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.hooks.TextureUtilHooks;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
+import com.gtnewhorizons.angelica.rendering.SkippedGlintBlock;
 import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
 import net.coderbot.batchedentityrendering.impl.AngelicaBufferSource;
 import net.coderbot.batchedentityrendering.impl.TransparencyType;
@@ -33,6 +34,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -112,20 +114,23 @@ class TesrLayerStateTest {
         return RenderLayer.tesr(null, material, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_BACK, true, true);
     }
 
-    @Test
-    void batchBracketRestoresCallerDepthAfterGlint() {
+    @ParameterizedTest
+    @ValueSource(booleans = { false, true })
+    void batchBracketRestoresCallerDepthAfterGlint(boolean held) {
         for (boolean enabled : new boolean[] { true, false }) {
             GLStateManager.getDepthTest().setEnabled(enabled);
             GLStateManager.glDepthFunc(GL11.GL_GREATER);
             final int depth = GLStateManager.pushState(StateSet.BATCH);
             final RenderLayer base = layer(EntityMaterials.DROPPED_ITEM_CUTOUT);
-            final RenderLayer glint = glint(ShaderGlint.NO_TINT);
+            final RenderLayer glint = layer(held ? EntityMaterials.ITEM_GLINT : EntityMaterials.GLINT);
             base.startDrawing();
             assertDepth(true, GL11.GL_LEQUAL);
             base.endDrawing();
             glint.startDrawing();
             assertDepth(true, GL11.GL_EQUAL);
+            assertSame(SpecialCondition.GLINT, GbufferPrograms.getSpecialCondition());
             glint.endDrawing();
+            assertNull(GbufferPrograms.getSpecialCondition());
             GLStateManager.popStateTo(depth);
             assertDepth(enabled, GL11.GL_GREATER);
         }
@@ -136,6 +141,22 @@ class TesrLayerStateTest {
         assertEquals(enabled, GL11.glIsEnabled(GL11.GL_DEPTH_TEST), "driver depth enable");
         assertEquals(function, GLStateManager.getDepthState().getFunc(), "cached depth function");
         assertEquals(function, GL11.glGetInteger(GL11.GL_DEPTH_FUNC), "driver depth function");
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = { false, true })
+    void skippedDroppedGlintPreservesDepthMaskAndTextureMatrix(boolean depthWrite) {
+        final Matrix4f textureMatrix = new Matrix4f().translation(0.13f, 0.27f, 0);
+        GLStateManager.setTextureMatrix(0, textureMatrix);
+        GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
+        GLStateManager.glDepthMask(depthWrite);
+        GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        SkippedGlintBlock.applyDroppedItemExitState();
+        assertEquals(depthWrite, GLStateManager.isEffectiveDepthMaskEnabled());
+        assertEquals(textureMatrix, GLStateManager.getTextures().getTextureUnitMatrix(0));
+        assertEquals(GL11.GL_MODELVIEW, GLStateManager.getMatrixMode().getMode());
+        assertEquals(GL11.GL_SRC_COLOR, GLStateManager.getBlendState().getSrcAlpha(), "dropped glint blends alpha like color, unlike held");
+        assertEquals(GL11.GL_ONE, GLStateManager.getBlendState().getDstAlpha());
     }
 
     @Test

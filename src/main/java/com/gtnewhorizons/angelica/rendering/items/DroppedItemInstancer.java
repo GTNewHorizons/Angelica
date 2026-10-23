@@ -40,8 +40,7 @@ public final class DroppedItemInstancer {
     private static boolean glintSeen;
     private static final ItemPropCache.ItemProp glintProperties = new ItemPropCache.ItemProp();
     private static final ItemPropCache.ItemProp currentGlintProperties = new ItemPropCache.ItemProp();
-    private static TemplateBuffer glintTemplate;
-    private static int glintTemplateWidth, glintTemplateHeight;
+    private static final GlintMesh glintMesh = new GlintMesh();
 
     private static long instanced;
     private static long glintInstanced;
@@ -183,16 +182,14 @@ public final class DroppedItemInstancer {
         return drawsBefore;
     }
 
-    public static boolean queueSkippedGlint(int iconWidth, int iconHeight) {
-        if (!basePart || !BatchEligibility.batchingAllowed()) return false;
-        if (glintTemplate == null || glintTemplateWidth != iconWidth || glintTemplateHeight != iconHeight) {
-            final IconMesh hit = icons.get(0.0F, 0.0F, 1.0F, 1.0F, iconWidth, iconHeight, 0.0625F);
-            if (hit == null || hit.template == null) return false;
-            glintTemplate = hit.template;
-            glintTemplateWidth = iconWidth;
-            glintTemplateHeight = iconHeight;
-        }
-        if (!ModelPartBatcher.INSTANCE.queueSkippedHeldGlint(glintTemplate)) return false;
+    public static boolean canQueueSkippedGlint() {
+        return basePart && BatchEligibility.batchingAllowed();
+    }
+
+    public static boolean queueSkippedGlint(int stripsWide, int stripsHigh, TesrMaterial material) {
+        if (!canQueueSkippedGlint()) return false;
+        final TemplateBuffer template = glintMesh.get(stripsWide, stripsHigh);
+        if (template == null || !ModelPartBatcher.INSTANCE.queueSkippedItemGlint(template, material)) return false;
         glintInstanced += 2;
         BatchEligibility.onPartQueued();
         BatchEligibility.onPartQueued();
@@ -276,10 +273,24 @@ public final class DroppedItemInstancer {
         basePart = false;
         glintCapture.reset();
         glintSeen = false;
-        glintTemplate = null;
+        glintMesh.template = null;
         if (blockBackend != null) {
             blockBackend.delete();
             blockBackend = null;
+        }
+    }
+
+    private static final class GlintMesh {
+        TemplateBuffer template;
+        int stripsWide, stripsHigh;
+
+        TemplateBuffer get(int stripsWide, int stripsHigh) {
+            if (template == null || this.stripsWide != stripsWide || this.stripsHigh != stripsHigh) {
+                template = iconTemplate(0.0F, 0.0F, 1.0F, 1.0F, stripsWide, stripsHigh, 0.0625F);
+                this.stripsWide = stripsWide;
+                this.stripsHigh = stripsHigh;
+            }
+            return template;
         }
     }
 

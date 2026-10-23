@@ -20,7 +20,15 @@ public final class SkippedGlintBlock {
     }
 
     public static void applyHeldItemExitState() {
-        applyExitState(0.5F * 0.76F, 0.25F * 0.76F, 0.8F * 0.76F, 1.0F, GL11.GL_SRC_COLOR, GL11.GL_ONE, GL11.GL_ONE, GL11.GL_ZERO, false, false);
+        applyItemExitState(GL11.GL_ONE, GL11.GL_ZERO);
+    }
+
+    public static void applyDroppedItemExitState() {
+        applyItemExitState(GL11.GL_SRC_COLOR, GL11.GL_ONE);
+    }
+
+    private static void applyItemExitState(int srcAlpha, int dstAlpha) {
+        applyExitState(0.5F * 0.76F, 0.25F * 0.76F, 0.8F * 0.76F, 1.0F, GL11.GL_SRC_COLOR, GL11.GL_ONE, srcAlpha, dstAlpha, false, false);
     }
 
     private static void applyExitState(float red, float green, float blue, float alpha, int srcRgb, int dstRgb, int srcAlpha, int dstAlpha, boolean resetTextureMatrix, boolean restoreDepthMask) {

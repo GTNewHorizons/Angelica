@@ -26,7 +26,7 @@ import com.gtnewhorizons.angelica.glsm.states.PolygonState;
 import com.gtnewhorizons.angelica.mixins.interfaces.ModelBoxData;
 import com.gtnewhorizons.angelica.profiling.BailClassCounts;
 import com.gtnewhorizons.angelica.rendering.GlintClock;
-import com.gtnewhorizons.angelica.rendering.items.HeldItemGlint;
+import com.gtnewhorizons.angelica.rendering.items.ItemGlint;
 import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectIterator;
@@ -454,14 +454,14 @@ public final class ModelPartBatcher {
         return true;
     }
 
-    public boolean queueSkippedHeldGlint(TemplateBuffer template) {
-        if (!canQueueGlint() || GLStateManager.getActiveTextureUnit() != 0 || !activeGroups.canCopyInstances(EntityMaterials.ITEM_GLINT) || !MatrixHelper.isIdentity(GLStateManager.getTextures().getTextureUnitMatrix(0))) return false;
+    public boolean queueSkippedItemGlint(TemplateBuffer template, TesrMaterial material) {
+        if (!canQueueGlint() || GLStateManager.getActiveTextureUnit() != 0 || !activeGroups.canCopyInstances(material) || !MatrixHelper.isIdentity(GLStateManager.getTextures().getTextureUnitMatrix(0))) return false;
         final boolean offset = GLStateManager.glIsEnabled(GL11.GL_POLYGON_OFFSET_FILL);
         final PolygonState polygon = GLStateManager.getPolygonState();
-        final int cullCode = DrawState.liveCull(EntityMaterials.ITEM_GLINT);
-        final RenderLayer layer = layerFor(HeldItemGlint.texture(), EntityMaterials.ITEM_GLINT, PassOverride.NONE, offset ? polygon.getOffsetFactor() : 0, offset ? polygon.getOffsetUnits() : 0, ShaderGlint.NO_TINT, cullCode, false, DrawState.liveLightmap());
-        activeGroups.queueGlintLayers(template, layer, EntityMaterials.ITEM_GLINT, currentModelView(), GLSMConfig.packedLastBrightness(), VANILLA_GLINT_COLOR, currentOverlay(), currentEntityInfo(0),
-            HeldItemGlint.firstMatrix(), HeldItemGlint.secondMatrix());
+        final int cullCode = DrawState.liveCull(material);
+        final RenderLayer layer = layerFor(ItemGlint.texture(), material, PassOverride.NONE, offset ? polygon.getOffsetFactor() : 0, offset ? polygon.getOffsetUnits() : 0, ShaderGlint.NO_TINT, cullCode, false, DrawState.liveLightmap());
+        activeGroups.queueGlintLayers(template, layer, material, currentModelView(), GLSMConfig.packedLastBrightness(), VANILLA_GLINT_COLOR, currentOverlay(), currentEntityInfo(0),
+            ItemGlint.firstMatrix(), ItemGlint.secondMatrix());
         parts++;
         glintPassReuses++;
         return true;
@@ -625,7 +625,7 @@ public final class ModelPartBatcher {
         final PolygonState polygon = GLStateManager.getPolygonState();
         final float offsetFactor = offset ? polygon.getOffsetFactor() : 0.0f;
         final float offsetUnits = offset ? polygon.getOffsetUnits() : 0.0f;
-        final int glintSlot = material.special() == TesrMaterial.SpecialRender.GLINT ? lastBoundGlintSlot : ShaderGlint.NO_TINT;
+        final int glintSlot = material.special().isGlint() ? lastBoundGlintSlot : ShaderGlint.NO_TINT;
         final int cullCode = DrawState.liveCull(material);
         final boolean lit = DrawState.liveLit(material);
         final EntityTextureAtlas.Slot atlasSlot = texMatrix == null && cubesInsideTexture ? atlasSlotFor(material) : null;

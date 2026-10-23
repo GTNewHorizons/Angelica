@@ -17,7 +17,11 @@ public final class TesrMaterial {
 
     public enum Transparency { OPAQUE, TRANSLUCENT, ADDITIVE, ADDITIVE_ALPHA, GLINT }
 
-    public enum SpecialRender { NONE, BEACON_BEAM, GLINT }
+    public enum SpecialRender {
+        NONE, BEACON_BEAM, GLINT, ITEM_GLINT;
+
+        public boolean isGlint() { return this == GLINT || this == ITEM_GLINT; }
+    }
 
     private static final ConcurrentHashMap<TesrMaterial, TesrMaterial> INTERNED = new ConcurrentHashMap<>();
 
