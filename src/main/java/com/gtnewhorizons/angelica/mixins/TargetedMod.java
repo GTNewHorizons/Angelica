@@ -10,6 +10,7 @@ public enum TargetedMod implements ITargetMod {
     ARCHAICFIX("org.embeddedt.archaicfix.ArchaicCore", "archaicfix"),
     BACKHAND("xonin.backhand.coremod.BackhandLoadingPlugin", "backhand"),
     BOTANIA(null, "Botania"),
+    BLUR("com.tterrag.blur.BlurPlugin", "blur"),
     CAMPFIRE_BACKPORT(null, "campfirebackport"),
     CHISEL(null, "chisel"),
     COFHCORE( "cofh.asm.LoadingPlugin", "CoFHCore"),
