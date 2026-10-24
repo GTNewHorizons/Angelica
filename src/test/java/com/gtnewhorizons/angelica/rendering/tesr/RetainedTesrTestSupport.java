@@ -86,8 +86,8 @@ public final class RetainedTesrTestSupport {
 
     static RenderLayer capturedLayer(TesrMaterial material) {
         return Reflect.invoke(ModelPartBatcher.INSTANCE, "layerFor",
-            new Class<?>[] { ResourceLocation.class, TesrMaterial.class, PassOverride.class, float.class, float.class, int.class, int.class, boolean.class, boolean.class },
-            null, material, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.liveCull(material), DrawState.liveLit(material), DrawState.liveLightmap());
+            new Class<?>[] { ResourceLocation.class, TesrMaterial.class, PassOverride.class, float.class, float.class, int.class, int.class, boolean.class, boolean.class, boolean.class },
+            null, material, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.liveCull(material), DrawState.liveLit(material), DrawState.liveLightmap(), false);
     }
 
     static final class CountingPipeline implements TesrInstancingPipeline {

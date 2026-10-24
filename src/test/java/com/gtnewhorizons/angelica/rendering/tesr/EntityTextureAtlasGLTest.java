@@ -1,9 +1,13 @@
 package com.gtnewhorizons.angelica.rendering.tesr;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.glsm.ExitState;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
+import net.coderbot.batchedentityrendering.impl.AngelicaBufferSource;
+import net.coderbot.iris.layer.PassOverride;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.ITextureObject;
 import net.minecraft.client.renderer.texture.TextureManager;
@@ -12,6 +16,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.joml.Matrix4f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
@@ -25,6 +32,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrTestSupport.cubes;
+import static com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrTestSupport.onlyGroup;
+import static com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrTestSupport.template;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -63,6 +75,7 @@ class EntityTextureAtlasGLTest {
 
     @AfterEach
     void tearDown() {
+        GLStateManager.cancelExitCapture();
         EntityTextureAtlas.INSTANCE.freePages();
         GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
         GLStateManager.glDeleteFramebuffers(passFbo);
@@ -73,6 +86,66 @@ class EntityTextureAtlasGLTest {
 
     private static int argb(int x, int y, int seed) {
         return 0xFF000000 | (x * 50 + seed) << 16 | (y * 90 + seed) << 8 | 0x20;
+    }
+
+    @ParameterizedTest
+    @CsvSource({"false, false", "true, false", "false, true", "true, true"})
+    void entityReplayResolvesAtlasRegionsWithoutRemappingSharedGlintUploads(boolean shared, boolean glint) {
+        final boolean atlasEnabled = AngelicaConfig.enableEntityTextureAtlas;
+        final ModelPartBatcher batcher = ModelPartBatcher.INSTANCE;
+        final RetainedTesrGroups previousGroups = Reflect.get(batcher, "activeGroups");
+        final RetainedTesrGroups groups = new RetainedTesrGroups(new AngelicaBufferSource());
+        final int otherTexture = texture(GL11.GL_NEAREST, 12);
+        groups.beginPass(new Matrix4f(), 0, 0, 0, new InstancedTemplateRenderer(new InstanceRing()),
+            new RetainedTesrTestSupport.CountingPipeline(true, true));
+        try {
+            AngelicaConfig.enableEntityTextureAtlas = true;
+            Reflect.set(batcher, "activeGroups", groups);
+            final EntityTextureAtlas.Slot shadowSlot = EntityTextureAtlas.INSTANCE.slotFor(source, false);
+            assertNotNull(shadowSlot);
+            EntityTextureAtlas.INSTANCE.onTextureDeleted(source);
+            EntityTextureAtlas.INSTANCE.recycleReleasedRegions();
+            assertSame(shadowSlot, EntityTextureAtlas.INSTANCE.slotFor(otherTexture, false));
+
+            final EntityRenderCommands.Model entry = new EntityRenderCommands.Model();
+            entry.instance.template = template();
+            entry.cubes = cubes(1);
+            entry.cubesInsideTexture = true;
+            entry.scale = 1;
+            entry.inputs.material = EntityMaterials.CUTOUT;
+            entry.inputs.texture = new ResourceLocation("angelica", "test/replay");
+            entry.inputs.textureId = source;
+            entry.inputs.pass = PassOverride.NONE;
+            entry.inputs.glintSlot = -1;
+            if (glint) {
+                entry.glint = new EntityRenderCommands.ModelGlint();
+                entry.replayed = new RetainedTesrGroups.InstanceRange();
+                entry.replayed.reuseUpload = true;
+            }
+            if (shared) {
+                entry.source = new RetainedTesrGroups.InstanceColumns();
+                entry.source.addCubes(entry.instance.template, entry.cubes, 1, new Matrix4f(), 0, -1, 0, 0, shadowSlot);
+                entry.end = 1;
+            }
+            batcher.beginReplay(new Matrix4f());
+            batcher.replay(entry);
+
+            final RetainedTesrGroups.Group main = onlyGroup(groups);
+            final EntityTextureAtlas.Slot mainSlot = main.cubeColumns.atlasSlot(0);
+            if (glint) {
+                assertNull(mainSlot, "glint reuses the armor upload, whose UVs must still address the original texture");
+                assertEquals(entry.inputs.texture, main.layer.getTextureId());
+            } else {
+                assertNotNull(mainSlot);
+                assertNotSame(shadowSlot, mainSlot);
+                assertSame(EntityTextureAtlas.INSTANCE.slotFor(source, false), mainSlot);
+            }
+        } finally {
+            Reflect.set(batcher, "activeGroups", previousGroups);
+            AngelicaConfig.enableEntityTextureAtlas = atlasEnabled;
+            groups.clear();
+            GLStateManager.glDeleteTextures(otherTexture);
+        }
     }
 
     private static int texture(int filter, int seed) {
@@ -114,7 +187,10 @@ class EntityTextureAtlasGLTest {
 
     @Test
     void copiesTheTextureWithEdgeGuttersAndRestoresTheFramebuffers() {
+        final ExitState state = new ExitState();
+        GLStateManager.beginExitCapture(state);
         final EntityTextureAtlas.Slot slot = EntityTextureAtlas.INSTANCE.slotFor(source, false);
+        assertTrue(GLStateManager.finishExitCapture(state), "first-use atlas resources are internal batch operations");
         assertNotNull(slot);
         assertEquals(passFbo, GLStateManager.getDrawFramebuffer(), "draw framebuffer restored");
         assertEquals(passFbo, GLStateManager.getReadFramebuffer(), "read framebuffer restored");

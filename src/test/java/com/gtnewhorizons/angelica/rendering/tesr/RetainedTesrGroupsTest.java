@@ -60,6 +60,198 @@ class RetainedTesrGroupsTest {
         layer = testLayer();
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void replayRangeMatchesIndividualQueueingAcrossCapacityGrowth(boolean cubes) {
+        final TemplateBuffer template = template();
+        final var cubeParams = cubes ? cubes(2) : null;
+        final var input = new RetainedTesrGroups.InstanceColumns();
+        for (int i = 0; i < 80; i++) {
+            final Matrix4f matrix = new Matrix4f().translation(i, -i, 2).rotateY(i * 0.1f).scale(0.5f);
+            if (cubes) input.addCubes(template, cubeParams, i + 1, matrix, i, ~i, i * 2, i * 3L, null);
+            else input.add(template, matrix, i, ~i, i * 2, i * 3L);
+        }
+        final var expected = new RetainedTesrGroups(new AngelicaBufferSource());
+        final var pipeline = new RetainedTesrTestSupport.CountingPipeline(true, true);
+        groups.beginPass(new Matrix4f(), 0, 0, 0, new InstancedTemplateRenderer(ring), pipeline);
+        expected.beginPass(new Matrix4f(), 0, 0, 0, new InstancedTemplateRenderer(ring), pipeline);
+        final RenderLayer layer = layerFor(STREAM);
+        final Matrix4f transform = new Matrix4f().rotateX(0.2f).translate(5, 7, 3);
+        final Matrix4f texture = new Matrix4f().translation(0.2f, 0.4f, 0);
+        for (RetainedTesrGroups dst : new RetainedTesrGroups[] {groups, expected}) {
+            dst.queue(0, template, cubeParams, 1, layer, STREAM, new Matrix4f(), 0, -1, 0, 0, 0, texture, null);
+        }
+        groups.replayInstances(input, 5, 75, layer, STREAM, 0, transform, texture, null, null);
+        for (int i = 5; i < 75; i++) {
+            final Matrix4f matrix = new Matrix4f(transform).mul(new Matrix4f().set(input.matrices, i * 16));
+            expected.queue(0, template, cubeParams, cubes ? input.scales.getFloat(i) : 1, layer, STREAM, matrix,
+                input.lights.getInt(i), input.colors.getInt(i), input.overlays.getInt(i), input.infos.getLong(i), 0, texture, null);
+        }
+        final var actualGroup = onlyGroup(groups);
+        final var expectedGroup = onlyGroup(expected);
+        final var actual = cubes ? actualGroup.cubeColumns : actualGroup.templateColumns;
+        final var correct = cubes ? expectedGroup.cubeColumns : expectedGroup.templateColumns;
+        assertEquals(correct.size, actual.size);
+        for (int i = 0; i < actual.size * 16; i++) assertEquals(correct.matrices[i], actual.matrices[i], 0.00001f);
+        assertEquals(correct.templates, actual.templates);
+        assertEquals(correct.cubes, actual.cubes);
+        assertEquals(correct.scales, actual.scales);
+        assertEquals(correct.colors, actual.colors);
+        assertEquals(correct.lights, actual.lights);
+        assertEquals(correct.overlays, actual.overlays);
+        assertEquals(correct.infos, actual.infos);
+        assertEquals(correct.runs.getFirst().parts, actual.runs.getFirst().parts);
+        assertEquals(correct.runs.getFirst().instances, actual.runs.getFirst().instances);
+    }
+
+    @Test
+    void replayRangeRetainedFallbackPreservesTheModelTransform() {
+        final TemplateBuffer triangles = new TemplateBuffer(new int[3 * VERTEX_SIZE], 3, GL11.GL_TRIANGLES);
+        final Matrix4f model = new Matrix4f().translation(3, 2, -6).rotateY(0.7f).scale(0.5f);
+        final Matrix4f transform = new Matrix4f().rotateX(0.2f).translate(5, 7, 3);
+        final var input = new RetainedTesrGroups.InstanceColumns();
+        input.add(triangles, model, 0, -1, 0, 0);
+        final var expected = new RetainedTesrGroups(new AngelicaBufferSource());
+        final RenderLayer layer = layerFor(STREAM);
+        groups.beginPass(new Matrix4f(), 0, 0, 0);
+        expected.beginPass(new Matrix4f(), 0, 0, 0);
+
+        groups.replayInstances(input, 0, 1, layer, STREAM, 0, transform, null, null, null);
+        expected.queue(0, triangles, layer, STREAM, new Matrix4f(transform).mul(model), 0, -1, 0, 0, 0, null);
+
+        final var actual = onlyGroup(groups);
+        assertEquals(0, groups.streamedInstances);
+        assertEquals(1, actual.instTexMatrices.size(), "the draw-mode mismatch must take the retained fallback");
+        assertTrue(new Matrix4f().set(onlyGroup(expected).templateColumns.matrices)
+            .equals(new Matrix4f().set(actual.templateColumns.matrices), 0.00001f));
+        assertTrue(model.equals(new Matrix4f().set(input.matrices), 0));
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void replayRangeProbeMatchesIndividualQueueing(boolean queueBeforeReplay) {
+        final TemplateBuffer template = template();
+        final Matrix4f base = new Matrix4f().rotateX(0.3f).translate(4, -2, 5);
+        final Matrix4f model = new Matrix4f().translation(3, 2, -6).rotateY(0.7f).scale(0.5f);
+        final Matrix4f transform = new Matrix4f().rotateX(0.2f).translate(5, 7, 3);
+        final var input = new RetainedTesrGroups.InstanceColumns();
+        input.add(template, model, 0, -1, 0, 0);
+        final var expected = new RetainedTesrGroups(new AngelicaBufferSource(), () -> clock[0]);
+        final var renderer = new InstancedTemplateRenderer(ring);
+        final var state = CapturedRenderingState.INSTANCE;
+        try (CapturedStateScope ignored = new CapturedStateScope()) {
+            state.setCurrentEntityAndItem(0, 0);
+            state.setCurrentBlockEntity(0);
+            state.setCurrentEntityColor(0, 0, 0, 0);
+            for (RetainedTesrGroups dst : new RetainedTesrGroups[] {groups, expected}) {
+                dst.beginPass(base, 100.5, 64.25, -100.75, renderer);
+                dst.forceStreaming(layer, TesrMaterial.CURRENT_STATE, 0);
+                dst.queue(0, template, layer, TesrMaterial.CURRENT_STATE, base, 0, -1, 0, 0, 0, null);
+            }
+            clock[0] += RetainedTesrGroups.STABILITY_PROBE_MS;
+            for (RetainedTesrGroups dst : new RetainedTesrGroups[] {groups, expected}) {
+                dst.beginPass(base, 100.5, 64.25, -100.75, renderer);
+                if (queueBeforeReplay) {
+                    dst.queue(0, template, layer, TesrMaterial.CURRENT_STATE, base, 0, -1, 0, 0, 0, null);
+                    assertTrue(onlyGroup(dst).probe.probing);
+                }
+            }
+
+            groups.replayInstances(input, 0, 1, layer, TesrMaterial.CURRENT_STATE, 0, transform, null, null, null);
+            expected.queue(0, template, layer, TesrMaterial.CURRENT_STATE, new Matrix4f(transform).mul(model), 0, -1, 0, 0, 0, null);
+
+            final var actual = onlyGroup(groups);
+            final var correct = onlyGroup(expected);
+            final int offset = queueBeforeReplay ? 16 : 0;
+            assertTrue(actual.probe.probing);
+            assertEquals(queueBeforeReplay ? 2 : 1, correct.probe.count);
+            assertEquals(correct.probe.count, actual.probe.count);
+            assertTrue(new Matrix4f().set(correct.probe.snapshot.matrices, offset)
+                .equals(new Matrix4f().set(actual.probe.snapshot.matrices, offset), 0.00001f));
+            assertTrue(new Matrix4f().set(correct.templateColumns.matrices, offset)
+                .equals(new Matrix4f().set(actual.templateColumns.matrices, offset), 0.00001f));
+            assertTrue(model.equals(new Matrix4f().set(input.matrices), 0));
+        }
+    }
+
+    @Test
+    void replayRangeAfterIdleUsesRetainedStorage() {
+        final TemplateBuffer template = template();
+        final Matrix4f base = new Matrix4f().rotateX(0.3f).translate(4, -2, 5);
+        final Matrix4f model = new Matrix4f().translation(3, 2, -6).rotateY(0.7f).scale(0.5f);
+        final Matrix4f transform = new Matrix4f().rotateX(0.2f).translate(5, 7, 3);
+        final var input = new RetainedTesrGroups.InstanceColumns();
+        input.add(template, model, 0, -1, 0, 0);
+        final var expected = new RetainedTesrGroups(new AngelicaBufferSource(), () -> clock[0]);
+        final var renderer = new InstancedTemplateRenderer(ring);
+        final var state = CapturedRenderingState.INSTANCE;
+        try (CapturedStateScope ignored = new CapturedStateScope()) {
+            state.setCurrentEntityAndItem(0, 0);
+            state.setCurrentBlockEntity(0);
+            state.setCurrentEntityColor(0, 0, 0, 0);
+            for (RetainedTesrGroups dst : new RetainedTesrGroups[] {groups, expected}) {
+                dst.beginPass(base, 100.5, 64.25, -100.75, renderer);
+                dst.forceStreaming(layer, TesrMaterial.CURRENT_STATE, 0);
+                dst.queue(0, template, layer, TesrMaterial.CURRENT_STATE, base, 0, -1, 0, 0, 0, null);
+                assertTrue(onlyGroup(dst).streamPath);
+                for (int i = 0; i <= RetainedTesrGroups.IDLE_RESET_FRAMES; i++) {
+                    dst.beginPass(base, 100.5, 64.25, -100.75, renderer);
+                }
+            }
+
+            groups.replayInstances(input, 0, 1, layer, TesrMaterial.CURRENT_STATE, 0, transform, null, null, null);
+            expected.queue(0, template, layer, TesrMaterial.CURRENT_STATE, new Matrix4f(transform).mul(model), 0, -1, 0, 0, 0, null);
+
+            final var actual = onlyGroup(groups);
+            final var correct = onlyGroup(expected);
+            assertFalse(actual.streamPath);
+            assertEquals(1, correct.instTexMatrices.size());
+            assertEquals(correct.instTexMatrices.size(), actual.instTexMatrices.size());
+            assertTrue(actual.templateColumns.runs.isEmpty());
+            assertTrue(new Matrix4f().set(correct.templateColumns.matrices)
+                .equals(new Matrix4f().set(actual.templateColumns.matrices), 0.00001f));
+            assertTrue(model.equals(new Matrix4f().set(input.matrices), 0));
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void replayRangeUsesCapturedStateForNonStreamGroups(boolean liveGroupPromoted) {
+        final TemplateBuffer template = template();
+        final Matrix4f model = new Matrix4f().translation(3, 2, -6).rotateY(0.7f).scale(0.5f);
+        final long info = InstancedAttribs.packEntityInfo(11, 21, 13);
+        final int overlay = AngelicaBufferSource.packAbgr(1, 0, 0, 0.5f);
+        final var input = new RetainedTesrGroups.InstanceColumns();
+        input.add(template, model, 0, -1, overlay, info);
+        final var state = CapturedRenderingState.INSTANCE;
+        try (CapturedStateScope ignored = new CapturedStateScope()) {
+            groups.beginPass(new Matrix4f(), 0, 0, 0, new InstancedTemplateRenderer(ring));
+            state.setCurrentEntityAndItem(11, 13);
+            state.setCurrentBlockEntity(21);
+            AngelicaBufferSource.setEntityColor(overlay);
+            groups.forceStreaming(layer, TesrMaterial.CURRENT_STATE, 21);
+            final var capturedGroup = onlyGroup(groups);
+
+            state.setCurrentEntityAndItem(12, 14);
+            state.setCurrentBlockEntity(22);
+            state.setCurrentEntityColor(0, 1, 0, 0.5f);
+            final int liveOverlay = AngelicaBufferSource.packEntityColor(state.getCurrentEntityColor());
+            if (liveGroupPromoted) groups.forceStreaming(layer, TesrMaterial.CURRENT_STATE, 21);
+
+            groups.replayInstances(input, 0, 1, layer, TesrMaterial.CURRENT_STATE, 21, new Matrix4f(), null, null, null);
+
+            assertEquals(liveGroupPromoted ? 2 : 1, groups.groupCount());
+            assertEquals(1, capturedGroup.templateColumns.size);
+            assertEquals(info, capturedGroup.templateColumns.infos.getLong(0));
+            assertEquals(overlay, capturedGroup.templateColumns.overlays.getInt(0));
+            assertEquals(12, state.getCurrentRenderedEntity());
+            assertEquals(22, state.getCurrentRenderedBlockEntity());
+            assertEquals(14, state.getCurrentRenderedItem());
+            assertEquals(liveOverlay, AngelicaBufferSource.packEntityColor(state.getCurrentEntityColor()));
+            assertTrue(model.equals(new Matrix4f().set(input.matrices), 0));
+        }
+    }
+
     @Test
     void fallbackKeepsHighMaterialIdsAndTheUnmappedSentinel() {
         for (int id : new int[] { -1, 0, 32767, 32768, 45020, 50020, 50072, 65534 }) {

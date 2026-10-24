@@ -226,13 +226,10 @@ final class ExitStateCapture {
 
     void requireDrawState(boolean materialFromState) {
         if (!active()) return;
-        long fields = DRAW_INPUTS;
-        if (materialFromState) {
-            fields |= MATERIAL_INPUTS;
-            if (!context.blendMode.isEffectivelyEnabled()) fields &= ~(1L << BLEND_FUNC);
-            if (!context.alphaTest.isEffectivelyEnabled()) fields &= ~(1L << ALPHA_FUNC);
-        }
-        result.dependencies |= fields & ~result.writes;
+        long fields = (materialFromState ? DRAW_INPUTS | MATERIAL_INPUTS : DRAW_INPUTS) & ~(result.writes | result.dependencies);
+        if ((fields & (1L << BLEND_FUNC)) != 0 && !context.blendMode.isEffectivelyEnabled()) fields &= ~(1L << BLEND_FUNC);
+        if ((fields & (1L << ALPHA_FUNC)) != 0 && !context.alphaTest.isEffectivelyEnabled()) fields &= ~(1L << ALPHA_FUNC);
+        result.dependencies |= fields;
         if (textureInherited) result.dependencies |= 1L << TEXTURE_MATRIX;
     }
 
@@ -304,7 +301,7 @@ final class ExitStateCapture {
     }
 
     void requireTextureFilter(int texture, boolean nearest) {
-        if (active() && filterTexture != 0 && texture == filterTexture && !nearest) reject();
+        if (filterTexture != 0 && texture == filterTexture && !nearest && active()) reject();
     }
 
     private boolean savedFilterDiffers() {
@@ -425,7 +422,9 @@ final class ExitStateCapture {
     }
 
     void matrixChange(boolean absolute) {
-        if (active()) recordMatrixChange(context.matrixMode.getMode(), context.activeTextureUnit.getValue(), absolute);
+        if (result == null) return;
+        final int mode = context.matrixMode.getMode();
+        if ((absolute || mode != GL11.GL_MODELVIEW) && active()) recordMatrixChange(mode, context.activeTextureUnit.getValue(), absolute);
     }
 
     void matrixChange(int mode, int unit, boolean absolute) {

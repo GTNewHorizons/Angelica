@@ -48,6 +48,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
     private final Matrix4f baseMV = new Matrix4f();
     private final Matrix4f baseMVInv = new Matrix4f();
     private final Matrix4f scratchMat = new Matrix4f();
+    private final Matrix4f replayModelView = new Matrix4f();
     private final Vector3f scratchVec = new Vector3f();
     private final Matrix4f drawMV = new Matrix4f();
     private final Matrix4f savedMV = new Matrix4f();
@@ -95,6 +96,31 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
         final IntArrayList uploadCounts = new IntArrayList();
     }
 
+    static final class InstanceRange {
+        InstanceColumns columns;
+        TexRun run;
+        int start, end;
+        boolean reuseUpload;
+
+        void set(InstanceColumns columns, TexRun run, int start, int end) {
+            this.columns = columns;
+            this.run = run;
+            this.start = start;
+            this.end = end;
+        }
+
+        void reset() {
+            columns = null;
+            run = null;
+            start = end = 0;
+        }
+
+        void clear() {
+            reset();
+            reuseUpload = false;
+        }
+    }
+
     static final class InstanceColumns {
         final ObjectArrayList<TemplateBuffer> templates = new ObjectArrayList<>();
         final ObjectArrayList<CubeParams[]> cubes = new ObjectArrayList<>();
@@ -109,17 +135,20 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
         float[] matrices = new float[16 * 64];
         int size;
         int referencedParts;
+        long version;
 
         boolean hasInstances() {
             return size > 0 || referencedParts > 0;
         }
 
+        private void reserveMatrices(int count) {
+            final int need = (size + count) * 16;
+            if (need > matrices.length) matrices = Arrays.copyOf(matrices, Math.max(need, matrices.length << 1));
+        }
+
         void add(TemplateBuffer templateOrNull, Matrix4fc mv, int light, int color, int overlay, long info) {
-            final int base = size * 16;
-            if (base + 16 > matrices.length) {
-                matrices = Arrays.copyOf(matrices, matrices.length << 1);
-            }
-            mv.get(matrices, base);
+            reserveMatrices(1);
+            mv.get(matrices, size * 16);
             if (templateOrNull != null) templates.add(templateOrNull);
             lights.add(light);
             colors.add(color);
@@ -136,6 +165,10 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
             return run.source != null ? null : atlasSlot(i);
         }
 
+        Matrix4f pose(int i, Matrix4f dest) {
+            return dest.set(matrices, i * 16);
+        }
+
         void addCubes(TemplateBuffer templateOrNull, CubeParams[] cubeParams, float scale, Matrix4fc mv, int light, int color, int overlay, long info, EntityTextureAtlas.Slot atlasSlot) {
             cubes.add(cubeParams);
             atlasSlots.add(atlasSlot);
@@ -146,17 +179,14 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
 
         void appendRange(InstanceColumns src, int start, int end, int light, int color, int overlay) {
             final int n = end - start;
-            final int need = (size + n) * 16;
-            if (need > matrices.length) {
-                matrices = Arrays.copyOf(matrices, Math.max(need, matrices.length << 1));
-            }
+            reserveMatrices(n);
             System.arraycopy(src.matrices, start * 16, matrices, size * 16, n * 16);
             if (src.templates.size() == src.size) {
                 for (int i = start; i < end; i++) templates.add(src.templates.get(i));
             }
             if (src.cubes.size() == src.size) {
                 for (int i = start; i < end; i++) cubes.add(src.cubes.get(i));
-                atlasSlots.size(atlasSlots.size() + n);
+                atlasSlots.size(size + n);
                 scales.addElements(scales.size(), src.scales.elements(), start, n);
             }
             fill(lights, n, light);
@@ -166,6 +196,52 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
             size += n;
         }
 
+        void appendReplayRange(InstanceColumns src, int start, int end, Matrix4fc transform, EntityTextureAtlas.Slot atlasSlot) {
+            final int n = end - start;
+            reserveMatrices(n);
+            // Modelview matrices are affine, so only the 3x4 upper part needs multiplying.
+            // Also, JOML would copy each matrix into a Matrix4f and back out, so this is faster to do by hand
+            final float t00 = transform.m00(), t01 = transform.m01(), t02 = transform.m02();
+            final float t10 = transform.m10(), t11 = transform.m11(), t12 = transform.m12();
+            final float t20 = transform.m20(), t21 = transform.m21(), t22 = transform.m22();
+            final float t30 = transform.m30(), t31 = transform.m31(), t32 = transform.m32();
+            final float[] s = src.matrices;
+            final float[] d = matrices;
+            for (int in = start * 16, out = size * 16, stop = end * 16; in < stop; in += 16, out += 16) {
+                for (int c = 0; c < 12; c += 4) {
+                    final float x = s[in + c], y = s[in + c + 1], z = s[in + c + 2];
+                    d[out + c] = t00 * x + t10 * y + t20 * z;
+                    d[out + c + 1] = t01 * x + t11 * y + t21 * z;
+                    d[out + c + 2] = t02 * x + t12 * y + t22 * z;
+                    d[out + c + 3] = 0.0f;
+                }
+                final float x = s[in + 12], y = s[in + 13], z = s[in + 14];
+                d[out + 12] = t00 * x + t10 * y + t20 * z + t30;
+                d[out + 13] = t01 * x + t11 * y + t21 * z + t31;
+                d[out + 14] = t02 * x + t12 * y + t22 * z + t32;
+                d[out + 15] = 1.0f;
+            }
+            appendObjects(templates, src.templates, start, n);
+            lights.addElements(lights.size(), src.lights.elements(), start, n);
+            colors.addElements(colors.size(), src.colors.elements(), start, n);
+            overlays.addElements(overlays.size(), src.overlays.elements(), start, n);
+            infos.addElements(infos.size(), src.infos.elements(), start, n);
+            if (!src.cubes.isEmpty()) {
+                appendObjects(cubes, src.cubes, start, n);
+                scales.addElements(scales.size(), src.scales.elements(), start, n);
+                atlasSlots.size(size + n);
+                if (atlasSlot != null) {
+                    Arrays.fill(atlasSlots.elements(), size, size + n, atlasSlot);
+                    anyAtlasSlot = true;
+                }
+            }
+            size += n;
+        }
+
+        private static <T> void appendObjects(ObjectArrayList<T> dst, ObjectArrayList<T> src, int start, int count) {
+            dst.addElements(dst.size(), src.elements(), start, count);
+        }
+
         private static void fill(IntArrayList list, int n, int value) {
             final int from = list.size();
             list.size(from + n);
@@ -173,6 +249,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
         }
 
         void clear() {
+            version++;
             templates.clear();
             cubes.clear();
             atlasSlots.clear();
@@ -464,11 +541,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
             return head;
         }
 
-        void replayRange(InstanceColumns cols, TexRun original, int start, int end, int instances, Matrix4f matrix) {
-            replayRange(cols, original, start, end, instances, matrix, false);
-        }
-
-        void replayRange(InstanceColumns cols, TexRun original, int start, int end, int instances, Matrix4f matrix, boolean stableMatrix) {
+        private void replayRange(InstanceColumns cols, TexRun original, int start, int end, int instances, Matrix4f matrix, boolean stableMatrix) {
             TexRun head = null;
             for (int i = cols.runs.size() - 1; i >= 0; i--) {
                 final TexRun candidate = cols.runs.get(i);
@@ -680,6 +753,17 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
     }
 
     void streamVertices(RenderLayer layer, int id, int[] packed, int vertexCount, Matrix4fc mv) {
+        EntityShadowReplay.rejectForeignDraw();
+        storeVertices(layer, id, packed, vertexCount, mv);
+    }
+
+    void streamAndRecord(RenderLayer layer, int id, int[] packed, int vertexCount, Matrix4fc mv, EntityRenderCommands.DrawInputs inputs) {
+        final boolean record = recordsEntitySubmission(inputs);
+        storeVertices(layer, id, packed, vertexCount, mv);
+        if (record) EntityShadowReplay.recordStream(mv, packed, vertexCount, id, inputs);
+    }
+
+    private void storeVertices(RenderLayer layer, int id, int[] packed, int vertexCount, Matrix4fc mv) {
         if (glintCapture != null) glintCapture.invalidate();
         source.getBuffer(layer, id).addPackedVertices(packed, vertexCount, mv, scratchVec);
         streamedInstances++;
@@ -694,6 +778,42 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
     }
 
     void queue(long scope, TemplateBuffer template, CubeParams[] cubes, float scale, RenderLayer layer, TesrMaterial material, Matrix4f currentMV, int packedLight, int colorABGR, int overlayABGR, long entityInfo, int id, Matrix4f texMatrix, EntityTextureAtlas.Slot atlasSlot) {
+        EntityShadowReplay.rejectForeignDraw();
+        storeModel(scope, template, cubes, scale, layer, material, currentMV, packedLight, colorABGR, overlayABGR, entityInfo, id, texMatrix, atlasSlot, null);
+    }
+
+    void queueAndRecord(TemplateBuffer template, CubeParams[] cubes, float scale, RenderLayer layer, Matrix4f currentMV,
+        int packedLight, int colorABGR, int overlayABGR, long entityInfo, int id, Matrix4f texMatrix,
+        EntityTextureAtlas.Slot atlasSlot, boolean cubesInsideTexture, EntityRenderCommands.DrawInputs inputs) {
+        final boolean record = recordsEntitySubmission(inputs);
+        final InstanceColumns captured = storeModel(0, template, cubes, scale, layer, inputs.material, currentMV, packedLight,
+            colorABGR, overlayABGR, entityInfo, id, texMatrix, atlasSlot, null);
+        if (!record) return;
+        // Replay copies templates by index, so a range can only be shared when every instance has one.
+        final InstanceColumns source = captured != null && captured.templates.size() == captured.size ? captured : null;
+        final EntityRenderCommands.Model entry = EntityShadowReplay.recordModel(source, layer, inputs, id, cubesInsideTexture, currentMV, texMatrix);
+        if (entry != null && source == null) {
+            entry.instance.set(template, packedLight, colorABGR, overlayABGR, entityInfo);
+            entry.cubes = cubes;
+            entry.scale = scale;
+        }
+    }
+
+    private boolean recordsEntitySubmission(EntityRenderCommands.DrawInputs inputs) {
+        if (!EntityShadowReplay.isRecording()) return false;
+        if (!ModelPartBatcher.INSTANCE.recordsEntitySubmissions(this)) {
+            EntityShadowReplay.rejectForeignDraw();
+            return false;
+        }
+        GLStateManager.requireExitTextureFilter(inputs.textureId, inputs.material.isUnfilteredAtlas());
+        return true;
+    }
+
+    private boolean keepsBaseUpload(InstanceRange replayed) {
+        return replayed != null && replayed.reuseUpload || glintCapture != null && glintCapture.keepsBaseUpload();
+    }
+
+    private InstanceColumns storeModel(long scope, TemplateBuffer template, CubeParams[] cubes, float scale, RenderLayer layer, TesrMaterial material, Matrix4f currentMV, int packedLight, int colorABGR, int overlayABGR, long entityInfo, int id, Matrix4f texMatrix, EntityTextureAtlas.Slot atlasSlot, InstanceRange replayed) {
         final Group group = groupFor(layer, material, id);
         touch(group, layer);
         if (group.couplable) linkDepthScope(group, scope);
@@ -704,7 +824,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
             if (group.probe != null && group.probe.probing && (instancedPath || segments)) {
                 probe(group, template, currentMV, packedLight, colorABGR, texMatrix);
             }
-            final boolean capturingBase = glintCapture != null && glintCapture.capturesBase();
+            final boolean capturingBase = keepsBaseUpload(replayed);
             if (instancedPath && cubes != null && material.shader() == null) {
                 final TexRun run = group.openOrExtendRun(group.cubeColumns, texMatrix, false, capturingBase && group.opaque);
                 group.cubeColumns.addCubes(deferred != null ? template : null, cubes, scale, currentMV, packedLight, colorABGR, overlayABGR, entityInfo, atlasSlot);
@@ -712,7 +832,8 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
                 run.parts++;
                 run.instances += cubes.length;
                 if (glintCapture != null) glintCapture.record(group, group.cubeColumns, run, group.cubeColumns.size - 1, group.cubeColumns.size, cubes.length);
-                return;
+                if (replayed != null) replayed.set(group.cubeColumns, run, group.cubeColumns.size - 1, group.cubeColumns.size);
+                return deferred != null ? group.cubeColumns : null;
             }
             if (instancedPath) {
                 final TexRun run = group.openOrExtendRun(group.templateColumns, texMatrix, false, capturingBase && group.opaque);
@@ -721,13 +842,14 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
                 run.parts++;
                 run.instances++;
                 if (glintCapture != null) glintCapture.record(group, group.templateColumns, run, group.templateColumns.size - 1, group.templateColumns.size, 1);
-                return;
+                if (replayed != null) replayed.set(group.templateColumns, run, group.templateColumns.size - 1, group.templateColumns.size);
+                return group.templateColumns;
             }
             if (group.stream && glintCapture != null) glintCapture.invalidate();
             if (segments) {
                 source.getBuffer(layer, id).addTemplateInstance(template, currentMV, scratchVec, colorABGR, packedLight, texMatrix);
                 streamedInstances++;
-                return;
+                return null;
             }
             if (!group.stream) {
                 final DepthEqualSet set = activeDepthEqualSet(group);
@@ -747,6 +869,62 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
         if (!group.dirty && !group.snapshot.matches(index, template, cols.matrices, index * 16, packedLight, colorABGR, bakedTexMatrix)) {
             group.dirty = true;
         }
+        return null;
+    }
+
+    void replayInstances(InstanceColumns src, int start, int end, RenderLayer layer, TesrMaterial material, int id,
+        Matrix4fc transform, Matrix4f texMatrix, EntityTextureAtlas.Slot atlasSlot, InstanceRange replayed) {
+        if (replayed != null) replayed.reset();
+        final boolean cubes = !src.cubes.isEmpty();
+        final Group group = streamsInstanced(material) && (!cubes || material.shader() == null) ? groupFor(layer, material, id) : null;
+        if (group != null) touch(group, layer);
+        if (group != null && drawsInstanced(group) && (group.probe == null || !group.probe.probing)) {
+            group.queuedThisFrame = true;
+            final InstanceColumns dst = cubes ? group.cubeColumns : group.templateColumns;
+            final TexRun run = group.openOrExtendRun(dst, texMatrix, false, keepsBaseUpload(replayed) && group.opaque);
+            final int first = dst.size;
+            dst.appendReplayRange(src, start, end, transform, atlasSlot);
+            run.last.end = dst.size;
+            run.parts += end - start;
+            final int instances = instanceCount(src, start, end, cubes);
+            run.instances += instances;
+            if (glintCapture != null) glintCapture.record(group, dst, run, first, dst.size, instances);
+            if (replayed != null) replayed.set(dst, run, first, dst.size);
+        } else {
+            final CapturedRenderingState state = CapturedRenderingState.INSTANCE;
+            state.pushEntityState();
+            try {
+                for (int i = start; i < end; i++) {
+                    transform.mul(src.pose(i, replayModelView), replayModelView);
+                    storeReplay(src.templates.get(i), cubes ? src.cubes.get(i) : null, cubes ? src.scales.getFloat(i) : 1,
+                        layer, material, replayModelView, src.lights.getInt(i), src.colors.getInt(i), src.overlays.getInt(i),
+                        src.infos.getLong(i), id, texMatrix, atlasSlot, null);
+                }
+            } finally {
+                state.popEntityState();
+            }
+        }
+    }
+
+    void queueReplay(TemplateBuffer template, CubeParams[] cubes, float scale, RenderLayer layer, TesrMaterial material,
+        Matrix4f modelView, int light, int color, int overlay, long entityInfo, int id, Matrix4f texMatrix, EntityTextureAtlas.Slot atlasSlot, InstanceRange replayed) {
+        if (replayed != null) replayed.reset();
+        final CapturedRenderingState state = CapturedRenderingState.INSTANCE;
+        state.pushEntityState();
+        try {
+            storeReplay(template, cubes, scale, layer, material, modelView, light, color, overlay, entityInfo, id, texMatrix, atlasSlot, replayed);
+        } finally {
+            state.popEntityState();
+        }
+    }
+
+    private void storeReplay(TemplateBuffer template, CubeParams[] cubes, float scale, RenderLayer layer, TesrMaterial material,
+        Matrix4f modelView, int light, int color, int overlay, long entityInfo, int id, Matrix4f texMatrix, EntityTextureAtlas.Slot atlasSlot, InstanceRange replayed) {
+        final CapturedRenderingState state = CapturedRenderingState.INSTANCE;
+        state.setCurrentEntityAndItem(InstancedAttribs.unpackId(entityInfo, 0), InstancedAttribs.unpackId(entityInfo, 32));
+        state.setCurrentBlockEntity(InstancedAttribs.unpackId(entityInfo, 16));
+        AngelicaBufferSource.setEntityColor(overlay);
+        storeModel(0, template, cubes, scale, layer, material, modelView, light, color, overlay, entityInfo, id, texMatrix, atlasSlot, replayed);
     }
 
     private void linkDepthScope(Group group, long scope) {
@@ -888,6 +1066,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
     }
 
     void copyInstances(InstanceColumns src, int start, int end, RenderLayer layer, TesrMaterial material, int packedLight, int colorABGR, int overlayABGR, Matrix4f texMatrix) {
+        EntityShadowReplay.rejectForeignDraw();
         final Group group = groupFor(layer, material, 0);
         touch(group, layer);
         final boolean cubes = !src.cubes.isEmpty();
@@ -907,6 +1086,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
     }
 
     void referenceInstances(InstanceColumns src, int start, int end, RenderLayer layer, TesrMaterial material, int colorABGR, Matrix4f texMatrix) {
+        EntityShadowReplay.rejectForeignDraw();
         final Group group = groupFor(layer, material, 0);
         touch(group, layer);
         final boolean cubes = !src.cubes.isEmpty();
@@ -921,6 +1101,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
     }
 
     void referenceGlintLayers(InstanceColumns src, TexRun sourceRun, int start, int end, RenderLayer layer, TesrMaterial material, int colorABGR, Matrix4f first, Matrix4f second) {
+        EntityShadowReplay.rejectForeignDraw();
         final Group group = groupFor(layer, material, 0);
         touch(group, layer);
         final boolean cubes = !src.cubes.isEmpty();
@@ -935,6 +1116,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
     }
 
     void queueGlintLayers(TemplateBuffer template, RenderLayer layer, TesrMaterial material, Matrix4f currentMV, int packedLight, int colorABGR, int overlayABGR, long entityInfo, Matrix4f first, Matrix4f second) {
+        EntityShadowReplay.rejectForeignDraw();
         final Group group = groupFor(layer, material, 0);
         touch(group, layer);
         final InstanceColumns dst = group.templateColumns;
@@ -945,6 +1127,11 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
         run.parts++;
         run.instances++;
         group.replayRange(dst, run, index, index + 1, 1, second, true);
+    }
+
+    void replayRange(Group group, InstanceColumns columns, TexRun original, int start, int end, int instances, Matrix4f matrix) {
+        EntityShadowReplay.rejectForeignDraw();
+        group.replayRange(columns, original, start, end, instances, matrix, false);
     }
 
     private static int instanceCount(InstanceColumns src, int start, int end, boolean cubes) {
@@ -1439,6 +1626,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
     void clear() {
         for (final ObjectArrayList<Group> list : byLayer.values()) {
             for (int i = 0, n = list.size(); i < n; i++) {
+                list.get(i).clearInstances();
                 list.get(i).mesh.delete();
             }
         }

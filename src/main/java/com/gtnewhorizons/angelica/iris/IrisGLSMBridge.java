@@ -67,8 +67,15 @@ public class IrisGLSMBridge {
     public static void installImmediateExtendedHandler() {
         GLSMHooks.immediateExtendedHandler = new ImmediateExtendedAttribs();
         final CapturedRenderingState state = CapturedRenderingState.INSTANCE;
-        state.setEntityIdsListener(() -> GLStateManager.setEntityIds(
-            state.getCurrentRenderedEntity(), state.getCurrentRenderedBlockEntity(), state.getCurrentRenderedItem()));
+        state.setEntityIdsListener(() -> {
+            final boolean suspended = GLStateManager.suspendExitCapture();
+            try {
+                GLStateManager.setEntityIds(
+                    state.getCurrentRenderedEntity(), state.getCurrentRenderedBlockEntity(), state.getCurrentRenderedItem());
+            } finally {
+                GLStateManager.resumeExitCapture(suspended);
+            }
+        });
     }
 
     public static void installPostTransformHook() {

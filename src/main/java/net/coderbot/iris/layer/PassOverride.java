@@ -1,5 +1,6 @@
 package net.coderbot.iris.layer;
 
+import net.coderbot.iris.gbuffer_overrides.matching.RenderCondition;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
 
@@ -58,6 +59,11 @@ public final class PassOverride {
 
     public boolean isEntityPhase() {
         return phase == WorldRenderingPhase.ENTITIES;
+    }
+
+    public RenderCondition entityCondition(boolean defaultTranslucent) {
+        if (special != null || phase != null && phase != WorldRenderingPhase.ENTITIES) return null;
+        return (translucent != null ? translucent : defaultTranslucent) ? RenderCondition.ENTITIES_TRANSLUCENT : RenderCondition.ENTITIES;
     }
 
     public String nameSuffix() {

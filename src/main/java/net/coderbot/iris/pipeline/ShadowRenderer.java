@@ -9,6 +9,7 @@ import com.gtnewhorizons.angelica.glsm.GLDebug;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.profiling.RenderClassTimings;
+import com.gtnewhorizons.angelica.rendering.tesr.EntityShadowReplay;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.gtnewhorizons.angelica.rendering.tesr.PendingTesrDraws;
 import com.gtnewhorizons.angelica.rendering.tesr.SectionBuiltBlockEntity;
@@ -590,9 +591,12 @@ public class ShadowRenderer {
 			}
 			for (Entity entity : renderedEntitiesList) {
 				final long start = Tracy.ENABLED ? System.nanoTime() : 0L;
+				final boolean recording = AngelicaConfig.entityShadowReplayEnabled() && EntityShadowReplay.beginEntity(entity, tickDelta);
+				boolean completed = false;
 				try {
-					RenderManager.instance.renderEntitySimple(entity, tickDelta);
+					completed = RenderManager.instance.renderEntitySimple(entity, tickDelta);
 				} finally {
+					if (recording) EntityShadowReplay.endEntity(completed);
 					if (Tracy.ENABLED) RenderClassTimings.SHADOW_ENTITY.add(entity.getClass(), System.nanoTime() - start);
 				}
 			}

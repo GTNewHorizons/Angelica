@@ -165,8 +165,12 @@ public class GLStateManager {
     public static boolean canApplyExitState(ExitState result) { return ctx().exitCapture.canApply(result); }
     public static void applyExitState(ExitState result) { ctx().exitCapture.apply(result); }
     public static void cancelExitCapture() { ctx().exitCapture.cancel(); }
-    public static void suspendExitCapture() { ctx().exitCapture.suspend(); }
-    public static void resumeExitCapture() { ctx().exitCapture.resume(); }
+    public static boolean suspendExitCapture() {
+        if (!ExitStateCapture.anyOpen()) return false;
+        ctx().exitCapture.suspend();
+        return true;
+    }
+    public static void resumeExitCapture(boolean suspended) { if (suspended) ctx().exitCapture.resume(); }
     public static boolean isExitCaptureActive() { return ExitStateCapture.anyOpen() && ctx().exitCapture.active(); }
     public static void requireExitDrawState(boolean materialFromState) {
         if (ExitStateCapture.anyOpen()) ctx().exitCapture.requireDrawState(materialFromState);

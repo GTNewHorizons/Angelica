@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.helpers.RendererLivingEntityHelper;
 import com.gtnewhorizons.angelica.rendering.GlintClock;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
+import com.gtnewhorizons.angelica.rendering.tesr.EntityShadowReplay;
 import com.gtnewhorizons.angelica.rendering.tesr.GlintCapture;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
@@ -142,6 +143,7 @@ public abstract class MixinRendererLivingEntity_GlintClock {
     @Inject(method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
         at = @At(value = "INVOKE", target = "Lorg/apache/logging/log4j/Logger;error(Ljava/lang/String;Ljava/lang/Throwable;)V", remap = false))
     private void angelica$closeAfterFailedRender(CallbackInfo ci) {
+        EntityShadowReplay.rejectRenderFailed();
         if (angelica$capturingBase) {
             angelica$capturingBase = false;
             GLStateManager.glPopMatrix();

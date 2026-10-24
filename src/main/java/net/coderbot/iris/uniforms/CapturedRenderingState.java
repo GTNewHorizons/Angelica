@@ -161,6 +161,18 @@ public class CapturedRenderingState {
 		applyCurrentEntityColor(r, g, b, a);
 	}
 
+	public void pushEntityState() {
+		pushCurrentEntityAndItem();
+		pushCurrentBlockEntity();
+		pushCurrentEntityColor();
+	}
+
+	public void popEntityState() {
+		popCurrentEntityColor();
+		popCurrentBlockEntity();
+		popCurrentEntityAndItem();
+	}
+
 	private void applyCurrentEntityColor(float r, float g, float b, float a) {
 		if (currentEntityColor.equals(r, g, b, a)) return;
         this.currentEntityColor.set(r, g, b, a);

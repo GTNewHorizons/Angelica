@@ -351,7 +351,7 @@ class GLSM_ExitState_GLTest {
     void suspendedCallsAreNeitherRecordedNorRejected() {
         final ExitState state = new ExitState();
         GLStateManager.beginExitCapture(state);
-        GLStateManager.suspendExitCapture();
+        final boolean suspended = GLStateManager.suspendExitCapture();
         try {
             assertFalse(GLStateManager.isExitCaptureActive());
             GLStateManager.glIsEnabled(GL11.GL_CULL_FACE);
@@ -363,7 +363,7 @@ class GLSM_ExitState_GLTest {
                 BatchStateGuard.resume();
             }
         } finally {
-            GLStateManager.resumeExitCapture();
+            GLStateManager.resumeExitCapture(suspended);
         }
         BatchStateGuard.suspend();
         try {
@@ -391,11 +391,11 @@ class GLSM_ExitState_GLTest {
         GLStateManager.glColor4f(0.25F, 1, 1, 1);
         final ExitState state = new ExitState();
         GLStateManager.beginExitCapture(state);
-        GLStateManager.suspendExitCapture();
+        final boolean suspended = GLStateManager.suspendExitCapture();
         try {
             GLStateManager.glPushAttrib(GL11.GL_CURRENT_BIT);
         } finally {
-            GLStateManager.resumeExitCapture();
+            GLStateManager.resumeExitCapture(suspended);
         }
         GLStateManager.glColor4f(0, 0, 0, 1);
         GLStateManager.glPopAttrib();
@@ -413,11 +413,11 @@ class GLSM_ExitState_GLTest {
         GLStateManager.beginExitCapture(state);
         GLStateManager.glPushAttrib(GL11.GL_CURRENT_BIT);
         GLStateManager.glColor4f(0, 0, 0, 1);
-        GLStateManager.suspendExitCapture();
+        final boolean suspended = GLStateManager.suspendExitCapture();
         try {
             GLStateManager.glPopAttrib();
         } finally {
-            GLStateManager.resumeExitCapture();
+            GLStateManager.resumeExitCapture(suspended);
         }
         assertTrue(GLStateManager.finishExitCapture(state));
 
