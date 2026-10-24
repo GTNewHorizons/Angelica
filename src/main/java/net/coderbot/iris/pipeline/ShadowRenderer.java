@@ -1000,6 +1000,12 @@ public class ShadowRenderer {
 		}
 
 		profiler.endStartSection("iris_shadow_entities");
+		TileEntityRendererDispatcher.instance.cacheActiveRenderInfo(mc.theWorld, mc.getTextureManager(), mc.fontRenderer, mc.renderViewEntity, tickDelta);
+		RenderManager.instance.cacheActiveRenderInfo(mc.theWorld, mc.getTextureManager(), mc.fontRenderer, mc.renderViewEntity, mc.pointedEntity, mc.gameSettings, tickDelta);
+		final Entity viewer = mc.renderViewEntity;
+		TileEntityRendererDispatcher.staticPlayerX = viewer.lastTickPosX + (viewer.posX - viewer.lastTickPosX) * tickDelta;
+		TileEntityRendererDispatcher.staticPlayerY = viewer.lastTickPosY + (viewer.posY - viewer.lastTickPosY) * tickDelta;
+		TileEntityRendererDispatcher.staticPlayerZ = viewer.lastTickPosZ + (viewer.posZ - viewer.lastTickPosZ) * tickDelta;
 		final Frustrum entityShadowFrustum = createEntityShadowFrustum(entityX, entityY, entityZ);
 		applyEntityShadowViewport(entityShadowFrustum);
 		try (GLDebug.Scope s = GLDebug.scope("shadow:entities")) {
