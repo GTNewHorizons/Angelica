@@ -197,6 +197,7 @@ public class TessellatorStreamingDrawer {
         final boolean faceNormals = !tess.hasNormals && normalHandler != null
             && ImmediateExtendedAttribHandler.extPrimVerts(tess.drawMode, vertexCount) == 4 && normalHandler.wantsFaceNormals();
         final boolean fillNormal = !tess.hasNormals && !faceNormals;
+        GLStateManager.requireExitVertexDefaults(fillNormal, !tess.hasTexture, !tess.hasColor, !tess.hasBrightness);
 
         final int defaultNormal;
         if (fillNormal) {

@@ -96,6 +96,7 @@ public class BooleanStateStack extends BooleanState implements CowStateStack<Boo
     @Override
     public void setEnabled(boolean enabled) {
         final GLContextState o = cow.owner;
+        GLStateManager.recordExitCapability(o, glCap, -1);
         if (o != null && o.attribDepth > 0
             && (stateUnknown || !GLStateManager.isCachingEnabled() || enabled != vanillaValue())) {
             beforeModify();

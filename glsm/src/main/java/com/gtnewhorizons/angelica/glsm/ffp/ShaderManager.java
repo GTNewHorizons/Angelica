@@ -199,18 +199,21 @@ public final class ShaderManager {
     }
 
     public void setNormal(float x, float y, float z) {
+        GLStateManager.recordExitNormal();
         normalStack.beforeModify();
         currentNormal.set(x, y, z);
         normalGeneration++;
     }
 
     public void setTexCoord(float s, float t, float r, float q) {
+        GLStateManager.recordExitTexCoord(0);
         texCoordStack.beforeModify();
         currentTexCoords[0].set(s, t, r, q);
         texCoordGeneration++;
     }
 
     public void setTexCoord(int unit, float s, float t, float r, float q) {
+        GLStateManager.recordExitTexCoord(unit);
         if (unit == 0) texCoordStack.beforeModify();
         currentTexCoords[unit].set(s, t, r, q);
         texCoordGeneration++;

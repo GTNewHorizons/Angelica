@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.textures;
 
 import com.gtnewhorizons.angelica.glsm.hooks.TextureUtilHooks;
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import net.minecraft.client.renderer.texture.TextureUtil;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -20,9 +21,29 @@ public class MixinTextureUtil {
         TextureUtilHooks.setMaxLevel(mipmapLevels);
     }
 
-    @Inject(method = "func_152777_a(ZZF)V", at = @At("HEAD"))
-    private static void angelica$captureSaveBoundId(boolean blurred, boolean mipmap, float aniso, CallbackInfo ci) {
-        TextureUtilHooks.captureBoundFilterTexture();
+    @Surround(id = "saveFilter", method = "func_152777_a(ZZF)V")
+    private static void angelica$beginFilterSave(boolean blurred, boolean mipmap, float aniso) {
+        @Surround.Carry boolean captured = TextureUtilHooks.beginFilterSave(blurred, mipmap, aniso);
+    }
+
+    @Surround.Catch("saveFilter")
+    private static void angelica$filterSaveFailed(Throwable failure, @Surround.Carry boolean captured) {
+        TextureUtilHooks.filterFailed(captured);
+    }
+
+    @Surround.Finally("saveFilter")
+    private static void angelica$finishFilterSave(@Surround.Carry boolean captured) {
+        TextureUtilHooks.endFilterSave(captured);
+    }
+
+    @Surround(id = "restoreFilter", method = "func_147945_b()V")
+    private static void angelica$beginFilterRestore() {
+        @Surround.Carry boolean captured = TextureUtilHooks.beginFilterRestore();
+    }
+
+    @Surround.Catch("restoreFilter")
+    private static void angelica$filterRestoreFailed(Throwable failure, @Surround.Carry boolean captured) {
+        TextureUtilHooks.filterFailed(captured);
     }
 
     @Redirect(method = "func_147945_b()V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/texture/TextureUtil;func_147952_b(II)V"))
@@ -35,8 +56,8 @@ public class MixinTextureUtil {
         TextureUtilHooks.restoreAniso(aniso);
     }
 
-    @Inject(method = "func_147945_b()V", at = @At("RETURN"))
-    private static void angelica$clearSavedAfterRestore(CallbackInfo ci) {
-        TextureUtilHooks.clearSavedFilterTexture();
+    @Surround.Finally("restoreFilter")
+    private static void angelica$finishFilterRestore(@Surround.Carry boolean captured) {
+        TextureUtilHooks.endFilterRestore(captured);
     }
 }

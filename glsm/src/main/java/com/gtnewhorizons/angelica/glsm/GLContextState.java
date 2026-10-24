@@ -59,6 +59,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class GLContextState {
+    final ExitStateCapture exitCapture = new ExitStateCapture(this);
     private final List<IStateStack<?>> allStacksBuilder = new ArrayList<>();
     public IStateStack<?>[] allStacks;
     final List<BooleanStateStack> allBooleanStates = new ArrayList<>();
