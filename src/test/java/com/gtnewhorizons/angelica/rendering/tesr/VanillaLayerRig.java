@@ -49,6 +49,11 @@ public final class VanillaLayerRig {
         }
 
         @Override
+        public boolean isOverrideHeld() {
+            return AlphaTestStorage.isOverrideHeld();
+        }
+
+        @Override
         public boolean deferAlphaTestToggle(boolean enabled) {
             return AlphaTestStorage.deferAlphaTestToggle(enabled);
         }
