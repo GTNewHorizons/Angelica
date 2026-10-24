@@ -167,6 +167,20 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(true)
     public static boolean enableEntityTextureAtlas;
 
+    @Config.Comment("Replay entity draws recorded in the shader shadow pass in the main view instead of running each entity renderer again (experimental, requires entity batching)")
+    @Config.DefaultBoolean(false)
+    @Config.RequiresMcRestart
+    public static boolean enableEntityShadowReplay;
+
+    @Config.Comment("Entity classes that run their renderer again in the main view instead of replaying shadow pass draws. Players are always excluded.")
+    @Config.DefaultStringList({
+        "chylex.hee.entity.boss.EntityBossDragon",
+        "twilightforest.entity.passive.EntityTFMobileFirefly",
+        "gregtech.common.entity.EntityDrone"
+    })
+    @Config.RequiresMcRestart
+    public static String[] entityShadowReplayExcludedClasses;
+
     @Config.Comment("Skip the end-of-frame shader buffer copy by ping-ponging buffers. Disable if a shader pack misrenders.")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
@@ -546,6 +560,10 @@ public class AngelicaConfig {
 
     public static boolean cubeInstancingEnabled() {
         return enableEntityBatching && enableCubeInstancing;
+    }
+
+    public static boolean entityShadowReplayEnabled() {
+        return enableEntityBatching && enableEntityShadowReplay;
     }
 
     public static boolean sdlGpuConfigured() {

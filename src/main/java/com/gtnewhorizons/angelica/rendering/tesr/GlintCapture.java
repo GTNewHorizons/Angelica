@@ -36,6 +36,7 @@ public final class GlintCapture {
     private boolean poseRestored;
     private int restoredGeneration;
     private boolean uniformLight;
+    private int replayStart = -1, replayEnd = -1;
 
     public void reset() {
         if (owner != null && owner.glintCapture == this) owner.glintCapture = null;
@@ -51,6 +52,7 @@ public final class GlintCapture {
         base = false;
         trusted = false;
         poseRestored = false;
+        replayStart = replayEnd = -1;
     }
 
     boolean begin(RetainedTesrGroups groups) {
@@ -79,6 +81,10 @@ public final class GlintCapture {
         return true;
     }
 
+    void beginShadowReplay() {
+        replayStart = EntityShadowReplay.splitCommands();
+    }
+
     /** For records queued without running model or mod code; the caller replays before any GL state changes. */
     boolean beginTrusted(RetainedTesrGroups groups) {
         if (!open(groups)) return false;
@@ -101,6 +107,7 @@ public final class GlintCapture {
     void invalidate() { valid = false; }
     void allowBase() { base = true; }
     boolean capturesBase() { return base && valid; }
+    boolean keepsBaseUpload() { return capturesBase() && replayStart < 0; }
 
     void record(RetainedTesrGroups.Group group, RetainedTesrGroups.InstanceColumns columns, RetainedTesrGroups.TexRun source, int start, int end, int instances) {
         if (!valid) return;
@@ -144,6 +151,7 @@ public final class GlintCapture {
         valid &= GLStateManager.drawCalls == draws && used > 0;
         this.poseRestored = poseRestored;
         restoredGeneration = GLStateManager.getMvGeneration();
+        if (replayStart >= 0) replayEnd = EntityShadowReplay.splitCommands();
     }
 
     private boolean sameParentPose() {
@@ -165,7 +173,7 @@ public final class GlintCapture {
         }
         for (int i = 0; i < used; i++) {
             final Range range = ranges.get(i);
-            range.group.replayRange(range.columns, range.source, range.start, range.end, range.instances, textureMatrix);
+            groups.replayRange(range.group, range.columns, range.source, range.start, range.end, range.instances, textureMatrix);
         }
         valid = false;
         return true;
@@ -184,12 +192,23 @@ public final class GlintCapture {
 
     boolean queueBothLayers(ModelPartBatcher batcher, RetainedTesrGroups groups, ResourceLocation glintTexture) {
         if (!baseStillValid(groups) || !sameLightAndOverlay(batcher.currentOverlay()) || !batcher.prepareSkippedArmorGlint(glintTexture)) return false;
+        queueLayers(batcher);
+        return true;
+    }
+
+    boolean recordBothLayers(ModelPartBatcher batcher, RetainedTesrGroups groups, ResourceLocation glintTexture) {
+        if (!baseStillValid(groups) || !sameLightAndOverlay(batcher.currentOverlay())
+            || !batcher.recordArmorGlint(replayStart, replayEnd, glintTexture)) return false;
+        valid = false;
+        return true;
+    }
+
+    void queueLayers(ModelPartBatcher batcher) {
         for (int i = 0; i < used; i++) {
             final Range range = ranges.get(i);
             batcher.queueArmorGlintLayers(range.columns, range.source, range.start, range.end);
         }
         valid = false;
-        return true;
     }
 
     private boolean baseStillValid(RetainedTesrGroups groups) {

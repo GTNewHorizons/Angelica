@@ -44,6 +44,7 @@ public final class EntityMaterials {
     }
 
     static TesrMaterial fromCurrentState(boolean texIdentity) {
+        GLStateManager.requireExitDrawState(true);
         final boolean textured = GLStateManager.getTextures().getTextureUnitStates(0).isEnabled();
         final AlphaState alpha = GLStateManager.getEffectiveAlphaState(effectiveAlpha);
         final ColorMask colorMask = GLStateManager.getEffectiveColorMask(effectiveColorMask);
@@ -58,6 +59,7 @@ public final class EntityMaterials {
     }
 
     public static TesrMaterial itemFromCurrentState(boolean unfilteredAtlas) {
+        GLStateManager.requireExitDrawState(true);
         final BlendState blend = GLStateManager.getEffectiveBlendState(effectiveBlend);
         final AlphaState alpha = GLStateManager.getEffectiveAlphaState(effectiveAlpha);
         return itemFromState(unfilteredAtlas, GLStateManager.isEffectiveBlendEnabled(), blend.getSrcRgb(), blend.getDstRgb(),

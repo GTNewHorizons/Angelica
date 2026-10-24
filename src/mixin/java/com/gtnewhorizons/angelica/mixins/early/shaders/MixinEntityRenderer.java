@@ -1,9 +1,11 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
+import com.gtnewhorizons.angelica.rendering.tesr.EntityShadowReplay;
 import com.llamalad7.mixinextras.sugar.Local;
 import jss.notfine.core.SettingsManager;
 import net.coderbot.iris.Iris;
@@ -88,6 +90,7 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
         if (renderer != null) {
             renderer.setShadowPassPlayerViewport(((ViewportProvider) playerFrustum).sodium$createViewport());
         }
+        if (AngelicaConfig.entityShadowReplayEnabled()) EntityShadowReplay.setMainView(playerFrustum);
         Iris.getPipelineManager().getPipelineNullable().renderShadows((EntityRenderer) (Object) this, Camera.INSTANCE);
     }
 

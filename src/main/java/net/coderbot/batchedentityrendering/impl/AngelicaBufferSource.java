@@ -205,17 +205,13 @@ public class AngelicaBufferSource implements Groupable {
 
     private void restoreIrisState() {
         if (!irisStateSaved) return;
-        CapturedRenderingState.INSTANCE.popCurrentEntityColor();
-        CapturedRenderingState.INSTANCE.popCurrentBlockEntity();
-        CapturedRenderingState.INSTANCE.popCurrentEntityAndItem();
+        CapturedRenderingState.INSTANCE.popEntityState();
         irisStateSaved = false;
     }
 
     private void saveIrisState() {
         if (irisStateSaved) return;
-        CapturedRenderingState.INSTANCE.pushCurrentEntityAndItem();
-        CapturedRenderingState.INSTANCE.pushCurrentBlockEntity();
-        CapturedRenderingState.INSTANCE.pushCurrentEntityColor();
+        CapturedRenderingState.INSTANCE.pushEntityState();
         irisStateSaved = true;
     }
 

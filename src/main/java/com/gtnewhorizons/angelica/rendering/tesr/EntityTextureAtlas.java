@@ -247,9 +247,10 @@ public final class EntityTextureAtlas {
     private Page newPage() {
         if (pages.size() == MAX_PAGES) return null;
         final int previous = GLStateManager.getBoundTextureForServerState();
-        final int texture = GLStateManager.glGenTextures();
+        final int texture;
         BatchStateGuard.suspend();
         try {
+            texture = GLStateManager.glGenTextures();
             GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
             GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
             GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
@@ -269,15 +270,15 @@ public final class EntityTextureAtlas {
     }
 
     private void copy(int texture, Slot slot) {
-        if (readFbo == 0) {
-            readFbo = GLStateManager.glGenFramebuffers();
-            drawFbo = GLStateManager.glGenFramebuffers();
-        }
         final int previousRead = GLStateManager.getReadFramebuffer();
         final int previousDraw = GLStateManager.getDrawFramebuffer();
-        final boolean scissor = GLStateManager.glIsEnabled(GL11.GL_SCISSOR_TEST);
+        final boolean scissor = GLStateManager.getScissorTest().isEnabled();
         BatchStateGuard.suspend();
         try {
+            if (readFbo == 0) {
+                readFbo = GLStateManager.glGenFramebuffers();
+                drawFbo = GLStateManager.glGenFramebuffers();
+            }
             if (scissor) GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
             GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, readFbo);
             GLStateManager.attachTextureForReading(GL30.GL_COLOR_ATTACHMENT0, texture);

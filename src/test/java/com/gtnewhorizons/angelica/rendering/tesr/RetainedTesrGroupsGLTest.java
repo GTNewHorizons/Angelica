@@ -6,6 +6,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
 import com.gtnewhorizons.angelica.api.tesr.TesrShader;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
@@ -20,6 +21,7 @@ import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import com.gtnewhorizons.angelica.glsm.streaming.PersistentStreamingBuffer;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.rendering.GlintClock;
+import com.gtnewhorizons.angelica.rendering.items.ItemGlint;
 import com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrGroups.Group;
 import com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrGroups.InstanceColumns;
 import com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrGroups.TexRun;
@@ -27,9 +29,13 @@ import com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrTestSupport.Countin
 import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
 import net.coderbot.batchedentityrendering.impl.AngelicaBufferSource;
 import net.coderbot.iris.layer.PassOverride;
+import net.coderbot.iris.pipeline.ShadowRenderer;
 import net.coderbot.iris.uniforms.CapturedStateScope;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.ItemRenderer;
+import net.minecraft.client.renderer.entity.Render;
+import net.minecraft.client.renderer.entity.RenderManager;
+import net.minecraft.entity.Entity;
 import net.minecraft.util.ResourceLocation;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import org.joml.Matrix4f;
@@ -64,6 +70,8 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @GLCoreTest
 class RetainedTesrGroupsGLTest {
@@ -755,6 +763,10 @@ class RetainedTesrGroupsGLTest {
     }
 
     private static int createGlintTexture() {
+        return createGlintTexture(false);
+    }
+
+    private static int createGlintTexture(boolean opaque) {
         final int id = GLStateManager.glGenTextures();
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
         GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, id);
@@ -765,7 +777,7 @@ class RetainedTesrGroupsGLTest {
         final ByteBuffer texels = BufferUtils.createByteBuffer(4 * 4 * 4);
         for (int y = 0; y < 4; y++) {
             for (int x = 0; x < 4; x++) {
-                texels.put((byte) (64 + 48 * x)).put((byte) (64 + 48 * y)).put((byte) 200).put((byte) (64 + 48 * x));
+                texels.put((byte) (64 + 48 * x)).put((byte) (64 + 48 * y)).put((byte) 200).put((byte) (opaque ? 255 : 64 + 48 * x));
             }
         }
         texels.flip();
@@ -997,6 +1009,184 @@ class RetainedTesrGroupsGLTest {
             assertTrue(error <= 2, "reusing the base pose must retain the glint color; error " + error);
         } finally {
             Reflect.set(batcher, "activeGroups", previousGroups);
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"armorTemplate", "armorCubes", "held", "heldMirrored", "dropped", "droppedStack"})
+    void shadowGlintReplayMatchesLiveMainPixels(String kind) {
+        glintState();
+        GLStateManager.glDeleteTextures(glintTexture);
+        glintTexture = createGlintTexture(true);
+        final boolean held = kind.startsWith("held"), dropped = kind.startsWith("dropped"), cubes = kind.equals("armorCubes");
+        final TemplateBuffer baseTemplate;
+        if (held || dropped) {
+            final AngelicaTesrMeshCache.GtnhMeshBackend backend = new AngelicaTesrMeshCache.GtnhMeshBackend();
+            ItemRenderer.renderItemIn2D(backend.beginCapture(DefaultVertexFormat.POSITION_TEXTURE_NORMAL), 0.75f, 0.1f, 0.25f, 0.9f, 16, 32, 0.0625f);
+            baseTemplate = backend.endCaptureToTemplate();
+            ItemRenderer.renderItemIn2D(backend.beginCapture(DefaultVertexFormat.POSITION_TEXTURE_NORMAL), 0, 0, 1, 1, 16, 32, 0.0625f);
+            glintTemplate = backend.endCaptureToTemplate();
+        } else {
+            if (!cubes) glintTemplate = capturedQuad(0.5);
+            baseTemplate = glintTemplate;
+        }
+        final ModelPartBatcher batcher = ModelPartBatcher.INSTANCE;
+        final boolean previousBatching = AngelicaConfig.enableEntityBatching;
+        final boolean previousReplay = AngelicaConfig.enableEntityShadowReplay;
+        final boolean previousAtlas = AngelicaConfig.enableEntityTextureAtlas;
+        final boolean previousShadow = ShadowRenderer.ACTIVE;
+        final double previousX = RenderManager.renderPosX, previousY = RenderManager.renderPosY, previousZ = RenderManager.renderPosZ;
+        final RetainedTesrGroups shadowGroups = new RetainedTesrGroups(new AngelicaBufferSource());
+        final Matrix4f shadowView = new Matrix4f().rotateXYZ(0.6f, -0.7f, 0.2f).translate(2, -1, 3);
+        final Matrix4f mainView = new Matrix4f().rotateXYZ(-0.1f, 0.2f, 0.17f);
+        final Matrix4f pose = new Matrix4f().rotateXYZ(0.13f, 0.41f, -0.27f);
+        if (held || dropped) pose.scale(0.8f, kind.equals("heldMirrored") ? -0.8f : 0.8f, 0.8f).translate(-0.5f, -0.5f, 0);
+        final Entity entity = mock(Entity.class);
+        final Render renderer = mock(Render.class);
+        final RenderManager manager = mock(RenderManager.class);
+        when(manager.getEntityRenderObject(entity)).thenReturn(renderer);
+        BatchStateGuard.suspend();
+        try {
+            AngelicaConfig.enableEntityBatching = true;
+            AngelicaConfig.enableEntityShadowReplay = true;
+            AngelicaConfig.enableEntityTextureAtlas = false;
+            EntityShadowReplay.beginFrame();
+            Reflect.set(batcher, "active", true);
+            Reflect.set(batcher, "mode", ModelPartBatcher.Mode.ENTITIES);
+            Reflect.set(batcher, "instancedThisCycle", true);
+            GLStateManager.getTextures().getTextureUnitStates(1).setEnabled(false);
+            GLStateManager.setOverlayColor(0, 0, 0, 0);
+            GLStateManager.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
+            GLStateManager.glDisable(GL11.GL_STENCIL_TEST);
+            RenderManager.renderPosX = 1000000;
+            RenderManager.renderPosY = RenderManager.renderPosZ = 0;
+            groups.beginPass(new Matrix4f(), 0, 0, 0, instanced);
+            Reflect.set(batcher, "activeGroups", groups);
+            Reflect.set(batcher, "shadow", false);
+            ShadowRenderer.ACTIVE = false;
+            GLStateManager.setModelViewMatrix(mainView);
+            queueEntityGlint(batcher, kind, baseTemplate, pose, true);
+            final int[][] reference = drawEntityGlint(kind);
+
+            shadowGroups.beginPass(new Matrix4f(), 0, 0, 0, instanced, new CountingPipeline(true, true));
+            Reflect.set(batcher, "activeGroups", shadowGroups);
+            Reflect.set(batcher, "shadow", true);
+            ShadowRenderer.ACTIVE = true;
+            GLStateManager.setModelViewMatrix(shadowView);
+            EntityShadowReplay.beginPass(true, 0);
+            BatchStateGuard.resume();
+            try {
+                assertTrue(EntityShadowReplay.beginEntity(entity, 0.25f));
+                assertTrue(EntityShadowReplay.beginRenderer(renderer, entity, 0.25f, BatchEligibility.SAFE));
+                queueEntityGlint(batcher, kind, baseTemplate, pose, false);
+                EntityShadowReplay.endRenderer(true, BatchEligibility.SAFE);
+                EntityShadowReplay.endEntity(true);
+            } finally {
+                BatchStateGuard.suspend();
+            }
+            assertEquals(1, shadowGroups.groupCount(), "glint must not add a shadow draw group");
+
+            groups.beginPass(new Matrix4f(), 0, 0, 0, instanced);
+            Reflect.set(batcher, "activeGroups", groups);
+            Reflect.set(batcher, "shadow", false);
+            ShadowRenderer.ACTIVE = false;
+            GLStateManager.setModelViewMatrix(mainView);
+            EntityShadowReplay.beginPass(false, 0);
+            assertTrue(EntityShadowReplay.replay(manager, entity, 0.25f, 0));
+            final int[][] replayed = drawEntityGlint(kind);
+            FfpFixture.assertOverlayFootprint(reference[0], reference[1], BACKGROUND, "live glint");
+            FfpFixture.assertOverlayFootprint(replayed[0], replayed[1], BACKGROUND, "replayed glint");
+            // Replay reaches the main pose through the shadow view, about 1 ulp off the live pose. On llvmpipe that
+            // flips a single glint pixel on the dropped item's thin edge strips.
+            FfpFixture.assertPixelParity("replayed glint pixels", reference[1], replayed[1], SIZE, BACKGROUND, 8, 1, 2, RetainedTesrGroupsGLTest::describe);
+        } finally {
+            shadowGroups.clear();
+            batcher.clear();
+            EntityShadowReplay.clear();
+            AngelicaConfig.enableEntityBatching = previousBatching;
+            AngelicaConfig.enableEntityShadowReplay = previousReplay;
+            AngelicaConfig.enableEntityTextureAtlas = previousAtlas;
+            ShadowRenderer.ACTIVE = previousShadow;
+            RenderManager.renderPosX = previousX;
+            RenderManager.renderPosY = previousY;
+            RenderManager.renderPosZ = previousZ;
+            GLStateManager.glDisable(GL11.GL_STENCIL_TEST);
+            BatchStateGuard.resume();
+        }
+    }
+
+    private void queueEntityGlint(ModelPartBatcher batcher, String kind, TemplateBuffer baseTemplate, Matrix4f pose, boolean legacyDropped) {
+        final int copies = kind.equals("droppedStack") ? 4 : 1;
+        for (int copy = 0; copy < copies; copy++) {
+            queueEntityGlintCopy(batcher, kind, baseTemplate, new Matrix4f(pose).translate(copy * 0.12f, copy * 0.06f, copy * 0.085f), legacyDropped);
+        }
+    }
+
+    private void queueEntityGlintCopy(ModelPartBatcher batcher, String kind, TemplateBuffer baseTemplate, Matrix4f pose, boolean legacyDropped) {
+        final boolean held = kind.startsWith("held"), dropped = kind.startsWith("dropped"), cubes = kind.equals("armorCubes");
+        bindBase();
+        restoreTexMatrix();
+        GLStateManager.glPushMatrix();
+        GLStateManager.applyMultMatrix(pose);
+        GLStateManager.glColor4f(0.4f, 0.6f, 0.8f, 1);
+        ModelPartBatcher.onTextureBind(new ResourceLocation("angelica", "test/base"), baseTexture);
+        final GlintCapture capture = new GlintCapture();
+        assertTrue(BatchEligibility.begin(BatchEligibility.SAFE, GLStateManager.drawCalls));
+        try {
+            if (!held && !dropped) assertTrue(batcher.beginArmorCapture(capture));
+            assertTrue(Reflect.<Boolean>invoke(batcher, "queueTemplate",
+                new Class<?>[] {TemplateBuffer.class, CubeParams[].class, boolean.class, float.class, TesrMaterial.class, boolean.class},
+                baseTemplate, cubes ? glintCubes : null, false, CUBE_SCALE, held || dropped ? EntityMaterials.DROPPED_ITEM_CUTOUT : EntityMaterials.CUTOUT, false));
+            if (held) {
+                assertTrue(batcher.queueSkippedItemGlint(glintTemplate, EntityMaterials.ITEM_GLINT));
+            } else if (dropped && legacyDropped) {
+                GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, glintTexture);
+                ModelPartBatcher.onTextureBind(GLINT_TEXTURE, glintTexture);
+                GLStateManager.glColor4f(0.5f * 0.76f, 0.25f * 0.76f, 0.8f * 0.76f, 1);
+                for (Matrix4f matrix : new Matrix4f[] {ItemGlint.firstMatrix(), ItemGlint.secondMatrix()}) {
+                    GLStateManager.setTextureMatrix(0, matrix);
+                    assertTrue(batcher.queueTemplate(glintTemplate, EntityMaterials.GLINT));
+                }
+                restoreTexMatrix();
+            } else if (dropped) {
+                assertTrue(batcher.queueSkippedItemGlint(glintTemplate, EntityMaterials.GLINT));
+            } else {
+                capture.endWithRestoredPose();
+                assertTrue(batcher.queueSkippedArmorGlint(capture, GLINT_TEXTURE));
+            }
+        } finally {
+            BatchEligibility.end(BatchEligibility.SAFE, GLStateManager.drawCalls);
+            capture.reset();
+            GLStateManager.glPopMatrix();
+        }
+    }
+
+    private int[][] drawEntityGlint(String kind) {
+        final boolean held = kind.startsWith("held"), dropped = kind.startsWith("dropped");
+        FfpFixture.clear();
+        final int depth = GLStateManager.pushState(StateSet.BATCH);
+        try {
+            int[] base = null;
+            for (TesrMaterial material : new TesrMaterial[] {held || dropped ? EntityMaterials.DROPPED_ITEM_CUTOUT : EntityMaterials.CUTOUT,
+                held ? EntityMaterials.ITEM_GLINT : EntityMaterials.GLINT}) {
+                for (var layers : RetainedTesrTestSupport.byLayer(groups).values()) for (Group group : layers) {
+                    if (group.material != material) continue;
+                    group.layer.getState().apply();
+                    GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, base == null ? baseTexture : glintTexture);
+                    GLStateManager.enableTexture();
+                    GLStateManager.glEnable(GL11.GL_STENCIL_TEST);
+                    GLStateManager.glStencilFunc(GL11.GL_ALWAYS, 3, 0xFF);
+                    GLStateManager.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_KEEP);
+                    groups.drawLayer(group.layer);
+                    assertEquals(GL11.GL_ALWAYS, GL11.glGetInteger(GL11.GL_STENCIL_FUNC));
+                    assertEquals(3, GL11.glGetInteger(GL11.GL_STENCIL_REF));
+                }
+                if (base == null) base = FfpFixture.readRegion(SIZE);
+            }
+            ring.endFrame();
+            return new int[][] {base, FfpFixture.readRegion(SIZE)};
+        } finally {
+            GLStateManager.popStateTo(depth);
         }
     }
 

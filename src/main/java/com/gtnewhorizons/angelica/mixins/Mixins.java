@@ -207,6 +207,15 @@ public enum Mixins implements IMixins {
         )
     ),
 
+    ANGELICA_ENTITY_SHADOW_REPLAY(new MixinBuilder("Replay entity draws recorded in the shader shadow pass in the main view instead of running each entity renderer again")
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> AngelicaConfig.enableIris && AngelicaConfig.entityShadowReplayEnabled())
+        .addClientMixins(
+            "angelica.entity.MixinBossStatus_EntityReplay",
+            "angelica.entity.MixinRenderGlobal_EntityReplay"
+        )
+    ),
+
     ANGELICA_CUBE_INSTANCING(new MixinBuilder("Capture cuboid parameters so model cubes can be drawn from a shared unit cube")
         .setPhase(Phase.EARLY)
         .setApplyIf(AngelicaConfig::cubeInstancingEnabled)

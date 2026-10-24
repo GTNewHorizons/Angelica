@@ -13,6 +13,7 @@ import com.gtnewhorizons.angelica.rendering.tesr.BatchEligibility;
 import com.gtnewhorizons.angelica.rendering.tesr.EntityMaterials;
 import com.gtnewhorizons.angelica.rendering.tesr.GlintCapture;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
+import com.gtnewhorizons.angelica.rendering.tesr.EntityShadowReplay;
 import com.gtnewhorizons.angelica.rendering.tesr.TemplateBuffer;
 import com.gtnewhorizons.angelica.utils.AnimationsRenderUtils;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
@@ -149,6 +150,7 @@ public final class DroppedItemInstancer {
         }
         final boolean allowed = BatchEligibility.batchingAllowed();
         if (allowed && ModelPartBatcher.INSTANCE.isShadowPass()) {
+            EntityShadowReplay.rejectShadowOnly();
             BatchEligibility.onPartQueued();
             return SKIP;
         }

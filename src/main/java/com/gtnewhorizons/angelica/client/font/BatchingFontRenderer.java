@@ -15,6 +15,7 @@ import com.gtnewhorizons.angelica.glsm.streaming.PersistentStreamingBuffer;
 import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.rendering.tesr.BatchDrawDefaults;
+import com.gtnewhorizons.angelica.rendering.tesr.EntityShadowReplay;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -1251,6 +1252,7 @@ public class BatchingFontRenderer {
         if (string == null || string.length() == 0) {
             return anchorX + (enableShadow ? 1.0f : 0.0f);
         }
+        EntityShadowReplay.rejectForeignDraw();
         final int color = buttonSectionActive
             ? DarkModeUtils.recolorButtonText(inputColor, buttonEnabledColor, buttonHoveredColor, buttonDisabledColor)
             : inputColor;

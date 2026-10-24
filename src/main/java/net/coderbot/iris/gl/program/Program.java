@@ -42,12 +42,17 @@ public final class Program extends GlResource {
 	}
 
 	public void use() {
-		RenderSystem.memoryBarrier(GL42.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL42.GL_TEXTURE_FETCH_BARRIER_BIT | GL43.GL_SHADER_STORAGE_BARRIER_BIT);
-		bindManaged(getGlId());
+		final boolean suspended = GLStateManager.suspendExitCapture();
+		try {
+			RenderSystem.memoryBarrier(GL42.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL42.GL_TEXTURE_FETCH_BARRIER_BIT | GL43.GL_SHADER_STORAGE_BARRIER_BIT);
+			bindManaged(getGlId());
 
-		uniforms.update();
-		samplers.update();
-		images.update();
+			uniforms.update();
+			samplers.update();
+			images.update();
+		} finally {
+			GLStateManager.resumeExitCapture(suspended);
+		}
 	}
 
 	static void bindManaged(int program) {
@@ -61,9 +66,14 @@ public final class Program extends GlResource {
 	}
 
 	public static void unbind() {
-		ProgramUniforms.clearActiveUniforms();
-		ProgramSamplers.clearActiveSamplers();
-		GLStateManager.glUseProgram(0);
+		final boolean suspended = GLStateManager.suspendExitCapture();
+		try {
+			ProgramUniforms.clearActiveUniforms();
+			ProgramSamplers.clearActiveSamplers();
+			GLStateManager.glUseProgram(0);
+		} finally {
+			GLStateManager.resumeExitCapture(suspended);
+		}
 	}
 
 	@Override

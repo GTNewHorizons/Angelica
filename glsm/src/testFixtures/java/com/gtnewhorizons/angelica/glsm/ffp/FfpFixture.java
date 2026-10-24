@@ -179,6 +179,10 @@ public final class FfpFixture {
     }
 
     public static void assertPixelParity(String subject, int[] reference, int[] candidate, int size, int background, int minCoverageDivisor, int channelTolerance, IntFunction<String> describe) {
+        assertPixelParity(subject, reference, candidate, size, background, minCoverageDivisor, channelTolerance, 0, describe);
+    }
+
+    public static void assertPixelParity(String subject, int[] reference, int[] candidate, int size, int background, int minCoverageDivisor, int channelTolerance, int allowedMismatches, IntFunction<String> describe) {
         int covered = 0;
         for (int pixel : reference) {
             if (pixel != background) covered++;
@@ -196,7 +200,7 @@ public final class FfpFixture {
         }
         final int index = firstMismatch;
         final int differing = mismatches;
-        assertEquals(0, mismatches, () -> subject + " differ from baked quads in " + differing + " of " + reference.length + " pixels, first at (" + (index % size) + "," + (index / size) + "): reference " + describe.apply(reference[index]) + " instanced " + describe.apply(candidate[index]));
+        assertTrue(mismatches <= allowedMismatches, () -> subject + " differ from baked quads in " + differing + " of " + reference.length + " pixels, first at (" + (index % size) + "," + (index / size) + "): reference " + describe.apply(reference[index]) + " instanced " + describe.apply(candidate[index]));
     }
 
     private static boolean withinTolerance(int a, int b, int tolerance) {
