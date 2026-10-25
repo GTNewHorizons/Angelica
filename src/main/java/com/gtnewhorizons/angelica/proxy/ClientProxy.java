@@ -51,6 +51,7 @@ import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.rendering.TileEntityRenderBoundsRegistry;
 import com.gtnewhorizons.angelica.rendering.tesr.AngelicaTesrMeshCache;
 import com.gtnewhorizons.angelica.rendering.tesr.EntityTextureAtlas;
+import com.gtnewhorizons.angelica.rendering.tesr.TesrLightCache;
 import com.gtnewhorizons.angelica.config.CompatConfig;
 import com.gtnewhorizons.angelica.config.ConfigMigrator;
 import com.gtnewhorizons.angelica.config.SystemProperties;
@@ -420,6 +421,10 @@ public final class ClientProxy extends CommonProxy {
 
     @SubscribeEvent
     public void onTick(TickEvent.ClientTickEvent event) {
+        if (event.phase == TickEvent.Phase.END) {
+            TesrLightCache.onClientTick();
+        }
+
         if (event.phase == TickEvent.Phase.END && mc.theWorld != null) {
             CloudRenderer.getCloudRenderer().checkSettings();
         }
