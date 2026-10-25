@@ -138,6 +138,8 @@ class ProgramBindingRegressionTest {
         RenderBackend original = BackendManager.RENDER_BACKEND;
         RenderBackend backend = mock(RenderBackend.class, delegatesTo(original));
         Reflect.setStaticFinal(BackendManager.class, "RENDER_BACKEND", RenderBackend.class, backend);
+        boolean idDeleted = false;
+        boolean otherDeleted = false;
         try {
             for (int i = 0; i < 5; i++) GLStateManager.glCallList(list);
             verify(backend, times(1)).isProgram(id);
@@ -145,26 +147,28 @@ class ProgramBindingRegressionTest {
             assertEquals(id, GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM));
 
             GLStateManager.glDeleteProgram(id);
+            idDeleted = true;
             GLStateManager.glCallList(list); // Still valid while bound, but must not be cached.
             assertEquals(id, GLStateManager.getActiveProgram());
             assertEquals(id, GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM));
             GLStateManager.glUseProgram(other); // Completes deferred deletion.
             GLStateManager.glCallList(list);
             assertEquals(0, GLStateManager.getActiveProgram());
-            assertEquals(0, GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM));
             verify(backend, times(4)).isProgram(id);
             GLStateManager.glCallList(list);
             verify(backend, times(4)).isProgram(id);
 
             GLStateManager.glDeleteProgram(other);
+            otherDeleted = true;
             GLStateManager.glCallList(list);
             verify(backend, times(5)).isProgram(id);
         } finally {
             Reflect.setStaticFinal(BackendManager.class, "RENDER_BACKEND", RenderBackend.class, original);
             GLStateManager.glUseProgram(0);
             GLStateManager.glDeleteLists(list, 1);
-            if (GLStateManager.glIsProgram(id)) GLStateManager.glDeleteProgram(id);
-            if (GLStateManager.glIsProgram(other)) GLStateManager.glDeleteProgram(other);
+            // FFP's glUseProgram(0) is lazy, so other stays current; deleting it again is GL_INVALID_OPERATION on macOS
+            if (!idDeleted) GLStateManager.glDeleteProgram(id);
+            if (!otherDeleted) GLStateManager.glDeleteProgram(other);
         }
     }
 }

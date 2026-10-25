@@ -175,8 +175,14 @@ val glsmRedirectAgent: Configuration by configurations.creating {
     isCanBeResolved = true
 }
 
+val glsmMutableStaticsAgent: Configuration by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
 dependencies {
     glsmRedirectAgent(project(":glsm", "redirectAgent"))
+    glsmMutableStaticsAgent(project(":glsm", "mutableStaticsAgent"))
     archScanAsm(libs.asm.tree.test)
     archScanAsm(libs.asm.commons.test)
 }
@@ -189,6 +195,7 @@ tasks.test {
     useJUnitPlatform { excludeTags = setOf("gl-core") }
     configureAngelicaJava8()
     classpath = archScanAsm + classpath
+    javaAgent(glsmMutableStaticsAgent)
     jvmArgs("-Dceleritas.lwjglService=org.taumc.celeritas.lwjgl.HeadlessTestLWJGLService")
     dependsOn(":glsm:classes", ":lwjgl3-backend:classes", ":sdl-gpu:classes")
 }

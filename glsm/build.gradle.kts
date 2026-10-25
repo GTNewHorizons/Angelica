@@ -158,6 +158,7 @@ dependencies {
     testFixturesApi(platform(libs.junit.bom))
     testFixturesApi(libs.junit.jupiter.api)
     testFixturesApi(libs.lwjgl2)
+    testFixturesCompileOnly(libs.asm.tree.test)
 
     // Test
     testImplementation(sourceSets["stubs"].output)
@@ -257,6 +258,13 @@ fun Test.configureGlsmJava8() {
     }
 }
 
+val mutableStaticsAgentJar by tasks.registering(Jar::class) {
+    archiveClassifier = "mutable-statics-agent"
+    manifest {
+        attributes("Premain-Class" to "com.gtnewhorizons.angelica.glsm.testutil.MutableStatics")
+    }
+}
+
 tasks.test {
     useJUnitPlatform {
         excludeTags = GL_TASK_TAGS.values.toSet() + "lwjgl3"
@@ -265,6 +273,7 @@ tasks.test {
         excludeTestsMatching("com.gtnewhorizons.angelica.glsm.shader.SpirvShaderTranslator*Test")
     }
     configureGlsmJava8()
+    javaAgent(files(mutableStaticsAgentJar))
 }
 
 val redirectAgentJar by tasks.registering(Jar::class) {
@@ -279,8 +288,14 @@ val redirectAgent by configurations.creating {
     isCanBeResolved = false
 }
 
+val mutableStaticsAgent by configurations.creating {
+    isCanBeConsumed = true
+    isCanBeResolved = false
+}
+
 artifacts {
     add(redirectAgent.name, redirectAgentJar)
+    add(mutableStaticsAgent.name, mutableStaticsAgentJar)
 }
 
 val glTestTasks = GL_TASK_TAGS.map { (taskName, tag) ->
