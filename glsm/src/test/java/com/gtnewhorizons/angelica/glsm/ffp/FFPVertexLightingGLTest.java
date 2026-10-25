@@ -73,7 +73,6 @@ class FFPVertexLightingGLTest {
         GLStateManager.glDisable(GL11.GL_COLOR_MATERIAL);
         final ShaderManager sm = ShaderManager.getInstance();
         if (sm.isActive()) sm.deactivate();
-        ShaderManager.disable();
         GLStateManager.glBindVertexArray(0);
         if (vbo != 0) {
             GLStateManager.glDeleteBuffers(vbo);

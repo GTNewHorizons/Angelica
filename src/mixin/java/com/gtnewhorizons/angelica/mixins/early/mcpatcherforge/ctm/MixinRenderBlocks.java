@@ -143,9 +143,9 @@ public abstract class MixinRenderBlocks {
                                    @Local(name = "flag2") boolean flag2, @Local(name = "flag3") boolean flag3,
                                    @Local(name = "flag4") boolean flag4, @Local(name = "flag5") boolean flag5) {
         Tessellator tessellator = Tessellator.instance;
-        GlassPaneRenderer.renderThin((RenderBlocks) (Object) this, block, iicon, x, y, z, flag, flag1, flag2, flag3);
+        GlassPaneRenderer paneState = GlassPaneRenderer.renderThin((RenderBlocks) (Object) this, block, iicon, x, y, z, flag, flag1, flag2, flag3);
         if ((flag2 && flag3) || (!flag2 && !flag3 && !flag && !flag1)) {
-            if (!GlassPaneRenderer.skipPaneRendering) {
+            if (!paneState.skipPaneRendering) {
                 tessellator.addVertexWithUV(x, y + 1, d13, d21, d2);
                 tessellator.addVertexWithUV(x, y, d13, d21, d3);
                 tessellator.addVertexWithUV(d11, y, d13, d1, d3);
@@ -156,7 +156,7 @@ public abstract class MixinRenderBlocks {
                 tessellator.addVertexWithUV(x, y + 1, d13, d1, d2);
             }
             if (flag4) {
-                if (!GlassPaneRenderer.skipTopEdgeRendering) {
+                if (!paneState.skipTopEdgeRendering) {
                     tessellator.addVertexWithUV(x, y + 1 + 0.01, d18, d5, d8);
                     tessellator.addVertexWithUV(d11, y + 1 + 0.01, d18, d5, d6);
                     tessellator.addVertexWithUV(d11, y + 1 + 0.01, d17, d4, d6);
@@ -168,7 +168,7 @@ public abstract class MixinRenderBlocks {
                 }
             } else {
                 if (y < l - 1 && this.blockAccess.isAirBlock(x - 1, y + 1, z)
-                    && !GlassPaneRenderer.skipTopEdgeRendering) {
+                    && !paneState.skipTopEdgeRendering) {
                     tessellator.addVertexWithUV(x, y + 1 + 0.01, d18, d5, d7);
                     tessellator.addVertexWithUV(d10, y + 1 + 0.01, d18, d5, d8);
                     tessellator.addVertexWithUV(d10, y + 1 + 0.01, d17, d4, d8);
@@ -179,7 +179,7 @@ public abstract class MixinRenderBlocks {
                     tessellator.addVertexWithUV(d10, y + 1 + 0.01, d17, d4, d7);
                 }
                 if (y < l - 1 && this.blockAccess.isAirBlock(x + 1, y + 1, z)
-                    && !GlassPaneRenderer.skipTopEdgeRendering) {
+                    && !paneState.skipTopEdgeRendering) {
                     tessellator.addVertexWithUV(d10, y + 1 + 0.01, d18, d5, d6);
                     tessellator.addVertexWithUV(d11, y + 1 + 0.01, d18, d5, d7);
                     tessellator.addVertexWithUV(d11, y + 1 + 0.01, d17, d4, d7);
@@ -191,7 +191,7 @@ public abstract class MixinRenderBlocks {
                 }
             }
             if (flag5) {
-                if (!GlassPaneRenderer.skipBottomEdgeRendering) {
+                if (!paneState.skipBottomEdgeRendering) {
                     tessellator.addVertexWithUV(x, y - 0.01, d18, d5, d8);
                     tessellator.addVertexWithUV(d11, y - 0.01, d18, d5, d6);
                     tessellator.addVertexWithUV(d11, y - 0.01, d17, d4, d6);
@@ -203,7 +203,7 @@ public abstract class MixinRenderBlocks {
                 }
             } else {
                 if (y > 1 && this.blockAccess.isAirBlock(x - 1, y - 1, z)
-                    && !GlassPaneRenderer.skipBottomEdgeRendering) {
+                    && !paneState.skipBottomEdgeRendering) {
                     tessellator.addVertexWithUV(x, y - 0.01, d18, d5, d7);
                     tessellator.addVertexWithUV(d10, y - 0.01, d18, d5, d8);
                     tessellator.addVertexWithUV(d10, y - 0.01, d17, d4, d8);
@@ -214,7 +214,7 @@ public abstract class MixinRenderBlocks {
                     tessellator.addVertexWithUV(d10, y - 0.01, d17, d4, d7);
                 }
                 if (y > 1 && this.blockAccess.isAirBlock(x + 1, y - 1, z)) {
-                    if (!GlassPaneRenderer.skipBottomEdgeRendering) {
+                    if (!paneState.skipBottomEdgeRendering) {
                         tessellator.addVertexWithUV(d10, y - 0.01, d18, d5, d6);
                         tessellator.addVertexWithUV(d11, y - 0.01, d18, d5, d7);
                         tessellator.addVertexWithUV(d11, y - 0.01, d17, d4, d7);
@@ -227,7 +227,7 @@ public abstract class MixinRenderBlocks {
                 }
             }
         } else if (flag2) {
-            if (!GlassPaneRenderer.skipPaneRendering) {
+            if (!paneState.skipPaneRendering) {
                 tessellator.addVertexWithUV(x, y + 1, d13, d21, d2);
                 tessellator.addVertexWithUV(x, y, d13, d21, d3);
                 tessellator.addVertexWithUV(d10, y, d13, d0, d3);
@@ -248,7 +248,7 @@ public abstract class MixinRenderBlocks {
                 tessellator.addVertexWithUV(d10, y + 1, d18, d5, d6);
             }
             if ((flag4 || (y < l - 1 && this.blockAccess.isAirBlock(x - 1, y + 1, z)))
-                && !GlassPaneRenderer.skipTopEdgeRendering) {
+                && !paneState.skipTopEdgeRendering) {
                 tessellator.addVertexWithUV(x, y + 1 + 0.01, d18, d5, d7);
                 tessellator.addVertexWithUV(d10, y + 1 + 0.01, d18, d5, d8);
                 tessellator.addVertexWithUV(d10, y + 1 + 0.01, d17, d4, d8);
@@ -259,7 +259,7 @@ public abstract class MixinRenderBlocks {
                 tessellator.addVertexWithUV(d10, y + 1 + 0.01, d17, d4, d7);
             }
             if (flag5 || (y > 1 && this.blockAccess.isAirBlock(x - 1, y - 1, z))) {
-                if (!GlassPaneRenderer.skipBottomEdgeRendering) {
+                if (!paneState.skipBottomEdgeRendering) {
                     tessellator.addVertexWithUV(x, y - 0.01, d18, d5, d7);
                     tessellator.addVertexWithUV(d10, y - 0.01, d18, d5, d8);
                     tessellator.addVertexWithUV(d10, y - 0.01, d17, d4, d8);
@@ -271,7 +271,7 @@ public abstract class MixinRenderBlocks {
                 }
             }
         } else if (flag3) {
-            if (!GlassPaneRenderer.skipPaneRendering) {
+            if (!paneState.skipPaneRendering) {
                 tessellator.addVertexWithUV(d10, y + 1, d13, d0, d2);
                 tessellator.addVertexWithUV(d10, y, d13, d0, d3);
                 tessellator.addVertexWithUV(d11, y, d13, d1, d3);
@@ -292,7 +292,7 @@ public abstract class MixinRenderBlocks {
                 tessellator.addVertexWithUV(d10, y + 1, d17, d5, d6);
             }
             if ((flag4 || (y < l - 1 && this.blockAccess.isAirBlock(x + 1, y + 1, z)))
-                && !GlassPaneRenderer.skipTopEdgeRendering) {
+                && !paneState.skipTopEdgeRendering) {
                 tessellator.addVertexWithUV(d10, y + 1 + 0.01, d18, d5, d6);
                 tessellator.addVertexWithUV(d11, y + 1 + 0.01, d18, d5, d7);
                 tessellator.addVertexWithUV(d11, y + 1 + 0.01, d17, d4, d7);
@@ -303,7 +303,7 @@ public abstract class MixinRenderBlocks {
                 tessellator.addVertexWithUV(d11, y + 1 + 0.01, d17, d4, d6);
             }
             if ((flag5 || (y > 1 && this.blockAccess.isAirBlock(x + 1, y - 1, z)))
-                && !GlassPaneRenderer.skipBottomEdgeRendering) {
+                && !paneState.skipBottomEdgeRendering) {
                 tessellator.addVertexWithUV(d10, y - 0.01, d18, d5, d6);
                 tessellator.addVertexWithUV(d11, y - 0.01, d18, d5, d7);
                 tessellator.addVertexWithUV(d11, y - 0.01, d17, d4, d7);
@@ -315,7 +315,7 @@ public abstract class MixinRenderBlocks {
             }
         }
         if ((flag && flag1) || (!flag2 && !flag3 && !flag && !flag1)) {
-            if (!GlassPaneRenderer.skipPaneRendering) {
+            if (!paneState.skipPaneRendering) {
                 tessellator.addVertexWithUV(d10, y + 1, d14, d21, d2);
                 tessellator.addVertexWithUV(d10, y, d14, d21, d3);
                 tessellator.addVertexWithUV(d10, y, z, d1, d3);
@@ -326,7 +326,7 @@ public abstract class MixinRenderBlocks {
                 tessellator.addVertexWithUV(d10, y + 1, d14, d1, d2);
             }
             if (flag4) {
-                if (!GlassPaneRenderer.skipTopEdgeRendering) {
+                if (!paneState.skipTopEdgeRendering) {
                     tessellator.addVertexWithUV(d16, y + 1 + 0.005, d14, d5, d8);
                     tessellator.addVertexWithUV(d16, y + 1 + 0.005, z, d5, d6);
                     tessellator.addVertexWithUV(d15, y + 1 + 0.005, z, d4, d6);
@@ -338,7 +338,7 @@ public abstract class MixinRenderBlocks {
                 }
             } else {
                 if (y < l - 1 && this.blockAccess.isAirBlock(x, y + 1, z - 1)
-                    && !GlassPaneRenderer.skipTopEdgeRendering) {
+                    && !paneState.skipTopEdgeRendering) {
                     tessellator.addVertexWithUV(d15, y + 1 + 0.005, z, d5, d6);
                     tessellator.addVertexWithUV(d15, y + 1 + 0.005, d13, d5, d7);
                     tessellator.addVertexWithUV(d16, y + 1 + 0.005, d13, d4, d7);
@@ -349,7 +349,7 @@ public abstract class MixinRenderBlocks {
                     tessellator.addVertexWithUV(d16, y + 1 + 0.005, d13, d4, d6);
                 }
                 if (y < l - 1 && this.blockAccess.isAirBlock(x, y + 1, z + 1)
-                    && !GlassPaneRenderer.skipTopEdgeRendering) {
+                    && !paneState.skipTopEdgeRendering) {
                     tessellator.addVertexWithUV(d15, y + 1 + 0.005, d13, d4, d7);
                     tessellator.addVertexWithUV(d15, y + 1 + 0.005, d14, d4, d8);
                     tessellator.addVertexWithUV(d16, y + 1 + 0.005, d14, d5, d8);
@@ -361,7 +361,7 @@ public abstract class MixinRenderBlocks {
                 }
             }
             if (flag5) {
-                if (!GlassPaneRenderer.skipBottomEdgeRendering) {
+                if (!paneState.skipBottomEdgeRendering) {
                     tessellator.addVertexWithUV(d16, y - 0.005, d14, d5, d8);
                     tessellator.addVertexWithUV(d16, y - 0.005, z, d5, d6);
                     tessellator.addVertexWithUV(d15, y - 0.005, z, d4, d6);
@@ -373,7 +373,7 @@ public abstract class MixinRenderBlocks {
                 }
             } else {
                 if (y > 1 && this.blockAccess.isAirBlock(x, y - 1, z - 1)
-                    && !GlassPaneRenderer.skipBottomEdgeRendering) {
+                    && !paneState.skipBottomEdgeRendering) {
                     tessellator.addVertexWithUV(d15, y - 0.005, z, d5, d6);
                     tessellator.addVertexWithUV(d15, y - 0.005, d13, d5, d7);
                     tessellator.addVertexWithUV(d16, y - 0.005, d13, d4, d7);
@@ -384,7 +384,7 @@ public abstract class MixinRenderBlocks {
                     tessellator.addVertexWithUV(d16, y - 0.005, d13, d4, d6);
                 }
                 if (y > 1 && this.blockAccess.isAirBlock(x, y - 1, z + 1)) {
-                    if (!GlassPaneRenderer.skipBottomEdgeRendering) {
+                    if (!paneState.skipBottomEdgeRendering) {
                         tessellator.addVertexWithUV(d15, y - 0.005, d13, d4, d7);
                         tessellator.addVertexWithUV(d15, y - 0.005, d14, d4, d8);
                         tessellator.addVertexWithUV(d16, y - 0.005, d14, d5, d8);
@@ -397,7 +397,7 @@ public abstract class MixinRenderBlocks {
                 }
             }
         } else if (flag) {
-            if (!GlassPaneRenderer.skipPaneRendering) {
+            if (!paneState.skipPaneRendering) {
                 tessellator.addVertexWithUV(d10, y + 1, z, d21, d2);
                 tessellator.addVertexWithUV(d10, y, z, d21, d3);
                 tessellator.addVertexWithUV(d10, y, d13, d0, d3);
@@ -418,7 +418,7 @@ public abstract class MixinRenderBlocks {
                 tessellator.addVertexWithUV(d15, y + 1, d13, d5, d6);
             }
             if ((flag4 || (y < l - 1 && this.blockAccess.isAirBlock(x, y + 1, z - 1)))
-                && !GlassPaneRenderer.skipTopEdgeRendering) {
+                && !paneState.skipTopEdgeRendering) {
                 tessellator.addVertexWithUV(d15, y + 1 + 0.005, z, d5, d6);
                 tessellator.addVertexWithUV(d15, y + 1 + 0.005, d13, d5, d7);
                 tessellator.addVertexWithUV(d16, y + 1 + 0.005, d13, d4, d7);
@@ -429,7 +429,7 @@ public abstract class MixinRenderBlocks {
                 tessellator.addVertexWithUV(d16, y + 1 + 0.005, d13, d4, d6);
             }
             if (flag5 || (y > 1 && this.blockAccess.isAirBlock(x, y - 1, z - 1))) {
-                if (!GlassPaneRenderer.skipBottomEdgeRendering) {
+                if (!paneState.skipBottomEdgeRendering) {
                     tessellator.addVertexWithUV(d15, y - 0.005, z, d5, d6);
                     tessellator.addVertexWithUV(d15, y - 0.005, d13, d5, d7);
                     tessellator.addVertexWithUV(d16, y - 0.005, d13, d4, d7);
@@ -441,7 +441,7 @@ public abstract class MixinRenderBlocks {
                 }
             }
         } else if (flag1) {
-            if (!GlassPaneRenderer.skipPaneRendering) {
+            if (!paneState.skipPaneRendering) {
                 tessellator.addVertexWithUV(d10, y + 1, d13, d0, d2);
                 tessellator.addVertexWithUV(d10, y, d13, d0, d3);
                 tessellator.addVertexWithUV(d10, y, d14, d1, d3);
@@ -462,7 +462,7 @@ public abstract class MixinRenderBlocks {
                 tessellator.addVertexWithUV(d16, y + 1, d13, d5, d6);
             }
             if ((flag4 || (y < l - 1 && this.blockAccess.isAirBlock(x, y + 1, z + 1)))
-                && !GlassPaneRenderer.skipTopEdgeRendering) {
+                && !paneState.skipTopEdgeRendering) {
                 tessellator.addVertexWithUV(d15, y + 1 + 0.005, d13, d4, d7);
                 tessellator.addVertexWithUV(d15, y + 1 + 0.005, d14, d4, d8);
                 tessellator.addVertexWithUV(d16, y + 1 + 0.005, d14, d5, d8);
@@ -473,7 +473,7 @@ public abstract class MixinRenderBlocks {
                 tessellator.addVertexWithUV(d16, y + 1 + 0.005, d14, d5, d7);
             }
             if ((flag5 || (y > 1 && this.blockAccess.isAirBlock(x, y - 1, z + 1)))
-                && !GlassPaneRenderer.skipBottomEdgeRendering) {
+                && !paneState.skipBottomEdgeRendering) {
                 tessellator.addVertexWithUV(d15, y - 0.005, d13, d4, d7);
                 tessellator.addVertexWithUV(d15, y - 0.005, d14, d4, d8);
                 tessellator.addVertexWithUV(d16, y - 0.005, d14, d5, d8);
@@ -511,18 +511,18 @@ public abstract class MixinRenderBlocks {
                                            @Local(name = "flag") boolean flag, @Local(name = "flag1") boolean flag1,
                                            @Local(name = "flag2") boolean flag2, @Local(name = "flag3") boolean flag3) {
         Tessellator tessellator = Tessellator.instance;
-        GlassPaneRenderer.renderThick((RenderBlocks) (Object)this, block, iicon, x, y, z, flag, flag1, flag2, flag3);
+        GlassPaneRenderer paneState = GlassPaneRenderer.renderThick((RenderBlocks) (Object)this, block, iicon, x, y, z, flag, flag1, flag2, flag3);
         boolean flag4 = !flag && !flag1 && !flag2 && !flag3;
         if (flag2 || flag4) {
             if (flag2 && flag3) {
                 if (!flag) {
-                    if (!GlassPaneRenderer.skipPaneRendering) {
+                    if (!paneState.skipPaneRendering) {
                         tessellator.addVertexWithUV(d12, y + 0.999, d17, d2, d3);
                         tessellator.addVertexWithUV(d12, y + 0.001, d17, d2, d4);
                         tessellator.addVertexWithUV(x, y + 0.001, d17, d22, d4);
                         tessellator.addVertexWithUV(x, y + 0.999, d17, d22, d3);
                     }
-                } else if (!GlassPaneRenderer.skipPaneRendering) {
+                } else if (!paneState.skipPaneRendering) {
                     tessellator.addVertexWithUV(d15, y + 0.999, d17, d0, d3);
                     tessellator.addVertexWithUV(d15, y + 0.001, d17, d0, d4);
                     tessellator.addVertexWithUV(x, y + 0.001, d17, d22, d4);
@@ -533,13 +533,13 @@ public abstract class MixinRenderBlocks {
                     tessellator.addVertexWithUV(d16, y + 0.999, d17, d1, d3);
                 }
                 if (!flag1) {
-                    if (!GlassPaneRenderer.skipPaneRendering) {
+                    if (!paneState.skipPaneRendering) {
                         tessellator.addVertexWithUV(x, y + 0.999, d18, d22, d3);
                         tessellator.addVertexWithUV(x, y + 0.001, d18, d22, d4);
                         tessellator.addVertexWithUV(d12, y + 0.001, d18, d2, d4);
                         tessellator.addVertexWithUV(d12, y + 0.999, d18, d2, d3);
                     }
-                } else if (!GlassPaneRenderer.skipPaneRendering) {
+                } else if (!paneState.skipPaneRendering) {
                     tessellator.addVertexWithUV(x, y + 0.999, d18, d22, d3);
                     tessellator.addVertexWithUV(x, y + 0.001, d18, d22, d4);
                     tessellator.addVertexWithUV(d15, y + 0.001, d18, d0, d4);
@@ -549,13 +549,13 @@ public abstract class MixinRenderBlocks {
                     tessellator.addVertexWithUV(d12, y + 0.001, d18, d2, d4);
                     tessellator.addVertexWithUV(d12, y + 0.999, d18, d2, d3);
                 }
-                if (!GlassPaneRenderer.skipTopEdgeRendering) {
+                if (!paneState.skipTopEdgeRendering) {
                     tessellator.addVertexWithUV(x, y + 0.999, d18, d6, d7);
                     tessellator.addVertexWithUV(d12, y + 0.999, d18, d6, d8);
                     tessellator.addVertexWithUV(d12, y + 0.999, d17, d5, d8);
                     tessellator.addVertexWithUV(x, y + 0.999, d17, d5, d7);
                 }
-                if (!GlassPaneRenderer.skipBottomEdgeRendering) {
+                if (!paneState.skipBottomEdgeRendering) {
                     tessellator.addVertexWithUV(d12, y + 0.001, d18, d5, d8);
                     tessellator.addVertexWithUV(x, y + 0.001, d18, d5, d7);
                     tessellator.addVertexWithUV(x, y + 0.001, d17, d6, d7);
@@ -563,45 +563,45 @@ public abstract class MixinRenderBlocks {
                 }
             } else {
                 if (!flag && !flag4) {
-                    if (!GlassPaneRenderer.skipPaneRendering) {
+                    if (!paneState.skipPaneRendering) {
                         tessellator.addVertexWithUV(d16, y + 0.999, d17, d1, d3);
                         tessellator.addVertexWithUV(d16, y + 0.001, d17, d1, d4);
                         tessellator.addVertexWithUV(x, y + 0.001, d17, d22, d4);
                         tessellator.addVertexWithUV(x, y + 0.999, d17, d22, d3);
                     }
-                } else if (!GlassPaneRenderer.skipPaneRendering) {
+                } else if (!paneState.skipPaneRendering) {
                     tessellator.addVertexWithUV(d15, y + 0.999, d17, d0, d3);
                     tessellator.addVertexWithUV(d15, y + 0.001, d17, d0, d4);
                     tessellator.addVertexWithUV(x, y + 0.001, d17, d22, d4);
                     tessellator.addVertexWithUV(x, y + 0.999, d17, d22, d3);
                 }
                 if (!flag1 && !flag4) {
-                    if (!GlassPaneRenderer.skipPaneRendering) {
+                    if (!paneState.skipPaneRendering) {
                         tessellator.addVertexWithUV(x, y + 0.999, d18, d22, d3);
                         tessellator.addVertexWithUV(x, y + 0.001, d18, d22, d4);
                         tessellator.addVertexWithUV(d16, y + 0.001, d18, d1, d4);
                         tessellator.addVertexWithUV(d16, y + 0.999, d18, d1, d3);
                     }
-                } else if (!GlassPaneRenderer.skipPaneRendering) {
+                } else if (!paneState.skipPaneRendering) {
                     tessellator.addVertexWithUV(x, y + 0.999, d18, d22, d3);
                     tessellator.addVertexWithUV(x, y + 0.001, d18, d22, d4);
                     tessellator.addVertexWithUV(d15, y + 0.001, d18, d0, d4);
                     tessellator.addVertexWithUV(d15, y + 0.999, d18, d0, d3);
                 }
-                if (!GlassPaneRenderer.skipTopEdgeRendering) {
+                if (!paneState.skipTopEdgeRendering) {
                     tessellator.addVertexWithUV(x, y + 0.999, d18, d6, d7);
                     tessellator.addVertexWithUV(d15, y + 0.999, d18, d6, d9);
                     tessellator.addVertexWithUV(d15, y + 0.999, d17, d5, d9);
                     tessellator.addVertexWithUV(x, y + 0.999, d17, d5, d7);
                 }
-                if (!GlassPaneRenderer.skipBottomEdgeRendering) {
+                if (!paneState.skipBottomEdgeRendering) {
                     tessellator.addVertexWithUV(d15, y + 0.001, d18, d5, d9);
                     tessellator.addVertexWithUV(x, y + 0.001, d18, d5, d7);
                     tessellator.addVertexWithUV(x, y + 0.001, d17, d6, d7);
                     tessellator.addVertexWithUV(d15, y + 0.001, d17, d6, d9);
                 }
             }
-        } else if (!flag && !flag1 && !GlassPaneRenderer.skipPaneRendering) {
+        } else if (!flag && !flag1 && !paneState.skipPaneRendering) {
             tessellator.addVertexWithUV(d15, y + 0.999, d17, d0, d3);
             tessellator.addVertexWithUV(d15, y + 0.001, d17, d0, d4);
             tessellator.addVertexWithUV(d15, y + 0.001, d18, d1, d4);
@@ -609,44 +609,44 @@ public abstract class MixinRenderBlocks {
         }
         if ((flag3 || flag4) && !flag2) {
             if (!flag1 && !flag4) {
-                if (!GlassPaneRenderer.skipPaneRendering) {
+                if (!paneState.skipPaneRendering) {
                     tessellator.addVertexWithUV(d15, y + 0.999, d18, d0, d3);
                     tessellator.addVertexWithUV(d15, y + 0.001, d18, d0, d4);
                     tessellator.addVertexWithUV(d12, y + 0.001, d18, d2, d4);
                     tessellator.addVertexWithUV(d12, y + 0.999, d18, d2, d3);
                 }
-            } else if (!GlassPaneRenderer.skipPaneRendering) {
+            } else if (!paneState.skipPaneRendering) {
                 tessellator.addVertexWithUV(d16, y + 0.999, d18, d1, d3);
                 tessellator.addVertexWithUV(d16, y + 0.001, d18, d1, d4);
                 tessellator.addVertexWithUV(d12, y + 0.001, d18, d2, d4);
                 tessellator.addVertexWithUV(d12, y + 0.999, d18, d2, d3);
             }
             if (!flag && !flag4) {
-                if (!GlassPaneRenderer.skipPaneRendering) {
+                if (!paneState.skipPaneRendering) {
                     tessellator.addVertexWithUV(d12, y + 0.999, d17, d2, d3);
                     tessellator.addVertexWithUV(d12, y + 0.001, d17, d2, d4);
                     tessellator.addVertexWithUV(d15, y + 0.001, d17, d0, d4);
                     tessellator.addVertexWithUV(d15, y + 0.999, d17, d0, d3);
                 }
-            } else if (!GlassPaneRenderer.skipPaneRendering) {
+            } else if (!paneState.skipPaneRendering) {
                 tessellator.addVertexWithUV(d12, y + 0.999, d17, d2, d3);
                 tessellator.addVertexWithUV(d12, y + 0.001, d17, d2, d4);
                 tessellator.addVertexWithUV(d16, y + 0.001, d17, d1, d4);
                 tessellator.addVertexWithUV(d16, y + 0.999, d17, d1, d3);
             }
-            if (!GlassPaneRenderer.skipTopEdgeRendering) {
+            if (!paneState.skipTopEdgeRendering) {
                 tessellator.addVertexWithUV(d16, y + 0.999, d18, d6, d10);
                 tessellator.addVertexWithUV(d12, y + 0.999, d18, d6, d7);
                 tessellator.addVertexWithUV(d12, y + 0.999, d17, d5, d7);
                 tessellator.addVertexWithUV(d16, y + 0.999, d17, d5, d10);
             }
-            if (!GlassPaneRenderer.skipBottomEdgeRendering) {
+            if (!paneState.skipBottomEdgeRendering) {
                 tessellator.addVertexWithUV(d12, y + 0.001, d18, d5, d8);
                 tessellator.addVertexWithUV(d16, y + 0.001, d18, d5, d10);
                 tessellator.addVertexWithUV(d16, y + 0.001, d17, d6, d10);
                 tessellator.addVertexWithUV(d12, y + 0.001, d17, d6, d8);
             }
-        } else if (!flag3 && !flag && !flag1 && !GlassPaneRenderer.skipPaneRendering) {
+        } else if (!flag3 && !flag && !flag1 && !paneState.skipPaneRendering) {
             tessellator.addVertexWithUV(d16, y + 0.999, d18, d0, d3);
             tessellator.addVertexWithUV(d16, y + 0.001, d18, d0, d4);
             tessellator.addVertexWithUV(d16, y + 0.001, d17, d1, d4);
@@ -655,13 +655,13 @@ public abstract class MixinRenderBlocks {
         if (flag || flag4) {
             if (flag && flag1) {
                 if (!flag2) {
-                    if (!GlassPaneRenderer.skipPaneRendering) {
+                    if (!paneState.skipPaneRendering) {
                         tessellator.addVertexWithUV(d15, y + 0.999, z, d22, d3);
                         tessellator.addVertexWithUV(d15, y + 0.001, z, d22, d4);
                         tessellator.addVertexWithUV(d15, y + 0.001, d14, d2, d4);
                         tessellator.addVertexWithUV(d15, y + 0.999, d14, d2, d3);
                     }
-                } else if (!GlassPaneRenderer.skipPaneRendering) {
+                } else if (!paneState.skipPaneRendering) {
                     tessellator.addVertexWithUV(d15, y + 0.999, z, d22, d3);
                     tessellator.addVertexWithUV(d15, y + 0.001, z, d22, d4);
                     tessellator.addVertexWithUV(d15, y + 0.001, d17, d0, d4);
@@ -672,13 +672,13 @@ public abstract class MixinRenderBlocks {
                     tessellator.addVertexWithUV(d15, y + 0.999, d14, d2, d3);
                 }
                 if (!flag3) {
-                    if (!GlassPaneRenderer.skipPaneRendering) {
+                    if (!paneState.skipPaneRendering) {
                         tessellator.addVertexWithUV(d16, y + 0.999, d14, d2, d3);
                         tessellator.addVertexWithUV(d16, y + 0.001, d14, d2, d4);
                         tessellator.addVertexWithUV(d16, y + 0.001, z, d22, d4);
                         tessellator.addVertexWithUV(d16, y + 0.999, z, d22, d3);
                     }
-                } else if (!GlassPaneRenderer.skipPaneRendering) {
+                } else if (!paneState.skipPaneRendering) {
                     tessellator.addVertexWithUV(d16, y + 0.999, d17, d0, d3);
                     tessellator.addVertexWithUV(d16, y + 0.001, d17, d0, d4);
                     tessellator.addVertexWithUV(d16, y + 0.001, z, d22, d4);
@@ -688,13 +688,13 @@ public abstract class MixinRenderBlocks {
                     tessellator.addVertexWithUV(d16, y + 0.001, d18, d1, d4);
                     tessellator.addVertexWithUV(d16, y + 0.999, d18, d1, d3);
                 }
-                if (!GlassPaneRenderer.skipTopEdgeRendering) {
+                if (!paneState.skipTopEdgeRendering) {
                     tessellator.addVertexWithUV(d16, y + 0.999, z, d6, d7);
                     tessellator.addVertexWithUV(d15, y + 0.999, z, d5, d7);
                     tessellator.addVertexWithUV(d15, y + 0.999, d14, d5, d8);
                     tessellator.addVertexWithUV(d16, y + 0.999, d14, d6, d8);
                 }
-                if (!GlassPaneRenderer.skipBottomEdgeRendering) {
+                if (!paneState.skipBottomEdgeRendering) {
                     tessellator.addVertexWithUV(d15, y + 0.001, z, d5, d7);
                     tessellator.addVertexWithUV(d16, y + 0.001, z, d6, d7);
                     tessellator.addVertexWithUV(d16, y + 0.001, d14, d6, d8);
@@ -702,45 +702,45 @@ public abstract class MixinRenderBlocks {
                 }
             } else {
                 if (!flag2 && !flag4) {
-                    if (!GlassPaneRenderer.skipPaneRendering) {
+                    if (!paneState.skipPaneRendering) {
                         tessellator.addVertexWithUV(d15, y + 0.999, z, d22, d3);
                         tessellator.addVertexWithUV(d15, y + 0.001, z, d22, d4);
                         tessellator.addVertexWithUV(d15, y + 0.001, d18, d1, d4);
                         tessellator.addVertexWithUV(d15, y + 0.999, d18, d1, d3);
                     }
-                } else if (!GlassPaneRenderer.skipPaneRendering) {
+                } else if (!paneState.skipPaneRendering) {
                     tessellator.addVertexWithUV(d15, y + 0.999, z, d22, d3);
                     tessellator.addVertexWithUV(d15, y + 0.001, z, d22, d4);
                     tessellator.addVertexWithUV(d15, y + 0.001, d17, d0, d4);
                     tessellator.addVertexWithUV(d15, y + 0.999, d17, d0, d3);
                 }
                 if (!flag3 && !flag4) {
-                    if (!GlassPaneRenderer.skipPaneRendering) {
+                    if (!paneState.skipPaneRendering) {
                         tessellator.addVertexWithUV(d16, y + 0.999, d18, d1, d3);
                         tessellator.addVertexWithUV(d16, y + 0.001, d18, d1, d4);
                         tessellator.addVertexWithUV(d16, y + 0.001, z, d22, d4);
                         tessellator.addVertexWithUV(d16, y + 0.999, z, d22, d3);
                     }
-                } else if (!GlassPaneRenderer.skipPaneRendering) {
+                } else if (!paneState.skipPaneRendering) {
                     tessellator.addVertexWithUV(d16, y + 0.999, d17, d0, d3);
                     tessellator.addVertexWithUV(d16, y + 0.001, d17, d0, d4);
                     tessellator.addVertexWithUV(d16, y + 0.001, z, d22, d4);
                     tessellator.addVertexWithUV(d16, y + 0.999, z, d22, d3);
                 }
-                if (!GlassPaneRenderer.skipTopEdgeRendering) {
+                if (!paneState.skipTopEdgeRendering) {
                     tessellator.addVertexWithUV(d16, y + 0.999, z, d6, d7);
                     tessellator.addVertexWithUV(d15, y + 0.999, z, d5, d7);
                     tessellator.addVertexWithUV(d15, y + 0.999, d17, d5, d9);
                     tessellator.addVertexWithUV(d16, y + 0.999, d17, d6, d9);
                 }
-                if (!GlassPaneRenderer.skipBottomEdgeRendering) {
+                if (!paneState.skipBottomEdgeRendering) {
                     tessellator.addVertexWithUV(d15, y + 0.001, z, d5, d7);
                     tessellator.addVertexWithUV(d16, y + 0.001, z, d6, d7);
                     tessellator.addVertexWithUV(d16, y + 0.001, d17, d6, d9);
                     tessellator.addVertexWithUV(d15, y + 0.001, d17, d5, d9);
                 }
             }
-        } else if (!flag3 && !flag2 && !GlassPaneRenderer.skipPaneRendering) {
+        } else if (!flag3 && !flag2 && !paneState.skipPaneRendering) {
             tessellator.addVertexWithUV(d16, y + 0.999, d17, d1, d3);
             tessellator.addVertexWithUV(d16, y + 0.001, d17, d1, d4);
             tessellator.addVertexWithUV(d15, y + 0.001, d17, d0, d4);
@@ -748,63 +748,63 @@ public abstract class MixinRenderBlocks {
         }
         if ((flag1 || flag4) && !flag) {
             if (!flag2 && !flag4) {
-                if (!GlassPaneRenderer.skipPaneRendering) {
+                if (!paneState.skipPaneRendering) {
                     tessellator.addVertexWithUV(d15, y + 0.999, d17, d0, d3);
                     tessellator.addVertexWithUV(d15, y + 0.001, d17, d0, d4);
                     tessellator.addVertexWithUV(d15, y + 0.001, d14, d2, d4);
                     tessellator.addVertexWithUV(d15, y + 0.999, d14, d2, d3);
                 }
-            } else if (!GlassPaneRenderer.skipPaneRendering) {
+            } else if (!paneState.skipPaneRendering) {
                 tessellator.addVertexWithUV(d15, y + 0.999, d18, d1, d3);
                 tessellator.addVertexWithUV(d15, y + 0.001, d18, d1, d4);
                 tessellator.addVertexWithUV(d15, y + 0.001, d14, d2, d4);
                 tessellator.addVertexWithUV(d15, y + 0.999, d14, d2, d3);
             }
             if (!flag3 && !flag4) {
-                if (!GlassPaneRenderer.skipPaneRendering) {
+                if (!paneState.skipPaneRendering) {
                     tessellator.addVertexWithUV(d16, y + 0.999, d14, d2, d3);
                     tessellator.addVertexWithUV(d16, y + 0.001, d14, d2, d4);
                     tessellator.addVertexWithUV(d16, y + 0.001, d17, d0, d4);
                     tessellator.addVertexWithUV(d16, y + 0.999, d17, d0, d3);
                 }
-            } else if (!GlassPaneRenderer.skipPaneRendering) {
+            } else if (!paneState.skipPaneRendering) {
                 tessellator.addVertexWithUV(d16, y + 0.999, d14, d2, d3);
                 tessellator.addVertexWithUV(d16, y + 0.001, d14, d2, d4);
                 tessellator.addVertexWithUV(d16, y + 0.001, d18, d1, d4);
                 tessellator.addVertexWithUV(d16, y + 0.999, d18, d1, d3);
             }
-            if (!GlassPaneRenderer.skipTopEdgeRendering) {
+            if (!paneState.skipTopEdgeRendering) {
                 tessellator.addVertexWithUV(d16, y + 0.999, d18, d6, d10);
                 tessellator.addVertexWithUV(d15, y + 0.999, d18, d5, d10);
                 tessellator.addVertexWithUV(d15, y + 0.999, d14, d5, d8);
                 tessellator.addVertexWithUV(d16, y + 0.999, d14, d6, d8);
             }
-            if (!GlassPaneRenderer.skipBottomEdgeRendering) {
+            if (!paneState.skipBottomEdgeRendering) {
                 tessellator.addVertexWithUV(d15, y + 0.001, d18, d5, d10);
                 tessellator.addVertexWithUV(d16, y + 0.001, d18, d6, d10);
                 tessellator.addVertexWithUV(d16, y + 0.001, d14, d6, d8);
                 tessellator.addVertexWithUV(d15, y + 0.001, d14, d5, d8);
             }
-        } else if (!flag1 && !flag3 && !flag2 && !GlassPaneRenderer.skipPaneRendering) {
+        } else if (!flag1 && !flag3 && !flag2 && !paneState.skipPaneRendering) {
             tessellator.addVertexWithUV(d15, y + 0.999, d18, d0, d3);
             tessellator.addVertexWithUV(d15, y + 0.001, d18, d0, d4);
             tessellator.addVertexWithUV(d16, y + 0.001, d18, d1, d4);
             tessellator.addVertexWithUV(d16, y + 0.999, d18, d1, d3);
         }
-        if (!GlassPaneRenderer.skipTopEdgeRendering) {
+        if (!paneState.skipTopEdgeRendering) {
             tessellator.addVertexWithUV(d16, y + 0.999, d17, d6, d9);
             tessellator.addVertexWithUV(d15, y + 0.999, d17, d5, d9);
             tessellator.addVertexWithUV(d15, y + 0.999, d18, d5, d10);
             tessellator.addVertexWithUV(d16, y + 0.999, d18, d6, d10);
         }
-        if (!GlassPaneRenderer.skipBottomEdgeRendering) {
+        if (!paneState.skipBottomEdgeRendering) {
             tessellator.addVertexWithUV(d15, y + 0.001, d17, d5, d9);
             tessellator.addVertexWithUV(d16, y + 0.001, d17, d6, d9);
             tessellator.addVertexWithUV(d16, y + 0.001, d18, d6, d10);
             tessellator.addVertexWithUV(d15, y + 0.001, d18, d5, d10);
         }
         if (flag4) {
-            if (!GlassPaneRenderer.skipPaneRendering) {
+            if (!paneState.skipPaneRendering) {
                 tessellator.addVertexWithUV(x, y + 0.999, d17, d0, d3);
                 tessellator.addVertexWithUV(x, y + 0.001, d17, d0, d4);
                 tessellator.addVertexWithUV(x, y + 0.001, d18, d1, d4);
@@ -814,7 +814,7 @@ public abstract class MixinRenderBlocks {
                 tessellator.addVertexWithUV(d12, y + 0.001, d17, d1, d4);
                 tessellator.addVertexWithUV(d12, y + 0.999, d17, d1, d3);
             }
-            if (!GlassPaneRenderer.skipPaneRendering) {
+            if (!paneState.skipPaneRendering) {
                 tessellator.addVertexWithUV(d16, y + 0.999, z, d1, d3);
                 tessellator.addVertexWithUV(d16, y + 0.001, z, d1, d4);
                 tessellator.addVertexWithUV(d15, y + 0.001, z, d0, d4);

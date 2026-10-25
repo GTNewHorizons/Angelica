@@ -267,7 +267,7 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
                                 }
                             } else {
                                 // Normal block rendering
-                                canRender = block.canRenderInPass(pass);
+                                canRender = !canRenderOffThread || block.canRenderInPass(pass);
                             }
 
                             if (canRender) {
@@ -407,6 +407,10 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
                 final DeferredBlock deferred = blocks.get(i);
                 blockPos.set(deferred.x(), deferred.y(), deferred.z());
                 slice.setRenderingBlock(deferred.block());
+                if (!deferred.isShaderPackOverride()) {
+                    setRenderPass(deferred.pass());
+                    if (!deferred.block().canRenderInPass(deferred.pass())) continue;
+                }
                 renderBlock(deferred.block(), deferred.meta(), deferred.x(), deferred.y(), deferred.z(), deferred.pass(),
                     tessellator, renderBlocks, m.buffers, ctx, blockRenderContext, minX, minY, minZ,
                     deferred.materialOverride(), deferred.isShaderPackOverride(), m.teMap, m.currentTick);
