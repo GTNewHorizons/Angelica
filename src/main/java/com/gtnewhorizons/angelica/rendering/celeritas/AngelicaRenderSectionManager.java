@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
+import com.gtnewhorizons.angelica.debug.screen.DebugScreenEntries;
 import com.cardinalstar.cubicchunks.world.ICubicWorld;
 import com.gtnewhorizons.angelica.client.rendering.AngelicaFogService;
 import com.gtnewhorizons.angelica.compat.ModStatus;
@@ -16,7 +17,6 @@ import com.gtnewhorizons.angelica.rendering.celeritas.world.WorldSlice;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.cloned.ClonedChunkSectionCache;
 import it.unimi.dsi.fastutil.longs.LongIterator;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.world.chunk.Chunk;
@@ -118,7 +118,7 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
 
     @Override
     protected boolean isDebugInfoShown() {
-        return Minecraft.getMinecraft().gameSettings.showDebugInfo;
+        return DebugScreenEntries.ANGELICA_RENDERER.isEnabled();
     }
 
     @Override

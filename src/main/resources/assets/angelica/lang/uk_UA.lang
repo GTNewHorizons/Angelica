@@ -268,8 +268,6 @@ sodium.options.use_render_pass_optimization.tooltip=Аналізує прозо�
 
 options.angelica.aggressiveChunkLoading=Агресивне завантаження чанків
 options.angelica.aggressiveChunkLoading.tooltip=Візуалізує чанки відразу після їх завантаження, навіть якщо сусідні чанки ще не готові. Покращує видиму швидкість завантаження на межах дистанції промальовування. Чанки автоматично перебудовуються, коли завантажуються сусідні. Корисно для серверів із низькою дистанцією рендерингу.
-options.angelica.disablef3=Вимкнути доповнення F3
-options.angelica.disablef3.tooltip=Вимкнути додаткову інформацію від Angelica на екрані налагодження F3.
 options.angelica.texteffects.rgb_colors=Кольори RGB
 options.angelica.texteffects.rgb_colors.tooltip=Увімкнути hex-кольори через синтаксис %s
 options.angelica.texteffects.gradients=Градієнти

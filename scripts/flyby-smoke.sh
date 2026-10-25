@@ -11,11 +11,14 @@
 #   SMOKE_TIMEOUT   - seconds before the client is killed (default: 600).
 #   SMOKE_SCENE     - scene command file (default: scripts/flyby-scenes/surround-smoke.txt).
 #   SMOKE_PACK      - shaderpack name for the pack variant (default: ComplementaryUnbound_r5.7.1 + EuphoriaPatches_1.8.1).
-#   SMOKE_DEBUG_HUD - true forces F3 on; false keeps the saved setting (default: true).
+#   SMOKE_DEBUG_HUD - true forces F3 on, false forces it off (default: true).
 #   SMOKE_PITCH     - camera pitch in degrees, positive looks down (default: 15).
 #   SMOKE_WARMUP_TICKS - ticks at the first pose before the pan (default: 100).
+#   SMOKE_ARGS      - extra -D flags for the client, word-split (default: none).
+#   SMOKE_CHECK_ARGS - extra flyby-smoke-check.py flags, word-split (default: none).
+#   SMOKE_FULLSCREEN - 0 keeps options.txt's window mode (default: 1, fullscreen for the run).
 #
-#   Runs from this script's own checkout. Restores run/client/config/shaders.properties and angelica-options.json on exit.
+#   Runs from this script's own checkout, fullscreen unless SMOKE_FULLSCREEN=0 (fullscreen avoids vsync pacing). Restores run/client/config/shaders.properties, angelica-options.json and options.txt on exit.
 
 set -euo pipefail
 
@@ -27,6 +30,8 @@ fi
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+# shellcheck source=flyby-lib.sh
+. "$ROOT/scripts/flyby-lib.sh"
 
 QUICKPLAY_WORLD="${QUICKPLAY_WORLD:-Flat World - No Mods}"
 FLYBY_ORIGIN="${FLYBY_ORIGIN:-1509.5,-924.5,0}"
@@ -35,6 +40,9 @@ SMOKE_PACK="${SMOKE_PACK:-ComplementaryUnbound_r5.7.1 + EuphoriaPatches_1.8.1}"
 SMOKE_DEBUG_HUD="${SMOKE_DEBUG_HUD:-true}"
 SMOKE_PITCH="${SMOKE_PITCH:-15}"
 SMOKE_WARMUP_TICKS="${SMOKE_WARMUP_TICKS:-100}"
+SMOKE_ARGS="${SMOKE_ARGS:-}"
+SMOKE_CHECK_ARGS="${SMOKE_CHECK_ARGS:-}"
+SMOKE_FULLSCREEN="${SMOKE_FULLSCREEN:-1}"
 
 SCENE="${SMOKE_SCENE:-$ROOT/scripts/flyby-scenes/surround-smoke.txt}"
 case "$SCENE" in
@@ -47,6 +55,7 @@ OUT="$ROOT/tmp/smoke/$NAME"
 BACKUP="$OUT/shaders.properties.bak"
 OPTIONS="$RUN/config/angelica-options.json"
 OPTIONS_BACKUP="$OUT/angelica-options.json.bak"
+OPTIONS_TXT="$RUN/options.txt"
 
 for v in "$@"; do
     case "$v" in
@@ -66,48 +75,26 @@ for v in "$@"; do
 done
 
 mkdir -p "$OUT"
-python3 - "$SHADERS" "$BACKUP" <<'PY'
-import shutil, sys
-shutil.copyfile(sys.argv[1], sys.argv[2])
-PY
-python3 - "$OPTIONS" "$OPTIONS_BACKUP" <<'PY'
-import shutil, sys
-shutil.copyfile(sys.argv[1], sys.argv[2])
-PY
+flyby_copy "$SHADERS" "$BACKUP"
+flyby_copy "$OPTIONS" "$OPTIONS_BACKUP"
 
 restore_options() {
-    python3 - "$OPTIONS_BACKUP" "$OPTIONS" <<'PY' || true
-import shutil, sys
-shutil.copyfile(sys.argv[1], sys.argv[2])
-PY
+    flyby_restore_file "$OPTIONS_BACKUP" "$OPTIONS" || true
 }
 
 restore() {
-    python3 - "$BACKUP" "$SHADERS" <<'PY' || true
-import shutil, sys
-shutil.copyfile(sys.argv[1], sys.argv[2])
-PY
+    flyby_restore_file "$BACKUP" "$SHADERS" || true
     restore_options
+    if [ "$SMOKE_FULLSCREEN" = 1 ]; then flyby_fullscreen_restore "$OPTIONS_TXT" "$OUT/options.txt.bak" || true; fi
 }
+if [ "$SMOKE_FULLSCREEN" = 1 ]; then flyby_fullscreen_on "$OPTIONS_TXT" "$OUT/options.txt.bak"; fi
 trap restore EXIT
 
 set_shaders() {
-    python3 - "$SHADERS" "$1" "$2" <<'PY'
-import re, sys
-path, enable, pack = sys.argv[1:4]
-text = open(path).read()
-def put(text, key, value):
-    pat = re.compile(r'^' + key + r'=.*$', re.M)
-    if pat.search(text):
-        return pat.sub(lambda m: key + '=' + value, text)
-    if text and not text.endswith('\n'):
-        text += '\n'
-    return text + key + '=' + value + '\n'
-text = put(text, 'enableShaders', enable)
-if pack:
-    text = put(text, 'shaderPack', pack)
-open(path, 'w').write(text)
-PY
+    flyby_set_key "$SHADERS" enableShaders "$1" =
+    if [ -n "$2" ]; then
+        flyby_set_key "$SHADERS" shaderPack "$2" =
+    fi
 }
 
 set_vao() {
@@ -123,20 +110,10 @@ with open(path, "w") as f:
 PY
 }
 
-crash_list() {
-    if [ -d "$RUN/crash-reports" ]; then
-        ls "$RUN/crash-reports" | sort
-    fi
-}
-
 FAILED=0
 for VARIANT in "$@"; do
     VDIR="$OUT/$VARIANT"
-    python3 - "$VDIR" <<'PY'
-import shutil, sys
-shutil.rmtree(sys.argv[1], ignore_errors=True)
-PY
-    mkdir -p "$VDIR"
+    flyby_fresh_dir "$VDIR"
 
     restore_options
     if [ "$VARIANT" = "vao" ]; then
@@ -151,7 +128,7 @@ PY
 
     mkdir -p "$RUN/screenshots"
     rm -f "$RUN"/screenshots/flyby-shot-*.png
-    crash_list >| "$VDIR/crashes.before"
+    flyby_crash_list "$RUN/crash-reports" >| "$VDIR/crashes.before"
 
     echo "==> $NAME/$VARIANT: launching (timeout ${SMOKE_TIMEOUT}s)"
     ./gradlew runClient25 --console=plain \
@@ -167,6 +144,7 @@ PY
         -Dangelica.flyby.crashTest=isbrh \
         -Dangelica.debug.testBlocks=true \
         -DquickPlaySingleplayer="$QUICKPLAY_WORLD" \
+        $SMOKE_ARGS \
         >| "$VDIR/console.log" 2>&1 &
     PID=$!
 
@@ -190,21 +168,10 @@ PY
         STATUS="$RC"
     fi
 
-    crash_list >| "$VDIR/crashes.after"
-    NEW_CRASHES="$(comm -13 "$VDIR/crashes.before" "$VDIR/crashes.after" | wc -l | tr -d ' ')"
+    NEW_CRASHES="$(flyby_new_crashes "$RUN/crash-reports" "$VDIR/crashes.before" "$VDIR/crashes.after")"
+    flyby_collect "$RUN" "$VDIR" fml-client-latest.log latest.log
 
-    for f in fml-client-latest.log latest.log; do
-        if [ -f "$RUN/logs/$f" ]; then
-            cp -f "$RUN/logs/$f" "$VDIR/$f"
-        fi
-    done
-    for f in "$RUN"/screenshots/flyby-shot-*.png; do
-        if [ -f "$f" ]; then
-            cp -f "$f" "$VDIR/"
-        fi
-    done
-
-    if ! python3 "$ROOT/scripts/flyby-smoke-check.py" "$VDIR" "$STATUS" "$NEW_CRASHES"; then
+    if ! python3 "$ROOT/scripts/flyby-smoke-check.py" "$VDIR" "$STATUS" "$NEW_CRASHES" $SMOKE_CHECK_ARGS; then
         FAILED=1
     fi
 done

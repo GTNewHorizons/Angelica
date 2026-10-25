@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import argparse
 import glob
 import os
 import re
@@ -15,8 +16,18 @@ CATCH_MARK = "Caught an exception during ISBRH rendering"
 BAD_LINE = re.compile(
     r"InvalidInjectionException|InjectionError|MixinApplyError|MixinTransformerError|"
     r"InvalidMixinException|MixinPrepareError|skipped: the surrounded call was removed|"
-    r"flyby scene command did not execute"
+    r"flyby scene command did not execute|Grouped debug screen failed|Failed to set up the debug screen|"
+    r"Debug screen entry \S+ failed and is disabled|needs the batching font renderer|"
+    r"Flyby debugEntries:|Flyby: debug entry list is not available|Flyby: unknown debugProfile|"
+    r"Debug screen compat entry for \S+ failed to register|"
+    r"Failed to (?:load|save|set aside the unreadable) debug screen profile|toggle listeners kept changing"
 )
+OVERLAY_RE = re.compile(r"Flyby debug overlay shot=(\d+) mode=(\w+)(?:.* renderers=(\S*))?")
+LINE_RE = re.compile(r"Flyby debug line shot=(\d+) id=(\S+) text=(.*)")
+GROUP_RE = re.compile(r"Flyby debug group shot=(\d+) id=(\S+) ")
+DUP_IDS = ("angelica:other_left", "angelica:other_right")
+DUP_PREFIXES = ("Allocation rate:", "Java:", "GPU:", "OpenGL:", "CPU Cores:", "OS:", "LWJGL:", "IntCache:",
+                "[Botania]", "[JM]", "[ChunkGen]", "hunger:", "HydroEnergy GPU RAM:", "renderDebugMode:")
 ANGELICA_FRAME = re.compile(
     r"com\.gtnewhorizons\.angelica|net\.coderbot|org\.embeddedt|org\.taumc|com\.prupe|"
     r"jss\.notfine|\$surround|angelica\$"
@@ -44,7 +55,44 @@ def split_traces(lines):
     return traces
 
 
-def check(variant_dir, exit_status, new_crashes):
+def check_overlay(lines, opts, reasons):
+    overlays = [m for m in (OVERLAY_RE.search(l) for l in lines) if m]
+    mode = opts.get("expect_mode")
+    if mode:
+        if not overlays:
+            reasons.append("no 'Flyby debug overlay' line")
+        else:
+            wrong = sorted({m.group(2) for m in overlays if m.group(2) != mode})
+            if wrong:
+                reasons.append("overlay mode " + ",".join(wrong) + " != expected " + mode)
+
+    dbg_lines = [m for m in (LINE_RE.search(l) for l in lines) if m]
+    groups = [m for m in (GROUP_RE.search(l) for l in lines) if m]
+    for ident in opts.get("require_group") or []:
+        if not any(m.group(2) == ident for m in groups):
+            reasons.append("missing debug group " + ident)
+
+    wanted = [r for r in (opts.get("require_renderers") or "").split(",") if r]
+    if wanted:
+        if not any(m.group(3) is not None and set(wanted) <= set(m.group(3).split(",")) for m in overlays):
+            reasons.append("no overlay line with renderers " + ",".join(wanted))
+
+    for name in opts.get("require_mod") or []:
+        if not any(name.lower() in l.lower() for l in lines):
+            reasons.append("mod " + name + " not in log")
+
+    if opts.get("forbid_dup"):
+        if not dbg_lines:
+            reasons.append("no debug lines dumped")
+        dups = sorted({m.group(3).lstrip().split(":")[0] + ":" for m in dbg_lines
+                       if m.group(2) in DUP_IDS and m.group(3).lstrip().startswith(DUP_PREFIXES)})
+        if dups:
+            reasons.append("duplicate vanilla lines in " + "/".join(DUP_IDS) + ": " + ", ".join(dups))
+
+
+def check(variant_dir, exit_status, new_crashes, opts=None):
+    opts = opts or {}
+    shots_required = opts.get("shots") or SHOTS_REQUIRED
     variant = os.path.basename(os.path.normpath(variant_dir))
     reasons = []
     details = []
@@ -71,7 +119,11 @@ def check(variant_dir, exit_status, new_crashes):
         elif max(frames) == 0:
             reasons.append("flyby frames is 0")
 
-        bad = [l for l in lines if BAD_LINE.search(l)]
+        if opts.get("modpack"):
+            bad = [l for i, l in enumerate(lines) if BAD_LINE.search(l)
+                   and any("angelica" in x.lower() for x in lines[i:i + 4])]
+        else:
+            bad = [l for l in lines if BAD_LINE.search(l)]
         if bad:
             reasons.append(str(len(bad)) + " mixin/injection/scene failure line(s)")
             details.extend(["  " + l.strip()[:200] for l in bad[:3]])
@@ -94,12 +146,14 @@ def check(variant_dir, exit_status, new_crashes):
             if CATCH_MARK in l and any(CRASH_MARK in x for x in lines[i:i + 2]):
                 caught = True
                 break
-        if not caught:
+        if not caught and not opts.get("modpack"):
             reasons.append("no ISBRH catch line for crashtest")
 
+        check_overlay(lines, opts, reasons)
+
     shots = sorted(glob.glob(os.path.join(variant_dir, "flyby-shot-*.png")))
-    if len(shots) < SHOTS_REQUIRED:
-        reasons.append("only " + str(len(shots)) + " of " + str(SHOTS_REQUIRED) + " screenshots")
+    if len(shots) < shots_required:
+        reasons.append("only " + str(len(shots)) + " of " + str(shots_required) + " screenshots")
     small = [os.path.basename(p) for p in shots if os.path.getsize(p) < MIN_SHOT_BYTES]
     if small:
         reasons.append("small screenshot(s): " + ", ".join(small))
@@ -154,11 +208,55 @@ def self_test():
             ("no-isbrh", [l for l in GOOD_LOG if CATCH_MARK not in l], {}, 1),
             ("mixin-error", GOOD_LOG + ["[10:00:05] [main/ERROR]: InvalidInjectionException: bad"], {}, 1),
             ("small-shot", GOOD_LOG, {"shot_size": 100}, 1),
+            ("bad-entries", GOOD_LOG + ["[10:00:06] [Client thread/ERROR]: Flyby debugEntries: unknown entry id 'test:nope'"], {}, 1),
         ]
         for name, log, kw, want in cases:
             d = make_variant(root, name, log, **kw)
             got = check(d, 0, 0)
             if got != want:
+                failures.append(name)
+        no_isbrh = [l for l in GOOD_LOG if CATCH_MARK not in l]
+        ov = [
+            "[10:00:06] [Client thread/INFO]: Flyby debug overlay shot=0 mode=OVERLAY groups=2 renderers=vanilla,angelica",
+            "[10:00:06] [Client thread/INFO]: Flyby debug group shot=0 id=angelica:other_left side=L x=0 y=0 w=1 h=1 facts= lines=2",
+            "[10:00:06] [Client thread/INFO]: Flyby debug line shot=0 id=angelica:other_left text=Allocation rate: 1 MB/s",
+            "[10:00:06] [Client thread/INFO]: Flyby debug line shot=0 id=angelica:other_left text=Second",
+            "[10:00:06] [Client thread/INFO]: Flyby debug line shot=0 id=angelica:other_right text=Free",
+            "[10:00:07] [main/INFO]: Loading mod Botania",
+        ]
+        ov_dup = [l for l in ov if "Allocation" not in l]
+        ov_dup += ["[10:00:06] [Client thread/INFO]: Flyby debug line shot=1 id=angelica:other_right text=  GPU: foo"]
+        flag_cases = [
+            ("modpack-ok", no_isbrh, {"modpack": True}, 0),
+            ("modpack-no-flag", no_isbrh, {}, 1),
+            ("modpack-foreign-bad", GOOD_LOG + ["[10:00:05] [main/ERROR]: InvalidInjectionException: x", "other", "other", "other", "angelica late"], {"modpack": True}, 0),
+            ("modpack-angelica-bad", no_isbrh + ["[10:00:05] [main/ERROR]: Grouped debug screen failed", "x", "angelica y"], {"modpack": True}, 1),
+            ("grouped-failed", GOOD_LOG + ["[10:00:05] [main/ERROR]: Grouped debug screen failed"], {}, 1),
+            ("setup-failed", GOOD_LOG + ["[10:00:05] [Client thread/ERROR] [Angelica]: Failed to set up the debug screen; it stays disabled for this session"], {}, 1),
+            ("entry-failed", GOOD_LOG + ["[10:00:05] [Client thread/ERROR] [Angelica]: Debug screen entry botania:debug failed and is disabled for the rest of this session"], {}, 1),
+            ("font-fallback", GOOD_LOG + ["[10:00:05] [Client thread/ERROR] [Angelica]: Grouped debug screen needs the batching font renderer on the HUD font; using the classic layout for the rest of this session"], {}, 1),
+            ("shots-ok", GOOD_LOG, {"shots": 3}, 0),
+            ("shots-short", GOOD_LOG, {"shots": 9}, 1),
+            ("mode-ok", GOOD_LOG + ov, {"expect_mode": "OVERLAY"}, 0),
+            ("mode-wrong", GOOD_LOG + ov, {"expect_mode": "FLAT"}, 1),
+            ("mode-none", GOOD_LOG, {"expect_mode": "FLAT"}, 1),
+            ("group-ok", GOOD_LOG + ov, {"require_group": ["angelica:other_left"]}, 0),
+            ("group-missing", GOOD_LOG + ov, {"require_group": ["angelica:nope"]}, 1),
+            ("renderers-ok", GOOD_LOG + ov, {"require_renderers": "angelica,vanilla"}, 0),
+            ("renderers-missing", GOOD_LOG + ov, {"require_renderers": "angelica,sodium"}, 1),
+            ("mod-ok", GOOD_LOG + ov, {"require_mod": ["botania"]}, 0),
+            ("mod-missing", GOOD_LOG + ov, {"require_mod": ["thaumcraft"]}, 1),
+            ("dup-fail", GOOD_LOG + ov, {"forbid_dup": True}, 1),
+            ("dup-ok", GOOD_LOG + ov_dup[:3] + ov_dup[4:5], {"forbid_dup": True}, 0),
+            ("dup-spaces-fail", GOOD_LOG + ov_dup, {"forbid_dup": True}, 1),
+            ("dup-no-dump", GOOD_LOG, {"forbid_dup": True}, 1),
+        ]
+        line = "[10:00:06] [Client thread/INFO]: Flyby debug line shot=1 id=angelica:other_left text=  [Botania] x"
+        flag_cases.append(("dup-prefix", GOOD_LOG + ov_dup[:3] + [line], {"forbid_dup": True}, 1))
+        flag_cases.append(("dup-prefix-other-id", GOOD_LOG + ov_dup[:3] + [line.replace("other_left", "other_elsewhere")], {"forbid_dup": True}, 0))
+        for name, log, opts, want in flag_cases:
+            d = make_variant(root, name, log, shots=3 if name == "shots-ok" else 8)
+            if check(d, 0, 0, opts) != want:
                 failures.append(name)
         d = make_variant(root, "bad-exit", GOOD_LOG)
         if check(d, "timeout", 1) != 1:
@@ -175,11 +273,19 @@ def self_test():
 def main(argv):
     if len(argv) == 2 and argv[1] == "--self-test":
         return self_test()
-    if len(argv) != 4:
-        print("usage: flyby-smoke-check.py <variant_dir> <exit_status|timeout> <new_crash_count>", file=sys.stderr)
-        print("       flyby-smoke-check.py --self-test", file=sys.stderr)
-        return 2
-    return check(argv[1], argv[2], int(argv[3]))
+    ap = argparse.ArgumentParser(prog="flyby-smoke-check.py")
+    ap.add_argument("variant_dir")
+    ap.add_argument("exit_status")
+    ap.add_argument("new_crashes", type=int)
+    ap.add_argument("--modpack", action="store_true")
+    ap.add_argument("--shots", type=int)
+    ap.add_argument("--expect-mode")
+    ap.add_argument("--require-group", action="append", metavar="ID")
+    ap.add_argument("--require-renderers", metavar="a,b")
+    ap.add_argument("--require-mod", action="append", metavar="NAME")
+    ap.add_argument("--forbid-dup", action="store_true")
+    a = ap.parse_args(argv[1:])
+    return check(a.variant_dir, a.exit_status, a.new_crashes, vars(a))
 
 
 if __name__ == "__main__":

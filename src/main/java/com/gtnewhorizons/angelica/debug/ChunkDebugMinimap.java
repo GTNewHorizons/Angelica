@@ -22,33 +22,48 @@
 
 package com.gtnewhorizons.angelica.debug;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement;
+import com.gtnewhorizons.angelica.debug.render.DebugDrawScope;
+import com.gtnewhorizons.angelica.debug.render.DebugGeometry;
+import com.gtnewhorizons.angelica.debug.render.DebugProgram;
+import com.gtnewhorizons.angelica.debug.render.DebugPrograms;
+import com.gtnewhorizons.angelica.debug.render.NativeScratch;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.rendering.celeritas.AngelicaRenderSectionManager;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import lombok.Getter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ChunkProviderClient;
-import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.world.chunk.EmptyChunk;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.common.MinecraftForge;
+import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 
 /**
- * Debug overlay that renders a minimap showing chunk loading and rendering state. Toggle via /angelica minimap
+ * Debug overlay that renders a minimap showing chunk loading and rendering state.
  */
 public class ChunkDebugMinimap {
-    private static final ChunkDebugMinimap INSTANCE = new ChunkDebugMinimap();
-    @Getter
-    private static volatile boolean enabled = false;
-
     private static final int RANGE = 32; // Chunks in each direction from player
 
-    public static synchronized void toggle() {
-        if (enabled) disable();
-        else enable();
-    }
+    private static final int FLAGS = VertexFlags.COLOR_BIT;
+    private static final VertexFormat FORMAT = DefaultVertexFormat.ALL_FORMATS[FLAGS];
+    private static final int STRIDE = FORMAT.getVertexSize();
+    private static final int COLOR_OFFSET = DebugGeometry.offsetOf(FORMAT, VertexFormatElement.Usage.COLOR);
+    private static final int CHUNKS = RANGE * 2 * RANGE * 2;
+    private static final int ALPHA = (int) (0.8F * 255.0F);
+    private static final int BYTES = CHUNKS * 4 * STRIDE;
+    private static final ChunkDebugMinimap INSTANCE = new ChunkDebugMinimap();
+    private static volatile boolean enabled = false;
+
+    private final DebugDrawScope scope = new DebugDrawScope();
+    private final NativeScratch scratch = new NativeScratch(BYTES);
+    private final Matrix4f mvp = new Matrix4f();
+    private long cursor;
 
     public static synchronized void enable() {
         if (enabled) return;
@@ -60,6 +75,7 @@ public class ChunkDebugMinimap {
         if (!enabled) return;
         enabled = false;
         MinecraftForge.EVENT_BUS.unregister(INSTANCE);
+        INSTANCE.scratch.free();
     }
 
     @SubscribeEvent
@@ -84,39 +100,31 @@ public class ChunkDebugMinimap {
         final int playerChunkX = ((int) Math.floor(pX)) >> 4;
         final int playerChunkZ = ((int) Math.floor(pZ)) >> 4;
 
-        // Save GL state
-        GLStateManager.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-        GLStateManager.glPushMatrix();
-        try {
-            // Setup rendering
-            GLStateManager.glScaled(2, 2, 1);
-            GLStateManager.glTranslated(32, 32, 0);
+        scratch.ensure(BYTES);
+        cursor = scratch.address();
+        final ChunkProviderClient chunkProvider = (ChunkProviderClient) mc.theWorld.getChunkProvider();
 
-            GLStateManager.disableLighting();
-            GLStateManager.disableTexture();
-            GLStateManager.disableDepthTest();
-            GLStateManager.enableBlend();
-            GLStateManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-
-            final Tessellator tess = Tessellator.instance;
-            tess.startDrawingQuads();
-
-            final ChunkProviderClient chunkProvider = (ChunkProviderClient) mc.theWorld.getChunkProvider();
-
-            for (int x = playerChunkX - RANGE; x < playerChunkX + RANGE; x++) {
-                for (int z = playerChunkZ - RANGE; z < playerChunkZ + RANGE; z++) {
-                    drawChunk(tess, x, z, playerChunkX, playerChunkZ, manager, chunkProvider);
-                }
+        for (int x = playerChunkX - RANGE; x < playerChunkX + RANGE; x++) {
+            for (int z = playerChunkZ - RANGE; z < playerChunkZ + RANGE; z++) {
+                drawChunk(x, z, playerChunkX, playerChunkZ, manager, chunkProvider);
             }
+        }
 
-            tess.draw();
+        GLStateManager.getProjectionMatrix().mul(GLStateManager.getModelViewMatrix(), mvp).scale(2, 2, 1).translate(32, 32, 0);
+
+        scope.beginHud();
+        try {
+            final DebugProgram color = DebugPrograms.color();
+            color.use();
+            color.mvp(mvp);
+            final int bytes = (int) (cursor - scratch.address());
+            TessellatorStreamingDrawer.drawPacked(scratch.window(bytes), GL11.GL_QUADS, FLAGS, bytes / STRIDE);
         } finally {
-            GLStateManager.glPopMatrix();
-            GLStateManager.glPopAttrib();
+            scope.end();
         }
     }
 
-    private void drawChunk(Tessellator tess, int chunkX, int chunkZ, int playerChunkX, int playerChunkZ, AngelicaRenderSectionManager manager, ChunkProviderClient chunkProvider) {
+    private void drawChunk(int chunkX, int chunkZ, int playerChunkX, int playerChunkZ, AngelicaRenderSectionManager manager, ChunkProviderClient chunkProvider) {
         boolean initialized = false;
         float r = 0, g = 0, b = 0;
 
@@ -142,16 +150,23 @@ public class ChunkDebugMinimap {
             }
         }
 
-        tess.setColorRGBA_F(r, g, b, 0.8f);
+        final int argb = ALPHA << 24 | (int) (r * 255) << 16 | (int) (g * 255) << 8 | (int) (b * 255);
 
         final int xStart = chunkX - playerChunkX;
         final int zStart = chunkZ - playerChunkZ;
         final int xEnd = xStart + 1;
         final int zEnd = zStart + 1;
 
-        tess.addVertex(xStart, zStart, 0);
-        tess.addVertex(xStart, zEnd, 0);
-        tess.addVertex(xEnd, zEnd, 0);
-        tess.addVertex(xEnd, zStart, 0);
+        vertex(xStart, zStart, argb);
+        vertex(xStart, zEnd, argb);
+        vertex(xEnd, zEnd, argb);
+        vertex(xEnd, zStart, argb);
+    }
+
+    private void vertex(float x, float y, int argb) {
+        final long p = cursor;
+        DebugGeometry.putPosition(p, x, y, 0.0F);
+        DebugGeometry.putColor(p + COLOR_OFFSET, argb);
+        cursor = p + STRIDE;
     }
 }

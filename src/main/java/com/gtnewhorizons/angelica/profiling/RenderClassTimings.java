@@ -1,12 +1,12 @@
 package com.gtnewhorizons.angelica.profiling;
 
+import com.gtnewhorizons.angelica.debug.screen.DebugScreen;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Reference2LongMap;
 import it.unimi.dsi.fastutil.objects.Reference2LongMaps;
 import it.unimi.dsi.fastutil.objects.Reference2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
-import net.minecraft.client.Minecraft;
 
 public final class RenderClassTimings {
     public static final RenderClassTimings ENTITY = new RenderClassTimings("entity.cls.", "Entity");
@@ -20,7 +20,7 @@ public final class RenderClassTimings {
     private final Reference2LongOpenHashMap<Class<?>> nanos = new Reference2LongOpenHashMap<>();
     private final Reference2IntOpenHashMap<Class<?>> counts = new Reference2IntOpenHashMap<>();
     private final Reference2ObjectOpenHashMap<Class<?>, String> plotNames = new Reference2ObjectOpenHashMap<>();
-    private String debugLine = "";
+    private String debugValue = "";
 
     private RenderClassTimings(String plotPrefix, String label) {
         this.plotPrefix = plotPrefix;
@@ -34,12 +34,12 @@ public final class RenderClassTimings {
 
     public void flushFrame(boolean plot) {
         if (nanos.isEmpty()) {
-            debugLine = "";
+            debugValue = "";
             return;
         }
-        final boolean debugScreen = Minecraft.getMinecraft().gameSettings.showDebugInfo;
+        final boolean debugScreen = DebugScreen.isRendererVerbose();
         if (!plot && !debugScreen) {
-            debugLine = "";
+            debugValue = "";
             nanos.clear();
             counts.clear();
             return;
@@ -65,13 +65,13 @@ public final class RenderClassTimings {
             }
         }
         if (a == null || !debugScreen) {
-            debugLine = "";
+            debugValue = "";
         } else {
-            final StringBuilder sb = new StringBuilder(label).append(": ");
+            final StringBuilder sb = new StringBuilder();
             appendEntry(sb, a, an);
             if (b != null) appendEntry(sb.append(", "), b, bn);
             if (c != null) appendEntry(sb.append(", "), c, cn);
-            debugLine = sb.toString();
+            debugValue = sb.toString();
         }
         nanos.clear();
         counts.clear();
@@ -90,7 +90,11 @@ public final class RenderClassTimings {
         sb.append(cls.getSimpleName()).append(' ').append(ns / 1000).append("us x").append(counts.getInt(cls));
     }
 
-    public String debugLine() {
-        return debugLine;
+    public String label() {
+        return label;
+    }
+
+    public String debugValue() {
+        return debugValue;
     }
 }

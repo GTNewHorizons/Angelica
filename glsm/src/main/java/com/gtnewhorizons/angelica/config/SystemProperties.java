@@ -69,7 +69,13 @@ public final class SystemProperties {
     public static final boolean FLYBY_JFR = Boolean.getBoolean("angelica.flyby.jfr");
     public static final float FLYBY_PITCH = parseFloat("angelica.flyby.pitch");
     public static final int FLYBY_SCREENSHOTS = Integer.getInteger("angelica.flyby.screenshots", 0);
-    public static final boolean FLYBY_DEBUG_HUD = Boolean.getBoolean("angelica.flyby.debugHud");
+    public static final Boolean FLYBY_DEBUG_HUD = parseBooleanOverride("angelica.flyby.debugHud");
+    public static final String FLYBY_DEBUG_PROFILE = System.getProperty("angelica.flyby.debugProfile", "");
+    public static final String FLYBY_DEBUG_ENTRIES = System.getProperty("angelica.flyby.debugEntries", "");
+    public static final Boolean FLYBY_DEBUG_FLAT = parseBooleanOverride("angelica.flyby.debugFlat");
+    public static final Boolean FLYBY_HUD_CACHING = parseBooleanOverride("angelica.flyby.hudCaching");
+    public static final Boolean FLYBY_FPS_GRAPH = parseBooleanOverride("angelica.flyby.fpsGraph");
+    public static final boolean FLYBY_DEBUG_DUMP = Boolean.getBoolean("angelica.flyby.debugDump");
     public static final String FLYBY_CRASH_TEST = System.getProperty("angelica.flyby.crashTest", "");
 
     // Debug

@@ -4,7 +4,13 @@ package com.gtnewhorizons.angelica.commands;
 
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.SystemProperties;
-import com.gtnewhorizons.angelica.debug.ChunkDebugMinimap;
+import com.gtnewhorizons.angelica.api.debug.DebugScreenEntryStatus;
+import com.gtnewhorizons.angelica.debug.screen.DebugEntryDef;
+import com.gtnewhorizons.angelica.debug.screen.DebugFactImpl;
+import com.gtnewhorizons.angelica.debug.screen.DebugScreen;
+import com.gtnewhorizons.angelica.debug.screen.DebugScreenEntries;
+import com.gtnewhorizons.angelica.debug.screen.DebugScreenEntryList;
+import com.gtnewhorizons.angelica.debug.screen.entries.AngelicaEntries;
 import com.gtnewhorizons.angelica.debug.flyby.FlybyRoute;
 import com.gtnewhorizons.angelica.debug.flyby.FlybyRunner;
 import com.gtnewhorizons.angelica.debug.profiling.AsprofRecorder;
@@ -13,7 +19,6 @@ import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.profiling.TracyBackend;
 import com.gtnewhorizons.angelica.rendering.IsbrhTestRenderer;
 import com.gtnewhorizons.angelica.rendering.RenderRecovery;
-import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasDebugScreenHandler;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.command.CommandBase;
@@ -38,7 +43,7 @@ public class AngelicaCommand extends CommandBase {
         final Map<String, String> help = new LinkedHashMap<>();
         if (SystemProperties.debugTooling()) {
             help.put("wireframe", helpLine("wireframe", "Toggle wireframe rendering"));
-            help.put("fog", helpLine("fog", "Toggle fog debug on F3"));
+            help.put("fog", helpLine("fog", "Toggle always-on fog debug info"));
             help.put("minimap", helpLine("minimap", "Toggle chunk debug overlay"));
             help.put("flyby", helpLine("flyby <" + FlybyRoute.ids() + ">", "Run a deterministic benchmark route"));
             help.put("profile", helpLine("profile <start|stop|status>", "Control async-profiler (JFR) recording"));
@@ -154,17 +159,31 @@ public class AngelicaCommand extends CommandBase {
     }
 
     private void handleFog(ICommandSender sender) {
-        CeleritasDebugScreenHandler.showFogDebug = !CeleritasDebugScreenHandler.showFogDebug;
-        final String f3State = CeleritasDebugScreenHandler.showFogDebug ? "ON" : "OFF";
-
-        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE + "Fog debug (F3): " + f3State));
-        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "  " + CeleritasDebugScreenHandler.getFogDebugString()));
+        if (debugScreenUnavailable(sender)) return;
+        final boolean on = toggleAlways(DebugScreenEntries.ANGELICA_FOG);
+        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE + "Fog debug: " + (on ? "ON" : "OFF")));
+        final StringBuilder fogText = new StringBuilder();
+        AngelicaEntries.writeFog(new DebugFactImpl().intoPlain(fogText));
+        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "  " + fogText));
     }
 
     private void handleMinimap(ICommandSender sender) {
-        ChunkDebugMinimap.toggle();
-        final String state = ChunkDebugMinimap.isEnabled() ? "ON" : "OFF";
+        if (debugScreenUnavailable(sender)) return;
+        final String state = toggleAlways(DebugScreenEntries.ANGELICA_CHUNK_MINIMAP) ? "ON" : "OFF";
         sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE + "Chunk debug minimap: " + state));
+    }
+
+    private static boolean debugScreenUnavailable(ICommandSender sender) {
+        if (DebugScreen.ENTRIES != null) return false;
+        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.RED + "The debug screen failed to start; see the log"));
+        return true;
+    }
+
+    private static boolean toggleAlways(DebugEntryDef def) {
+        final DebugScreenEntryList entries = DebugScreen.ENTRIES;
+        final boolean on = entries.effectiveStatus(def) != DebugScreenEntryStatus.ALWAYS_ON;
+        entries.overrideForSession(def, on ? DebugScreenEntryStatus.ALWAYS_ON : DebugScreenEntryStatus.NEVER);
+        return on;
     }
 
     private void handleCrashTest(ICommandSender sender, String[] args) {

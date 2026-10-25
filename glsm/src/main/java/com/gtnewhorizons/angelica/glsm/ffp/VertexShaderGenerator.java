@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement;
+import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
 
 /**
  * Generates GLSL 330 core vertex shaders for FFP emulation.
@@ -19,6 +20,9 @@ public final class VertexShaderGenerator {
         emitAttributes(sb, key);
         emitUniforms(sb, key);
         emitOutputs(sb, key);
+        if (key.lineQuads()) {
+            sb.append(ShaderLoader.getShaderSource("angelica:include/line_quads.glsl")).append('\n');
+        }
 
         sb.append("void main() {\n");
         if (key.instancing() == Instancing.WEATHER) {
@@ -142,7 +146,7 @@ public final class VertexShaderGenerator {
         } else {
             sb.append("  gl_Position = u_MVPMatrix * pos4;\n");
             if (key.lineQuads()) {
-                emitLineQuadWidening(sb);
+                emitLineQuadWidening(sb, key);
             }
 
             // Eye position needed for lighting, fog, EYE_LINEAR texgen, and clip planes
@@ -156,42 +160,15 @@ public final class VertexShaderGenerator {
         sb.append('\n');
     }
 
-    private static void emitLineQuadWidening(StringBuilder sb) {
+    private static void emitLineQuadWidening(StringBuilder sb, VertexKey key) {
         sb.append("  int lineCorner = gl_VertexID % 6;\n");
-        sb.append("  bool lineStart = lineCorner == 0 || lineCorner == 1 || lineCorner == 3;\n");
+        sb.append("  bool lineStart = angelica_lineStart(lineCorner);\n");
         sb.append("  vec4 lineOther = u_MVPMatrix * vec4(a_LineOtherEnd, 1.0);\n");
-        sb.append("  vec4 lineC0 = lineStart ? gl_Position : lineOther;\n");
-        sb.append("  vec4 lineC1 = lineStart ? lineOther : gl_Position;\n");
-        sb.append("  vec4 lineCenter = lineC0;\n");
-        sb.append("  float lineT = 0.0;\n");
-        sb.append("  float lineD0 = lineC0.z + lineC0.w;\n");
-        sb.append("  float lineD1 = lineC1.z + lineC1.w;\n");
-        sb.append("  if (lineD0 < 0.0 && lineD1 < 0.0) {\n");
-        sb.append("    gl_Position = vec4(0.0, 0.0, 2.0, 1.0);\n");
-        sb.append("  } else {\n");
-        sb.append("    float lineT0 = lineD0 < 0.0 ? lineD0 / (lineD0 - lineD1) : 0.0;\n");
-        sb.append("    float lineT1 = lineD1 < 0.0 ? lineD0 / (lineD0 - lineD1) : 1.0;\n");
-        sb.append("    lineT = lineStart ? lineT0 : lineT1;\n");
-        sb.append("    vec4 lineP0 = mix(lineC0, lineC1, lineT0);\n");
-        sb.append("    vec4 lineP1 = mix(lineC0, lineC1, lineT1);\n");
-        sb.append("    vec2 lineN0 = lineP0.xy / lineP0.w;\n");
-        sb.append("    vec2 lineN1 = lineP1.xy / lineP1.w;\n");
-        sb.append("    vec2 linePixel = 2.0 / u_ViewportSize;\n");
-        sb.append("    float lineHalfWidth = 0.5 * u_LineWidth;\n");
-        sb.append("    vec2 lineOffset;\n");
-        sb.append("    vec2 lineShift;\n");
-        sb.append("    vec2 lineSpan = abs(lineN1 - lineN0) * u_ViewportSize;\n");
-        sb.append("    if (lineSpan.x > lineSpan.y) {\n");
-        sb.append("      lineOffset = vec2(0.0, lineHalfWidth * linePixel.y);\n");
-        sb.append("      lineShift = vec2(lineN0.x < lineN1.x ? -0.5 : 0.5, -0.125) * linePixel;\n");
-        sb.append("    } else {\n");
-        sb.append("      lineOffset = vec2(lineHalfWidth * linePixel.x, 0.0);\n");
-        sb.append("      lineShift = vec2(0.125, lineN0.y < lineN1.y ? -0.5 : 0.5) * linePixel;\n");
-        sb.append("    }\n");
-        sb.append("    vec4 lineP = lineStart ? lineP0 : lineP1;\n");
-        sb.append("    vec2 lineN = lineStart ? lineN0 : lineN1;\n");
-        sb.append("    gl_Position = vec4((lineN + (lineCorner % 2 == 0 ? lineOffset : -lineOffset) + lineShift) * lineP.w, lineP.z, lineP.w);\n");
-        sb.append("  }\n");
+        if (key.lineStipple()) {
+            sb.append("  vec4 lineCenter = lineStart ? gl_Position : lineOther;\n");
+        }
+        sb.append("  float lineT;\n");
+        sb.append("  gl_Position = angelica_lineQuad(gl_Position, lineOther, lineCorner, u_ViewportSize, u_LineWidth, lineT);\n");
     }
 
     private static void emitNormalTransform(StringBuilder sb, VertexKey key) {
