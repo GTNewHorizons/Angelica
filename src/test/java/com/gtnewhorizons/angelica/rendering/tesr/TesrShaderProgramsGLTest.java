@@ -127,7 +127,6 @@ class TesrShaderProgramsGLTest {
         GLStateManager.disableFog();
         final ShaderManager ffp = ShaderManager.getInstance();
         if (ffp.isActive()) ffp.deactivate();
-        ShaderManager.disable();
     }
 
     private TesrShaderPrograms.Entry entry(String vertexBody, String fragmentBody, TesrShaderUniforms uniforms) {

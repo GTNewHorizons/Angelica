@@ -661,6 +661,11 @@ public enum Mixins implements IMixins {
         .setApplyIf(() -> AngelicaConfig.optimizeWorldUpdateLight)
         .addCommonMixins("angelica.lighting.MixinWorld_FixLightUpdateLag")),
 
+    TESR_LIGHT_CACHE(new MixinBuilder("Cache the tile-entity dispatcher's per-tile lightmap lookup for one tick")
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> AngelicaConfig.enableTESRLightCache)
+        .addClientMixins("angelica.lighting.MixinTileEntityRendererDispatcher_LightCache")),
+
     SPEEDUP_VANILLA_ANIMATIONS(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.speedupAnimations)
