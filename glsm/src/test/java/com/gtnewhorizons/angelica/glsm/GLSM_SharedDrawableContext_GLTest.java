@@ -202,7 +202,6 @@ public class GLSM_SharedDrawableContext_GLTest {
 
         DrawableContexts.run(sharedDrawable, "SharedDrawableContext-Reentry-Thread", () -> {
             final ShaderManager sm = ShaderManager.getInstance();
-            final boolean wasEnabled = ShaderManager.isEnabled();
             ShaderManager.enable();
             sm.activate();
             try {
@@ -228,7 +227,6 @@ public class GLSM_SharedDrawableContext_GLTest {
                 GLStateManager.glDeleteBuffers(vbo);
             } finally {
                 sm.deactivate();
-                if (!wasEnabled) ShaderManager.disable();
             }
         });
     }
@@ -273,7 +271,6 @@ public class GLSM_SharedDrawableContext_GLTest {
     void indexedListCompiledOnSharedDrawableReplaysOnDisplay() throws Exception {
         final int list = compileIndexedListOnSharedDrawable();
         final ShaderManager sm = ShaderManager.getInstance();
-        final boolean wasEnabled = ShaderManager.isEnabled();
         ShaderManager.enable();
         sm.activate();
         try {
@@ -283,7 +280,6 @@ public class GLSM_SharedDrawableContext_GLTest {
             assertEquals(indexedBatch().getSharedEBO(), GL11.glGetInteger(GL15.GL_ELEMENT_ARRAY_BUFFER_BINDING));
         } finally {
             sm.deactivate();
-            if (!wasEnabled) ShaderManager.disable();
             GLStateManager.glBindVertexArray(0);
         }
     }

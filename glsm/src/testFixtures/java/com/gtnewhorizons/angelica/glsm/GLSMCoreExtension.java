@@ -16,6 +16,7 @@ import org.lwjgl.opengl.GL32;
 import org.lwjgl.opengl.PixelFormat;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.junit.jupiter.api.extension.ExtensionContext.Namespace.GLOBAL;
 
 /**
@@ -84,6 +85,10 @@ public class GLSMCoreExtension implements BeforeAllCallback, BeforeEachCallback,
         while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
         GlsmRedirectAgent.assertNoFailures();
         assertEquals(GL11.GL_NO_ERROR, error, () -> "GL Error: 0x" + Integer.toHexString(error));
+        if (!ShaderManager.isEnabled()) {
+            ShaderManager.enable();
+            fail("test left FFP disabled");
+        }
     }
 
     @Override

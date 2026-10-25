@@ -1,12 +1,12 @@
 package com.gtnewhorizons.angelica.glsm.testutil;
 
-import com.gtnewhorizon.gtnhlib.reflect.Fields;
-import com.gtnewhorizon.gtnhlib.reflect.Fields.LookupType;
+import com.gtnewhorizons.angelica.glsm.GlsmRedirectAgent;
 import sun.misc.Unsafe;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 
 public final class Reflect {
 
@@ -59,7 +59,17 @@ public final class Reflect {
     }
 
     public static <F> void setStaticFinal(Class<?> owner, String name, Class<F> type, F value) {
-        Fields.ofClass(owner).getField(LookupType.DECLARED_IN_HIERARCHY, name, type).setValue(null, value);
+        final Field f = field(owner, name);
+        if (f.getType() != type) throw new AssertionError(owner.getName() + "." + name + " is " + f.getType().getName() + ", not " + type.getName());
+        if (Modifier.isFinal(f.getModifiers())) {
+            GlsmRedirectAgent.assertNoFailures();
+            throw new AssertionError(owner.getName() + "." + name + " is still final; add it to MutableStatics");
+        }
+        try {
+            f.set(null, value);
+        } catch (IllegalAccessException e) {
+            throw new AssertionError(e);
+        }
     }
 
     public static void setDeclared(Class<?> owner, Object target, String name, Object value) {
