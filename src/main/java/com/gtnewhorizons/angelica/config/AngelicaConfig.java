@@ -206,6 +206,11 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableTESRProviderDispatch;
 
+    @Config.Comment("Cache the lightmap the tile-entity dispatcher looks up per tile per frame, refreshing it once a tick")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableTESRLightCache;
+
     @Config.Comment("Enable full RGB color support (16.7M colors) using &#RRGGBB syntax in text")
     @Config.DefaultBoolean(true)
     public static boolean enableRGBColors;
