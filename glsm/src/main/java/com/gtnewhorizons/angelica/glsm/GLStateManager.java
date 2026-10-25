@@ -3708,6 +3708,7 @@ public class GLStateManager {
             if (recordMode == RecordMode.COMPILE) {
                 return;
             }
+            DisplayListManager.flushAll();
             savedRecorder = DisplayListManager.pauseRecording();
         } else if (FeedbackManager.isFeedbackMode()) {
             FeedbackManager.processDrawArrays(mode, first, count);
