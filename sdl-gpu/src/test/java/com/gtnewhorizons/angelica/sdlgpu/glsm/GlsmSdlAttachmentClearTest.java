@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
 import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
 import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
 import org.junit.jupiter.api.Tag;
@@ -12,11 +13,9 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 
-import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
-import sun.misc.Unsafe;
 
 import static com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig.BLACK;
 import static com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig.RED;
@@ -34,17 +33,8 @@ class GlsmSdlAttachmentClearTest {
         return GlsmSdlHeadlessRig.frameManager().frame();
     }
 
-    // Reflect.setStaticFinal rejects primitive fields.
     private static void setDisableInPassClear(boolean value) {
-        try {
-            final Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
-            theUnsafe.setAccessible(true);
-            final Unsafe unsafe = (Unsafe) theUnsafe.get(null);
-            final Field field = SystemProperties.class.getDeclaredField("SDL_DISABLE_IN_PASS_CLEAR");
-            unsafe.putBoolean(unsafe.staticFieldBase(field), unsafe.staticFieldOffset(field), value);
-        } catch (ReflectiveOperationException e) {
-            throw new AssertionError(e);
-        }
+        Reflect.setStaticFinal(SystemProperties.class, "SDL_DISABLE_IN_PASS_CLEAR", boolean.class, value);
     }
 
     /** Clears colour to black and depth to 0.9, then draws a quad so a render pass is open. */

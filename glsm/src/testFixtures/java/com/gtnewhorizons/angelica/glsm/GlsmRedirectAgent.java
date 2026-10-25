@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizons.angelica.glsm.loading.ClassDump;
 import com.gtnewhorizons.angelica.glsm.loading.ModRedirector;
+import com.gtnewhorizons.angelica.glsm.testutil.MutableStatics;
 
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
@@ -27,6 +28,7 @@ public final class GlsmRedirectAgent {
     }
 
     public static void install(Instrumentation instrumentation) {
+        MutableStatics.install(instrumentation);
         final ModRedirector redirector = new ModRedirector(ClassDump.DISABLED);
         addTransformer(instrumentation, (className, classfile) -> {
             if (!className.startsWith(GTNHLIB)) return null;

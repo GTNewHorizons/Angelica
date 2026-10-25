@@ -151,7 +151,6 @@ class RetainedTesrGroupsGLTest {
         TesrShaderPrograms.invalidateAll();
         final ShaderManager ffp = ShaderManager.getInstance();
         if (ffp.isActive()) ffp.deactivate();
-        ShaderManager.disable();
         if (baseTexture != 0) GLStateManager.glDeleteTextures(baseTexture);
         if (glintTexture != 0) GLStateManager.glDeleteTextures(glintTexture);
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);

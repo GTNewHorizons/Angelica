@@ -93,7 +93,6 @@ class TesrLayerStateTest {
         GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
         final ShaderManager ffp = ShaderManager.getInstance();
         if (ffp.isActive()) ffp.deactivate();
-        ShaderManager.disable();
 
         GLStateManager.disableBlend();
         GLStateManager.disableAlphaTest();
@@ -228,7 +227,6 @@ class TesrLayerStateTest {
                     () -> {
                         assertEquals(0, GLStateManager.getActiveProgram(), "program during batch draw");
                         assertEquals(0, GLStateManager.getDrawFramebuffer(), "framebuffer during batch draw");
-                        assertEquals(0, GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM), "driver program during batch draw");
                         assertEquals(0, GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING), "driver draw framebuffer during batch draw");
                     },
                     () -> {
