@@ -756,7 +756,6 @@ public class SodiumGameOptionPages {
                 (opts, value) -> opts.anisotropicFiltering = 1 << MathHelper.clamp_int(value, min, max),
                 opts -> MathHelper.clamp_int(Integer.numberOfTrailingZeros(Math.max(opts.anisotropicFiltering, 1)), min, max))
             .setImpact(OptionImpact.MEDIUM)
-            .setFlags(OptionFlag.REQUIRES_ASSET_RELOAD)
             .build();
 
         option.iris$dynamicallyEnable(() -> mode.get().usesAnisotropy() && SodiumGameOptions.hasAnisotropyRange());

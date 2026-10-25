@@ -40,7 +40,7 @@ public class IrisCeleritasShaderProvider implements IrisShaderProvider {
 
     @Override
     @Nullable
-    public GlProgram<? extends ChunkShaderInterface> getShaderOverride(TerrainRenderPass pass) {
+    public GlProgram<ChunkShaderInterface> getShaderOverride(TerrainRenderPass pass) {
         if (!isShadersEnabled() || renderPassConfiguration == null) {
             return null;
         }

@@ -158,8 +158,8 @@ public class RenderSystem {
             maxSSBOBindings = 0;
         }
 
-        // Check for sampler objects support (GL 3.3+ or ARB extension)
-        supportsSamplerObjects = GLStateManager.capabilities.OpenGL33 || GLStateManager.capabilities.GL_ARB_sampler_objects;
+        supportsSamplerObjects = isGLES ? glesVersion >= 300
+            : GLStateManager.capabilities.OpenGL33 || GLStateManager.capabilities.GL_ARB_sampler_objects;
         if (supportsSamplerObjects) {
             maxCombinedTextureImageUnits = RENDER_BACKEND.getInteger(GL20.GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS);
         }
@@ -713,12 +713,7 @@ public class RenderSystem {
 
     public static void unbindAllSamplers() {
         if (!supportsSamplerObjects) return;
-        final int count = GLStateManager.getSamplerUnitCount();
-        for (int i = 0; i < count; i++) {
-            if (GLStateManager.getSamplerBinding(i) != 0) {
-                GLStateManager.glBindSampler(i, 0);
-            }
-        }
+        GLStateManager.unbindAllSamplers();
     }
 
     /** Parse a GL version string (e.g. "4.6.0 NVIDIA ...") into concatenated digits "460". Strips

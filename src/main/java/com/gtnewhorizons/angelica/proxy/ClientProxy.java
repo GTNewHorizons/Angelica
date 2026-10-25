@@ -78,6 +78,7 @@ import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
 import com.gtnewhorizons.angelica.rendering.FpsReducer;
 import com.gtnewhorizons.angelica.rendering.FramePacer;
 import com.gtnewhorizons.angelica.rendering.IsbrhTestRenderer;
+import com.gtnewhorizons.angelica.rendering.TextureSamplers;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasDebugScreenHandler;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasSetup;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
@@ -168,6 +169,7 @@ public final class ClientProxy extends CommonProxy {
             HUDCaching.init();
         }
         CeleritasSetup.ensureInitialized();
+        TextureSamplers.initRenderer();
         DarkModeUtils.init();
         final SodiumGameOptions opts = options();
         if (opts.advanced.vsyncMode == null) {

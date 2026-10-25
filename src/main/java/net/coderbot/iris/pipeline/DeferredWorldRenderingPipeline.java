@@ -9,6 +9,7 @@ import com.google.common.primitives.Ints;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLDebug;
+import lombok.Getter;
 import org.embeddedt.embeddium.impl.gl.shader.uniform.GlUniformMatrix3f;
 import org.embeddedt.embeddium.impl.gl.shader.uniform.GlUniformMatrix4f;
 import org.joml.Matrix3f;
@@ -25,6 +26,7 @@ import com.gtnewhorizons.angelica.rendering.tesr.BatchEligibility;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrInstancingPipeline;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.block_rendering.BlockMaterialMapping;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
@@ -52,6 +54,7 @@ import net.coderbot.iris.gl.program.Program;
 import net.coderbot.iris.gl.program.ProgramBuilder;
 import net.coderbot.iris.gl.program.ProgramImages;
 import net.coderbot.iris.gl.program.ProgramSamplers;
+import net.coderbot.iris.gl.sampler.GlSampler;
 import net.coderbot.iris.gl.sampler.SamplerHolder;
 import net.coderbot.iris.gl.state.FogMode;
 import com.gtnewhorizons.angelica.glsm.texture.DepthBufferFormat;
@@ -232,6 +235,13 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private boolean shouldBindPBR;
 	private int currentNormalTexture;
 	private int currentSpecularTexture;
+	@Getter
+    private GlSampler normalSampler;
+	@Getter
+    private GlSampler specularSampler;
+	private TextureFormat samplerFormat;
+	private int samplerAnisotropy = -1;
+	private boolean samplerBreaksAnisotropy;
 	private PackDirectives packDirectives;
 	private final Set<FeatureFlags> activeFeatures;
 	private final ProgramFallbackResolver resolver;
@@ -377,7 +387,9 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			BlockRenderingSettings.INSTANCE.setAmbientOcclusionLevel(programs.getPackDirectives().getAmbientOcclusionLevel());
 			BlockRenderingSettings.INSTANCE.setDisableDirectionalShading(shouldDisableDirectionalShading());
 			BlockRenderingSettings.INSTANCE.setUseSeparateAo(programs.getPackDirectives().shouldUseSeparateAo());
+			BlockRenderingSettings.INSTANCE.setBreaksAnisotropy(programs.getPackDirectives().breaksAnisotropy());
 			BlockRenderingSettings.INSTANCE.setUseExtendedVertexFormat(true);
+			updatePbrSamplers(TextureFormatLoader.getFormat(), SodiumGameOptions.resolvedAnisotropicFiltering());
 
 			// Don't clobber anything in texture unit 0. It probably won't cause issues, but we're just being cautious here.
 			GLStateManager.glActiveTexture(GL13.GL_TEXTURE2);
@@ -2293,6 +2305,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			return;
 		}
 
+		updatePbrSamplers(TextureFormatLoader.getFormat(), SodiumGameOptions.resolvedAnisotropicFiltering());
+
 		isRenderingFullScreenPass = false;
 		isRenderingWorld = true;
 		isBeforeTranslucent = true;
@@ -2517,6 +2531,18 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		return currentSpecularTexture;
 	}
 
+    void updatePbrSamplers(TextureFormat format, int anisotropy) {
+		final boolean breaksAnisotropy = BlockRenderingSettings.INSTANCE.breaksAnisotropy();
+		if (samplerFormat == format && samplerAnisotropy == anisotropy && samplerBreaksAnisotropy == breaksAnisotropy) {
+			return;
+		}
+		normalSampler = IrisSamplers.getPbrSampler(format, PBRType.NORMAL, anisotropy);
+		specularSampler = IrisSamplers.getPbrSampler(format, PBRType.SPECULAR, anisotropy);
+		samplerFormat = format;
+		samplerAnisotropy = anisotropy;
+		samplerBreaksAnisotropy = breaksAnisotropy;
+	}
+
 	@Override
 	public void onBindTexture(int id) {
 		if (shouldBindPBR && isRenderingWorld) {
@@ -2536,12 +2562,6 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		BatchStateGuard.suspend();
 		try {
-			final TextureFormat textureFormat = TextureFormatLoader.getFormat();
-			if (textureFormat != null) {
-				textureFormat.setupTextureParameters(PBRType.NORMAL, pbrHolder.getNormalTexture());
-				textureFormat.setupTextureParameters(PBRType.SPECULAR, pbrHolder.getSpecularTexture());
-			}
-
 			PBRTextureManager.notifyPBRTexturesChanged();
 		} finally {
 			BatchStateGuard.resume();

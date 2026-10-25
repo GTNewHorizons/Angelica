@@ -62,9 +62,14 @@ public class MixinTextureMap implements TextureMapExtension {
     @Unique
     private int celeritas$height;
 
+    @Unique
+    private boolean angelica$isBlockAtlas() {
+        return (Object) this == Minecraft.getMinecraft().getTextureMapBlocks();
+    }
+
     @Inject(method = { "loadTexture", "loadTextureAtlas" }, at = @At("HEAD"))
     private void angelica$applyAtlasSettings(CallbackInfo ci) {
-        if ((Object) this == Minecraft.getMinecraft().getTextureMapBlocks()) {
+        if (angelica$isBlockAtlas()) {
             SodiumGameOptions.applyAtlasSettings();
         }
     }
@@ -73,8 +78,7 @@ public class MixinTextureMap implements TextureMapExtension {
         method = "loadTextureAtlas",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/texture/Stitcher;doStitch()V"))
     private void angelica$assignGutters(CallbackInfo ci) {
-        final boolean blocksAtlas = (Object) this == Minecraft.getMinecraft().getTextureMapBlocks();
-        final int gutter = SpritePadding.gutterFor(this.mipmapLevels, blocksAtlas);
+        final int gutter = SpritePadding.gutterFor(this.mipmapLevels, angelica$isBlockAtlas());
 
         for (TextureAtlasSprite sprite : this.mapRegisteredSprites.values()) {
             ((SpriteExtension) sprite).angelica$setGutterWidth(gutter);
@@ -177,7 +181,7 @@ public class MixinTextureMap implements TextureMapExtension {
 
     @Inject(method = "loadTextureAtlas", at = @At("RETURN"))
     private void celeritas$generateQuadTree(CallbackInfo ci, @Local(ordinal = 0) Stitcher stitcher) {
-        if ((Object) this == Minecraft.getMinecraft().getTextureMapBlocks()) {
+        if (angelica$isBlockAtlas()) {
             SodiumGameOptions.recordAtlasMipmapClamp(Minecraft.getMinecraft().gameSettings.mipmapLevels,
                 this.mipmapLevels);
             SodiumGameOptions.recordAtlasMipmapLevels(this.mipmapLevels);

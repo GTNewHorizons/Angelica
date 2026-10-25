@@ -11,13 +11,14 @@ import java.util.function.IntSupplier;
  * @param samplerNames      samplers the graphics program may not have, because only the stripped writes read them
  * @param samplerUnits      per sampler name, the texture unit it reads at each draw, or -1 to use samplerTextures
  * @param samplerTextures   per sampler name, its texture when samplerUnits is -1
- * @param samplerObjects    per sampler name, the GL sampler object to sample it with when samplerUnits is -1, or 0
+ * @param samplerObjects    per sampler name, supplies its current GL sampler object when samplerUnits is -1;
+ *                          null for unassigned or external bindings, and returns 0 to use the texture's own filtering
  * @param vertexBufferBinding storage buffer binding of the first vertex buffer the replay program declares
  * @param vertexBufferCount   how many vertex buffers it declares, at consecutive bindings
  * @param indexBufferBinding  storage buffer binding of its index buffer
  */
 public record VertexWriteReplaySetup(int replayProgram, String[] inputNames, int[] inputLocations,
                                      IntSupplier[] images, int writtenImageCount,
-                                     String[] samplerNames, int[] samplerUnits, IntSupplier[] samplerTextures, int[] samplerObjects,
+                                     String[] samplerNames, int[] samplerUnits, IntSupplier[] samplerTextures, IntSupplier[] samplerObjects,
                                      int vertexBufferBinding, int vertexBufferCount, int indexBufferBinding) {
 }

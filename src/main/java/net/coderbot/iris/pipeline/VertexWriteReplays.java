@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.IntSupplier;
+import java.util.function.Supplier;
 
 /**
  * SDL-GPU only allows image writes from compute, so a gbuffers/shadow vertex shader that writes images gets a compute
@@ -105,7 +106,7 @@ final class VertexWriteReplays {
         final List<String> samplerNames;
         final int[] samplerUnits;
         final IntSupplier[] samplerTextures;
-        final int[] samplerObjects;
+        final IntSupplier[] samplerObjects;
 
         ResourceCollector(List<String> imageNames, List<String> samplerNames) {
             this.imageNames = imageNames;
@@ -114,7 +115,7 @@ final class VertexWriteReplays {
             this.samplerUnits = new int[samplerNames.size()];
             Arrays.fill(samplerUnits, -1);
             this.samplerTextures = new IntSupplier[samplerNames.size()];
-            this.samplerObjects = new int[samplerNames.size()];
+            this.samplerObjects = new IntSupplier[samplerNames.size()];
         }
 
         @Override
@@ -142,17 +143,17 @@ final class VertexWriteReplays {
         }
 
         @Override
-        public boolean addDefaultSampler(TextureType type, IntSupplier texture, ValueUpdateNotifier notifier, GlSampler sampler, String... names) {
+        public boolean addDefaultSampler(TextureType type, IntSupplier texture, ValueUpdateNotifier notifier, Supplier<GlSampler> sampler, String... names) {
             return addDynamicSampler(type, texture, notifier, sampler, names);
         }
 
         @Override
-        public boolean addDynamicSampler(TextureType type, IntSupplier texture, GlSampler sampler, String... names) {
+        public boolean addDynamicSampler(TextureType type, IntSupplier texture, Supplier<GlSampler> sampler, String... names) {
             return addDynamicSampler(type, texture, null, sampler, names);
         }
 
         @Override
-        public boolean addDynamicSampler(TextureType type, IntSupplier texture, ValueUpdateNotifier notifier, GlSampler sampler, String... names) {
+        public boolean addDynamicSampler(TextureType type, IntSupplier texture, ValueUpdateNotifier notifier, Supplier<GlSampler> sampler, String... names) {
             boolean used = false;
             for (String name : names) {
                 final int index = samplerNames.indexOf(name);
@@ -160,7 +161,7 @@ final class VertexWriteReplays {
                 used = true;
                 if (unassigned(index)) {
                     samplerTextures[index] = texture;
-                    samplerObjects[index] = sampler != null ? sampler.getId() : 0;
+                    samplerObjects[index] = () -> GlSampler.idOf(sampler);
                 }
             }
             return used;

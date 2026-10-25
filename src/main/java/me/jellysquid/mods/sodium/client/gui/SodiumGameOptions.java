@@ -61,7 +61,8 @@ public class SodiumGameOptions {
         final TextureMap atlas = mc.getTextureMapBlocks();
 
         atlas.setMipmapLevels(mc.gameSettings.mipmapLevels);
-        atlas.setAnisotropicFiltering(resolvedAnisotropicFiltering());
+        // Drivers may ignore NEAREST when anisotropy is enabled
+        atlas.setAnisotropicFiltering(1);
     }
 
     public static int resolvedAnisotropicFiltering() {

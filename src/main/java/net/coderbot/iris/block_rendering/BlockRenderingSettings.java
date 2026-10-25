@@ -93,6 +93,7 @@ public class BlockRenderingSettings {
     private float ambientOcclusionLevel;
 	private boolean disableDirectionalShading;
 	private boolean useSeparateAo;
+	@Setter private boolean breaksAnisotropy;
 	private boolean useExtendedVertexFormat;
 	@Setter
     private boolean hasSnowyEntries;
@@ -211,6 +212,10 @@ public class BlockRenderingSettings {
 
 	public boolean shouldUseSeparateAo() {
 		return useSeparateAo;
+	}
+
+	public boolean breaksAnisotropy() {
+		return breaksAnisotropy;
 	}
 
 	public void setUseSeparateAo(boolean useSeparateAo) {

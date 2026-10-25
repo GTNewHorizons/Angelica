@@ -5310,7 +5310,7 @@ public class GLStateManager {
         RENDER_BACKEND.frontFace(glCtx.polygonState.getFrontFace());
 
         final SamplerUnitArray samplerUnits = glCtx.samplerUnits;
-        for (int i = 0; i < samplerUnits.size(); i++) {
+        for (int i = 0; i <= samplerUnits.getHighestBoundUnit(); i++) {
             final int sampler = samplerUnits.get(i);
             if (sampler != 0) RENDER_BACKEND.bindSampler(i, sampler);
         }
@@ -6437,14 +6437,27 @@ public class GLStateManager {
     }
 
     public static void glBindSampler(int unit, int sampler) {
+        bindSampler(ctx().samplerUnits, unit, sampler);
+    }
+
+    private static void bindSampler(SamplerUnitArray units, int unit, int sampler) {
         rejectExitCapture();
-        final SamplerUnitArray units = ctx().samplerUnits;
         if (isCachingEnabled() && unit >= 0 && unit < units.size() && units.get(unit) == sampler) return;
         beforeUncapturedStateChange();
         if (!units.set(unit, sampler)) {
             warnOnce("samplerUnitRange", "glBindSampler unit {} exceeds GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS {}", unit, units.size());
         }
         RENDER_BACKEND.bindSampler(unit, sampler);
+    }
+
+    public static void unbindAllSamplers() {
+        final SamplerUnitArray units = ctx().samplerUnits;
+        if (units.getHighestBoundUnit() < 0) return;
+        beforeUncapturedStateChange();
+        for (int unit = units.getHighestBoundUnit(); unit >= 0; unit = units.getHighestBoundUnit()) {
+            units.set(unit, 0);
+            RENDER_BACKEND.bindSampler(unit, 0);
+        }
     }
 
     public static void glBindSamplers(int first, int count, IntBuffer samplers) {

@@ -8,6 +8,7 @@ import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.rendering.culling.GpuTerrainCuller;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
+import com.gtnewhorizons.angelica.rendering.TextureSamplers;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
 import com.gtnewhorizons.angelica.rendering.culling.GpuCulling;
@@ -20,6 +21,7 @@ import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.program.ComputeProgram;
 import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
+import net.coderbot.iris.samplers.IrisSamplers;
 import net.coderbot.iris.shadows.ShadowRenderingState;
 import org.embeddedt.embeddium.impl.gl.device.CommandList;
 import org.embeddedt.embeddium.impl.gl.device.DirectMultiDrawBatch;
@@ -52,9 +54,6 @@ import org.embeddedt.embeddium.impl.render.chunk.terrain.TerrainRenderPass;
 import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
 import org.embeddedt.embeddium.impl.render.viewport.CameraTransform;
 import org.jetbrains.annotations.Nullable;
-import org.lwjgl.opengl.EXTTextureFilterAnisotropic;
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL20;
 
 import java.util.ArrayList;
@@ -65,15 +64,7 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
     private static final Tracy.ZoneId Z_CHUNK_BEGIN = Tracy.zoneId("chunkBegin", Tracy.COLOR_TERRAIN);
     private static final Tracy.ZoneId Z_CHUNK_ASSEMBLE_REGION = Tracy.zoneId("chunkAssembleRegion", Tracy.COLOR_TERRAIN);
 
-    private GlProgram<? extends ChunkShaderInterface> irisProgram;
-    private boolean usingIrisProgram;
-    private int terrainSampler;
-    private boolean terrainSamplerResolved;
-    private int terrainSamplerAnisotropy = -1;
-    private boolean terrainSamplerNearest;
-    private int packTerrainSampler;
-    private boolean packTerrainSamplerResolved;
-    private int packTerrainSamplerAnisotropy = -1;
+    private GlProgram<ChunkShaderInterface> irisProgram;
     private boolean terrainSamplerBound;
     private final GpuTerrainCuller culler;
     private final SdlShadowVoxelizationSink shadowVoxelSink = new SdlShadowVoxelizationSink();
@@ -160,21 +151,19 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
 
             // Check if Iris shaders are active and we have an override
             if (provider != null && provider.isShadersEnabled()) {
-                final GlProgram<? extends ChunkShaderInterface> override = provider.getShaderOverride(pass);
+                final GlProgram<ChunkShaderInterface> override = provider.getShaderOverride(pass);
                 if (override != null) {
                     pass.startDrawing();
+                    this.irisProgram = override;
+                    this.activeProgram = override;
                     override.bind();
                     override.getInterface().setupState(pass);
-                    this.activeProgram = (GlProgram<ChunkShaderInterface>) override;
-                    this.irisProgram = override;
-                    this.usingIrisProgram = true;
                     bindPackTerrainSampler();
                     return;
                 }
             }
 
             // Fall back to default shader
-            this.usingIrisProgram = false;
             this.irisProgram = null;
             beginDefault(pass);
             bindTerrainSampler();
@@ -211,85 +200,43 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
 
     @Override
     protected void end(TerrainRenderPass pass) {
-        unbindTerrainSampler();
-
-        if (usingIrisProgram && irisProgram != null) {
-            irisProgram.getInterface().restoreState();
-            irisProgram.unbind();
-            irisProgram = null;
-            usingIrisProgram = false;
-            this.activeProgram = null;
-            pass.endDrawing();
-            return;
+        if (irisProgram != null) {
+            endIrisPass(pass);
+        } else {
+            super.end(pass);
         }
+    }
 
-        super.end(pass);
+    private void endIrisPass(TerrainRenderPass pass) {
+        final GlProgram<ChunkShaderInterface> program = irisProgram;
+        irisProgram = null;
+        activeProgram = null;
+        try {
+            program.getInterface().restoreState();
+        } finally {
+            try {
+                program.unbind();
+            } finally {
+                pass.endDrawing();
+            }
+        }
     }
 
     private void bindTerrainSampler() {
-        if (!SodiumGameOptions.usesTerrainTexelSnap()) {
-            return;
-        }
-
-        final int anisotropy = SodiumGameOptions.resolvedAnisotropicFiltering();
-        final boolean nearest = ClientProxy.options().quality.texelSampling.isNearest();
-
-        if (!terrainSamplerResolved || terrainSamplerAnisotropy != anisotropy
-            || terrainSamplerNearest != nearest) {
-            if (!terrainSamplerResolved) {
-                terrainSampler = RenderSystem.genSampler();
-                if (terrainSampler == 0) {
-                    AngelicaMod.LOGGER.warn("Sampler objects unavailable; terrain filtering will fall back to the atlas texture's own parameters");
-                }
-            }
-            terrainSamplerResolved = true;
-            terrainSamplerAnisotropy = anisotropy;
-            terrainSamplerNearest = nearest;
-
-            configureTerrainSampler(terrainSampler, nearest, anisotropy);
-        }
-
-        if (terrainSampler != 0) {
-            RenderSystem.bindSamplerToUnit(BLOCK_TEXTURE_UNIT, terrainSampler);
-            terrainSamplerBound = true;
+        if (SodiumGameOptions.usesTerrainTexelSnap()) {
+            bindBlockSampler(TextureSamplers.getTerrainSampler(!ClientProxy.options().quality.texelSampling.isNearest(),
+                SodiumGameOptions.resolvedAnisotropicFiltering()).getId());
         }
     }
 
     private void bindPackTerrainSampler() {
-        final int anisotropy = SodiumGameOptions.resolvedAnisotropicFiltering();
-
-        if (!packTerrainSamplerResolved || packTerrainSamplerAnisotropy != anisotropy) {
-            if (!packTerrainSamplerResolved) {
-                packTerrainSampler = RenderSystem.genSampler();
-                if (packTerrainSampler == 0) {
-                    AngelicaMod.LOGGER.warn("Sampler objects unavailable; shader pack terrain filtering will fall back to the atlas texture's own parameters");
-                }
-            }
-            packTerrainSamplerResolved = true;
-            packTerrainSamplerAnisotropy = anisotropy;
-
-            configureTerrainSampler(packTerrainSampler, true, anisotropy);
-        }
-
-        if (packTerrainSampler != 0) {
-            RenderSystem.bindSamplerToUnit(BLOCK_TEXTURE_UNIT, packTerrainSampler);
-            terrainSamplerBound = true;
-        }
+        bindBlockSampler(IrisSamplers.getTerrainSampler(SodiumGameOptions.resolvedAnisotropicFiltering()).getId());
     }
 
-    private static void configureTerrainSampler(int sampler, boolean nearest, int anisotropy) {
-        if (sampler == 0) {
-            return;
-        }
-        RenderSystem.samplerParameteri(sampler, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
-        RenderSystem.samplerParameteri(sampler, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
-        RenderSystem.samplerParameteri(sampler, GL11.GL_TEXTURE_MIN_FILTER,
-            nearest ? GL11.GL_NEAREST_MIPMAP_LINEAR : GL11.GL_LINEAR_MIPMAP_LINEAR);
-        RenderSystem.samplerParameteri(sampler, GL11.GL_TEXTURE_MAG_FILTER,
-            nearest ? GL11.GL_NEAREST : GL11.GL_LINEAR);
-        if (SodiumGameOptions.anisotropySupported()) {
-            RenderSystem.samplerParameterf(sampler,
-                EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT, (float) anisotropy);
+    private void bindBlockSampler(int id) {
+        if (id != 0) {
+            RenderSystem.bindSamplerToUnit(BLOCK_TEXTURE_UNIT, id);
+            terrainSamplerBound = true;
         }
     }
 
@@ -311,15 +258,6 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
         shadowVoxelSink.delete();
 
         unbindTerrainSampler();
-        RenderSystem.destroySampler(terrainSampler);
-        terrainSampler = 0;
-        terrainSamplerResolved = false;
-        terrainSamplerAnisotropy = -1;
-        terrainSamplerNearest = false;
-        RenderSystem.destroySampler(packTerrainSampler);
-        packTerrainSampler = 0;
-        packTerrainSamplerResolved = false;
-        packTerrainSamplerAnisotropy = -1;
     }
 
     @Override
@@ -357,8 +295,11 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
             voxelizeShadowTerrain(matrices, renderLists, renderPass, occlusionCamera, camera);
             super.render(matrices, commandList, renderLists, renderPass, occlusionCamera, camera);
         } finally {
-            if (culler != null) {
-                culler.endPass();
+            try {
+                if (irisProgram != null) endIrisPass(renderPass);
+            } finally {
+                unbindTerrainSampler();
+                if (culler != null) culler.endPass();
             }
         }
     }
@@ -469,7 +410,7 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
 
     @Override
     protected void configureShaderInterface(ChunkShaderInterface shader) {
-        if (!usingIrisProgram) {
+        if (irisProgram == null) {
             shader.setTextureSlot(ChunkShaderTextureSlot.BLOCK, 0);
             shader.setTextureSlot(ChunkShaderTextureSlot.LIGHT, 1);
         }
