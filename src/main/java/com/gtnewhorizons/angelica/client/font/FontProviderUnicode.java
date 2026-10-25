@@ -34,6 +34,7 @@ public final class FontProviderUnicode implements FontProvider, IResourceManager
     public static FontProviderUnicode get() { return FontProviderUnicode.InstLoader.instance; }
 
     private static final ResourceLocation[] unicodePageLocations = new ResourceLocation[256];
+    private static final int[] unicodePageTextures = new int[256];
     private final byte[] glyphWidth = new byte[65536];
     private final RandomXoshiro256StarStar fontRandom = new RandomXoshiro256StarStar();
 
@@ -129,8 +130,12 @@ public final class FontProviderUnicode implements FontProvider, IResourceManager
     @Override
     public int getTexture(char chr) {
         final int uniPage = chr / 256;
-        ResourceLocation rl = getUnicodePageLocation(uniPage);
-        return FontStrategist.getIntFromResourceLocation(rl);
+        int texture = unicodePageTextures[uniPage];
+        if (texture == 0) {
+            texture = FontStrategist.getIntFromResourceLocation(getUnicodePageLocation(uniPage));
+            unicodePageTextures[uniPage] = texture;
+        }
+        return texture;
     }
 
     @Override

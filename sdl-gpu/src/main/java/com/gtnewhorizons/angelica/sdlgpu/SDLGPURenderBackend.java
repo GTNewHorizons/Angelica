@@ -785,7 +785,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         device.fenceReleaser().drain();
         if (frameSync != 0L) {
             frameSyncs.enqueue(frameSync);
-            while (frameSyncs.size() > Device.MAX_FRAMES_IN_FLIGHT - 1) {
+            while (frameSyncs.size() > RenderBackend.MAX_FRAMES_IN_FLIGHT - 1) {
                 final long sync = frameSyncs.dequeueLong();
                 fenceTracker.clientWaitSync(sync, 0, Long.MAX_VALUE);
                 fenceTracker.deleteSync(sync);

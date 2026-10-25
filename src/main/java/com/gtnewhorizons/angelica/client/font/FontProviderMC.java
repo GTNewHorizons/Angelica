@@ -1,9 +1,11 @@
 package com.gtnewhorizons.angelica.client.font;
 
 import com.gtnewhorizons.angelica.config.FontConfig;
-import it.unimi.dsi.fastutil.chars.Char2ShortOpenHashMap;
 import jss.util.RandomXoshiro256StarStar;
 import net.minecraft.util.ResourceLocation;
+
+import java.util.Arrays;
+import java.util.Objects;
 
 public final class FontProviderMC implements FontProvider {
 
@@ -22,30 +24,38 @@ public final class FontProviderMC implements FontProvider {
         return (isSGA ? InstLoader.instanceSGA : InstLoader.instance);
     }
 
-    private static final Char2ShortOpenHashMap MCFONT_ASCII_MAP = new Char2ShortOpenHashMap();
+    private static final short[] MCFONT_SLOTS;
     ResourceLocation locationFontTexture = null;
+    private record TextureSlot(ResourceLocation location, int id) {}
+
+    private TextureSlot textureSlot = new TextureSlot(null, 0);
     private final RandomXoshiro256StarStar fontRandom = new RandomXoshiro256StarStar();
     public int[] charWidth;
 
     static {
-        MCFONT_ASCII_MAP.defaultReturnValue((short) -1);
+        int maxChar = 0;
+        for (int i = 0; i < MCFONT_CHARS.length(); i++) {
+            maxChar = Math.max(maxChar, MCFONT_CHARS.charAt(i));
+        }
+        MCFONT_SLOTS = new short[maxChar + 1];
+        Arrays.fill(MCFONT_SLOTS, (short) -1);
         for (short i = 0; i < MCFONT_CHARS.length(); i++) {
-            MCFONT_ASCII_MAP.put(MCFONT_CHARS.charAt(i), i);
+            MCFONT_SLOTS[MCFONT_CHARS.charAt(i)] = i;
         }
     }
 
     public int lookupMcFontPosition(char ch) {
-        return MCFONT_ASCII_MAP.get(ch);
+        return ch < MCFONT_SLOTS.length ? MCFONT_SLOTS[ch] : -1;
     }
 
     @Override
     public boolean isGlyphAvailable(char chr) {
-        return MCFONT_ASCII_MAP.containsKey(chr);
+        return lookupMcFontPosition(chr) != -1;
     }
 
     /**
      * A random glyph of the same width, for {@code §k}. Only slots the reverse lookup
-     * agrees with are eligible: {@link #MCFONT_CHARS} repeats {@code U+0000} and the map
+     * agrees with are eligible: {@link #MCFONT_CHARS} repeats {@code U+0000} and the table
      * keeps the last, so other slots would measure from a different one. Bounded, since
      * a resource pack may ship widths where nothing matches.
      */
@@ -61,7 +71,7 @@ public final class FontProviderMC implements FontProvider {
                 continue;
             }
             final char replacement = MCFONT_CHARS.charAt(candidate);
-            if (MCFONT_ASCII_MAP.get(replacement) == candidate) {
+            if (lookupMcFontPosition(replacement) == candidate) {
                 return replacement;
             }
         }
@@ -110,7 +120,13 @@ public final class FontProviderMC implements FontProvider {
 
     @Override
     public int getTexture(char chr) {
-        return FontStrategist.getIntFromResourceLocation(locationFontTexture);
+        final ResourceLocation location = locationFontTexture;
+        TextureSlot slot = textureSlot;
+        if (!Objects.equals(slot.location(), location)) {
+            slot = new TextureSlot(location, FontStrategist.getIntFromResourceLocation(location));
+            textureSlot = slot;
+        }
+        return slot.id();
     }
 
     @Override

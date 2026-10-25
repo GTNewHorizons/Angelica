@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.client.font;
 
+import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
+import it.unimi.dsi.fastutil.chars.Char2ShortOpenHashMap;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -58,5 +60,20 @@ class FontProviderMCTest {
     @Test
     void charactersOutsideTheFontAreLeftAlone() {
         assertEquals('Я', font.getRandomReplacement('Я'));
+    }
+
+    @Test
+    void slotTableMatchesTheCharMap() {
+        final String chars = Reflect.getStatic(FontProviderMC.class, "MCFONT_CHARS");
+        final Char2ShortOpenHashMap map = new Char2ShortOpenHashMap();
+        map.defaultReturnValue((short) -1);
+        for (short i = 0; i < chars.length(); i++) {
+            map.put(chars.charAt(i), i);
+        }
+        for (int c = 0; c <= Character.MAX_VALUE; c++) {
+            final char chr = (char) c;
+            assertEquals(map.get(chr), font.lookupMcFontPosition(chr), "slot of U+" + Integer.toHexString(c));
+            assertEquals(map.containsKey(chr), font.isGlyphAvailable(chr), "availability of U+" + Integer.toHexString(c));
+        }
     }
 }

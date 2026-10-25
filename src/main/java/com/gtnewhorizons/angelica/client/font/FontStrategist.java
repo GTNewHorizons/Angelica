@@ -161,6 +161,14 @@ public class FontStrategist {
         if (me.bookMode) {
             return FontProviderUnicode.get();
         }
+        if (!me.isSplash && GLStateManager.isMainThread()) {
+            final FontProvider cached = FontProviderCache.lookup(chr, customFontEnabled, forceUnicode);
+            if (cached != null) { return cached; }
+        }
+        return searchFontProvider(me, chr, customFontEnabled, forceUnicode);
+    }
+
+    static FontProvider searchFontProvider(BatchingFontRenderer me, char chr, boolean customFontEnabled, boolean forceUnicode) {
         if (customFontEnabled && !me.isSplash) {
             FontProvider fp;
             fp = FontProviderCustom.getPrimary();
@@ -235,23 +243,30 @@ public class FontStrategist {
     static final int INVALID_TEXTURE = Integer.MIN_VALUE;
     private static int remap(int n) { return -1 - n; } // involution
 
+    private static final Object RESOURCE_LOCK = new Object();
     private static final List<ResourceLocation> intToResourceLocation = new ArrayList<>();
     private static final Map<ResourceLocation, Integer> resourceLocationToInt = new HashMap<>();
 
     static int getIntFromResourceLocation(ResourceLocation rl) {
-        Integer i = resourceLocationToInt.get(rl);
-        if (i != null) { return i; }
-        int idx = remap(intToResourceLocation.size());
-        resourceLocationToInt.put(rl, idx);
-        intToResourceLocation.add(rl);
-        return idx;
+        synchronized (RESOURCE_LOCK) {
+            Integer i = resourceLocationToInt.get(rl);
+            if (i != null) { return i; }
+            int idx = remap(intToResourceLocation.size());
+            resourceLocationToInt.put(rl, idx);
+            intToResourceLocation.add(rl);
+            return idx;
+        }
     }
 
     static void bindIntTexture(BatchingFontRenderer owner, int texture) {
         if (texture > 0) {
             GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
         } else if (texture < 0) {
-            ((FontRendererAccessor) owner.underlying).angelica$bindTexture(intToResourceLocation.get(remap(texture)));
+            final ResourceLocation location;
+            synchronized (RESOURCE_LOCK) {
+                location = intToResourceLocation.get(remap(texture));
+            }
+            ((FontRendererAccessor) owner.underlying).angelica$bindTexture(location);
         }
     }
 }
