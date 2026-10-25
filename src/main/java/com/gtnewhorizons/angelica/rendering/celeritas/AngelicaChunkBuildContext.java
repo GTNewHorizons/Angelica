@@ -72,8 +72,12 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
     private final float[] fluidQuadPos = new float[12];
     private ModelQuadFacing fluidQuadLightFace;
 
+    @Getter
+    private final WorldClient world;
+
     public AngelicaChunkBuildContext(RenderPassConfiguration<?> renderPassConfiguration, WorldClient world) {
         super(renderPassConfiguration);
+        this.world = world;
         this.textureAtlas = (TextureMapExtension) Minecraft.getMinecraft().getTextureMapBlocks();
         this.worldSlice = new WorldSlice(world);
         // Shade by the quad normal so sloped quads blend the face shades instead of snapping to the dominant axis;
@@ -97,7 +101,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
         smoothLightPipeline.reset();
         flatLightPipeline.reset();
         lightPipelineReady = true;
-        cachedSkylightSubtracted = Minecraft.getMinecraft().theWorld.skylightSubtracted;
+        cachedSkylightSubtracted = this.world.skylightSubtracted;
     }
 
     public WorldSlice swapWorldSlice(WorldSlice replacement) {
