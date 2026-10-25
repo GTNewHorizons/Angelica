@@ -11,6 +11,7 @@ import com.gtnewhorizons.angelica.glsm.states.TexGenState;
 import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
 import com.gtnewhorizons.angelica.glsm.states.ViewportState;
 import com.gtnewhorizons.angelica.glsm.streaming.UniformRingBuffer;
+import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import org.joml.Math;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
@@ -49,6 +50,7 @@ public class Uniforms {
     private int viewportX = Integer.MIN_VALUE, viewportY = Integer.MIN_VALUE, viewportWidth = -1, viewportHeight = -1;
     private int lineStipple = -1;
     private int weatherGen = -1;
+    private int atlasGutter = -1;
 
     int blockWrites;
     int blockSkips;
@@ -169,6 +171,15 @@ public class Uniforms {
             fragmentGen = fragG;
             stagedFragment++;
             dirty = true;
+        }
+        if (glCtx.textureSupersamplingSamples > 1 && ffp.isTextureSupersampling()) {
+            final int gutter = TextureInfoCache.INSTANCE.getInfo(glCtx.textures.getTextureUnitBindings(0).getBinding()).getAtlasGutter();
+            if (gutter != atlasGutter) {
+                putFloat(FFPUniformBlock.ATLAS_GUTTER, gutter);
+                atlasGutter = gutter;
+                stagedMisc++;
+                dirty = true;
+            }
         }
         final LineState line = glCtx.lineState;
         final float lw = line.getWidth();

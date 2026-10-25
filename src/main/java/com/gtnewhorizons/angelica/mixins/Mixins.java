@@ -68,6 +68,10 @@ public enum Mixins implements IMixins {
             , "angelica.optimizations.MixinRenderBiped_ArmorResource"
             , "angelica.optimizations.MixinRendererLivingEntity"
             , "angelica.rendering.MixinRenderGlobal_SelectionBox"
+            , "angelica.textures.MixinForgeHooksClient_GuiSupersampling"
+            , "angelica.textures.MixinRenderBlocks_GuiSupersampling"
+            , "angelica.textures.MixinRenderItem_GuiSupersampling"
+            , "angelica.textures.MixinTileEntityRendererDispatcher_GuiSupersampling"
             , "angelica.gui.MixinGuiIngameForge_ModernF3"
         )
     ),

@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.celeritas.features.textures;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.TextureMetadataExtension;
 import com.gtnewhorizons.angelica.rendering.celeritas.SpriteExtension;
 import com.gtnewhorizons.angelica.rendering.celeritas.TextureMapExtension;
@@ -178,6 +179,8 @@ public class MixinTextureMap implements TextureMapExtension {
     @Inject(method = "loadTextureAtlas", at = @At("RETURN"))
     private void celeritas$generateQuadTree(CallbackInfo ci, @Local(ordinal = 0) Stitcher stitcher) {
         if ((Object) this == Minecraft.getMinecraft().getTextureMapBlocks()) {
+            GLStateManager.markTextureAsAtlas(((TextureMap) (Object) this).getGlTextureId(),
+                ((SpriteExtension) this.missingImage).angelica$getGutterWidth());
             SodiumGameOptions.recordAtlasMipmapClamp(Minecraft.getMinecraft().gameSettings.mipmapLevels,
                 this.mipmapLevels);
             SodiumGameOptions.recordAtlasMipmapLevels(this.mipmapLevels);
