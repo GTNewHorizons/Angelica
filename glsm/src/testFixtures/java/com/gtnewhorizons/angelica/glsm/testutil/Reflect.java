@@ -65,11 +65,7 @@ public final class Reflect {
             GlsmRedirectAgent.assertNoFailures();
             throw new AssertionError(owner.getName() + "." + name + " is still final; add it to MutableStatics");
         }
-        try {
-            f.set(null, value);
-        } catch (IllegalAccessException e) {
-            throw new AssertionError(e);
-        }
+        setStatic(owner, name, value);
     }
 
     public static void setDeclared(Class<?> owner, Object target, String name, Object value) {

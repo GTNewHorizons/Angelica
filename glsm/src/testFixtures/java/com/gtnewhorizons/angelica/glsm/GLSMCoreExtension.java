@@ -83,12 +83,11 @@ public class GLSMCoreExtension implements BeforeAllCallback, BeforeEachCallback,
     public void afterEach(ExtensionContext context) {
         final int error = GL11.glGetError();
         while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
+        final boolean ffpDisabled = !ShaderManager.isEnabled();
+        if (ffpDisabled) ShaderManager.enable();
         GlsmRedirectAgent.assertNoFailures();
         assertEquals(GL11.GL_NO_ERROR, error, () -> "GL Error: 0x" + Integer.toHexString(error));
-        if (!ShaderManager.isEnabled()) {
-            ShaderManager.enable();
-            fail("test left FFP disabled");
-        }
+        if (ffpDisabled) fail("test left FFP disabled");
     }
 
     @Override

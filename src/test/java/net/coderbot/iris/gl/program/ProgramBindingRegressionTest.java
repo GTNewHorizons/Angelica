@@ -166,7 +166,7 @@ class ProgramBindingRegressionTest {
             Reflect.setStaticFinal(BackendManager.class, "RENDER_BACKEND", RenderBackend.class, original);
             GLStateManager.glUseProgram(0);
             GLStateManager.glDeleteLists(list, 1);
-            // A deleted program that is still current passes glIsProgram; deleting it again is GL_INVALID_OPERATION on macOS.
+            // FFP's glUseProgram(0) is lazy, so other stays current; deleting it again is GL_INVALID_OPERATION on macOS
             if (!idDeleted) GLStateManager.glDeleteProgram(id);
             if (!otherDeleted) GLStateManager.glDeleteProgram(other);
         }
