@@ -190,6 +190,10 @@ public final class ShaderManager {
         }
     }
 
+    boolean isTextureSupersampling() {
+        return currentProgram != null && currentProgram.getFragmentKey().textureSupersamplingSamples() > 1;
+    }
+
     public static void endFrame() {
         final ShaderManager sm = GLStateManager.ctx().ffp;
         sm.lastFramePreDrawCalls = sm.preDrawCalls;

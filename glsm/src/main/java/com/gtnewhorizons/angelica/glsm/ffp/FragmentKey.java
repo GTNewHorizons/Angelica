@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.glsm.GLContextState;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.TexEnvState;
 import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
+import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
@@ -82,7 +83,7 @@ public final class FragmentKey {
     private static final int BIT_ALPHA_TEST        = 2;  // 1 bit
     private static final int BIT_ALPHA_FUNC        = 3;  // 3 bits
     private static final int BIT_SEPARATE_SPECULAR = 6;  // 1 bit
-    private static final int BIT_NR_ENABLED_UNITS  = 7;  // 3 bits
+    private static final int BIT_TEXTURE_SUPERSAMPLING = 7; // 3 bits, log2(samples)
     private static final int BIT_OVERLAY_ENABLED   = 10; // 1 bit
     private static final int BIT_LINE_STIPPLE      = 11; // 1 bit
     private static final int BIT_COLOR_SUM         = 12; // 1 bit
@@ -172,7 +173,10 @@ public final class FragmentKey {
         }
 
         final int nrEnabled = highestEnabled + 1;
-        global |= ((long) (nrEnabled & 0x7)) << BIT_NR_ENABLED_UNITS;
+        if (glCtx.textureSupersamplingSamples > 1 && (unit0Bits & 1L) != 0
+            && TextureInfoCache.INSTANCE.getInfo(textures.getTextureUnitBindings(0).getBinding()).getAtlasGutter() > 0) {
+            global |= (long) Integer.numberOfTrailingZeros(glCtx.textureSupersamplingSamples) << BIT_TEXTURE_SUPERSAMPLING;
+        }
         global |= (unit0Bits << GLOBAL_BITS);
         out[0] = global;
 
@@ -256,12 +260,13 @@ public final class FragmentKey {
     public int fogMode()              { return (int) (packed[0] & 0x3); }
     public boolean combinedGlint()    { return (packed[0] & (1L << BIT_COMBINED_GLINT)) != 0; }
     public boolean glintReplaceAlpha() { return (packed[0] & (1L << BIT_GLINT_REPLACE_ALPHA)) != 0; }
+    public int textureSupersamplingSamples() { return 1 << (int) ((packed[0] >> BIT_TEXTURE_SUPERSAMPLING) & 0x7); }
     public boolean alphaTestEnabled() { return ((packed[0] >> BIT_ALPHA_TEST) & 1) != 0; }
     public int alphaTestFunc()        { return (int) ((packed[0] >> BIT_ALPHA_FUNC) & 0x7); }
     public boolean separateSpecular() { return ((packed[0] >> BIT_SEPARATE_SPECULAR) & 1) != 0; }
     public boolean colorSum()         { return ((packed[0] >> BIT_COLOR_SUM) & 1) != 0; }
     public boolean lineStipple()      { return ((packed[0] >> BIT_LINE_STIPPLE) & 1) != 0; }
-    public int nrEnabledUnits()       { return (int) ((packed[0] >> BIT_NR_ENABLED_UNITS) & 0x7); }
+    public int nrEnabledUnits()       { return packed.length == 1 && !unitEnabled(0) ? 0 : packed.length; }
     public boolean overlayEnabled()   { return ((packed[0] >> BIT_OVERLAY_ENABLED) & 1) != 0; }
     public boolean overlayInstanced() { return ((packed[0] >> BIT_OVERLAY_INSTANCED) & 1) != 0; }
 
@@ -400,6 +405,7 @@ public final class FragmentKey {
         sb.append(String.format("FFPFragmentKey[fog=%s alpha=%b(%s) specSep=%b colorSum=%b overlay=%b units=%d", fogName, alphaTestEnabled(),
             alphaTestEnabled() ? String.format("0x%04X", decodeAlphaFunc(alphaTestFunc())) : "-", separateSpecular(), colorSum(),
             overlayEnabled() || overlayInstanced(), nrEnabledUnits()));
+        if (textureSupersamplingSamples() > 1) sb.append(" samples=").append(textureSupersamplingSamples());
         for (int i = 0; i < nrEnabledUnits(); i++) {
             if (!unitEnabled(i)) {
                 sb.append(String.format(" u%d=OFF", i));

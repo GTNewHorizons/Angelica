@@ -275,6 +275,7 @@ public class GLContextState {
     public float savedFilterAniso = -1.0f;
     public boolean lineQuadsActive = false;
     public boolean lineStippleActive = false;
+    public int textureSupersamplingSamples = 1;
     public Instancing ffpInstancing = Instancing.NONE;
     public float lastBrightnessX;
     public float lastBrightnessY;

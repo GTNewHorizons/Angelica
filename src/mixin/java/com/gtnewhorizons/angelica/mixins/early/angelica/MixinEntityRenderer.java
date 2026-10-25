@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica;
 
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import com.gtnewhorizons.angelica.mixins.interfaces.EntityRendererAccessor;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
@@ -32,6 +33,17 @@ public abstract class MixinEntityRenderer implements EntityRendererAccessor {
 
     @Accessor("rendererUpdateCount")
     public abstract int getRendererUpdateCount();
+
+    @Surround(method = "renderWorld(FJ)V")
+    private void angelica$beginWorldRendering() {
+        @Surround.Carry final boolean renderingWorld = RenderingState.INSTANCE.isRenderingWorld();
+        RenderingState.INSTANCE.setRenderingWorld(true);
+    }
+
+    @Surround.Finally
+    private void angelica$endWorldRendering(@Surround.Carry boolean renderingWorld) {
+        RenderingState.INSTANCE.setRenderingWorld(renderingWorld);
+    }
 
     @Inject(method = "renderWorld", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ActiveRenderInfo;updateRenderInfo(Lnet/minecraft/entity/player/EntityPlayer;Z)V", shift = At.Shift.AFTER))
     private void angelica$captureCameraMatrix(float partialTicks, long finishTimeNano, CallbackInfo ci) {

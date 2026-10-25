@@ -23,6 +23,12 @@ public class RenderingState {
     @Getter
     @Setter
     private float fov;
+    @Getter
+    @Setter
+    private boolean renderingWorld;
+    @Getter
+    @Setter
+    private boolean renderingGuiItem;
 
 
     public void setCameraPosition(double x, double y, double z) {

@@ -151,6 +151,7 @@ public class SodiumGameOptions {
         if (config.quality.texelSampling == null) {
             config.quality.texelSampling = TexelSampling.LINEAR;
         }
+        config.quality.guiBlockSupersampling = Integer.highestOneBit(MathHelper.clamp_int(config.quality.guiBlockSupersampling, 1, 16));
 
         if (GLStateManager.capabilities != null) {
             if (!GLStateManager.capabilities.OpenGL32) {
@@ -250,6 +251,7 @@ public class SodiumGameOptions {
         public boolean useCeleritasSmoothLighting = true;
         public TextureFilterMode textureFilterMode = TextureFilterMode.RGSS_ANISOTROPIC;
         public TexelSampling texelSampling = TexelSampling.LINEAR;
+        public int guiBlockSupersampling = 1;
     }
 
     public static class ReducerSettings {

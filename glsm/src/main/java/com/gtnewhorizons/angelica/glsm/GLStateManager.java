@@ -653,6 +653,28 @@ public class GLStateManager {
         ctx().ffpInstancing = mode;
     }
 
+    public static int setTextureSupersamplingSamples(int samples) {
+        if (samples < 1 || samples > 16 || (samples & (samples - 1)) != 0) {
+            throw new IllegalArgumentException("Texture supersampling requires 1, 2, 4, 8, or 16 samples");
+        }
+        final GLContextState glCtx = ctx();
+        final int previous = glCtx.textureSupersamplingSamples;
+        if (previous != samples) {
+            beforeUncapturedStateChange();
+            glCtx.textureSupersamplingSamples = samples;
+        }
+        return previous;
+    }
+
+    public static void markTextureAsAtlas(int texture, int gutter) {
+        if (texture <= 0) return;
+        final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(texture);
+        if (info.getAtlasGutter() != gutter) {
+            beforeUncapturedStateChange();
+            info.setAtlasGutter(gutter);
+        }
+    }
+
     private static final MethodHandle MAT4_STACK_CURR_DEPTH;
 
     static {

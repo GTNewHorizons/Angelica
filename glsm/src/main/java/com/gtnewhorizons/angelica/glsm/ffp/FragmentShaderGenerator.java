@@ -28,6 +28,10 @@ public final class FragmentShaderGenerator {
             return sb.toString();
         }
         sb.append("out vec4 fragColor;\n\n");
+        if (key.textureSupersamplingSamples() > 1) {
+            sb.append("#define TEXTURE_SUPERSAMPLING_SAMPLES ").append(key.textureSupersamplingSamples()).append('\n');
+            sb.append(ShaderLoader.getShaderSource("angelica:texture_supersampling.glsl"));
+        }
 
         sb.append("void main() {\n");
         emitLineStipple(sb, key);
@@ -86,7 +90,8 @@ public final class FragmentShaderGenerator {
     private static void emitTextureSampling(StringBuilder sb, FragmentKey key) {
         for (int i = 0; i < key.nrEnabledUnits(); i++) {
             if (!key.unitEnabled(i)) continue;
-            sb.append("  vec4 tex").append(i).append("Color = textureProj(u_Sampler").append(i).append(", v_TexCoord").append(i).append(");\n");
+            final String sample = i == 0 && key.textureSupersamplingSamples() > 1 ? "sampleSupersampledTexture" : "textureProj";
+            sb.append("  vec4 tex").append(i).append("Color = ").append(sample).append("(u_Sampler").append(i).append(", v_TexCoord").append(i).append(");\n");
         }
     }
 

@@ -21,6 +21,7 @@ public class TextureInfo {
     protected int resolvedInternalFormat = -1;
     protected int width = -1;
     protected int height = -1;
+    @Getter @Setter private int atlasGutter;
 
     protected int minFilter = UNSET_INT;
     protected int magFilter = UNSET_INT;
