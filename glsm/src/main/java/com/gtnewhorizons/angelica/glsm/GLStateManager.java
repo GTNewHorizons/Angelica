@@ -145,16 +145,8 @@ import static com.gtnewhorizons.angelica.glsm.Vendor.NVIDIA;
 import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 
 /**
- * OpenGL State Manager - Provides cached state tracking and management for Backend Renderer Actions
- *   IMPORTANT NOTE: Do NOT call open gl directly, route everything through {@link BackendManager#RENDER_BACKEND}
- *
- * <p><b>IMPORTANT INITIALIZATION ORDER:</b></p>
- * <ul>
- *   <li>This class performs GL queries in static initializers (MAX_CLIP_PLANES, MAX_TEXTURE_UNITS, etc.)</li>
- *   <li>The class MUST NOT be loaded until after the GL context has been created and made current</li>
- *   <li>Violating this requirement will cause crashes with "No current context" or return invalid values</li>
- *   <li>Call {@link #initialize(GLSMInitConfig)} after GL context creation to initialize runtime state</li>
- * </ul>
+ * Cached GL state over {@link BackendManager#RENDER_BACKEND}; GL calls route through here, never through raw GL.
+ * The static initializer queries the backend, so this class must not load before a GL context is current; call {@link #initialize(GLSMInitConfig)} after context creation.
  */
 @SuppressWarnings("unused") // Used in ASM
 public class GLStateManager {
@@ -263,6 +255,14 @@ public class GLStateManager {
         if (WARN_ONCE.add(key)) LOGGER.warn(fmt, args);
     }
 
+    // The key check comes first so a caller repeating the mistake every frame does not capture a stack each time.
+    static void warnOnceTrace(String key, String fmt, Object... args) {
+        if (!WARN_ONCE.add(key)) return;
+        final Object[] withTrace = Arrays.copyOf(args, args.length + 1);
+        withTrace[args.length] = new Throwable("call site");
+        LOGGER.warn(fmt, withTrace);
+    }
+
     private static volatile GLContextState primaryContext;
     private static final ThreadLocal<GLContextState> tlWorkerContext = new ThreadLocal<>();
     private static GLContextState mainCtx;
@@ -367,7 +367,6 @@ public class GLStateManager {
         return d == Display.getDrawable();
     }
 
-    // Tracy profiling counters
     public static long drawCalls;
     public static long texBindMisses;
     public static long programSwitches;
@@ -818,7 +817,7 @@ public class GLStateManager {
         final GLContextState glCtx = ctx();
         RenderSystem.initRenderer();
 
-        DEFAULT_DRAW_BUFFER = RENDER_BACKEND.getInteger(GL11.GL_DRAW_BUFFER);
+        queryDefaultDrawBuffer();
 
         // The initial mask value should be defined as all 1's. However, some drivers have it set to 0's.
         // To ensure consistency & correctness across all drivers, we're setting them to 0xFF.
@@ -836,39 +835,7 @@ public class GLStateManager {
         // Initialize stencil masks from computed bit mask
         applyStencilBitMask(glCtx, stencilBitMask);
 
-        final FloatBuffer lwRange = BufferUtils.createFloatBuffer(16);
-        RENDER_BACKEND.getFloat(GL12.GL_ALIASED_LINE_WIDTH_RANGE, lwRange);
-        lineWidthMin = lwRange.get(0);
-        lineWidthMax = lwRange.get(1);
-        final float queriedMax = lineWidthMax;
-        // Probe whether the driver actually accepts the queried max (Mesa forward-compat rejects > 1.0)
-        if (lineWidthMax > 1.0f) {
-            while (RENDER_BACKEND.getError() != GL11.GL_NO_ERROR) {}
-            RENDER_BACKEND.lineWidth(lineWidthMax);
-            if (RENDER_BACKEND.getError() != GL11.GL_NO_ERROR) {
-                // Binary search for the actual accepted max between 1.0 and queriedMax
-                float lo = 1.0f, hi = queriedMax;
-                while (hi - lo > 0.01f) {
-                    final float mid = (lo + hi) * 0.5f;
-                    while (RENDER_BACKEND.getError() != GL11.GL_NO_ERROR) {}
-                    RENDER_BACKEND.lineWidth(mid);
-                    if (RENDER_BACKEND.getError() == GL11.GL_NO_ERROR) {
-                        lo = mid;
-                    } else {
-                        hi = mid;
-                    }
-                }
-                lineWidthMax = lo;
-            }
-            RENDER_BACKEND.lineWidth(1.0f);
-            while (RENDER_BACKEND.getError() != GL11.GL_NO_ERROR) {}
-        }
-        wideLineEmulationEnabled = lineWidthMax <= 1.0f;
-        if (wideLineEmulationEnabled) {
-            LOGGER.info("GL line width: aliased range [{}, {}], probe at {} rejected, native [{}, {}], line quads widen ({}, {}]", lineWidthMin, queriedMax, queriedMax, lineWidthMin, lineWidthMax, lineWidthMax, queriedMax);
-        } else {
-            LOGGER.info("GL line width: aliased range [{}, {}], probe at {} accepted, native [{}, {}]", lineWidthMin, queriedMax, queriedMax, lineWidthMin, lineWidthMax);
-        }
+        probeLineWidthRange();
 
         // Sync default vertex attribs with GLSM cache initial values.
         RENDER_BACKEND.vertexAttrib4f(1, 1.0f, 1.0f, 1.0f, 1.0f);    // COLOR = white
@@ -898,12 +865,7 @@ public class GLStateManager {
             initCallback.run();
         }
 
-        final FloatBuffer range = glCtx.queryScratch;
-        range.clear();
-        RENDER_BACKEND.getFloat(GL11.GL_POINT_SIZE_RANGE, range);
-        final float smooth = range.get(1);
-        RENDER_BACKEND.getFloat(GL12.GL_ALIASED_POINT_SIZE_RANGE, range);
-        maxPointSize = Math.max(smooth, range.get(1));
+        probePointSizeRange(glCtx);
 
         // Drain any pending GL errors from initialization. In core profile, some legacy queries may generate GL_INVALID_ENUM. The splash thread inherits the
         // DrawableGL context and its error state, so stale errors here would cause SplashProgress.checkGLError() to fail.
@@ -913,7 +875,6 @@ public class GLStateManager {
         }
     }
 
-    // LWJGL Overrides
     public static void glEnable(int cap) {
         final GLContextState glCtx = ctx();
         final RecordMode mode = DisplayListManager.getRecordMode();
@@ -1865,6 +1826,59 @@ public class GLStateManager {
         return ctx().alphaState.readEffective(out);
     }
 
+    private static void queryDefaultDrawBuffer() {
+        DEFAULT_DRAW_BUFFER = RENDER_BACKEND.getInteger(GL11.GL_DRAW_BUFFER);
+    }
+
+    private static void armFirstClear() {
+        firstClearPending = true;
+    }
+
+    private static void probeLineWidthRange() {
+        final FloatBuffer lwRange = BufferUtils.createFloatBuffer(16);
+        RENDER_BACKEND.getFloat(GL12.GL_ALIASED_LINE_WIDTH_RANGE, lwRange);
+        lineWidthMin = lwRange.get(0);
+        lineWidthMax = lwRange.get(1);
+        final float queriedMax = lineWidthMax;
+        // Probe whether the driver actually accepts the queried max (Mesa forward-compat rejects > 1.0)
+        if (lineWidthMax > 1.0f) {
+            while (RENDER_BACKEND.getError() != GL11.GL_NO_ERROR) {}
+            RENDER_BACKEND.lineWidth(lineWidthMax);
+            if (RENDER_BACKEND.getError() != GL11.GL_NO_ERROR) {
+                // Binary search for the actual accepted max between 1.0 and queriedMax
+                float lo = 1.0f, hi = queriedMax;
+                while (hi - lo > 0.01f) {
+                    final float mid = (lo + hi) * 0.5f;
+                    while (RENDER_BACKEND.getError() != GL11.GL_NO_ERROR) {}
+                    RENDER_BACKEND.lineWidth(mid);
+                    if (RENDER_BACKEND.getError() == GL11.GL_NO_ERROR) {
+                        lo = mid;
+                    } else {
+                        hi = mid;
+                    }
+                }
+                lineWidthMax = lo;
+            }
+            RENDER_BACKEND.lineWidth(1.0f);
+            while (RENDER_BACKEND.getError() != GL11.GL_NO_ERROR) {}
+        }
+        wideLineEmulationEnabled = lineWidthMax <= 1.0f;
+        if (wideLineEmulationEnabled) {
+            LOGGER.info("GL line width: aliased range [{}, {}], probe at {} rejected, native [{}, {}], line quads widen ({}, {}]", lineWidthMin, queriedMax, queriedMax, lineWidthMin, lineWidthMax, lineWidthMax, queriedMax);
+        } else {
+            LOGGER.info("GL line width: aliased range [{}, {}], probe at {} accepted, native [{}, {}]", lineWidthMin, queriedMax, queriedMax, lineWidthMin, lineWidthMax);
+        }
+    }
+
+    private static void probePointSizeRange(GLContextState glCtx) {
+        final FloatBuffer range = glCtx.queryScratch;
+        range.clear();
+        RENDER_BACKEND.getFloat(GL11.GL_POINT_SIZE_RANGE, range);
+        final float smooth = range.get(1);
+        RENDER_BACKEND.getFloat(GL12.GL_ALIASED_POINT_SIZE_RANGE, range);
+        maxPointSize = Math.max(smooth, range.get(1));
+    }
+
     public static void beginForeignDraw() {
         ctx().foreignDrawDepth++;
     }
@@ -2290,7 +2304,6 @@ public class GLStateManager {
         }
     }
 
-    // Clear Color
     public static void glClearColor(float red, float green, float blue, float alpha) {
         rejectExitCapture();
         final GLContextState glCtx = ctx();
@@ -2328,7 +2341,6 @@ public class GLStateManager {
         RENDER_BACKEND.clearDepth(depth);
     }
 
-    // ALPHA
     public static void enableAlphaTest() {
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
@@ -2421,7 +2433,6 @@ public class GLStateManager {
         }
     }
 
-    // Textures
     public static void glActiveTexture(int texture) {
         final GLContextState glCtx = ctx();
         glCtx.exitCapture.write(ExitStateCapture.ACTIVE_UNIT);
@@ -2451,9 +2462,7 @@ public class GLStateManager {
         if (unit >= 0 && unit < limit) {
             return true;
         }
-        if (WARN_ONCE.add(function)) {
-            LOGGER.warn("{}({}) is not a valid texture unit enum (expected GL_TEXTURE0..GL_TEXTURE{}); ignoring", function, rawEnum, limit - 1, new Throwable("call site"));
-        }
+        warnOnceTrace(function, "{}({}) is not a valid texture unit enum (expected GL_TEXTURE0..GL_TEXTURE{}); ignoring", function, rawEnum, limit - 1);
         return false;
     }
 
@@ -2498,29 +2507,12 @@ public class GLStateManager {
                 return;
             }
         }
-        // Rebinding a deferred-delete texture rescues it (Mesa/compat-profile behavior)
-        long rescued = DEFERRED_ABSENT;
-        boolean rejected = false;
-        if (texture != 0) {
-            final boolean locked = acquireDrawLock();
-            try {
-                final long state = deferredDeleteTextures.isEmpty() ? DEFERRED_ABSENT : deferredDeleteTextures.get(texture);
-                if (state == DEFERRED_ABSENT) {
-                    recordTarget(texture, target);
-                } else if (non2DTextureTargets.get(texture) == target) {
-                    rescued = deferredDeleteTextures.remove(texture);
-                } else {
-                    rejected = true;
-                }
-            } finally {
-                if (locked) releaseDrawLock();
-            }
-        }
-        if (rejected) return;
+        final long claim = claimForBind(texture, target);
+        if (claim == BIND_REJECTED) return;
 
         if (!isCachingEnabled()) {
             RENDER_BACKEND.bindTexture(target, texture);
-            if (rescued != DEFERRED_ABSENT) resetRescuedTexture(target, texture, rescued);
+            finishRescue(target, texture, claim);
             return;
         }
 
@@ -2546,7 +2538,7 @@ public class GLStateManager {
                 glCtx.lockBindCallback = false;
             }
         }
-        if (rescued != DEFERRED_ABSENT) resetRescuedTexture(target, texture, rescued);
+        finishRescue(target, texture, claim);
     }
 
     private static void bindTextureUnitByName(int unit, int texture) {
@@ -2561,7 +2553,7 @@ public class GLStateManager {
                 glBindTexture(GL11.GL_TEXTURE_2D, 0);
                 if (!is2D(target)) glBindTexture(target, 0);
             } else {
-                glBindTexture(non2DTextureTargets.get(texture), texture);
+                glBindTexture(targetOf(texture), texture);
             }
         } finally {
             glActiveTexture(GL13.GL_TEXTURE0 + saved);
@@ -2886,6 +2878,32 @@ public class GLStateManager {
     private static void scheduleRelease(int id) {
         deferredDeleteTextures.put(id, frameIndex);
         nextReleaseFrame = Math.min(nextReleaseFrame, frameIndex + RELEASE_DELAY_FRAMES);
+    }
+
+    static final long BIND_REJECTED = Long.MIN_VALUE + 1;
+
+    // Rebinding a deferred-delete texture rescues it (Mesa/compat-profile behavior)
+    private static long claimForBind(int texture, int target) {
+        if (texture == 0) return DEFERRED_ABSENT;
+        final boolean locked = acquireDrawLock();
+        try {
+            final long state = deferredDeleteTextures.isEmpty() ? DEFERRED_ABSENT : deferredDeleteTextures.get(texture);
+            if (state == DEFERRED_ABSENT) {
+                recordTarget(texture, target);
+                return DEFERRED_ABSENT;
+            }
+            return non2DTextureTargets.get(texture) == target ? deferredDeleteTextures.remove(texture) : BIND_REJECTED;
+        } finally {
+            if (locked) releaseDrawLock();
+        }
+    }
+
+    private static void finishRescue(int target, int texture, long claim) {
+        if (claim != DEFERRED_ABSENT) resetRescuedTexture(target, texture, claim);
+    }
+
+    private static int targetOf(int texture) {
+        return non2DTextureTargets.get(texture);
     }
 
     private static boolean isDeferredDelete(int texture) {
@@ -3238,7 +3256,6 @@ public class GLStateManager {
         }
     }
 
-    // Vertex methods for display list recording and live immediate mode
     public static void glVertex2f(float x, float y) {
         if (DisplayListManager.isRecording() || ImmediateModeRecorder.isDrawing()) {
             ImmediateModeRecorder.vertex(x, y, 0.0f);
@@ -3421,7 +3438,7 @@ public class GLStateManager {
         final RecordMode recordMode = DisplayListManager.getRecordMode();
         if (recordMode != RecordMode.NONE) {
             // Core profile: a default VAO is generated at init and glBindVertexArray(0)
-            // is redirected to it, so a VAO is always bound here — no fallback branches.
+            // is redirected to it, so a VAO is always bound here -- no fallback branches.
             final IndexedDrawCapture capture = IndexedDrawCapture.create(mode, indices_count, type, indices_buffer_offset, glCtx.vaos.boundEBO);
             if (capture != null) {
                 DisplayListManager.recordIndexedDrawCapture(capture);
@@ -3743,23 +3760,16 @@ public class GLStateManager {
         return isLegalPointer(VAOManager.isLegalGeneric(index, size, type, integer), "vertex-attrib", "vertex attribute", index, size, type, stride);
     }
 
-    // The WARN_ONCE check comes first so a caller repeating the mistake every frame does not capture a stack each time.
     private static boolean isLegalPointer(boolean legal, String key, String what, int slot, int size, int type, int stride) {
-        if (stride < 0 && WARN_ONCE.add(key + "-stride")) {
-            LOGGER.warn("Negative {} stride {}", what, stride, new Throwable("call site"));
-        }
+        if (stride < 0) warnOnceTrace(key + "-stride", "Negative {} stride {}", what, stride);
         if (legal) return true;
-        if (WARN_ONCE.add(key + "-" + slot)) {
-            LOGGER.warn("Ignoring {} {} with illegal size {} / type 0x{}", what, slot, size, Integer.toHexString(type), new Throwable("call site"));
-        }
+        warnOnceTrace(key + "-" + slot, "Ignoring {} {} with illegal size {} / type 0x{}", what, slot, size, Integer.toHexString(type));
         return false;
     }
 
     private static boolean isValidVertexAttribIndex(int index, String function) {
         if (index >= 0 && index < VAOManager.MAX_ATTRIBS) return true;
-        if (WARN_ONCE.add(function)) {
-            LOGGER.warn("{}({}) is outside the {} supported vertex attributes; ignoring", function, index, VAOManager.MAX_ATTRIBS, new Throwable("call site"));
-        }
+        warnOnceTrace(function, "{}({}) is outside the {} supported vertex attributes; ignoring", function, index, VAOManager.MAX_ATTRIBS);
         return false;
     }
 
@@ -4798,7 +4808,6 @@ public class GLStateManager {
         }
     }
 
-    // Iris Functions
     private static void onDeleteTexture(int id) {
         final GLContextState glCtx = ctx();
         TextureInfoCache.INSTANCE.onDeleteTexture(id);
@@ -4907,7 +4916,7 @@ public class GLStateManager {
         Display.update(false);
         final long end = System.nanoTime();
         RENDER_BACKEND.recordGate(end - start, end);
-        firstClearPending = true;
+        armFirstClear();
     }
 
     /**
@@ -5563,7 +5572,6 @@ public class GLStateManager {
         }
     }
 
-    // Matrix Operations
     public static void glMatrixMode(int mode) {
         final GLContextState glCtx = ctx();
         glCtx.exitCapture.write(ExitStateCapture.MATRIX_MODE);
@@ -6944,7 +6952,6 @@ public class GLStateManager {
         }
     }
 
-    // Missing GL commands from Mesa cross-check
     public static void glTexImage1D(int target, int level, int internalformat, int width, int border, int format, int type, ByteBuffer pixels) {
         rejectExitCapture();
         internalformat = changeFormatIfDeprecated(internalformat);
@@ -7190,7 +7197,6 @@ public class GLStateManager {
         glShaderSource(shader, sb.toString());
     }
 
-    // Texture commands
     public static void glTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, ByteBuffer pixels) {
         rejectExitCapture();
         type = remapPixelTypeForGLES(format, type);
@@ -7327,7 +7333,6 @@ public class GLStateManager {
         RENDER_BACKEND.copyTexSubImage3D(target, level, xoffset, yoffset, zoffset, x, y, width, height);
     }
 
-    // State commands
     public static void glCullFace(int mode) {
         final GLContextState glCtx = ctx();
         glCtx.exitCapture.write(ExitStateCapture.CULL_FACE);
@@ -7580,7 +7585,7 @@ public class GLStateManager {
         }
     }
 
-    // glPixelStore* isn'tcompiled into display lists, it executes immediately
+    // glPixelStore* isn't compiled into display lists, it executes immediately
     public static void glPixelStorei(int pname, int param) {
         rejectExitCapture();
         final GLContextState glCtx = ctx();
@@ -7598,7 +7603,6 @@ public class GLStateManager {
         glPixelStorei(pname, param < 0 ? -Math.round(-param) : Math.round(param));
     }
 
-    // Display List Commands
     public static void glCallLists(IntBuffer lists) {
         while (lists.hasRemaining()) {
             final int listId = lists.get() + ctx().listBase;
@@ -7625,7 +7629,6 @@ public class GLStateManager {
         ctx().listBase = base;
     }
 
-    // Clip Plane Commands
     public static void glClipPlane(int plane, DoubleBuffer equation) {
         rejectExitCapture();
         final GLContextState glCtx = ctx();
@@ -7651,7 +7654,6 @@ public class GLStateManager {
         return glCtx.clipPlaneEnabledMask != 0;
     }
 
-    // Clear Commands
     public static void glClearStencil(int s) {
         rejectExitCapture();
         final GLContextState glCtx = ctx();
@@ -7669,7 +7671,6 @@ public class GLStateManager {
         }
     }
 
-    // Draw Buffer Commands (GL 2.0+)
     public static void glDrawBuffers(int buffer) {
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
@@ -7694,7 +7695,6 @@ public class GLStateManager {
         RENDER_BACKEND.drawBuffers(bufs);
     }
 
-    // Multisample Commands
     public static void glSampleCoverage(float value, boolean invert) {
         if (DisplayListManager.isRecording()) {
             throw DisplayListManager.unsupportedInList("glSampleCoverage");
@@ -7703,7 +7703,6 @@ public class GLStateManager {
         RENDER_BACKEND.sampleCoverage(value, invert);
     }
 
-    // Stencil Separate Functions (GL 2.0+)
     public static void glStencilFuncSeparate(int face, int func, int ref, int mask) {
         final GLContextState glCtx = ctx();
         final RecordMode mode = DisplayListManager.getRecordMode();
@@ -9461,7 +9460,7 @@ public class GLStateManager {
         if (isDeferredDelete(texture)) return;
         final int format = TextureInfoCache.INSTANCE.getInfo(texture).getInternalFormat();
         if (!isImageFormat(format)) return;
-        final boolean layered = switch (non2DTextureTargets.get(texture)) {
+        final boolean layered = switch (targetOf(texture)) {
             case GL30.GL_TEXTURE_1D_ARRAY, GL30.GL_TEXTURE_2D_ARRAY, GL12.GL_TEXTURE_3D, GL13.GL_TEXTURE_CUBE_MAP, GL40.GL_TEXTURE_CUBE_MAP_ARRAY, GL32.GL_TEXTURE_2D_MULTISAMPLE_ARRAY -> true;
             default -> false;
         };
