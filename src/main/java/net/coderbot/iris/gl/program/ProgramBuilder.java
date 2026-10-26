@@ -18,6 +18,7 @@ import com.gtnewhorizons.angelica.glsm.texture.TextureType;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.IntSupplier;
+import java.util.function.Supplier;
 
 public class ProgramBuilder extends ProgramUniforms.Builder implements SamplerHolder, ImageHolder {
 	private final int program;
@@ -196,17 +197,17 @@ public class ProgramBuilder extends ProgramUniforms.Builder implements SamplerHo
 	}
 
 	@Override
-	public boolean addDefaultSampler(TextureType type, IntSupplier texture, ValueUpdateNotifier notifier, GlSampler sampler, String... names) {
+	public boolean addDefaultSampler(TextureType type, IntSupplier texture, ValueUpdateNotifier notifier, Supplier<GlSampler> sampler, String... names) {
 		return samplers.addDefaultSampler(type, texture, notifier, sampler, names);
 	}
 
 	@Override
-	public boolean addDynamicSampler(TextureType type, IntSupplier texture, GlSampler sampler, String... names) {
+	public boolean addDynamicSampler(TextureType type, IntSupplier texture, Supplier<GlSampler> sampler, String... names) {
 		return samplers.addDynamicSampler(type, texture, sampler, names);
 	}
 
 	@Override
-	public boolean addDynamicSampler(TextureType type, IntSupplier texture, ValueUpdateNotifier notifier, GlSampler sampler, String... names) {
+	public boolean addDynamicSampler(TextureType type, IntSupplier texture, ValueUpdateNotifier notifier, Supplier<GlSampler> sampler, String... names) {
 		return samplers.addDynamicSampler(type, texture, notifier, sampler, names);
 	}
 

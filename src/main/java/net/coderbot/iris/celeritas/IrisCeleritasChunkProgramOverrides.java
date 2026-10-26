@@ -27,7 +27,7 @@ import java.util.Optional;
 import java.util.function.Function;
 
 public class IrisCeleritasChunkProgramOverrides {
-    private final EnumMap<IrisTerrainPass, GlProgram<IrisCeleritasChunkShaderInterface>> programs = new EnumMap<>(IrisTerrainPass.class);
+    private final EnumMap<IrisTerrainPass, GlProgram<ChunkShaderInterface>> programs = new EnumMap<>(IrisTerrainPass.class);
     private boolean shadersCreated = false;
     private int versionCounterForShaderReload = -1;
 
@@ -80,19 +80,19 @@ public class IrisCeleritasChunkProgramOverrides {
         return key;
     }
 
-    private static final class SavedProgram extends GlProgram<IrisCeleritasChunkShaderInterface> {
-        SavedProgram(int program, Function<ShaderBindingContext, IrisCeleritasChunkShaderInterface> factory) {
+    private static final class SavedProgram extends GlProgram<ChunkShaderInterface> {
+        SavedProgram(int program, Function<ShaderBindingContext, ChunkShaderInterface> factory) {
             super(program, factory);
         }
     }
 
     @Nullable
-    private GlProgram<IrisCeleritasChunkShaderInterface> createShader(IrisTerrainPass pass, CeleritasTerrainPipeline pipeline, ChunkVertexType vertexType) {
+    private GlProgram<ChunkShaderInterface> createShader(IrisTerrainPass pass, CeleritasTerrainPipeline pipeline, ChunkVertexType vertexType) {
         final CeleritasTerrainPipeline.PassInfo passInfo = pipeline.getPassInfo(pass);
         final String name = "iris:celeritas-chunk-" + pass.getName();
         final BlendModeOverride blendOverride = passInfo.blendModeOverride();
         final List<BufferBlendOverride> bufferOverrides = passInfo.bufferBlendOverrides();
-        final Function<ShaderBindingContext, IrisCeleritasChunkShaderInterface> factory = context -> new IrisCeleritasChunkShaderInterface(
+        final Function<ShaderBindingContext, ChunkShaderInterface> factory = context -> new IrisCeleritasChunkShaderInterface(
             ((GlObject) context).handle(), context, pipeline, pass.isShadow(), blendOverride, bufferOverrides, pipeline.getCustomUniforms());
 
         final ProgramBinaryCache.Key cacheKey = cacheKey(passInfo, vertexType);
@@ -130,7 +130,7 @@ public class IrisCeleritasChunkProgramOverrides {
                 builder.bindAttribute(attr.getName(), attrIndex++);
             }
 
-            final GlProgram<IrisCeleritasChunkShaderInterface> program = builder.link(factory);
+            final GlProgram<ChunkShaderInterface> program = builder.link(factory);
             if (cacheKey != null) {
                 ProgramBinaryCache.save(cacheKey, program.handle());
             }
@@ -169,7 +169,7 @@ public class IrisCeleritasChunkProgramOverrides {
     }
 
     @Nullable
-    public GlProgram<? extends ChunkShaderInterface> getProgramOverride(TerrainRenderPass pass, RenderPassConfiguration<?> configuration) {
+    public GlProgram<ChunkShaderInterface> getProgramOverride(TerrainRenderPass pass, RenderPassConfiguration<?> configuration) {
         // Check for shader pack reload
         if (versionCounterForShaderReload != Iris.getPipelineManager().getVersionCounterForSodiumShaderReload()) {
             versionCounterForShaderReload = Iris.getPipelineManager().getVersionCounterForSodiumShaderReload();
@@ -186,23 +186,13 @@ public class IrisCeleritasChunkProgramOverrides {
             createShaders(celeritasPipeline, configuration);
         }
 
-        if (ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
+        final boolean isShadow = ShadowRenderingState.areShadowsCurrentlyBeingRendered();
+        if (isShadow) {
             if (celeritasPipeline != null && !celeritasPipeline.hasShadowPass()) {
                 throw new IllegalStateException("Shadow program requested, but shader pack has no shadow pass");
             }
-            if (pass.isReverseOrder()) {
-                return programs.get(IrisTerrainPass.SHADOW_TRANSLUCENT);
-            }
-            return programs.get(pass.supportsFragmentDiscard() ? IrisTerrainPass.SHADOW_CUTOUT : IrisTerrainPass.SHADOW);
-        } else {
-            if (pass.supportsFragmentDiscard()) {
-                return programs.get(IrisTerrainPass.GBUFFER_CUTOUT);
-            } else if (pass.isReverseOrder()) {
-                return programs.get(IrisTerrainPass.GBUFFER_TRANSLUCENT);
-            } else {
-                return programs.get(IrisTerrainPass.GBUFFER_SOLID);
-            }
         }
+        return programs.get(IrisTerrainPass.fromTerrainPass(pass, isShadow));
     }
 
     public void deleteShaders() {

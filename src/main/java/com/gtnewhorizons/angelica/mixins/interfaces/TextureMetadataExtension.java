@@ -7,4 +7,8 @@ public interface TextureMetadataExtension {
     void angelica$setMipmapStrategy(MipmapStrategy strategy);
 
     MipmapStrategy angelica$getMipmapStrategy();
+
+    void angelica$setAlphaCutoffBias(float bias);
+
+    float angelica$getAlphaCutoffBias();
 }

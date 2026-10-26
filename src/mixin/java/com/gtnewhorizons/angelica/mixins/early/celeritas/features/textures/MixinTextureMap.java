@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.mixins.early.celeritas.features.textures;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.TextureMetadataExtension;
+import com.gtnewhorizons.angelica.rendering.TextureAtlasType;
 import com.gtnewhorizons.angelica.rendering.celeritas.SpriteExtension;
 import com.gtnewhorizons.angelica.rendering.celeritas.TextureMapExtension;
 import com.gtnewhorizons.angelica.textures.atlas.AtlasAssembler;
@@ -63,9 +64,14 @@ public class MixinTextureMap implements TextureMapExtension {
     @Unique
     private int celeritas$height;
 
+    @Unique
+    private boolean angelica$isBlockAtlas() {
+        return (Object) this == Minecraft.getMinecraft().getTextureMapBlocks();
+    }
+
     @Inject(method = { "loadTexture", "loadTextureAtlas" }, at = @At("HEAD"))
     private void angelica$applyAtlasSettings(CallbackInfo ci) {
-        if ((Object) this == Minecraft.getMinecraft().getTextureMapBlocks()) {
+        if (angelica$isBlockAtlas()) {
             SodiumGameOptions.applyAtlasSettings();
         }
     }
@@ -74,8 +80,7 @@ public class MixinTextureMap implements TextureMapExtension {
         method = "loadTextureAtlas",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/texture/Stitcher;doStitch()V"))
     private void angelica$assignGutters(CallbackInfo ci) {
-        final boolean blocksAtlas = (Object) this == Minecraft.getMinecraft().getTextureMapBlocks();
-        final int gutter = SpritePadding.gutterFor(this.mipmapLevels, blocksAtlas);
+        final int gutter = SpritePadding.gutterFor(this.mipmapLevels, angelica$isBlockAtlas());
 
         for (TextureAtlasSprite sprite : this.mapRegisteredSprites.values()) {
             ((SpriteExtension) sprite).angelica$setGutterWidth(gutter);
@@ -88,7 +93,7 @@ public class MixinTextureMap implements TextureMapExtension {
      */
     @Inject(method = "registerIcons", at = @At("HEAD"))
     private void angelica$resetMipmapStrategies(CallbackInfo ci) {
-        if (this.textureType == 0) {
+        if (this.textureType == TextureAtlasType.BLOCK) {
             MipmapStrategies.reset();
         }
     }
@@ -116,6 +121,16 @@ public class MixinTextureMap implements TextureMapExtension {
     @Inject(method = "registerIcon", at = @At("HEAD"))
     private void angelica$recordSpriteOwner(String p_94245_1_, CallbackInfoReturnable<IIcon> cir) {
         MipmapStrategies.recordSprite(this.textureType, p_94245_1_);
+    }
+
+    @Inject(
+        method = "loadTextureAtlas",
+        at = @At(value = "INVOKE", target = "Ljava/util/Map;entrySet()Ljava/util/Set;", remap = false))
+    private void angelica$assignSpriteAtlas(CallbackInfo ci) {
+        for (TextureAtlasSprite sprite : this.mapRegisteredSprites.values()) {
+            ((SpriteExtension) sprite).angelica$setTextureType(this.textureType);
+        }
+        ((SpriteExtension) this.missingImage).angelica$setTextureType(this.textureType);
     }
 
     /**
@@ -156,7 +171,7 @@ public class MixinTextureMap implements TextureMapExtension {
     }
 
     /**
-     * Assigns the sprite's mipmap strategy.
+     * Assigns the sprite's mipmap settings, resetting metadata defaults on resource reload.
      */
     @Inject(
         method = "loadTextureAtlas",
@@ -165,20 +180,21 @@ public class MixinTextureMap implements TextureMapExtension {
             target = "Lnet/minecraft/client/renderer/texture/TextureAtlasSprite;loadSprite([Ljava/awt/image/BufferedImage;Lnet/minecraft/client/resources/data/AnimationMetadataSection;Z)V"))
     private void celeritas$assignMipmapStrategy(CallbackInfo ci, @Local(ordinal = 0) TextureAtlasSprite sprite,
                                                 @Local(ordinal = 0) TextureMetadataSection metadata) {
-        final MipmapStrategy declared = metadata != null
-            ? ((TextureMetadataExtension) metadata).angelica$getMipmapStrategy()
-            : null;
+        final SpriteExtension extension = (SpriteExtension) sprite;
+        final TextureMetadataExtension textureMetadata = (TextureMetadataExtension) metadata;
+        final MipmapStrategy declared = textureMetadata != null ? textureMetadata.angelica$getMipmapStrategy() : null;
+        extension.angelica$setAlphaCutoffBias(textureMetadata != null ? textureMetadata.angelica$getAlphaCutoffBias() : 0.0f);
         if (declared != null) {
-            ((SpriteExtension) sprite).celeritas$setMipmapStrategy(declared, true, this.textureType);
+            extension.celeritas$setMipmapStrategy(declared, true);
         } else {
-            ((SpriteExtension) sprite).celeritas$setMipmapStrategy(
-                MipmapStrategies.inheritedFor(this.textureType, sprite.getIconName()), false, this.textureType);
+            extension.celeritas$setMipmapStrategy(
+                MipmapStrategies.inheritedFor(this.textureType, sprite.getIconName()), false);
         }
     }
 
     @Inject(method = "loadTextureAtlas", at = @At("RETURN"))
     private void celeritas$generateQuadTree(CallbackInfo ci, @Local(ordinal = 0) Stitcher stitcher) {
-        if ((Object) this == Minecraft.getMinecraft().getTextureMapBlocks()) {
+        if (angelica$isBlockAtlas()) {
             GLStateManager.markTextureAsAtlas(((TextureMap) (Object) this).getGlTextureId(),
                 ((SpriteExtension) this.missingImage).angelica$getGutterWidth());
             SodiumGameOptions.recordAtlasMipmapClamp(Minecraft.getMinecraft().gameSettings.mipmapLevels,

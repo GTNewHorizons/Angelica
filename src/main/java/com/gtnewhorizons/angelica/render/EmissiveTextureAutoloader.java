@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.render;
 
+import com.gtnewhorizons.angelica.rendering.TextureAtlasType;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -22,7 +23,7 @@ public class EmissiveTextureAutoloader {
 
     @SubscribeEvent
     public void onTextureStitchPre(TextureStitchEvent.Pre event) {
-        if (event.map.getTextureType() != 0) return;
+        if (event.map.getTextureType() != TextureAtlasType.BLOCK) return;
 
         TextureMap map = event.map;
         EmissiveTextureHelper.clearCache();

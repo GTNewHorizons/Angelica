@@ -11,7 +11,11 @@ public interface SpriteExtension {
 
     /** One-shot: returns true if marked, then resets. */
     boolean celeritas$shouldUpdate();
-    void celeritas$setMipmapStrategy(MipmapStrategy strategy, boolean explicit, int textureType);
+    void celeritas$setMipmapStrategy(MipmapStrategy strategy, boolean explicit);
+
+    void angelica$setTextureType(int textureType);
+
+    void angelica$setAlphaCutoffBias(float bias);
 
     /** Width of the replicated-edge border reserved around this sprite in its stitcher slot. */
     int angelica$getGutterWidth();

@@ -19,7 +19,7 @@ public interface IrisShaderProvider {
 
     boolean shouldUseFaceCulling();
 
-    @Nullable GlProgram<? extends ChunkShaderInterface> getShaderOverride(TerrainRenderPass pass);
+    @Nullable GlProgram<ChunkShaderInterface> getShaderOverride(TerrainRenderPass pass);
 
     ChunkVertexType getVertexType(ChunkVertexType defaultType);
 

@@ -47,7 +47,6 @@ public final class VertexWriteReplayer {
     private static final int MAX_DIVISOR = 0xFFFF;
     private static final int UNCHANGED = -1;
     private static final int TEXTURE_UNITS = 32;
-    private static final int SAMPLER_OBJECT_OF_DRAW = -1;
 
     public static final class Replay {
         final int replayProgram;
@@ -60,7 +59,7 @@ public final class VertexWriteReplayer {
         int[] uniformTargets;
         int[] samplerUnits;
         IntSupplier[] samplerSources;
-        int[] samplerObjects;
+        IntSupplier[] samplerObjects;
         int[] packStorageSlots;
         int[] packRwStorageSlots;
         int[] uniformBlockIndices;
@@ -143,7 +142,7 @@ public final class VertexWriteReplayer {
         private void resolveSamplers(ShaderManager.ProgramObject graphics, ShaderManager.ProgramObject replay, List<String> names) {
             final IntArrayList units = new IntArrayList();
             final List<IntSupplier> sources = new ArrayList<>();
-            final IntArrayList objects = new IntArrayList();
+            final List<IntSupplier> objects = new ArrayList<>();
             final IntArrayList ownTextureIndices = new IntArrayList();
             final List<String> ownTextureNames = new ArrayList<>();
             final List<String> pipelineNames = Arrays.asList(setup.samplerNames());
@@ -164,7 +163,7 @@ public final class VertexWriteReplayer {
                 if (!units.contains(unit)) {
                     units.add(unit);
                     sources.add(null);
-                    objects.add(SAMPLER_OBJECT_OF_DRAW);
+                    objects.add(null);
                 }
             }
             int free = TEXTURE_UNITS - 1;
@@ -179,7 +178,7 @@ public final class VertexWriteReplayer {
             }
             samplerUnits = units.toIntArray();
             samplerSources = sources.toArray(new IntSupplier[0]);
-            samplerObjects = objects.toIntArray();
+            samplerObjects = objects.toArray(new IntSupplier[0]);
         }
     }
 
@@ -306,7 +305,8 @@ public final class VertexWriteReplayer {
             final int unit = replay.samplerUnits[i];
             final IntSupplier source = replay.samplerSources[i];
             c.samplerTextures[i] = source != null ? source.getAsInt() : st.boundTextures[unit];
-            final int samplerObject = replay.samplerObjects[i] != SAMPLER_OBJECT_OF_DRAW ? replay.samplerObjects[i] : st.boundSamplerObjects[unit];
+            final IntSupplier sampler = replay.samplerObjects[i];
+            final int samplerObject = sampler != null ? sampler.getAsInt() : st.boundSamplerObjects[unit];
             c.samplerHandles[i] = computeBinder.samplerHandle(samplerObject, c.samplerTextures[i]);
         }
         if (c.imageTextures.length != images.length) c.imageTextures = new int[images.length];
