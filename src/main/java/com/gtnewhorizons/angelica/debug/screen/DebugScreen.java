@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.api.debug.DebugScreenDisplayer;
 import com.gtnewhorizons.angelica.compat.debug.DebugCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.SystemProperties;
+import com.gtnewhorizons.angelica.debug.screen.renderers.DebugRenderers;
 import cpw.mods.fml.common.Loader;
 import net.minecraft.client.Minecraft;
 
@@ -35,6 +36,7 @@ public final class DebugScreen {
         DebugRegistry.MAIN.freeze();
         final DebugScreenEntryList entries = new DebugScreenEntryList(DebugRegistry.MAIN);
         entries.setFile(new File(configDir, "angelica-debug-profile.json"));
+        entries.setListener(DebugRenderers::onEnabledChanged);
         ENTRIES = entries;
         entries.load();
         entries.setOverlayVisible(overlayVisible);

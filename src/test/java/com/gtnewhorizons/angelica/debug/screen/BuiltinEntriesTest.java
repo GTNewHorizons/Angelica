@@ -2,6 +2,8 @@ package com.gtnewhorizons.angelica.debug.screen;
 
 import com.gtnewhorizons.angelica.api.debug.DebugEntryCategory;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.debug.screen.renderers.DebugRenderers;
+import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -28,7 +30,10 @@ class BuiltinEntriesTest {
             "minecraft:entity_render_stats", "minecraft:particle_render_stats", "minecraft:post_effect", "minecraft:chunk_source_stats", "minecraft:memory",
             "minecraft:system_specs", "minecraft:looking_at_block", "forge:brandings", "angelica:renderer", "angelica:renderer_verbose",
             "angelica:dynamic_lights", "angelica:fog", "angelica:animations", "angelica:other_left", "angelica:other_right", "angelica:help",
-            "minecraft:3d_crosshair", "minecraft:entity_hitboxes", "angelica:chunk_minimap"));
+            "minecraft:3d_crosshair", "minecraft:entity_hitboxes", "minecraft:chunk_borders", "minecraft:chunk_section_visibility",
+            "minecraft:visualize_block_light_levels", "minecraft:visualize_sky_light_levels", "minecraft:visualize_heightmap",
+            "minecraft:visualize_collision_boxes", "minecraft:visualize_solid_faces", "minecraft:visualize_water_levels",
+            "minecraft:visualize_entity_supporting_block", "angelica:chunk_minimap"));
         if (AngelicaConfig.enableIris) expected.add("angelica:shaders");
         final Set<String> actual = new HashSet<>();
         for (int i = 0; i < REGISTRY.entryCount(); i++) actual.add(REGISTRY.entryAt(i).id);
@@ -55,12 +60,15 @@ class BuiltinEntriesTest {
     @Test
     void everyKindIsUniqueAndHasAFactory() {
         final Set<Integer> kinds = new HashSet<>();
+        final Class<?>[] signature = { DebugEntryDef.class };
         for (int i = 0; i < REGISTRY.entryCount(); i++) {
             final DebugEntryDef def = REGISTRY.entryAt(i);
             if (def.kind <= 0) continue;
             assertTrue(kinds.add(def.kind), def.id);
             if (def.category == DebugEntryCategory.SCREEN_TEXT) {
                 assertNotNull(def.entryOrCreate(), def.id);
+            } else if (Reflect.<Boolean>invokeStatic(DebugRenderers.class, "isWorldRenderer", signature, def)) {
+                assertNotNull(Reflect.invokeStatic(DebugRenderers.class, "create", signature, def), def.id);
             } else {
                 assertNotNull(def.toggleListener, def.id);
             }

@@ -50,6 +50,7 @@ public class DebugKeyHandler {
             switch (key) {
                 case Keyboard.KEY_F6 -> DebugOptionsScreen.open(mc);
                 case Keyboard.KEY_V -> toggleAndReport(DebugScreenEntries.ANGELICA_RENDERER_VERBOSE, "angelica.debug.verbose");
+                case Keyboard.KEY_G -> toggleAndReport(DebugScreenEntries.CHUNK_BORDERS, "angelica.debug.chunk_borders");
                 case Keyboard.KEY_B -> {
                     if (DebugScreen.ENTRIES != null) DebugScreen.ENTRIES.toggleStatus(DebugScreenEntries.ENTITY_HITBOXES);
                 }

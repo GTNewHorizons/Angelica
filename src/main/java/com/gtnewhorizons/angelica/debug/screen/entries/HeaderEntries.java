@@ -27,6 +27,7 @@ public final class HeaderEntries {
         private static final String[] KEYS = {
             "angelica.debug.help.options",
             "angelica.debug.help.hitboxes",
+            "angelica.debug.help.chunk_borders",
             "angelica.debug.help.verbose",
             "angelica.debug.help.graphs"
         };

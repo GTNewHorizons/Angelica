@@ -49,6 +49,15 @@ public final class DebugScreenEntries {
     public static final int KIND_ANGELICA_ANIMATIONS = 23;
     public static final int KIND_HELP = 26;
     public static final int KIND_ENTITY_HITBOXES = 28;
+    public static final int KIND_CHUNK_BORDERS = 29;
+    public static final int KIND_CHUNK_SECTION_VISIBILITY = 30;
+    public static final int KIND_VISUALIZE_BLOCK_LIGHT_LEVELS = 31;
+    public static final int KIND_VISUALIZE_SKY_LIGHT_LEVELS = 32;
+    public static final int KIND_VISUALIZE_HEIGHTMAP = 33;
+    public static final int KIND_VISUALIZE_COLLISION_BOXES = 34;
+    public static final int KIND_VISUALIZE_SOLID_FACES = 35;
+    public static final int KIND_VISUALIZE_WATER_LEVELS = 36;
+    public static final int KIND_VISUALIZE_ENTITY_SUPPORTING_BLOCK = 37;
     public static final int KIND_ANGELICA_CHUNK_MINIMAP = 38;
     public static final int KIND_POST_EFFECT = 39;
 
@@ -89,6 +98,15 @@ public final class DebugScreenEntries {
     public static final DebugEntryDef HELP = add(text("angelica:help", IN_OVERLAY, NEVER).supportsAlways(false), KIND_HELP, false);
     public static final DebugEntryDef THREE_DIMENSIONAL_CROSSHAIR = add(renderer("minecraft:3d_crosshair", IN_OVERLAY, NEVER), 0, false);
     public static final DebugEntryDef ENTITY_HITBOXES = add(renderer("minecraft:entity_hitboxes", NEVER, NEVER).toggle(DebugScreenEntries::onToggle), KIND_ENTITY_HITBOXES, false);
+    public static final DebugEntryDef CHUNK_BORDERS = add(renderer("minecraft:chunk_borders", NEVER, NEVER), KIND_CHUNK_BORDERS, false);
+    public static final DebugEntryDef CHUNK_SECTION_VISIBILITY = add(renderer("minecraft:chunk_section_visibility", NEVER, NEVER), KIND_CHUNK_SECTION_VISIBILITY, false);
+    public static final DebugEntryDef VISUALIZE_BLOCK_LIGHT_LEVELS = add(renderer("minecraft:visualize_block_light_levels", NEVER, NEVER), KIND_VISUALIZE_BLOCK_LIGHT_LEVELS, false);
+    public static final DebugEntryDef VISUALIZE_SKY_LIGHT_LEVELS = add(renderer("minecraft:visualize_sky_light_levels", NEVER, NEVER), KIND_VISUALIZE_SKY_LIGHT_LEVELS, false);
+    public static final DebugEntryDef VISUALIZE_HEIGHTMAP = add(renderer("minecraft:visualize_heightmap", NEVER, NEVER), KIND_VISUALIZE_HEIGHTMAP, false);
+    public static final DebugEntryDef VISUALIZE_COLLISION_BOXES = add(renderer("minecraft:visualize_collision_boxes", NEVER, NEVER), KIND_VISUALIZE_COLLISION_BOXES, false);
+    public static final DebugEntryDef VISUALIZE_SOLID_FACES = add(renderer("minecraft:visualize_solid_faces", NEVER, NEVER), KIND_VISUALIZE_SOLID_FACES, false);
+    public static final DebugEntryDef VISUALIZE_WATER_LEVELS = add(renderer("minecraft:visualize_water_levels", NEVER, NEVER), KIND_VISUALIZE_WATER_LEVELS, false);
+    public static final DebugEntryDef VISUALIZE_ENTITY_SUPPORTING_BLOCK = add(renderer("minecraft:visualize_entity_supporting_block", NEVER, NEVER), KIND_VISUALIZE_ENTITY_SUPPORTING_BLOCK, false);
     public static final DebugEntryDef ANGELICA_CHUNK_MINIMAP = add(renderer("angelica:chunk_minimap", NEVER, NEVER).toggle(DebugScreenEntries::onToggle), KIND_ANGELICA_CHUNK_MINIMAP, false);
 
     private DebugScreenEntries() {}

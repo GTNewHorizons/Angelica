@@ -453,6 +453,15 @@ angelica.debug.entry.angelica.other_right=Other Mods (Right)
 angelica.debug.entry.angelica.help=Key Help
 angelica.debug.entry.minecraft.3d_crosshair=3D Crosshair
 angelica.debug.entry.minecraft.entity_hitboxes=Entity Hitboxes
+angelica.debug.entry.minecraft.chunk_borders=Chunk Borders
+angelica.debug.entry.minecraft.chunk_section_visibility=Section Visibility
+angelica.debug.entry.minecraft.visualize_block_light_levels=Block Light Levels
+angelica.debug.entry.minecraft.visualize_sky_light_levels=Sky Light Levels
+angelica.debug.entry.minecraft.visualize_heightmap=Heightmap Markers
+angelica.debug.entry.minecraft.visualize_collision_boxes=Collision Boxes
+angelica.debug.entry.minecraft.visualize_solid_faces=Solid Faces
+angelica.debug.entry.minecraft.visualize_water_levels=Water Levels
+angelica.debug.entry.minecraft.visualize_entity_supporting_block=Entity Supporting Block
 angelica.debug.entry.angelica.chunk_minimap=Chunk Minimap
 angelica.debug.entry.minecraft.game_version.tooltip=Minecraft version line at the top of the debug screen
 angelica.debug.entry.minecraft.fps.tooltip=Frames per second, the active frame cap and chunk updates, shown at the top left
@@ -483,9 +492,21 @@ angelica.debug.entry.angelica.other_right.tooltip=Lines other mods add to the ri
 angelica.debug.entry.angelica.help.tooltip=Reminder of the F3 key combinations, shown while the debug screen is open
 angelica.debug.entry.minecraft.3d_crosshair.tooltip=Replaces the crosshair with colored X, Y and Z axis lines that follow your view
 angelica.debug.entry.minecraft.entity_hitboxes.tooltip=Shows entity hitboxes, like F3+B
+angelica.debug.entry.minecraft.chunk_borders.tooltip=Outlines the chunk and section you are in, like F3+G
+angelica.debug.entry.minecraft.chunk_section_visibility.tooltip=Marks nearby sections whose faces do not connect, which cull terrain behind them
+angelica.debug.entry.minecraft.visualize_block_light_levels.tooltip=Draws the block light value on each nearby block that is not fully dark
+angelica.debug.entry.minecraft.visualize_sky_light_levels.tooltip=Draws the sky light value on each nearby block that is not at full sky light
+angelica.debug.entry.minecraft.visualize_heightmap.tooltip=Marks the top block of every column in nearby chunks
+angelica.debug.entry.minecraft.visualize_collision_boxes.tooltip=Outlines the colliding boxes within a few blocks of you
+angelica.debug.entry.minecraft.visualize_solid_faces.tooltip=Tints solid block faces that are exposed to a non-opaque neighbor, near you
+angelica.debug.entry.minecraft.visualize_water_levels.tooltip=Shows nearby water volumes with their flow level from 1 to 8
+angelica.debug.entry.minecraft.visualize_entity_supporting_block.tooltip=Outlines the block each nearby grounded entity stands on; yours is red, others green
 angelica.debug.entry.angelica.chunk_minimap.tooltip=Small map of chunk render states in the corner
+angelica.debug.chunk_borders.on=Chunk borders: shown
+angelica.debug.chunk_borders.off=Chunk borders: hidden
 angelica.debug.help.options=F3 + F6 = Edit debug options
 angelica.debug.help.hitboxes=F3 + B = Show hitboxes
+angelica.debug.help.chunk_borders=F3 + G = Show chunk borders
 angelica.debug.help.verbose=F3 + V = Verbose renderer info
 angelica.debug.help.graphs=Alt + F3 = FPS and TPS graphs
 options.angelica.texteffects.rgb_colors=RGB Colors
