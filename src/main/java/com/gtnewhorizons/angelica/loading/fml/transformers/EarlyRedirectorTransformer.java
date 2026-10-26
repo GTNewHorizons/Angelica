@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.loading.fml.transformers;
 import com.gtnewhorizons.angelica.glsm.loading.EarlyRedirectorCore;
 import com.gtnewhorizons.angelica.glsm.loading.EcosystemNarrowRules;
 import com.gtnewhorizons.angelica.loading.shared.transformers.AngelicaRedirector;
+import com.gtnewhorizons.angelica.loading.shared.transformers.GLSMApiRedirects;
 import net.minecraft.launchwrapper.IClassTransformer;
 
 /**
@@ -23,6 +24,7 @@ public class EarlyRedirectorTransformer implements IClassTransformer {
 
     public EarlyRedirectorTransformer() {
         impl.setLegacyHint(AngelicaRedirector.LEGACY_HINT);
+        impl.setLegacyRewriter(GLSMApiRedirects.INSTANCE);
     }
 
     @Override

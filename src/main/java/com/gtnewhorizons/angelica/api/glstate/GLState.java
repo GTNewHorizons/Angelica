@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.stacks.FogStateStack;
 import org.joml.Matrix4f;
+import org.joml.Vector3d;
 import org.joml.Vector4f;
 
 import java.nio.FloatBuffer;
@@ -38,6 +39,10 @@ public final class GLState {
     public static Vector4f getFogColor(Vector4f dest) {
         final FogStateStack fog = GLSMFog.getFogState();
         return dest.set((float) fog.getFogColor().x, (float) fog.getFogColor().y, (float) fog.getFogColor().z, fog.getFogAlpha());
+    }
+
+    public static Vector3d getFogColor(Vector3d dest) {
+        return dest.set(GLSMFog.getFogState().getFogColor());
     }
 
     /** Writes the fog color as RGBA at the buffer's position. The position is not changed. */

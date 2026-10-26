@@ -10,6 +10,7 @@ public final class AngelicaRedirector {
     public static ModRedirector create() {
         final ModRedirector redirector = new ModRedirector(AngelicaClassDump.INSTANCE, "com.gtnewhorizons.angelica.transform");
         redirector.setLegacyHint(LEGACY_HINT);
+        redirector.setLegacyRewriter(GLSMApiRedirects.INSTANCE);
         return redirector;
     }
 

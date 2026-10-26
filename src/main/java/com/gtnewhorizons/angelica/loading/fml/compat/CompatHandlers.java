@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.loading.fml.compat;
 import com.gtnewhorizons.angelica.config.CompatConfig;
 import com.gtnewhorizons.angelica.loading.fml.compat.handlers.ExtraUtilsCompatHandler;
 import com.gtnewhorizons.angelica.loading.fml.compat.handlers.ImmersiveEngineeringCompatHandler;
+import com.gtnewhorizons.angelica.loading.fml.compat.handlers.KaizPatchXCompatHandler;
 import com.gtnewhorizons.angelica.loading.fml.compat.handlers.StacksOnStacksCompatHandler;
 import com.gtnewhorizons.angelica.loading.fml.compat.handlers.ThaumcraftCompatHandler;
 import com.gtnewhorizons.angelica.loading.fml.compat.handlers.ThaumicHorizonsCompatHandler;
@@ -17,7 +18,8 @@ public enum CompatHandlers {
     EXTRA_UTILS(() -> CompatConfig.fixExtraUtils, new ExtraUtilsCompatHandler()),
     IMMERSIVE_ENGINEERING(() -> CompatConfig.fixImmersiveEngineering, new ImmersiveEngineeringCompatHandler()),
     THAUMCRAFT(() -> CompatConfig.fixThaumcraft, new ThaumcraftCompatHandler()),
-    THAUMIC_HORIZONS(() -> CompatConfig.fixThaumicHorizons, new ThaumicHorizonsCompatHandler());
+    THAUMIC_HORIZONS(() -> CompatConfig.fixThaumicHorizons, new ThaumicHorizonsCompatHandler()),
+    KAIZPATCHX(() -> CompatConfig.fixKaizPatchX, new KaizPatchXCompatHandler());
 
     private final Supplier<Boolean> applyIf;
     private final ICompatHandler handler;

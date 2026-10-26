@@ -7,6 +7,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GLRedirectsTest {
@@ -158,5 +159,48 @@ class GLRedirectsTest {
         assertTrue(result.contains("GLSMMatrices.glPushMatrix()"), "glPushMatrix not redirected: " + result);
         assertTrue(result.contains("GLSMMatrices.glTranslatef(1,2,3)"), "glTranslatef not redirected: " + result);
         assertTrue(result.contains("GLSMEnable.glEnable(GL11.GL_BLEND)"), "glEnable not redirected or GL_BLEND mangled: " + result);
+    }
+
+    private static final String IMPORT = "importPackage(Packages.com.gtnewhorizons.angelica.glsm)";
+
+    @Test
+    void redirectScriptRewritesGlCallAndAddsImportOnce() {
+        final String result = GLRedirects.redirectScript("GL11.glPushMatrix();");
+        assertTrue(result.contains("GLSMMatrices.glPushMatrix();"), result);
+        assertEquals(result.indexOf(IMPORT), result.lastIndexOf(IMPORT), result);
+        assertTrue(result.startsWith(IMPORT), result);
+    }
+
+    @Test
+    void redirectScriptRewritesMovedGlStateManagerMember() {
+        assertTrue(GLRedirects.redirectScript("GLStateManager.glPushMatrix();").contains("GLSMMatrices.glPushMatrix();"));
+    }
+
+    @Test
+    void redirectScriptLeavesUnmovedMemberAndWordPrefixed() {
+        final String unmoved = "GLStateManager.ctx();";
+        assertSame(unmoved, GLRedirects.redirectScript(unmoved));
+        final String prefixed = "xGLStateManager.glPushMatrix();";
+        assertSame(prefixed, GLRedirects.redirectScript(prefixed));
+    }
+
+    @Test
+    void redirectScriptLeavesDottedAndAlreadyMovedReferences() {
+        final String dotted = "Packages.org.lwjgl.opengl.GL11.glPushMatrix();";
+        assertSame(dotted, GLRedirects.redirectScript(dotted));
+        final String moved = "GLSMMatrices.glPushMatrix();";
+        assertSame(moved, GLRedirects.redirectScript(moved));
+    }
+
+    @Test
+    void redirectScriptIsIdempotent() {
+        final String once = GLRedirects.redirectScript("GL11.glPushMatrix();\nGLStateManager.glPopMatrix();");
+        assertEquals(once, GLRedirects.redirectScript(once));
+    }
+
+    @Test
+    void redirectScriptKeepsExistingImport() {
+        final String result = GLRedirects.redirectScript(IMPORT + ";\nGL11.glPushMatrix();");
+        assertEquals(result.indexOf(IMPORT), result.lastIndexOf(IMPORT), result);
     }
 }

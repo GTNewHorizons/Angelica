@@ -20,6 +20,11 @@ public class CompatConfig {
     @Config.RequiresMcRestart
     public static boolean fixStacksOnStacks;
 
+    @Config.Comment("Redirect KaizPatchX script GL calls through Angelica's GLRedirects API")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean fixKaizPatchX;
+
     @Config.Comment("Apply fixes to Minefactory Reloaded")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart

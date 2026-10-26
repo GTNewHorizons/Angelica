@@ -12,6 +12,7 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldInsnNode;
+import org.objectweb.asm.tree.InsnList;
 import org.objectweb.asm.tree.IntInsnNode;
 import org.objectweb.asm.tree.InvokeDynamicInsnNode;
 import org.objectweb.asm.tree.LdcInsnNode;
@@ -194,6 +195,7 @@ public class GLSMRedirector {
     static final String[] CORE_REWRITE_TARGETS = {"makeCurrent", "releaseContext", "swapBuffers", "updateDisplay", "isCurrent"};
     private static final Set<String> LEGACY_WARNED = ConcurrentHashMap.newKeySet();
     private String legacyHint = "";
+    private LegacyRewriter legacyRewriter;
 
     private static final String[] CORE_EXCLUSIONS = {
         "org.lwjgl",
@@ -959,16 +961,31 @@ public class GLSMRedirector {
 
     public void setLegacyHint(String hint) { this.legacyHint = hint; }
 
+    public void setLegacyRewriter(LegacyRewriter rewriter) { this.legacyRewriter = rewriter; }
+
     private static String simpleName(String internalName) {
         return internalName.substring(internalName.lastIndexOf('/') + 1);
     }
 
     private void warnLegacy(String transformedName, String name, String newOwner) {
+        warnLegacyUse(transformedName, name, "moved to " + simpleName(newOwner) + "." + name);
+    }
+
+    private void warnLegacyUse(String transformedName, String name, String outcome) {
         final int dot = transformedName.lastIndexOf('.');
         final String key = dot < 0 ? transformedName : transformedName.substring(0, dot);
         if (LEGACY_WARNED.add(key)) {
-            LOGGER.warn("{} uses GLStateManager.{}, moved to {}.{}; rewritten at load.{}", transformedName, name, simpleName(newOwner), name, legacyHint.isEmpty() ? "" : " " + legacyHint);
+            LOGGER.warn("{} uses GLStateManager.{}, {}; rewritten at load.{}", transformedName, name, outcome, legacyHint.isEmpty() ? "" : " " + legacyHint);
         }
+    }
+
+    private boolean tryLegacyRewrite(String transformedName, InsnList instructions, MethodInsnNode call) {
+        if (legacyRewriter == null) return false;
+        final String name = call.name;
+        final String replacement = legacyRewriter.rewrite(instructions, call);
+        if (replacement == null) return false;
+        warnLegacyUse(transformedName, name, "redirected to " + replacement);
+        return true;
     }
 
     /** @return Map from GL method name to GLSM method name. {@link #getTargetOwner} gives its class. */
@@ -997,7 +1014,9 @@ public class GLSMRedirector {
             if (isOpenGlHelper && (mn.name.equals("glBlendFunc") || mn.name.equals("func_148821_a"))) {
                 continue;
             }
+            boolean rewroteLegacy = false;
             for (AbstractInsnNode node : mn.instructions.toArray()) {
+                if (rewroteLegacy && !mn.instructions.contains(node)) continue;
                 if (node instanceof TypeInsnNode tNode) {
                     if (tNode.getOpcode() == Opcodes.NEW || tNode.getOpcode() == Opcodes.CHECKCAST) {
                         final String redirect = typeRedirects.get(tNode.desc);
@@ -1020,6 +1039,11 @@ public class GLSMRedirector {
                     }
                 } else if (node instanceof MethodInsnNode mNode) {
                     if (mNode.owner.equals(GLStateManager)) {
+                        if (tryLegacyRewrite(transformedName, mn.instructions, mNode)) {
+                            rewroteLegacy = true;
+                            changed = true;
+                            continue;
+                        }
                         final String newOwner = methodOwner.get(mNode.name);
                         if (newOwner != null) {
                             warnLegacy(transformedName, mNode.name, newOwner);

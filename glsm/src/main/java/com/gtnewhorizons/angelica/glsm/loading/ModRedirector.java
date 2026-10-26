@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.loading;
 
 import com.gtnewhorizons.angelica.glsm.redirect.GLSMRedirector;
+import com.gtnewhorizons.angelica.glsm.redirect.LegacyRewriter;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.tree.ClassNode;
@@ -32,6 +33,10 @@ public class ModRedirector {
 
     public void setLegacyHint(String hint) {
         core.setLegacyHint(hint);
+    }
+
+    public void setLegacyRewriter(LegacyRewriter rewriter) {
+        core.setLegacyRewriter(rewriter);
     }
 
     public ClassDump getDump() {

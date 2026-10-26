@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.glsm.GLSMEnable;
 import com.gtnewhorizons.angelica.glsm.GLSMFog;
 import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import org.joml.Matrix4f;
+import org.joml.Vector3d;
 import org.joml.Vector4f;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -64,6 +65,8 @@ class GLState_GLTest {
 
         final Vector4f rgba = GLState.getFogColor(new Vector4f());
         assertEquals(new Vector4f(0.25f, 0.5f, 0.75f, 0.125f), rgba);
+
+        assertEquals(new Vector3d(0.25, 0.5, 0.75), GLState.getFogColor(new Vector3d()));
 
         final FloatBuffer out = BufferUtils.createFloatBuffer(6);
         out.position(1);
