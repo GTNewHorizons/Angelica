@@ -433,6 +433,11 @@ class GLSMRedirectorTest {
         "org/lwjgl/opengl/EXTDirectStateAccess | glNamedFramebufferTextureFaceEXT | (IIIII)V",
         "org/lwjgl/opengl/EXTDirectStateAccess | glBindMultiTextureEXT | (III)V",
         "org/lwjgl/opengl/ARBShaderImageLoadStore | glBindImageTexture | (IIIZIII)V",
+        "org/lwjgl/opengl/GL30 | glEnablei | (II)V",
+        "org/lwjgl/opengl/GL30 | glDisablei | (II)V",
+        "org/lwjgl/opengl/GL33C | glEnablei | (II)V",
+        "org/lwjgl/opengl/GL33C | glDisablei | (II)V",
+        "org/lwjgl/opengl/GL43 | glCopyImageSubData | (IIIIIIIIIIIIIII)V",
     })
     void redirectsToADeclaredGlsmTarget(String owner, String name, String desc) throws ClassNotFoundException {
         for (boolean aware : new boolean[]{false, true}) {

@@ -10,6 +10,7 @@ import org.spongepowered.asm.lib.Opcodes;
 
 import java.lang.reflect.Method;
 
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class KaizPatchXTransformerTest {
@@ -49,5 +50,20 @@ class KaizPatchXTransformerTest {
             final String result = (String) transformScript.invoke(null, script);
             assertTrue(result.contains("GLSMMatrices."), result);
         }
+    }
+
+    @Test
+    void adoptedClassPassesThrough() {
+        final ClassWriter cw = angelicaCompat();
+        final MethodVisitor init = cw.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "init", "()V", null, null);
+        init.visitCode();
+        init.visitLdcInsn("redirectScript");
+        init.visitInsn(Opcodes.POP);
+        init.visitInsn(Opcodes.RETURN);
+        init.visitMaxs(0, 0);
+        init.visitEnd();
+        cw.visitEnd();
+        final byte[] original = cw.toByteArray();
+        assertSame(original, new KaizPatchXTransformer().transform(DOTTED, DOTTED, original));
     }
 }

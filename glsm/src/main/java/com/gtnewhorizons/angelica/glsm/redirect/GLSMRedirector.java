@@ -550,7 +550,9 @@ public class GLSMRedirector {
             .add("glIsFramebuffer")
             .add("glIsRenderbuffer")
             .add("glBindBufferBase")
-            .add("glBindBufferRange");
+            .add("glBindBufferRange")
+            .add("glEnablei")
+            .add("glDisablei");
         final var gl31 = RedirectMap.newMap()
             .add("glDrawElementsInstanced")
             .add("glDrawArraysInstanced")
@@ -584,7 +586,8 @@ public class GLSMRedirector {
             .add("glVertexAttribFormat")
             .add("glVertexAttribIFormat")
             .add("glVertexAttribBinding")
-            .add("glMultiDrawElementsIndirect");
+            .add("glMultiDrawElementsIndirect")
+            .add("glCopyImageSubData");
         final var gl44 = RedirectMap.newMap()
             .add("glBufferStorage")
             .add("glBindSamplers")

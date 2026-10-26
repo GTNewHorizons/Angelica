@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.loading.fml.compat.transformers.specific;
 
+import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
 import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
 import com.gtnewhorizons.angelica.loading.shared.AngelicaClassDump;
 import net.minecraft.launchwrapper.IClassTransformer;
@@ -15,11 +16,18 @@ public class KaizPatchXTransformer implements IClassTransformer {
 
     private static final String ANGELICA_COMPAT = "jp.kaiz.kaizpatch.compat.AngelicaCompat";
     private static final String SCRIPT_DESC = "(Ljava/lang/String;)Ljava/lang/String;";
+    private static final String GL_REDIRECTS = "com/gtnewhorizons/angelica/api/GLRedirects";
+    private static final String REDIRECT_SCRIPT = "redirectScript";
+    private static final ClassConstantPoolParser ADOPTED = new ClassConstantPoolParser(REDIRECT_SCRIPT);
 
     @Override
     public byte[] transform(String name, String transformedName, byte[] basicClass) {
         if (basicClass == null) return null;
         if (!transformedName.equals(ANGELICA_COMPAT)) return basicClass;
+        if (ADOPTED.find(basicClass)) {
+            AngelicaClientTweaker.LOGGER.info("[AngelicaCompat]Extra Transformers: KaizPatchXTransformer skipped, {} already calls GLRedirects.redirectScript", transformedName);
+            return basicClass;
+        }
 
         final ClassReader cr = new ClassReader(basicClass);
         final ClassNode cn = new ClassNode();
@@ -39,9 +47,7 @@ public class KaizPatchXTransformer implements IClassTransformer {
 
         for (AbstractInsnNode in : target.instructions.toArray()) {
             if (in.getOpcode() == Opcodes.ARETURN) {
-                target.instructions.insertBefore(
-                    in,
-                    new MethodInsnNode(Opcodes.INVOKESTATIC, "com/gtnewhorizons/angelica/api/GLRedirects", "redirectScript", SCRIPT_DESC, false));
+                target.instructions.insertBefore(in, new MethodInsnNode(Opcodes.INVOKESTATIC, GL_REDIRECTS, REDIRECT_SCRIPT, SCRIPT_DESC, false));
             }
         }
 
