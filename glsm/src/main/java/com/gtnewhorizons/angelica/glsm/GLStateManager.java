@@ -61,7 +61,6 @@ import com.gtnewhorizons.angelica.glsm.stacks.ViewPortStateStack;
 import com.gtnewhorizons.angelica.glsm.states.AlphaState;
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import com.gtnewhorizons.angelica.glsm.states.ClipPlaneState;
-import com.gtnewhorizons.angelica.glsm.states.Color4;
 import com.gtnewhorizons.angelica.glsm.states.ColorMask;
 import com.gtnewhorizons.angelica.glsm.states.PixelStoreState;
 import com.gtnewhorizons.angelica.glsm.states.PolygonState;
@@ -377,8 +376,6 @@ public class GLStateManager {
     public static long attribValueRestores;
     public static long attribBackendCalls;
     public static long attribDiscards;
-    public static int programGeneration;
-    public static int drawFramebufferGeneration;
 
     // Thread Checking - must be early in static init order so isMainThread() works for state initialization
     @Getter private static final Thread MainThread = Thread.currentThread();
@@ -412,8 +409,6 @@ public class GLStateManager {
 
     public static final GLFeatureSet HAS_MULTIPLE_SET = new GLFeatureSet();
 
-    // Generation counters for FFP uniform dirty tracking. Bumped when the corresponding GLSM state changes.
-    // Per-matrix-mode generation counters - avoids re-uploading all matrices when only one mode changed
     public static void setOverlayColor(float r, float g, float b, float a) {
         final GLContextState glCtx = ctx();
         glCtx.exitCapture.write(ExitStateCapture.OVERLAY_COLOR);
@@ -639,9 +634,6 @@ public class GLStateManager {
         s.beforeModify();
         return s;
     }
-
-    // Additional enable bit states tracked by GL_ENABLE_BIT
-
 
     // Line width range queried at init from GL_ALIASED_LINE_WIDTH_RANGE
     static float lineWidthMin = 1.0f;
@@ -1722,8 +1714,6 @@ public class GLStateManager {
         ctx().clipPlaneState.getEyePlane(index, equation);
     }
 
-    // GLStateManager Functions
-
     public static void glBlendColor(float red, float green, float blue, float alpha) {
         rejectExitCapture();
         final GLContextState glCtx = ctx();
@@ -2020,19 +2010,6 @@ public class GLStateManager {
         tryBlendFuncSeparate(srcRGB, dstRGB, srcAlpha, dstAlpha);
     }
 
-    public static void checkCompiling() {
-        checkCompiling("");
-    }
-
-    public static void checkCompiling(String name) {
-        if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("Not yet implemented (" + name + ")");
-        }
-    }
-
-    // Records glBegin/glEnd/glVertex and compiles them to a VBO
-    // Currently only used inside of display lists
-
     public static void glNormal3b(byte nx, byte ny, byte nz) {
         final float fnx = b2f(nx), fny = b2f(ny), fnz = b2f(nz);
         final GLContextState glCtx = ctx();
@@ -2286,14 +2263,6 @@ public class GLStateManager {
             glCtx.secondaryColor.setBlue(blue);
             glCtx.fragmentGeneration++;
         }
-    }
-
-    private static final Color4 DirtyColor = new Color4(-1.0F, -1.0F, -1.0F, -1.0F);
-
-    public static void clearCurrentColor() {
-        rejectExitCapture();
-        // Marks the cache dirty, doesn't actually reset the color
-        mod(ctx().color).set(DirtyColor);
     }
 
     public static void glColorMask(boolean red, boolean green, boolean blue, boolean alpha) {
@@ -4810,10 +4779,6 @@ public class GLStateManager {
         }
     }
 
-    public static void setFogBlack() {
-        glFogf(GL11.GL_FOG_COLOR, 0.0F);
-    }
-
     public static void glShadeModel(int mode) {
         final GLContextState glCtx = ctx();
         glCtx.exitCapture.write(ExitStateCapture.SHADE_MODEL);
@@ -4978,10 +4943,6 @@ public class GLStateManager {
      */
     public static boolean isRecordingDisplayList() {
         return DisplayListManager.isRecording();
-    }
-
-    public static int getRecordingDisplayListId() {
-        return DisplayListManager.getRecordingListId();
     }
 
     private static final DisplayListIDAllocator displayListIdAllocator = new DisplayListIDAllocator();
@@ -7229,11 +7190,6 @@ public class GLStateManager {
         glShaderSource(shader, sb.toString());
     }
 
-    /** Check shader type to determine if fragment output transformation is needed. */
-    private static boolean isFragmentShader(int shader) {
-        return RENDER_BACKEND.getShaderi(shader, GL20.GL_SHADER_TYPE) == GL20.GL_FRAGMENT_SHADER;
-    }
-
     // Texture commands
     public static void glTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, ByteBuffer pixels) {
         rejectExitCapture();
@@ -8836,14 +8792,6 @@ public class GLStateManager {
         }
     }
 
-    private static void checkMismatch(int cap) {
-        final int cached = GLStateManager.glGetInteger(cap);
-        final int actual = RENDER_BACKEND.getInteger(cap);
-        if (actual != cached) {
-            throw new IllegalStateException("GLSM Mismatch! cap=" + cap + " cached=" + cached + " actual=" + actual);
-        }
-    }
-
     public static boolean isFramebufferEnabled() {
         return true;
     }
@@ -9877,14 +9825,6 @@ public class GLStateManager {
         return ctx().fragmentGeneration;
     }
 
-    public static int getColorGeneration() {
-        return ctx().colorGeneration;
-    }
-
-    public static int getClipPlaneGeneration() {
-        return ctx().clipPlaneGeneration;
-    }
-
     public static float getOverlayR() {
         return ctx().overlayR;
     }
@@ -10304,10 +10244,6 @@ public class GLStateManager {
         return ctx().activeProgram;
     }
 
-    public static int getListBase() {
-        return ctx().listBase;
-    }
-
     public static int getBoundVBO() {
         return ctx().boundVBO;
     }
@@ -10330,10 +10266,6 @@ public class GLStateManager {
 
     public static int getReadFramebuffer() {
         return ctx().readFramebuffer;
-    }
-
-    public static int getTexGenGeneration() {
-        return ctx().texGenGeneration;
     }
 
     public static void incrementFragmentGeneration() {
