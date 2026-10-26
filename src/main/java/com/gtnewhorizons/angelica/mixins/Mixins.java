@@ -68,6 +68,10 @@ public enum Mixins implements IMixins {
             , "angelica.optimizations.MixinRenderBiped_ArmorResource"
             , "angelica.optimizations.MixinRendererLivingEntity"
             , "angelica.rendering.MixinRenderGlobal_SelectionBox"
+            , "angelica.textures.MixinForgeHooksClient_GuiSupersampling"
+            , "angelica.textures.MixinRenderBlocks_GuiSupersampling"
+            , "angelica.textures.MixinRenderItem_GuiSupersampling"
+            , "angelica.textures.MixinTileEntityRendererDispatcher_GuiSupersampling"
             , "angelica.gui.MixinGuiIngameForge_ModernF3"
             , "angelica.textures.MixinRenderItem_GuiSampler"
         )
@@ -658,6 +662,11 @@ public enum Mixins implements IMixins {
         .addExcludedMod(TargetedMod.LUMI)
         .setApplyIf(() -> AngelicaConfig.optimizeWorldUpdateLight)
         .addCommonMixins("angelica.lighting.MixinWorld_FixLightUpdateLag")),
+
+    TESR_LIGHT_CACHE(new MixinBuilder("Cache the tile-entity dispatcher's per-tile lightmap lookup for one tick")
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> AngelicaConfig.enableTESRLightCache)
+        .addClientMixins("angelica.lighting.MixinTileEntityRendererDispatcher_LightCache")),
 
     SPEEDUP_VANILLA_ANIMATIONS(new MixinBuilder()
         .setPhase(Phase.EARLY)

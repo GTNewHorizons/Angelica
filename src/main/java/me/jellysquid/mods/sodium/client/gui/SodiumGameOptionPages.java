@@ -287,6 +287,15 @@ public class SodiumGameOptionPages {
                 .add(texelSampling)
                 .add(anisotropicFilteringSlider(vanillaOpts, textureFilterMode::getValue),
                     SodiumGameOptions.anisotropySupported())
+                .add(OptionImpl.createBuilder(int.class, sodiumOpts)
+                    .setName(I18n.format("sodium.options.gui_block_supersampling.name"))
+                    .setTooltip(I18n.format("sodium.options.gui_block_supersampling.tooltip"))
+                    .setControl(option -> new SliderControl(option, 0, 4, 1,
+                        value -> value == 0 ? I18n.format("options.off") : (1 << value) + "x"))
+                    .setBinding((opts, value) -> opts.quality.guiBlockSupersampling = 1 << value,
+                        opts -> Integer.numberOfTrailingZeros(opts.quality.guiBlockSupersampling))
+                    .setImpact(OptionImpact.LOW)
+                    .build())
                 .add(biomeBlendRadius)
                 .add(biomeBlendMode)
                 // TODO

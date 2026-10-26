@@ -153,6 +153,7 @@ public class SodiumGameOptions {
         if (config.quality.texelSampling == null) {
             config.quality.texelSampling = TexelSampling.LINEAR;
         }
+        config.quality.guiBlockSupersampling = Integer.highestOneBit(MathHelper.clamp_int(config.quality.guiBlockSupersampling, 1, 16));
 
         if (config.quality.mipmapGeneration == null) {
             config.quality.mipmapGeneration = MipmapGeneration.MODERN_VANILLA;
@@ -257,6 +258,7 @@ public class SodiumGameOptions {
         public TextureFilterMode textureFilterMode = TextureFilterMode.RGSS_ANISOTROPIC;
         public TexelSampling texelSampling = TexelSampling.LINEAR;
         public MipmapGeneration mipmapGeneration = MipmapGeneration.MODERN_VANILLA;
+        public int guiBlockSupersampling = 1;
     }
 
     public static class ReducerSettings {

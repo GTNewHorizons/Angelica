@@ -646,7 +646,7 @@ final class CloudVertexMesh {
         vao.bind();
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vao.getVBO().getId());
         GLStateManager.glEnableVertexAttribArray(FACE_SHADE_ATTRIB);
-        GLStateManager.glVertexAttribPointer(FACE_SHADE_ATTRIB, 1, GL11.GL_UNSIGNED_BYTE, true, vertexStride, normalOffset + 3);
+        GLStateManager.glVertexAttribPointer(FACE_SHADE_ATTRIB, 4, GL11.GL_UNSIGNED_BYTE, true, vertexStride, normalOffset);
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         vao.unbind();
     }

@@ -58,7 +58,7 @@ public class ThreadedAngelicaChunkBuilderMeshingTask extends AngelicaChunkBuilde
             buildContext.setupLightPipeline(minX, minY, minZ);
         } else {
             // Fallback: direct world access (main thread only)
-            final var world = Minecraft.getMinecraft().theWorld;
+            final var world = buildContext.getWorld();
             this.blockAccess = new ChunkCache(world, minX - 1, minY - 1, minZ - 1, minX + 17, minY + 17, minZ + 17, 1);
             this.biomeColorCache = ((WorldClientExtension) world).celeritas$getSmoothBiomeColorCache();
             this.biomeColorCache.update(new SectionPos(this.render.getChunkX(), this.render.getChunkY(), this.render.getChunkZ()));
