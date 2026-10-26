@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.loading.fml.transformers;
 
 import com.gtnewhorizons.angelica.glsm.loading.EarlyRedirectorCore;
 import com.gtnewhorizons.angelica.glsm.loading.EcosystemNarrowRules;
+import com.gtnewhorizons.angelica.loading.shared.transformers.AngelicaRedirector;
 import net.minecraft.launchwrapper.IClassTransformer;
 
 /**
@@ -19,6 +20,10 @@ import net.minecraft.launchwrapper.IClassTransformer;
 public class EarlyRedirectorTransformer implements IClassTransformer {
 
     private final EarlyRedirectorCore impl = new EarlyRedirectorCore("com.gtnewhorizons.angelica.transform");
+
+    public EarlyRedirectorTransformer() {
+        impl.setLegacyHint(AngelicaRedirector.LEGACY_HINT);
+    }
 
     @Override
     public byte[] transform(String name, String transformedName, byte[] basicClass) {

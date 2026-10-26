@@ -30,6 +30,10 @@ public class ModRedirector {
         this.allExclusions = exclusions.toArray(new String[0]);
     }
 
+    public void setLegacyHint(String hint) {
+        core.setLegacyHint(hint);
+    }
+
     public ClassDump getDump() {
         return dump;
     }

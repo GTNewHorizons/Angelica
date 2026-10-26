@@ -11,8 +11,7 @@ import java.util.regex.Pattern;
  * Public API for querying Angelica's GL call redirections.
  * <p>
  * Angelica's bytecode transformer redirects GL calls (e.g., {@code GL11.glPushMatrix()}) to
- * {@link com.gtnewhorizons.angelica.glsm.GLStateManager GLStateManager} for state tracking and
- * core profile compatibility. This works for normal Java bytecode loaded through the Forge classloader,
+ * the GLSM classes for state tracking and core profile compatibility. This works for normal Java bytecode loaded through the Forge classloader,
  * but callers that bypass class transformation (e.g., Nashorn/script engines, reflection, MethodHandles)
  * need to perform their own redirection.
  * <p>
@@ -23,25 +22,18 @@ import java.util.regex.Pattern;
  * Given a script that uses {@code importPackage(Packages.org.lwjgl.opengl)} and calls
  * {@code GL11.glPushMatrix()}, the text transformation rewrites those calls before evaluation:
  * <pre>{@code
- * // Make GLStateManager available to the script -- either via importPackage:
  * script = "importPackage(Packages.com.gtnewhorizons.angelica.glsm);\n" + script;
- * // ... or via Java.type for an explicit binding:
- * // script = "var GLStateManager = Java.type('" + GLRedirects.TARGET_CLASS + "');\n" + script;
  *
  * // Rewrite: GL11.glPushMatrix() -> GLStateManager.glPushMatrix()
  * script = GLRedirects.getMethodRedirectPattern().matcher(script).replaceAll(mr -> {
- *     String target = GLRedirects.getTargetMethodName(mr.group(0));
- *     return target != null ? "GLStateManager." + target : mr.group(0);
+ *     String ref = GLRedirects.getTargetReference(mr.group(0));
+ *     return ref != null ? ref : mr.group(0);
  * });
  *
  * engine.eval(script);
  * }</pre>
  */
 public final class GLRedirects {
-    /** Fully qualified name of the GLStateManager class that all methods redirect to. */
-    @SuppressWarnings("unused")
-    public static final String TARGET_CLASS = "com.gtnewhorizons.angelica.glsm.GLStateManager";
-
     private static final String SHORT_GL_PREFIX;
     private static final Map<String, Map<String, String>> NAMED_CLASS_SHORT_NAME_MAP;
     private static final Map<String, String> GL_PREFIX_METHOD_REDIRECTS;
@@ -67,10 +59,10 @@ public final class GLRedirects {
     }
 
     /**
-     * Looks up the GLStateManager target method name for a short-name reference.
+     * Looks up the GLSM method a short-name reference redirects to.
      *
      * @param classAndMethod short class name and method, e.g., {@code "GL11.glPushMatrix"}
-     * @return the target method name on GLStateManager (e.g., {@code "glPushMatrix"}), or {@code null} if this reference is not redirected
+     * @return the GLSM method name (e.g., {@code "glPushMatrix"}), or {@code null} if this reference is not redirected
      */
     public static String getTargetMethodName(String classAndMethod) {
         final int dot = classAndMethod.indexOf('.');
@@ -89,6 +81,19 @@ public final class GLRedirects {
         }
 
         return null;
+    }
+
+    /**
+     * Looks up the simple-class-qualified redirect target for a short-name reference.
+     *
+     * @param classAndMethod short class name and method, e.g., {@code "GL11.glPushMatrix"}
+     * @return e.g. {@code "GLStateManager.glPushMatrix"}, or {@code null} if this reference is not redirected
+     */
+    public static String getTargetReference(String classAndMethod) {
+        final String method = getTargetMethodName(classAndMethod);
+        if (method == null) return null;
+        final String owner = GLSMRedirector.getTargetOwner(method);
+        return owner.substring(owner.lastIndexOf('/') + 1) + "." + method;
     }
 
     private static String buildShortGLPrefix() {

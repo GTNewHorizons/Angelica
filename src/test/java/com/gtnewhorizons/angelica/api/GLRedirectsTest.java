@@ -151,8 +151,8 @@ class GLRedirectsTest {
         String script = "GL11.glPushMatrix();\nGL11.glTranslatef(1,2,3);\nGL11.glEnable(GL11.GL_BLEND);";
 
         String result = GLRedirects.getMethodRedirectPattern().matcher(script).replaceAll(mr -> {
-            String target = GLRedirects.getTargetMethodName(mr.group(0));
-            return target != null ? "GLStateManager." + target : mr.group(0);
+            String ref = GLRedirects.getTargetReference(mr.group(0));
+            return ref != null ? ref : mr.group(0);
         });
 
         assertTrue(result.contains("GLStateManager.glPushMatrix()"), "glPushMatrix not redirected: " + result);

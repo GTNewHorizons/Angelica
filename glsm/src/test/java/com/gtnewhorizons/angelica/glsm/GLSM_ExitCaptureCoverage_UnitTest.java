@@ -1,22 +1,16 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizons.angelica.glsm.redirect.GLSMRedirector;
+import com.gtnewhorizons.angelica.glsm.testutil.GlsmClasses;
 import org.junit.jupiter.api.Test;
-import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
-import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -25,7 +19,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class GLSM_ExitCaptureCoverage_UnitTest {
 
     private static final String PACKAGE = "com/gtnewhorizons/angelica/glsm/";
-    private static final String MANAGER = PACKAGE + "GLStateManager";
     private static final String RENDER_SYSTEM = PACKAGE + "RenderSystem";
     private static final String CAPTURE = PACKAGE + "ExitStateCapture";
 
@@ -45,7 +38,6 @@ class GLSM_ExitCaptureCoverage_UnitTest {
         // Others
         "glInitNames", "glPushName", "glPopName", "glLoadName", "isFramebufferEnabled", "gluUnProject", "gluErrorString");
 
-    private final Map<String, ClassNode> classes = new HashMap<>();
     private final Set<String> reaching = new HashSet<>();
     private final Set<String> notReaching = new HashSet<>();
     private Set<String> counted = RECORDING;
@@ -54,7 +46,11 @@ class GLSM_ExitCaptureCoverage_UnitTest {
     void everyEntryPointRejectsOrRecordsTheExitCapture() {
         final Set<String> entryPoints = new HashSet<>(GLSMRedirector.getGLPrefixMethodRedirects().values());
         GLSMRedirector.getNamedClassMethodRedirects().values().forEach(redirects -> entryPoints.addAll(redirects.values()));
-        final List<String> missing = missing(MANAGER, name -> name.startsWith("gl") || entryPoints.contains(name), method -> reachesCapture(MANAGER, method));
+        final List<String> missing = new ArrayList<>();
+        for (String owner : GlsmClasses.classes()) {
+            missing.addAll(missing(owner, name -> name.startsWith("gl") || entryPoints.contains(name), method -> reachesCapture(owner, method)));
+        }
+        missing.sort(null);
         assertTrue(missing.isEmpty(), "Entry points that neither reject nor record an exit capture:\n  " + String.join("\n  ", missing));
     }
 
@@ -66,13 +62,13 @@ class GLSM_ExitCaptureCoverage_UnitTest {
         final List<String> missing = missing(RENDER_SYSTEM, name -> !name.equals("initRenderer") && !name.equals("getVRAM")
             && !name.matches("(supports|has|is|getMax|getGl|parse|probe).*"), method -> reachesCapture(RENDER_SYSTEM, method)
             && (!calls(method, owner -> owner.startsWith(PACKAGE + "backend/") || owner.startsWith(PACKAGE + "dsa/"))
-                || calls(method, owner -> owner.equals(MANAGER), "rejectExitCapture", "beforeUncapturedStateChange")));
+                || calls(method, GlsmClasses.classes()::contains, "rejectExitCapture", "beforeUncapturedStateChange")));
         assertTrue(missing.isEmpty(), "RenderSystem methods that do not reject an exit capture:\n  " + String.join("\n  ", missing));
     }
 
     private List<String> missing(String owner, Predicate<String> checked, Predicate<MethodNode> covered) {
         final List<String> missing = new ArrayList<>();
-        for (MethodNode method : load(owner).methods) {
+        for (MethodNode method : GlsmClasses.load(owner).methods) {
             if ((method.access & (Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC)) != (Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC)) continue;
             if ((method.access & Opcodes.ACC_SYNTHETIC) != 0) continue;
             if (!checked.test(method.name) || IGNORED.contains(method.name)) continue;
@@ -114,38 +110,9 @@ class GLSM_ExitCaptureCoverage_UnitTest {
                 continue;
             }
             if (!call.owner.startsWith(PACKAGE)) continue;
-            final String[] declaring = new String[1];
-            final MethodNode target = resolve(call.owner, call.name, call.desc, declaring);
-            if (target != null && search(declaring[0], target, visited)) return true;
+            final GlsmClasses.Resolved target = GlsmClasses.resolve(call.owner, call.name, call.desc);
+            if (target != null && search(target.owner(), target.method(), visited)) return true;
         }
         return false;
-    }
-
-    private MethodNode resolve(String owner, String name, String desc, String[] declaring) {
-        for (String type = owner; type != null && type.startsWith(PACKAGE); ) {
-            final ClassNode node = load(type);
-            for (MethodNode method : node.methods) {
-                if (method.name.equals(name) && method.desc.equals(desc)) {
-                    if (method.instructions.size() == 0) return null;
-                    declaring[0] = type;
-                    return method;
-                }
-            }
-            type = node.superName;
-        }
-        return null;
-    }
-
-    private ClassNode load(String internalName) {
-        return classes.computeIfAbsent(internalName, name -> {
-            try (InputStream in = GLSM_ExitCaptureCoverage_UnitTest.class.getClassLoader().getResourceAsStream(name + ".class")) {
-                if (in == null) throw new IllegalStateException("Missing class file for " + name);
-                final ClassNode node = new ClassNode();
-                new ClassReader(in).accept(node, ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
-                return node;
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
-        });
     }
 }
