@@ -2,7 +2,11 @@ package net.coderbot.iris.postprocess;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import it.unimi.dsi.fastutil.ints.IntList;
@@ -156,7 +160,7 @@ public class FinalPassRenderer {
 
 		this.swapPasses = swapPasses.build();
 
-		GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, 0);
+		GLSMFramebuffer.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, 0);
 	}
 
 	private Map<PatchShaderType, String> getTransformed(ProgramSource source, CompletableFuture<Map<PatchShaderType, String>> precomputedTransformFuture, String stageName) {
@@ -200,9 +204,9 @@ public class FinalPassRenderer {
 	}
 
 	public void renderFinalPass() {
-        GLStateManager.disableBlend();
-        GLStateManager.disableAlphaTest();
-        GLStateManager.glDepthMask(false);
+        GLSMBlend.disableBlend();
+        GLSMDepthStencilAlpha.disableAlphaTest();
+        GLSMDepthStencilAlpha.glDepthMask(false);
 
         final Framebuffer main = Minecraft.getMinecraft().getFramebuffer();
 		final int baseWidth = main.framebufferWidth;
@@ -255,7 +259,7 @@ public class FinalPassRenderer {
 			}
 
 			if (!finalPass.mipmappedBuffers.isEmpty()) {
-				GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+				GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
 
 				final ImmutableSet<Integer> readsFromAlt = renderTargets.parityResolve(finalPass.stageReadsFromAlt);
 				for (int index : finalPass.mipmappedBuffers) {
@@ -288,7 +292,7 @@ public class FinalPassRenderer {
 		}
 		profiler.endSection();
 
-		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+		GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
 
 		for (int i = 0; i < renderTargets.getRenderTargetCount(); i++) {
 			// Reset mipmapping states at the end of the frame.
@@ -308,8 +312,8 @@ public class FinalPassRenderer {
 			// Also note that RenderTargets already calls readBuffer(0) for us.
 			swapPass.from.bind();
 
-			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, swapPass.targetTexture);
-            GLStateManager.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, swapPass.width, swapPass.height);
+			GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, swapPass.targetTexture);
+            GLSMTextures.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, swapPass.width, swapPass.height);
 		}
 		profiler.endSection();
 
@@ -318,17 +322,17 @@ public class FinalPassRenderer {
         main.bindFramebuffer(true);
 		ProgramUniforms.clearActiveUniforms();
 		ProgramSamplers.clearActiveSamplers();
-		GLStateManager.glUseProgram(0);
+		GLSMPrograms.glUseProgram(0);
 
-		final int maxUnit = Math.min(SamplerLimits.get().getMaxTextureUnits() - 1, GLStateManager.getMaxBoundTextureUnit());
+		final int maxUnit = Math.min(SamplerLimits.get().getMaxTextureUnits() - 1, GLSMTextures.getMaxBoundTextureUnit());
 		for (int i = 0; i <= maxUnit; i++) {
 			// Unbind all textures that we may have used.
 			// NB: This is necessary for shader pack reloading to work properly
-			GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + i);
-			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+			GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0 + i);
+			GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
 		}
 
-		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+		GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
 	}
 
 	public void recalculateSwapPassSize() {
@@ -379,7 +383,7 @@ public class FinalPassRenderer {
 		RenderSystem.texParameteri(target.getMainTexture(), GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, filter);
 		RenderSystem.texParameteri(target.getAltTexture(), GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, filter);
 
-		GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+		GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
 	}
 
 	// TODO: Don't just copy this from DeferredWorldRenderingPipeline

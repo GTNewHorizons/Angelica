@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMLighting;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import com.gtnewhorizons.angelica.glsm.states.LightState;
 import com.gtnewhorizons.angelica.glsm.states.MaterialState;
 import org.joml.Matrix3f;
@@ -20,23 +21,23 @@ public final class FFPVertexLighting {
     public static boolean modulatesVertexColor(Vector3f destFactor) {
         destFactor.set(1.0f);
 
-        if (!GLStateManager.getLightingState().isEnabled()) return false;
-        if (!GLStateManager.getColorMaterial().isEnabled()) return false;
-        if (VertexKey.encodeColorMaterialMode(GLStateManager.getColorMaterialParameter().getValue()) != VertexKey.CM_AMBIENT_AND_DIFFUSE) return false;
+        if (!GLSMLighting.getLightingState().isEnabled()) return false;
+        if (!GLSMLighting.getColorMaterial().isEnabled()) return false;
+        if (VertexKey.encodeColorMaterialMode(GLSMLighting.getColorMaterialParameter().getValue()) != VertexKey.CM_AMBIENT_AND_DIFFUSE) return false;
 
-        final MaterialState material = GLStateManager.getFrontMaterial();
+        final MaterialState material = GLSMLighting.getFrontMaterial();
         if (material.emission.x != 0.0f || material.emission.y != 0.0f || material.emission.z != 0.0f)
             return false;
 
         final boolean materialHasSpecular = material.shininess > 0.0f && (material.specular.x != 0.0f || material.specular.y != 0.0f || material.specular.z != 0.0f);
 
-        final Vector4f lightModelAmbient = GLStateManager.getLightModel().ambient;
+        final Vector4f lightModelAmbient = GLSMLighting.getLightModel().ambient;
         float r = lightModelAmbient.x;
         float g = lightModelAmbient.y;
         float b = lightModelAmbient.z;
 
-        final var lightEnables = GLStateManager.getLightStates();
-        final var lightData = GLStateManager.getLightDataStates();
+        final var lightEnables = GLSMLighting.getLightStates();
+        final var lightData = GLSMLighting.getLightDataStates();
         boolean normalReady = false;
 
         for (int i = 0; i < VertexKey.FFP_LIGHT_COUNT; i++) {
@@ -61,12 +62,12 @@ public final class FFPVertexLighting {
     }
 
     private static void transformCurrentNormal() {
-        GLStateManager.getModelViewMatrix().normal(scratchNormalMat);
+        GLSMMatrices.getModelViewMatrix().normal(scratchNormalMat);
         scratchNormal.set(ShaderManager.getCurrentNormal());
         scratchNormalMat.transform(scratchNormal);
-        if (GLStateManager.getNormalizeState().isEnabled()) {
+        if (GLSMLighting.getNormalizeState().isEnabled()) {
             scratchNormal.normalize();
-        } else if (GLStateManager.getRescaleNormalState().isEnabled()) {
+        } else if (GLSMLighting.getRescaleNormalState().isEnabled()) {
             scratchNormal.mul(Uniforms.rescaleFactor(scratchNormalMat, scratchVec));
         }
     }
@@ -75,7 +76,7 @@ public final class FFPVertexLighting {
         if (light.position.w == 0.0f) {
             scratchLightVec.set(light.position.x, light.position.y, light.position.z);
         } else {
-            scratchEyePos.set(0.0f, 0.0f, 0.0f, 1.0f).mul(GLStateManager.getModelViewMatrix());
+            scratchEyePos.set(0.0f, 0.0f, 0.0f, 1.0f).mul(GLSMMatrices.getModelViewMatrix());
             scratchLightVec.set(light.position.x - scratchEyePos.x, light.position.y - scratchEyePos.y, light.position.z - scratchEyePos.z);
         }
         return scratchLightVec.normalize();

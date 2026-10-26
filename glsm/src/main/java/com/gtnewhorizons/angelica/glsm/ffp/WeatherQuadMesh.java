@@ -2,7 +2,8 @@ package com.gtnewhorizons.angelica.glsm.ffp;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 
@@ -32,37 +33,37 @@ public final class WeatherQuadMesh {
         for (float corner : CORNERS) data.putFloat(corner);
         data.flip();
 
-        vao = GLStateManager.glGenVertexArrays();
-        GLStateManager.glBindVertexArray(vao);
-        vbo = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-        GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, data, GL15.GL_STATIC_DRAW);
+        vao = GLSMVertexInput.glGenVertexArrays();
+        GLSMVertexInput.glBindVertexArray(vao);
+        vbo = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, data, GL15.GL_STATIC_DRAW);
 
         final int corner = VertexFormatElement.Usage.PRIMARY_UV.getAttributeLocation();
-        GLStateManager.glEnableVertexAttribArray(corner);
-        GLStateManager.glVertexAttribPointer(corner, 2, GL11.GL_FLOAT, false, 2 * Float.BYTES, 0L);
+        GLSMVertexInput.glEnableVertexAttribArray(corner);
+        GLSMVertexInput.glVertexAttribPointer(corner, 2, GL11.GL_FLOAT, false, 2 * Float.BYTES, 0L);
         WeatherInstancedAttribs.enableInstanceArrays();
 
-        GLStateManager.glBindVertexArray(0);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLSMVertexInput.glBindVertexArray(0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         return vao;
     }
 
     public static void bindInstanceBuffer(int bufferId) {
-        GLStateManager.glBindVertexArray(vao());
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, bufferId);
+        GLSMVertexInput.glBindVertexArray(vao());
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, bufferId);
         WeatherInstancedAttribs.pointInstanceAttribs(0L);
-        GLStateManager.glBindVertexArray(0);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLSMVertexInput.glBindVertexArray(0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
     }
 
     public static void delete() {
         if (vbo != 0) {
-            GLStateManager.glDeleteBuffers(vbo);
+            GLSMBuffers.glDeleteBuffers(vbo);
             vbo = 0;
         }
         if (vao != 0) {
-            GLStateManager.glDeleteVertexArrays(vao);
+            GLSMVertexInput.glDeleteVertexArrays(vao);
             vao = 0;
         }
     }

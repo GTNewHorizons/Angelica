@@ -1,6 +1,10 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMFog;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.BufferUtils;
@@ -19,26 +23,26 @@ class FFPUniformValuesTest {
 
     @Test
     void uploadedValuesMatchState() {
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glPushMatrix();
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glPushMatrix();
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glTranslatef(1.0f, 2.0f, 3.0f);
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glPushMatrix();
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glPushMatrix();
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glTranslatef(1.0f, 2.0f, 3.0f);
 
-        GLStateManager.glColor4f(0.25f, 0.5f, 0.75f, 1.0f);
+        GLSMCurrentAttribs.glColor4f(0.25f, 0.5f, 0.75f, 1.0f);
 
-        GLStateManager.enableFog();
-        GLStateManager.glFogi(GL11.GL_FOG_MODE, GL11.GL_LINEAR);
-        GLStateManager.glFogf(GL11.GL_FOG_START, 10.0f);
-        GLStateManager.glFogf(GL11.GL_FOG_END, 20.0f);
+        GLSMFog.enableFog();
+        GLSMFog.glFogi(GL11.GL_FOG_MODE, GL11.GL_LINEAR);
+        GLSMFog.glFogf(GL11.GL_FOG_START, 10.0f);
+        GLSMFog.glFogf(GL11.GL_FOG_END, 20.0f);
         final FloatBuffer fogColor = BufferUtils.createFloatBuffer(4);
         fogColor.put(0.1f).put(0.2f).put(0.3f).put(0.4f).flip();
-        GLStateManager.glFog(GL11.GL_FOG_COLOR, fogColor);
+        GLSMFog.glFog(GL11.GL_FOG_COLOR, fogColor);
 
-        GLStateManager.enableAlphaTest();
-        GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.35f);
+        GLSMDepthStencilAlpha.enableAlphaTest();
+        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, 0.35f);
 
         final VertexKey vk = VertexKey.fromState(false, false, false, false, 0);
         final FragmentKey fk = FragmentKey.fromState();
@@ -77,14 +81,14 @@ class FFPUniformValuesTest {
             program.destroy();
             uniforms.destroy();
 
-            GLStateManager.disableAlphaTest();
-            GLStateManager.glAlphaFunc(GL11.GL_ALWAYS, 0.0f);
-            GLStateManager.disableFog();
-            GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-            GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-            GLStateManager.glPopMatrix();
-            GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-            GLStateManager.glPopMatrix();
+            GLSMDepthStencilAlpha.disableAlphaTest();
+            GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_ALWAYS, 0.0f);
+            GLSMFog.disableFog();
+            GLSMCurrentAttribs.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+            GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+            GLSMMatrices.glPopMatrix();
+            GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+            GLSMMatrices.glPopMatrix();
         }
     }
 }

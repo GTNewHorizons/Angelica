@@ -4,6 +4,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.CallbackTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement.Usage;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.GLTypes;
 import com.gtnewhorizons.angelica.glsm.QuadConverter;
@@ -77,7 +78,7 @@ public final class ImmediateModeRecorder {
 
     /**
      * Set the current lightmap coordinate as packed brightness.
-     * Called by GLStateManager.glMultiTexCoord2f for unit 1 during recording/drawing.
+     * Called by GLSMCurrentAttribs.glMultiTexCoord2f for unit 1 during recording/drawing.
      */
     public static void setLightmapCoord(float s, float t) {
         tessellator().setBrightness(((int) t << 16) | ((int) s & 0xFFFF));
@@ -119,7 +120,7 @@ public final class ImmediateModeRecorder {
         final DirectTessellator t = tessellator();
         t.reset();
         t.startDrawing(primitiveType);
-        final var c = GLStateManager.getColor();
+        final var c = GLSMCurrentAttribs.getColor();
         t.setColorRGBA((int) (c.getRed() * 255.0f), (int) (c.getGreen() * 255.0f), (int) (c.getBlue() * 255.0f), (int) (c.getAlpha() * 255.0f));
     }
 

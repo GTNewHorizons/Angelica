@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.late.chisel;
 
 import com.gtnewhorizons.angelica.experimental.surround.Surround;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
 import com.gtnewhorizons.angelica.glsm.StateSet;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.layer.GbufferPrograms;
@@ -25,14 +25,14 @@ public class MixinRenderCarvableBeacon {
     @Surround(method = "renderBeam(FLnet/minecraft/world/World;DDDIF)V", require = 1)
     private void angelica$wrapBeaconBeam(float f1, World world, double x, double y, double z, int meta, float partialTicks) {
         @Surround.Carry
-        final int stateDepth = GLStateManager.pushState(StateSet.CULL);
+        final int stateDepth = GLSMAttribStack.pushState(StateSet.CULL);
         GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.BEACON_BEAM);
     }
 
     @Surround.Finally
     private void angelica$wrapBeaconBeamRestore(@Surround.Carry int stateDepth) {
         GbufferPrograms.teardownSpecialRenderCondition();
-        GLStateManager.popStateTo(stateDepth);
+        GLSMAttribStack.popStateTo(stateDepth);
     }
 
     @Redirect(

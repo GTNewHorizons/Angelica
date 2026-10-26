@@ -14,7 +14,7 @@ public final class EntityIdsOnlyHandler implements ImmediateExtendedAttribHandle
 
     @Override public boolean wantsExtended() { return false; }
     @Override public boolean wantsTangent() { return false; }
-    @Override public boolean wantsEntityIds() { return GLStateManager.getActiveProgram() != 0; }
+    @Override public boolean wantsEntityIds() { return GLSMPrograms.getActiveProgram() != 0; }
     @Override public boolean wantsExtendedCapture() { return false; }
     @Override public boolean wantsFaceNormals() { return false; }
     @Override public void writeFaceNormals(int[] rawBuffer, int vertexCount) {}

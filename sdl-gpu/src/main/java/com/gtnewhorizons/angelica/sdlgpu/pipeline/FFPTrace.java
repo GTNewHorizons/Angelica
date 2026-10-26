@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu.pipeline;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.ffp.FFPUniformBlock;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
@@ -155,7 +155,7 @@ public final class FFPTrace {
                     .append(" glFormat=0x").append(Integer.toHexString(meta.glFormat()));
             }
         }
-        sb.append(" ffpEnabled=").append(GLStateManager.getTextures().getTextureUnitStates(unit).isEnabled());
+        sb.append(" ffpEnabled=").append(GLSMTextures.getTextures().getTextureUnitStates(unit).isEnabled());
     }
 
     private void appendFfpUniforms(ContextState st, ShaderManager.ProgramObject prog) {

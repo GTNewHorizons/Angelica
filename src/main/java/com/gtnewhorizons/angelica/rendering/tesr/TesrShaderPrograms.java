@@ -3,6 +3,8 @@ package com.gtnewhorizons.angelica.rendering.tesr;
 import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
 import com.gtnewhorizons.angelica.api.tesr.TesrShader;
 import com.gtnewhorizons.angelica.api.tesr.TesrShaderUniforms;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.EntityRendererAccessor;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
@@ -103,7 +105,7 @@ public final class TesrShaderPrograms {
         }
         if (entry.programBound) {
             entry.programBound = false;
-            GLStateManager.glUseProgram(entry.savedProgram);
+            GLSMPrograms.glUseProgram(entry.savedProgram);
         }
     }
 
@@ -119,7 +121,7 @@ public final class TesrShaderPrograms {
     }
 
     private static void reset(Variant variant) {
-        if (variant.program != 0) GLStateManager.glDeleteProgram(variant.program);
+        if (variant.program != 0) GLSMPrograms.glDeleteProgram(variant.program);
         variant.program = 0;
         variant.state = UNKNOWN;
     }
@@ -132,12 +134,12 @@ public final class TesrShaderPrograms {
         }
         if (!entry.programBound) {
             entry.programBound = true;
-            entry.savedProgram = GLStateManager.getActiveProgram();
+            entry.savedProgram = GLSMPrograms.getActiveProgram();
         }
-        GLStateManager.glUseProgram(variant.program);
+        GLSMPrograms.glUseProgram(variant.program);
         if (entry.wantsLightmap && !entry.lightmapBound) {
             entry.lightmapBound = true;
-            entry.savedLightmapBinding = GLStateManager.getBoundTextureForServerState(DrawState.LIGHTMAP_UNIT);
+            entry.savedLightmapBinding = GLSMTextures.getBoundTextureForServerState(DrawState.LIGHTMAP_UNIT);
             bindLightmapUnit(((EntityRendererAccessor) Minecraft.getMinecraft().entityRenderer).getLightmapTexture().getGlTextureId());
         }
         final TesrShaderUniforms uniforms = entry.shader.uniforms();
@@ -146,10 +148,10 @@ public final class TesrShaderPrograms {
     }
 
     private static void bindLightmapUnit(int texture) {
-        final int active = GLStateManager.getActiveTextureUnit();
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + DrawState.LIGHTMAP_UNIT);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + active);
+        final int active = GLSMTextures.getActiveTextureUnit();
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0 + DrawState.LIGHTMAP_UNIT);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0 + active);
     }
 
     private static void ensureLinked(Entry entry) {
@@ -190,23 +192,23 @@ public final class TesrShaderPrograms {
             if (vertex == 0) return;
             fragment = compile(entry, variant, GL20.GL_FRAGMENT_SHADER, TesrShaderPrelude.fragment() + TesrShaderPrelude.stripVersion(name, fragmentBody));
             if (fragment == 0) return;
-            program = GLStateManager.glCreateProgram();
-            GLStateManager.glAttachShader(program, vertex);
-            GLStateManager.glAttachShader(program, fragment);
-            GLStateManager.glLinkProgram(program);
-            if (GLStateManager.glGetProgrami(program, GL20.GL_LINK_STATUS) != GL11.GL_TRUE) {
-                fail(entry, variant, "failed to link", GLStateManager.glGetProgramInfoLog(program));
+            program = GLSMPrograms.glCreateProgram();
+            GLSMPrograms.glAttachShader(program, vertex);
+            GLSMPrograms.glAttachShader(program, fragment);
+            GLSMPrograms.glLinkProgram(program);
+            if (GLSMPrograms.glGetProgrami(program, GL20.GL_LINK_STATUS) != GL11.GL_TRUE) {
+                fail(entry, variant, "failed to link", GLSMPrograms.glGetProgramInfoLog(program));
                 return;
             }
-            final int previous = GLStateManager.getActiveProgram();
-            GLStateManager.glUseProgram(program);
+            final int previous = GLSMPrograms.getActiveProgram();
+            GLSMPrograms.glUseProgram(program);
             try {
                 setSampler(program, TesrShaderPrelude.LAYER_SAMPLER, 0);
                 setSampler(program, TesrShaderPrelude.LIGHTMAP_SAMPLER, DrawState.LIGHTMAP_UNIT);
                 final TesrShaderUniforms uniforms = entry.shader.uniforms();
                 if (uniforms != null) uniforms.angelica$linked(program, instanced);
             } finally {
-                GLStateManager.glUseProgram(previous);
+                GLSMPrograms.glUseProgram(previous);
             }
             variant.program = program;
             variant.state = READY;
@@ -215,25 +217,25 @@ public final class TesrShaderPrograms {
         } catch (RuntimeException e) {
             fail(entry, variant, "failed to build", e.toString());
         } finally {
-            if (vertex != 0) GLStateManager.glDeleteShader(vertex);
-            if (fragment != 0) GLStateManager.glDeleteShader(fragment);
-            if (program != 0) GLStateManager.glDeleteProgram(program);
+            if (vertex != 0) GLSMPrograms.glDeleteShader(vertex);
+            if (fragment != 0) GLSMPrograms.glDeleteShader(fragment);
+            if (program != 0) GLSMPrograms.glDeleteProgram(program);
         }
     }
 
     private static int compile(Entry entry, Variant variant, int type, String source) {
-        final int shader = GLStateManager.glCreateShader(type);
-        GLStateManager.glShaderSource(shader, source);
-        GLStateManager.glCompileShader(shader);
-        if (GLStateManager.glGetShaderi(shader, GL20.GL_COMPILE_STATUS) == GL11.GL_TRUE) return shader;
-        fail(entry, variant, type == GL20.GL_VERTEX_SHADER ? "vertex stage failed to compile" : "fragment stage failed to compile", GLStateManager.glGetShaderInfoLog(shader));
-        GLStateManager.glDeleteShader(shader);
+        final int shader = GLSMPrograms.glCreateShader(type);
+        GLSMPrograms.glShaderSource(shader, source);
+        GLSMPrograms.glCompileShader(shader);
+        if (GLSMPrograms.glGetShaderi(shader, GL20.GL_COMPILE_STATUS) == GL11.GL_TRUE) return shader;
+        fail(entry, variant, type == GL20.GL_VERTEX_SHADER ? "vertex stage failed to compile" : "fragment stage failed to compile", GLSMPrograms.glGetShaderInfoLog(shader));
+        GLSMPrograms.glDeleteShader(shader);
         return 0;
     }
 
     private static void setSampler(int program, String name, int unit) {
-        final int location = GLStateManager.glGetUniformLocation(program, name);
-        if (location >= 0) GLStateManager.glUniform1i(location, unit);
+        final int location = GLSMPrograms.glGetUniformLocation(program, name);
+        if (location >= 0) GLSMPrograms.glUniform1i(location, unit);
     }
 
     private static void fail(Entry entry, Variant variant, String what, String detail) {

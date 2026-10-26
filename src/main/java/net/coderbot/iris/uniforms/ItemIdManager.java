@@ -1,6 +1,6 @@
 package net.coderbot.iris.uniforms;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
 import com.gtnewhorizons.angelica.glsm.StateSet;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.layer.GbufferPrograms;
@@ -23,7 +23,7 @@ public class ItemIdManager {
 
     public static int beginCutout(ItemStack stack) {
         pushItemId();
-        final int depth = GLStateManager.pushState(StateSet.CUTOUT);
+        final int depth = GLSMAttribStack.pushState(StateSet.CUTOUT);
         try {
             GbufferPrograms.setCutoutDefaults();
             setItemId(stack);
@@ -36,7 +36,7 @@ public class ItemIdManager {
 
     public static void endCutout(int depth) {
         popItemId();
-        GLStateManager.popStateTo(depth);
+        GLSMAttribStack.popStateTo(depth);
     }
 
     /**

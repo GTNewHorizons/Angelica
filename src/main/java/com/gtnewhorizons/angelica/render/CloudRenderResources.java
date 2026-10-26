@@ -5,7 +5,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMQueries;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.ResourceLocation;
 import org.embeddedt.embeddium.impl.gl.shader.GlProgram;
@@ -89,16 +90,16 @@ final class CloudRenderResources {
 
         void bind() {
             if (mc.renderEngine == null) return;
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
             mc.renderEngine.bindTexture(location);
-            final int boundTexId = GLStateManager.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+            final int boundTexId = GLSMQueries.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
             if (boundTexId != mipmappedTexId) {
-                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 4);
-                GLStateManager.glGenerateMipmap(GL11.GL_TEXTURE_2D);
-                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST_MIPMAP_LINEAR);
-                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
-                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
+                GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 4);
+                GLSMTextures.glGenerateMipmap(GL11.GL_TEXTURE_2D);
+                GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST_MIPMAP_LINEAR);
+                GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+                GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
+                GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
                 mipmappedTexId = boundTexId;
             }
             if (boundTexId != cloudTexId || shape == null) {
@@ -108,8 +109,8 @@ final class CloudRenderResources {
         }
 
         private void extractCloudShape() {
-            final int texWidth = GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
-            final int texHeight = GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
+            final int texWidth = GLSMTextures.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
+            final int texHeight = GLSMTextures.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
             if (texWidth <= 0 || texHeight <= 0) return;
             final int neededBytes = texWidth * texHeight * 4;
             if (texelStagingBuffer == null || texelStagingBuffer.capacity() < neededBytes) {
@@ -117,7 +118,7 @@ final class CloudRenderResources {
             } else {
                 texelStagingBuffer.clear();
             }
-            GLStateManager.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE,
+            GLSMTextures.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE,
                 texelStagingBuffer);
             width = texWidth;
             shape = new CloudShape(texWidth, texHeight, texelStagingBuffer);

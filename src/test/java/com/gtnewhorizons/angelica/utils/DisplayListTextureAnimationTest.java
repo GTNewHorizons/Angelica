@@ -2,7 +2,7 @@ package com.gtnewhorizons.angelica.utils;
 
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
 import com.gtnewhorizons.angelica.glsm.recording.GLCommand;
 import com.gtnewhorizons.angelica.mixins.interfaces.IPatchedTextureAtlasSprite;
 import org.junit.jupiter.api.Test;
@@ -60,21 +60,21 @@ class DisplayListTextureAnimationTest {
     void cachedDrawMarksItsSpriteEveryFrame() {
         final IPatchedTextureAtlasSprite sprite = mock(IPatchedTextureAtlasSprite.class);
         for (int mode : new int[] { GL11.GL_COMPILE, GL11.GL_COMPILE_AND_EXECUTE }) {
-            final int list = GLStateManager.glGenLists(1);
+            final int list = GLSMDraws.glGenLists(1);
             try {
-                GLStateManager.glNewList(list, mode);
+                GLSMDraws.glNewList(list, mode);
                 for (int vertex = 0; vertex < 1000; vertex++) AnimationsRenderUtils.recordSpriteUsage(sprite);
-                GLStateManager.glEndList();
+                GLSMDraws.glEndList();
                 assertEquals(1, DisplayListManager.getDisplayList(list).getCommandCounts().get(GLCommand.COMPLEX_REF),
                     "repeated UV accesses should record only one notification");
                 for (int frame = 0; frame < 3; frame++) {
                     clearInvocations(sprite);
-                    GLStateManager.glCallList(list);
+                    GLSMDraws.glCallList(list);
                     verify(sprite).angelica$markNeedsAnimationUpdate();
                 }
             } finally {
-                if (DisplayListManager.isRecording()) GLStateManager.glEndList();
-                GLStateManager.glDeleteLists(list, 1);
+                if (DisplayListManager.isRecording()) GLSMDraws.glEndList();
+                GLSMDraws.glDeleteLists(list, 1);
             }
         }
     }

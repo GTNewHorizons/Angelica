@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -16,7 +16,7 @@ class GlsmSdlDegenerateDrawTest {
     @ParameterizedTest(name = "count {0}")
     @ValueSource(ints = {0, -3})
     void degenerateCountDrawArraysLeavesTheFollowingDrawIntact(int count) {
-        GLStateManager.glDrawArrays(GL11.GL_TRIANGLES, 0, count);
+        GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, 0, count);
         GlsmSdlHeadlessRig.solidQuad(1.0f, 0.0f, 0.0f);
         GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTarget(), RED, "after a drawArrays with count " + count);
     }

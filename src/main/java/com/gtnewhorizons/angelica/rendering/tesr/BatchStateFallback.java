@@ -1,5 +1,8 @@
 package com.gtnewhorizons.angelica.rendering.tesr;
 
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard;
 import org.lwjgl.opengl.GL11;
@@ -22,18 +25,18 @@ final class BatchStateFallback {
             GLStateManager.warnOnce("batch-fallback-entities:" + inside, "Uncaptured state change {} a renderer flushed the entity batch early",
                 inside ? "inside" : "between", new Throwable());
         }
-        final int mode = GLStateManager.getMatrixMode().getMode();
-        final int unit = GLStateManager.getActiveTextureUnit();
+        final int mode = GLSMMatrices.getMatrixMode().getMode();
+        final int unit = GLSMTextures.getActiveTextureUnit();
         BatchEligibility.onUncapturedState();
-        final long before = GLStateManager.drawCalls;
+        final long before = GLSMDraws.drawCalls;
         try {
-            GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+            GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
             models.flushForStateChange();
             tesrs.flushForStateChange();
         } finally {
-            GLStateManager.glMatrixMode(mode);
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + unit);
-            BatchEligibility.onBatchFlushed(GLStateManager.drawCalls - before);
+            GLSMMatrices.glMatrixMode(mode);
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0 + unit);
+            BatchEligibility.onBatchFlushed(GLSMDraws.drawCalls - before);
         }
     }
 }

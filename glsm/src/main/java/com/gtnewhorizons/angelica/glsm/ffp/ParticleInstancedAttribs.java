@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import org.lwjgl.opengl.GL11;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutFloat;
@@ -20,10 +20,10 @@ public final class ParticleInstancedAttribs {
     public static final int STRIDE = 48;
 
     public static void pointInstanceAttribs(long base) {
-        GLStateManager.glVertexAttribPointer(LOC_CENTER_HALF, 4, GL11.GL_FLOAT, false, STRIDE, base + OFFSET_CENTER_HALF);
-        GLStateManager.glVertexAttribPointer(LOC_UV, 4, GL11.GL_FLOAT, false, STRIDE, base + OFFSET_UV);
-        GLStateManager.glVertexAttribPointer(LOC_COLOR, 4, GL11.GL_UNSIGNED_BYTE, true, STRIDE, base + OFFSET_COLOR);
-        GLStateManager.glVertexAttribPointer(LOC_LIGHTMAP, 2, GL11.GL_FLOAT, false, STRIDE, base + OFFSET_LIGHTMAP);
+        GLSMVertexInput.glVertexAttribPointer(LOC_CENTER_HALF, 4, GL11.GL_FLOAT, false, STRIDE, base + OFFSET_CENTER_HALF);
+        GLSMVertexInput.glVertexAttribPointer(LOC_UV, 4, GL11.GL_FLOAT, false, STRIDE, base + OFFSET_UV);
+        GLSMVertexInput.glVertexAttribPointer(LOC_COLOR, 4, GL11.GL_UNSIGNED_BYTE, true, STRIDE, base + OFFSET_COLOR);
+        GLSMVertexInput.glVertexAttribPointer(LOC_LIGHTMAP, 2, GL11.GL_FLOAT, false, STRIDE, base + OFFSET_LIGHTMAP);
     }
 
     static void enableInstanceArrays() {

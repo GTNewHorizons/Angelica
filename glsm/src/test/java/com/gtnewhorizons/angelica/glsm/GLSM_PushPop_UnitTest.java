@@ -54,9 +54,9 @@ class GLSM_PushPop_UnitTest {
         for (GLBit bit : bits) {
             verifyState(bit.glEnum(), bit.initial(), bit.name() + " Initial State");
             if (bit.initial()) {
-                GLStateManager.glDisable(bit.glEnum());
+                GLSMEnable.glDisable(bit.glEnum());
             } else {
-                GLStateManager.glEnable(bit.glEnum());
+                GLSMEnable.glEnable(bit.glEnum());
             }
             verifyState(bit.glEnum(), !bit.initial(), bit.name() + " Toggle State");
         }
@@ -71,7 +71,7 @@ class GLSM_PushPop_UnitTest {
     @Test
     void testPushPopColorBufferBit() {
 
-        GLStateManager.glPushAttrib(GL11.GL_COLOR_BUFFER_BIT);
+        GLSMAttribStack.glPushAttrib(GL11.GL_COLOR_BUFFER_BIT);
         /*
          * GL_COLOR_BUFFER_BIT
          *     GL_ALPHA_TEST enable bit
@@ -89,20 +89,20 @@ class GLSM_PushPop_UnitTest {
          *     Color mode and index mode writemasks
          */
 
-        GLStateManager.enableAlphaTest();
-        GLStateManager.glAlphaFunc(GL11.GL_NEVER, 1f);
-        GLStateManager.enableBlend();
-        GLStateManager.glDisable(GL11.GL_DITHER);
-        GLStateManager.glEnable(GL11.GL_COLOR_LOGIC_OP);
-        GLStateManager.glEnable(GL11.GL_INDEX_LOGIC_OP);
-        GLStateManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-        GLStateManager.glBlendColor(1f, 1f, 1f, 1f);
-        GLStateManager.glBlendEquationSeparate(GL14.GL_FUNC_REVERSE_SUBTRACT, GL14.GL_FUNC_REVERSE_SUBTRACT);
-        GLStateManager.glDrawBuffer(GL11.GL_FRONT_AND_BACK);
-        GLStateManager.glLogicOp(GL11.GL_OR);
-        GLStateManager.glColor4f(0.5f, 0.5f, 0.5f, 0.5f); // This should not be reset
-        GLStateManager.glColorMask(false, false, false, false);
-        GLStateManager.glClearColor(0.5f, 0.5f, 0.5f, 0.5f);
+        GLSMDepthStencilAlpha.enableAlphaTest();
+        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_NEVER, 1f);
+        GLSMBlend.enableBlend();
+        GLSMEnable.glDisable(GL11.GL_DITHER);
+        GLSMEnable.glEnable(GL11.GL_COLOR_LOGIC_OP);
+        GLSMEnable.glEnable(GL11.GL_INDEX_LOGIC_OP);
+        GLSMBlend.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GLSMBlend.glBlendColor(1f, 1f, 1f, 1f);
+        GLSMBlend.glBlendEquationSeparate(GL14.GL_FUNC_REVERSE_SUBTRACT, GL14.GL_FUNC_REVERSE_SUBTRACT);
+        GLSMFramebuffer.glDrawBuffer(GL11.GL_FRONT_AND_BACK);
+        GLSMBlend.glLogicOp(GL11.GL_OR);
+        GLSMCurrentAttribs.glColor4f(0.5f, 0.5f, 0.5f, 0.5f); // This should not be reset
+        GLSMBlend.glColorMask(false, false, false, false);
+        GLSMBlend.glClearColor(0.5f, 0.5f, 0.5f, 0.5f);
 
 
         verifyIsEnabled(GL11.GL_ALPHA_TEST, true, "Alpha Test Enable");
@@ -124,7 +124,7 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_COLOR_CLEAR_VALUE, FLOAT_ARRAY_4_POINT_5, "Color Clear Value");
 
 
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
         verifyIsEnabled(GL11.GL_ALPHA_TEST, false, "Alpha Test Enable - Reset");
         verifyState(GL11.GL_ALPHA_TEST_FUNC, GL11.GL_ALWAYS, "Alpha Test Function - Reset");
         verifyState(GL11.GL_ALPHA_TEST_REF, 0f, "Alpha Test Reference - Reset");
@@ -135,7 +135,7 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL14.GL_BLEND_EQUATION, GL14.GL_FUNC_ADD, "Blend Equation - Reset");
         verifyState(GL20.GL_BLEND_EQUATION_ALPHA, GL14.GL_FUNC_ADD, "Blend Equation Alpha - Reset");
         verifyIsEnabled(GL11.GL_DITHER, true, "Dither Enable - Reset");
-        verifyState(GL11.GL_DRAW_BUFFER, GLStateManager.DEFAULT_DRAW_BUFFER, "Draw Buffer - Reset");
+        verifyState(GL11.GL_DRAW_BUFFER, GLSMFramebuffer.DEFAULT_DRAW_BUFFER, "Draw Buffer - Reset");
         verifyIsEnabled(GL11.GL_COLOR_LOGIC_OP, false, "Color Logic Op Enable - Reset");
         verifyIsEnabled(GL11.GL_INDEX_LOGIC_OP, false, "Index Logic Op Enable - Reset");
         verifyState(GL11.GL_LOGIC_OP_MODE, GL11.GL_COPY, "Logic Op Mode - Reset");
@@ -149,10 +149,10 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_CURRENT_COLOR, FLOAT_ARRAY_4_1, "Initial Color State"); // Verify no state leakage from other tests
         verifyState(GL11.GL_CURRENT_TEXTURE_COORDS, FLOAT_ARRAY_4_0001, "Initial Texture Coordinates");
 
-        GLStateManager.glPushAttrib(GL11.GL_CURRENT_BIT);
-        GLStateManager.glColor4f(0.5f, 0.5f, 0.5f, 0.5f);
-        GLStateManager.glNormal3f(0.5f, 0.5f, 0.5f);
-        GLStateManager.glTexCoord4f(0.5f, 0.5f, 0.5f, 0.5f);
+        GLSMAttribStack.glPushAttrib(GL11.GL_CURRENT_BIT);
+        GLSMCurrentAttribs.glColor4f(0.5f, 0.5f, 0.5f, 0.5f);
+        GLSMCurrentAttribs.glNormal3f(0.5f, 0.5f, 0.5f);
+        GLSMCurrentAttribs.glTexCoord4f(0.5f, 0.5f, 0.5f, 0.5f);
 
 
         verifyState(GL11.GL_CURRENT_COLOR, FLOAT_ARRAY_4_POINT_5, "Current Color");
@@ -160,7 +160,7 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_CURRENT_TEXTURE_COORDS, FLOAT_ARRAY_4_POINT_5, "Texture coordinates");
 
 
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
         verifyState(GL11.GL_CURRENT_COLOR, FLOAT_ARRAY_4_1, "Current Color - reset");
         verifyState(GL11.GL_CURRENT_NORMAL, FLOAT_ARRAY_3_001, "Current normal - reset");
         verifyState(GL11.GL_CURRENT_TEXTURE_COORDS, FLOAT_ARRAY_4_0001, "Texture coordinates - reset");
@@ -170,18 +170,18 @@ class GLSM_PushPop_UnitTest {
     void testPushPopDepthBufferBit() {
         verifyState(GL11.GL_DEPTH_WRITEMASK, true, "GL_DEPTH_WRITEMASK Initial State");
 
-        GLStateManager.glPushAttrib(GL11.GL_DEPTH_BUFFER_BIT);
-        GLStateManager.glEnable(GL11.GL_DEPTH_TEST);
-        GLStateManager.glDepthFunc(GL11.GL_NEVER);
-        GLStateManager.glClearDepth(0.5f); // Not currently Implemented in GLSM
-        GLStateManager.glDepthMask(false);
+        GLSMAttribStack.glPushAttrib(GL11.GL_DEPTH_BUFFER_BIT);
+        GLSMEnable.glEnable(GL11.GL_DEPTH_TEST);
+        GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_NEVER);
+        GLSMDepthStencilAlpha.glClearDepth(0.5f); // Not currently Implemented in GLSM
+        GLSMDepthStencilAlpha.glDepthMask(false);
 
         verifyState(GL11.GL_DEPTH_TEST, true, "Depth Test");
         verifyState(GL11.GL_DEPTH_FUNC, GL11.GL_NEVER, "Depth Function");
         verifyState(GL11.GL_DEPTH_CLEAR_VALUE, 0.5f, "Depth Clear Value");
         verifyState(GL11.GL_DEPTH_WRITEMASK, false, "Depth Write Mask");
 
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
         verifyState(GL11.GL_DEPTH_TEST, false, "Depth Test - Reset");
         verifyState(GL11.GL_DEPTH_FUNC, GL11.GL_LESS, "Depth Function - Reset");
         verifyState(GL11.GL_DEPTH_CLEAR_VALUE, 1f, "Depth Clear Value - Reset");
@@ -259,10 +259,10 @@ class GLSM_PushPop_UnitTest {
         bits.add(new GLBit(GL11.GL_TEXTURE_GEN_R, "Texture Gen R", false));
         bits.add(new GLBit(GL11.GL_TEXTURE_GEN_Q, "Texture Gen Q", false));
 
-        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GLSMAttribStack.glPushAttrib(GL11.GL_ENABLE_BIT);
         toggleAndVerify(bits);
 
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
 
         verifyReset(bits);
     }
@@ -270,15 +270,15 @@ class GLSM_PushPop_UnitTest {
     @Test
     void testPushPopFogBit() {
         final FloatBuffer floatBuffer = BufferUtils.createFloatBuffer(16);
-        GLStateManager.glPushAttrib(GL11.GL_FOG_BIT);
-        GLStateManager.glEnable(GL11.GL_FOG);
+        GLSMAttribStack.glPushAttrib(GL11.GL_FOG_BIT);
+        GLSMEnable.glEnable(GL11.GL_FOG);
         floatBuffer.put(FLOAT_ARRAY_4_POINT_5).flip();
-        GLStateManager.glFog(GL11.GL_FOG_COLOR, floatBuffer);
+        GLSMFog.glFog(GL11.GL_FOG_COLOR, floatBuffer);
 
-        GLStateManager.glFogf(GL11.GL_FOG_DENSITY, 0.5f);
-        GLStateManager.glFogf(GL11.GL_FOG_END, 0.5f);
-        GLStateManager.glFogf(GL11.GL_FOG_START, 0.5f);
-        GLStateManager.glFogf(GL11.GL_FOG_MODE, GL11.GL_LINEAR);
+        GLSMFog.glFogf(GL11.GL_FOG_DENSITY, 0.5f);
+        GLSMFog.glFogf(GL11.GL_FOG_END, 0.5f);
+        GLSMFog.glFogf(GL11.GL_FOG_START, 0.5f);
+        GLSMFog.glFogf(GL11.GL_FOG_MODE, GL11.GL_LINEAR);
         // Fog index not tracked by GLSM (MC 1.7.10 never uses it)
 
         verifyIsEnabled(GL11.GL_FOG, true, "Fog Enable");
@@ -288,7 +288,7 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_FOG_START, 0.5f, "Fog Start");
         verifyState(GL11.GL_FOG_MODE, GL11.GL_LINEAR, "Fog Mode");
 
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
         verifyIsEnabled(GL11.GL_FOG, false, "Fog Enable - Reset");
         verifyState(GL11.GL_FOG_COLOR, FLOAT_ARRAY_4_0, "Fog Color - Reset");
         verifyState(GL11.GL_FOG_DENSITY, 1f, "Fog Density - Reset");
@@ -308,23 +308,23 @@ class GLSM_PushPop_UnitTest {
             bits.add(new GLBit(GL11.GL_LIGHT0 + i, "Light " + i, false));
         }
 
-        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
-        GLStateManager.glColorMaterial(GL11.GL_FRONT, GL11.GL_AMBIENT);
+        GLSMAttribStack.glPushAttrib(GL11.GL_LIGHTING_BIT);
+        GLSMLighting.glColorMaterial(GL11.GL_FRONT, GL11.GL_AMBIENT);
         // Ambient scene color ??
-        GLStateManager.glLightModelf(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, 1f);
-        GLStateManager.glLightModelf(GL11.GL_LIGHT_MODEL_TWO_SIDE, 1f);
+        GLSMLighting.glLightModelf(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, 1f);
+        GLSMLighting.glLightModelf(GL11.GL_LIGHT_MODEL_TWO_SIDE, 1f);
         floatBuffer.put(FLOAT_ARRAY_4_POINT_5).flip();
-        GLStateManager.glLightModel(GL11.GL_LIGHT_MODEL_AMBIENT, floatBuffer);
-        GLStateManager.glLightModeli(GL12.GL_LIGHT_MODEL_COLOR_CONTROL, GL12.GL_SEPARATE_SPECULAR_COLOR);
-        GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_AMBIENT, floatBuffer);
-        GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_DIFFUSE, floatBuffer);
-        GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_SPECULAR, floatBuffer);
-        GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_POSITION, floatBuffer);
+        GLSMLighting.glLightModel(GL11.GL_LIGHT_MODEL_AMBIENT, floatBuffer);
+        GLSMLighting.glLightModeli(GL12.GL_LIGHT_MODEL_COLOR_CONTROL, GL12.GL_SEPARATE_SPECULAR_COLOR);
+        GLSMLighting.glLight(GL11.GL_LIGHT0, GL11.GL_AMBIENT, floatBuffer);
+        GLSMLighting.glLight(GL11.GL_LIGHT0, GL11.GL_DIFFUSE, floatBuffer);
+        GLSMLighting.glLight(GL11.GL_LIGHT0, GL11.GL_SPECULAR, floatBuffer);
+        GLSMLighting.glLight(GL11.GL_LIGHT0, GL11.GL_POSITION, floatBuffer);
 
         floatBuffer.put(FLOAT_ARRAY_4_0010).flip();
-        GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_SPOT_DIRECTION, floatBuffer);
+        GLSMLighting.glLight(GL11.GL_LIGHT0, GL11.GL_SPOT_DIRECTION, floatBuffer);
         floatBuffer.put(FLOAT_ARRAY_4_0).flip();
-        GLStateManager.glShadeModel(GL11.GL_FLAT);
+        GLSMRasterizer.glShadeModel(GL11.GL_FLAT);
 
 
         verifyState(GL11.GL_COLOR_MATERIAL_FACE, GL11.GL_FRONT, "Color Material Face");
@@ -342,7 +342,7 @@ class GLSM_PushPop_UnitTest {
 
         toggleAndVerify(bits);
 
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
         verifyState(GL11.GL_COLOR_MATERIAL_FACE, GL11.GL_FRONT_AND_BACK, "Color Material Face - Reset");
         verifyState(GL11.GL_COLOR_MATERIAL_PARAMETER, GL11.GL_AMBIENT_AND_DIFFUSE, "Color Material Parameter - Reset");
         verifyState(GL11.GL_LIGHT_MODEL_LOCAL_VIEWER, false, "Light Model Local Viewer - Reset");
@@ -372,38 +372,38 @@ class GLSM_PushPop_UnitTest {
         final int tex1 = GL11.glGenTextures();
         final int tex2 = GL11.glGenTextures();
 
-        GLStateManager.glPushAttrib(GL11.GL_TEXTURE_BIT);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex1);
+        GLSMAttribStack.glPushAttrib(GL11.GL_TEXTURE_BIT);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, tex1);
         verifyState(GL11.GL_TEXTURE_BINDING_2D, tex1, "Texture Binding - Unit 0");
 
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
         verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE1, "Active Texture");
 
         verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding - Unit 1 - Switch");
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex2);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, tex2);
         verifyState(GL11.GL_TEXTURE_BINDING_2D, tex2, "Texture Binding - Unit 1 - Set");
 
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
         verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE0, "Active Texture");
         verifyState(GL11.GL_TEXTURE_BINDING_2D, tex1, "Texture Binding - Unit 0");
 
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
         verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE1, "Active Texture");
         verifyState(GL11.GL_TEXTURE_BINDING_2D, tex2, "Texture Binding - Unit 1");
 
         toggleAndVerify(bits);
 
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
         verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE0, "Active Texture Unit 0 - Reset");
         verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding Unit 0 - Reset");
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
         verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding Unit 1 - Reset");
 
         verifyReset(bits);
 
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glDeleteTextures(tex1);
-        GLStateManager.glDeleteTextures(tex2);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glDeleteTextures(tex1);
+        GLSMTextures.glDeleteTextures(tex2);
     }
 
     @Test
@@ -414,34 +414,34 @@ class GLSM_PushPop_UnitTest {
         final int tex1 = GL11.glGenTextures();
         final int tex2 = GL11.glGenTextures();
 
-        GLStateManager.glPushAttrib(GL11.GL_TEXTURE_BIT);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex1);
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex1);
+        GLSMAttribStack.glPushAttrib(GL11.GL_TEXTURE_BIT);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, tex1);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, tex1);
 
-        GLStateManager.glPushAttrib(GL11.GL_TEXTURE_BIT);
+        GLSMAttribStack.glPushAttrib(GL11.GL_TEXTURE_BIT);
         verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE1, "Active Texture");
         verifyState(GL11.GL_TEXTURE_BINDING_2D, tex1, "Texture Binding - Unit 1");
-        GLStateManager.glDeleteTextures(tex2);
+        GLSMTextures.glDeleteTextures(tex2);
         verifyState(GL11.GL_TEXTURE_BINDING_2D, tex1, "Texture Binding - Unit 1");
-        GLStateManager.glDeleteTextures(tex1);
+        GLSMTextures.glDeleteTextures(tex1);
         verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding Deleted - Unit 1");
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
         verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding Deleted - Unit 0");
 
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
         verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE1, "Active Texture - Reset 1");
         // After pop, binding a deleted texture is driver-specific:
         // - Mesa: calls bindTexture_no_error which recreates the texture, returns tex1
         // - Nvidia: refuses to bind deleted texture, returns 0
         int binding = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
         assertTrue(binding == 0 || binding == tex1, "Texture Binding after pop with deleted texture - Unit 1: expected 0 or " + tex1 + ", got " + binding);
-        GLStateManager.glDeleteTextures(tex1);
+        GLSMTextures.glDeleteTextures(tex1);
         verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding Deleted - Unit 1");
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
         verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding Deleted - Unit 0");
 
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
         verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE0, "Active Texture - Reset 2");
         verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Texture Binding - Reset 2");
     }
@@ -452,16 +452,16 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_NORMALIZE, false, "Initial Normalize");
         verifyState(GL12.GL_RESCALE_NORMAL, false, "Initial Rescale Normal");
 
-        GLStateManager.glPushAttrib(GL11.GL_TRANSFORM_BIT);
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glEnable(GL11.GL_NORMALIZE);
-        GLStateManager.glEnable(GL12.GL_RESCALE_NORMAL);
+        GLSMAttribStack.glPushAttrib(GL11.GL_TRANSFORM_BIT);
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMEnable.glEnable(GL11.GL_NORMALIZE);
+        GLSMEnable.glEnable(GL12.GL_RESCALE_NORMAL);
 
         verifyState(GL11.GL_MATRIX_MODE, GL11.GL_PROJECTION, "Matrix Mode");
         verifyState(GL11.GL_NORMALIZE, true, "Normalize");
         verifyState(GL12.GL_RESCALE_NORMAL, true, "Rescale Normal");
 
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
         verifyState(GL11.GL_MATRIX_MODE, GL11.GL_MODELVIEW, "Matrix Mode - Reset");
         verifyState(GL11.GL_NORMALIZE, false, "Normalize - Reset");
         verifyState(GL12.GL_RESCALE_NORMAL, false, "Rescale Normal - Reset");
@@ -469,18 +469,18 @@ class GLSM_PushPop_UnitTest {
 
     @Test
     void testPushPopViewportBit() {
-        GLStateManager.glViewport(0, 0, 800, 600);
+        GLSMRasterizer.glViewport(0, 0, 800, 600);
         verifyState(GL11.GL_VIEWPORT, new int[] { 0, 0, 800, 600 }, "Viewport - Initial");
         verifyState(GL11.GL_DEPTH_RANGE, new float[] { 0.0f, 1.0f }, "Depth Range - Initial");
 
-        GLStateManager.glPushAttrib(GL11.GL_VIEWPORT_BIT);
-        GLStateManager.glViewport(1, 1, 100, 100);
-        GLStateManager.glDepthRange(0.5, 1.0);
+        GLSMAttribStack.glPushAttrib(GL11.GL_VIEWPORT_BIT);
+        GLSMRasterizer.glViewport(1, 1, 100, 100);
+        GLSMDepthStencilAlpha.glDepthRange(0.5, 1.0);
 
         verifyState(GL11.GL_VIEWPORT, new int[] { 1, 1, 100, 100 }, "Viewport");
         verifyState(GL11.GL_DEPTH_RANGE, new float[] { 0.5f, 1.0f }, "Depth Range");
 
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
         verifyState(GL11.GL_VIEWPORT, new int[] { 0, 0, 800, 600 }, "Viewport - Reset");
         verifyState(GL11.GL_DEPTH_RANGE, new float[] { 0.0f, 1.0f }, "Depth Range - Reset");
     }
@@ -492,16 +492,16 @@ class GLSM_PushPop_UnitTest {
         verifyIsEnabled(GL11.GL_LINE_SMOOTH, false, "Line Smooth - Initial");
         verifyIsEnabled(GL11.GL_LINE_STIPPLE, false, "Line Stipple - Initial");
 
-        GLStateManager.glPushAttrib(GL11.GL_LINE_BIT);
-        GLStateManager.glLineWidth(2.5f);
-        GLStateManager.glEnable(GL11.GL_LINE_SMOOTH);
-        GLStateManager.glEnable(GL11.GL_LINE_STIPPLE);
+        GLSMAttribStack.glPushAttrib(GL11.GL_LINE_BIT);
+        GLSMRasterizer.glLineWidth(2.5f);
+        GLSMEnable.glEnable(GL11.GL_LINE_SMOOTH);
+        GLSMEnable.glEnable(GL11.GL_LINE_STIPPLE);
 
         verifyState(GL11.GL_LINE_WIDTH, 2.5f, "Line Width");
         verifyIsEnabled(GL11.GL_LINE_SMOOTH, true, "Line Smooth");
         verifyIsEnabled(GL11.GL_LINE_STIPPLE, true, "Line Stipple");
 
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
         verifyState(GL11.GL_LINE_WIDTH, 1.0f, "Line Width - Reset");
         verifyIsEnabled(GL11.GL_LINE_SMOOTH, false, "Line Smooth - Reset");
         verifyIsEnabled(GL11.GL_LINE_STIPPLE, false, "Line Stipple - Reset");
@@ -517,14 +517,14 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_POINT_SIZE, 1.0f, "Point Size - Initial");
         verifyIsEnabled(GL11.GL_POINT_SMOOTH, false, "Point Smooth - Initial");
 
-        GLStateManager.glPushAttrib(GL11.GL_POINT_BIT);
-        GLStateManager.glPointSize(5.0f);
-        GLStateManager.glEnable(GL11.GL_POINT_SMOOTH);
+        GLSMAttribStack.glPushAttrib(GL11.GL_POINT_BIT);
+        GLSMRasterizer.glPointSize(5.0f);
+        GLSMEnable.glEnable(GL11.GL_POINT_SMOOTH);
 
         verifyState(GL11.GL_POINT_SIZE, 5.0f, "Point Size");
         verifyIsEnabled(GL11.GL_POINT_SMOOTH, true, "Point Smooth");
 
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
         verifyState(GL11.GL_POINT_SIZE, 1.0f, "Point Size - Reset");
         verifyIsEnabled(GL11.GL_POINT_SMOOTH, false, "Point Smooth - Reset");
     }
@@ -557,17 +557,17 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_POLYGON_OFFSET_FACTOR, 0.0f, "Polygon Offset Factor - Initial");
         verifyState(GL11.GL_POLYGON_OFFSET_UNITS, 0.0f, "Polygon Offset Units - Initial");
 
-        GLStateManager.glPushAttrib(GL11.GL_POLYGON_BIT);
-        GLStateManager.glEnable(GL11.GL_CULL_FACE);
-        GLStateManager.glCullFace(GL11.GL_FRONT);
-        GLStateManager.glFrontFace(GL11.GL_CW);
-        GLStateManager.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
-        GLStateManager.glEnable(GL11.GL_POLYGON_SMOOTH);
-        GLStateManager.glEnable(GL11.GL_POLYGON_STIPPLE);
-        GLStateManager.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
-        GLStateManager.glEnable(GL11.GL_POLYGON_OFFSET_LINE);
-        GLStateManager.glEnable(GL11.GL_POLYGON_OFFSET_POINT);
-        GLStateManager.glPolygonOffset(1.5f, 2.0f);
+        GLSMAttribStack.glPushAttrib(GL11.GL_POLYGON_BIT);
+        GLSMEnable.glEnable(GL11.GL_CULL_FACE);
+        GLSMRasterizer.glCullFace(GL11.GL_FRONT);
+        GLSMRasterizer.glFrontFace(GL11.GL_CW);
+        GLSMRasterizer.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
+        GLSMEnable.glEnable(GL11.GL_POLYGON_SMOOTH);
+        GLSMEnable.glEnable(GL11.GL_POLYGON_STIPPLE);
+        GLSMEnable.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
+        GLSMEnable.glEnable(GL11.GL_POLYGON_OFFSET_LINE);
+        GLSMEnable.glEnable(GL11.GL_POLYGON_OFFSET_POINT);
+        GLSMRasterizer.glPolygonOffset(1.5f, 2.0f);
 
         verifyIsEnabled(GL11.GL_CULL_FACE, true, "Cull Face");
         verifyState(GL11.GL_CULL_FACE_MODE, GL11.GL_FRONT, "Cull Face Mode");
@@ -581,7 +581,7 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_POLYGON_OFFSET_FACTOR, 1.5f, "Polygon Offset Factor");
         verifyState(GL11.GL_POLYGON_OFFSET_UNITS, 2.0f, "Polygon Offset Units");
 
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
         verifyIsEnabled(GL11.GL_CULL_FACE, false, "Cull Face - Reset");
         verifyState(GL11.GL_CULL_FACE_MODE, GL11.GL_BACK, "Cull Face Mode - Reset");
         verifyState(GL11.GL_FRONT_FACE, GL11.GL_CCW, "Front Face - Reset");
@@ -621,12 +621,12 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_STENCIL_CLEAR_VALUE, 0, "Stencil Clear Value - Initial");
         verifyState(GL11.GL_STENCIL_WRITEMASK, initialWriteMask, "Stencil Write Mask - Initial");
 
-        GLStateManager.glPushAttrib(GL11.GL_STENCIL_BUFFER_BIT);
-        GLStateManager.glEnable(GL11.GL_STENCIL_TEST);
-        GLStateManager.glStencilFunc(GL11.GL_LESS, 127, 0x7F);
-        GLStateManager.glStencilOp(GL11.GL_INCR, GL11.GL_DECR, GL11.GL_REPLACE);
-        GLStateManager.glStencilMask(0x0F);
-        GLStateManager.glClearStencil(64);
+        GLSMAttribStack.glPushAttrib(GL11.GL_STENCIL_BUFFER_BIT);
+        GLSMEnable.glEnable(GL11.GL_STENCIL_TEST);
+        GLSMDepthStencilAlpha.glStencilFunc(GL11.GL_LESS, 127, 0x7F);
+        GLSMDepthStencilAlpha.glStencilOp(GL11.GL_INCR, GL11.GL_DECR, GL11.GL_REPLACE);
+        GLSMDepthStencilAlpha.glStencilMask(0x0F);
+        GLSMDepthStencilAlpha.glClearStencil(64);
 
         verifyIsEnabled(GL11.GL_STENCIL_TEST, true, "Stencil Test");
         verifyState(GL11.GL_STENCIL_FUNC, GL11.GL_LESS, "Stencil Func");
@@ -638,7 +638,7 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_STENCIL_CLEAR_VALUE, 64, "Stencil Clear Value");
         verifyState(GL11.GL_STENCIL_WRITEMASK, 0x0F, "Stencil Write Mask");
 
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
         verifyIsEnabled(GL11.GL_STENCIL_TEST, false, "Stencil Test - Reset");
         verifyState(GL11.GL_STENCIL_FUNC, GL11.GL_ALWAYS, "Stencil Func - Reset");
         verifyState(GL11.GL_STENCIL_REF, 0, "Stencil Ref - Reset");
@@ -671,14 +671,14 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL20.GL_STENCIL_BACK_PASS_DEPTH_PASS, GL11.GL_KEEP, "Stencil Back Pass Depth Pass - Initial");
         verifyState(GL20.GL_STENCIL_BACK_WRITEMASK, initialBackWriteMask, "Stencil Back Write Mask - Initial");
 
-        GLStateManager.glPushAttrib(GL11.GL_STENCIL_BUFFER_BIT);
+        GLSMAttribStack.glPushAttrib(GL11.GL_STENCIL_BUFFER_BIT);
         // Use separate functions to set different front/back state
-        GLStateManager.glStencilFuncSeparate(GL11.GL_FRONT, GL11.GL_LESS, 10, 0x0A);
-        GLStateManager.glStencilFuncSeparate(GL11.GL_BACK, GL11.GL_GREATER, 20, 0x0B);
-        GLStateManager.glStencilOpSeparate(GL11.GL_FRONT, GL11.GL_INCR, GL11.GL_DECR, GL11.GL_ZERO);
-        GLStateManager.glStencilOpSeparate(GL11.GL_BACK, GL11.GL_KEEP, GL11.GL_INVERT, GL11.GL_REPLACE);
-        GLStateManager.glStencilMaskSeparate(GL11.GL_FRONT, 0x11);
-        GLStateManager.glStencilMaskSeparate(GL11.GL_BACK, 0x22);
+        GLSMDepthStencilAlpha.glStencilFuncSeparate(GL11.GL_FRONT, GL11.GL_LESS, 10, 0x0A);
+        GLSMDepthStencilAlpha.glStencilFuncSeparate(GL11.GL_BACK, GL11.GL_GREATER, 20, 0x0B);
+        GLSMDepthStencilAlpha.glStencilOpSeparate(GL11.GL_FRONT, GL11.GL_INCR, GL11.GL_DECR, GL11.GL_ZERO);
+        GLSMDepthStencilAlpha.glStencilOpSeparate(GL11.GL_BACK, GL11.GL_KEEP, GL11.GL_INVERT, GL11.GL_REPLACE);
+        GLSMDepthStencilAlpha.glStencilMaskSeparate(GL11.GL_FRONT, 0x11);
+        GLSMDepthStencilAlpha.glStencilMaskSeparate(GL11.GL_BACK, 0x22);
 
         // Verify front state
         verifyState(GL11.GL_STENCIL_FUNC, GL11.GL_LESS, "Stencil Front Func");
@@ -698,7 +698,7 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL20.GL_STENCIL_BACK_PASS_DEPTH_PASS, GL11.GL_REPLACE, "Stencil Back Pass Depth Pass");
         verifyState(GL20.GL_STENCIL_BACK_WRITEMASK, 0x22, "Stencil Back Write Mask");
 
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
         // Verify front state reset
         verifyState(GL11.GL_STENCIL_FUNC, GL11.GL_ALWAYS, "Stencil Front Func - Reset");
         verifyState(GL11.GL_STENCIL_REF, 0, "Stencil Front Ref - Reset");
@@ -726,21 +726,21 @@ class GLSM_PushPop_UnitTest {
         verifyIsEnabled(GL11.GL_BLEND, false, "Blend - Initial");
         verifyIsEnabled(GL11.GL_LIGHTING, false, "Lighting - Initial");
 
-        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
-        GLStateManager.enableBlend();
+        GLSMAttribStack.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GLSMBlend.enableBlend();
         verifyIsEnabled(GL11.GL_BLEND, true, "Blend - After first enable");
 
-        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
-        GLStateManager.disableBlend();
-        GLStateManager.enableLighting();
+        GLSMAttribStack.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GLSMBlend.disableBlend();
+        GLSMLighting.enableLighting();
         verifyIsEnabled(GL11.GL_BLEND, false, "Blend - After second push disable");
         verifyIsEnabled(GL11.GL_LIGHTING, true, "Lighting - After enable at depth 2");
 
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
         verifyIsEnabled(GL11.GL_BLEND, true, "Blend - After first pop (should restore to depth 1 value)");
         verifyIsEnabled(GL11.GL_LIGHTING, false, "Lighting - After first pop (should restore to depth 1 value)");
 
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
         verifyIsEnabled(GL11.GL_BLEND, false, "Blend - After second pop (should restore to initial)");
         verifyIsEnabled(GL11.GL_LIGHTING, false, "Lighting - After second pop (should restore to initial)");
     }
@@ -750,17 +750,17 @@ class GLSM_PushPop_UnitTest {
         // Test: modify state only at depth 2, not at depth 1
         verifyIsEnabled(GL11.GL_BLEND, false, "Blend - Initial");
 
-        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GLSMAttribStack.glPushAttrib(GL11.GL_ENABLE_BIT);
         // Don't modify blend at depth 1
 
-        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
-        GLStateManager.enableBlend();
+        GLSMAttribStack.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GLSMBlend.enableBlend();
         verifyIsEnabled(GL11.GL_BLEND, true, "Blend - After enable at depth 2");
 
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
         verifyIsEnabled(GL11.GL_BLEND, false, "Blend - After pop to depth 1 (should restore)");
 
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
         verifyIsEnabled(GL11.GL_BLEND, false, "Blend - After pop to depth 0 (should still be false)");
     }
 
@@ -769,18 +769,18 @@ class GLSM_PushPop_UnitTest {
         // Test: modify state only at depth 1, not at depth 2
         verifyIsEnabled(GL11.GL_BLEND, false, "Blend - Initial");
 
-        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
-        GLStateManager.enableBlend();
+        GLSMAttribStack.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GLSMBlend.enableBlend();
         verifyIsEnabled(GL11.GL_BLEND, true, "Blend - After enable at depth 1");
 
-        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GLSMAttribStack.glPushAttrib(GL11.GL_ENABLE_BIT);
         // Don't modify blend at depth 2
         verifyIsEnabled(GL11.GL_BLEND, true, "Blend - At depth 2 (unchanged)");
 
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
         verifyIsEnabled(GL11.GL_BLEND, true, "Blend - After pop to depth 1 (should still be true)");
 
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
         verifyIsEnabled(GL11.GL_BLEND, false, "Blend - After pop to depth 0 (should restore to initial)");
     }
 
@@ -789,13 +789,13 @@ class GLSM_PushPop_UnitTest {
         // Test: multiple modifications to same state at same depth should only save once
         verifyIsEnabled(GL11.GL_BLEND, false, "Blend - Initial");
 
-        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
-        GLStateManager.enableBlend();  // First modification - should save false
-        GLStateManager.disableBlend(); // Second modification - should NOT save again
-        GLStateManager.enableBlend();  // Third modification - should NOT save again
+        GLSMAttribStack.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GLSMBlend.enableBlend();  // First modification - should save false
+        GLSMBlend.disableBlend(); // Second modification - should NOT save again
+        GLSMBlend.enableBlend();  // Third modification - should NOT save again
         verifyIsEnabled(GL11.GL_BLEND, true, "Blend - After multiple toggles");
 
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
         verifyIsEnabled(GL11.GL_BLEND, false, "Blend - After pop (should restore original false)");
     }
 
@@ -804,23 +804,23 @@ class GLSM_PushPop_UnitTest {
         // Test: three levels of nesting
         verifyIsEnabled(GL11.GL_BLEND, false, "Blend - Initial");
 
-        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
-        GLStateManager.enableBlend();
+        GLSMAttribStack.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GLSMBlend.enableBlend();
 
-        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
-        GLStateManager.disableBlend();
+        GLSMAttribStack.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GLSMBlend.disableBlend();
 
-        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
-        GLStateManager.enableBlend();
+        GLSMAttribStack.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GLSMBlend.enableBlend();
         verifyIsEnabled(GL11.GL_BLEND, true, "Blend - At depth 3");
 
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
         verifyIsEnabled(GL11.GL_BLEND, false, "Blend - After pop to depth 2");
 
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
         verifyIsEnabled(GL11.GL_BLEND, true, "Blend - After pop to depth 1");
 
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
         verifyIsEnabled(GL11.GL_BLEND, false, "Blend - After pop to depth 0");
     }
 
@@ -843,48 +843,48 @@ class GLSM_PushPop_UnitTest {
         final int texB = GL11.glGenTextures();
         final int texC = GL11.glGenTextures();
 
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texA);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texA);
         verifyState(GL11.GL_TEXTURE_BINDING_2D, texA, "Initial binding unit 0");
         verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE0, "Initial active unit");
 
         // Verify unit 1 starts with no texture and TEXTURE_2D disabled
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
         verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "Initial binding unit 1");
         verifyIsEnabled(GL11.GL_TEXTURE_2D, false, "Initial TEXTURE_2D state unit 1");
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
 
         // Create display list that changes texture state on multiple units
         final int listId = GL11.glGenLists(1);
-        GLStateManager.glNewList(listId, GL11.GL_COMPILE);
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texB);
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texC);
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glEndList();
+        GLSMDraws.glNewList(listId, GL11.GL_COMPILE);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texB);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texC);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMDraws.glEndList();
 
         // === Begin pattern ===
-        GLStateManager.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+        GLSMAttribStack.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
 
         // Switch to TEXTURE1, enable GL_TEXTURE_2D, switch back
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-        GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
+        GLSMEnable.glEnable(GL11.GL_TEXTURE_2D);
         verifyIsEnabled(GL11.GL_TEXTURE_2D, true, "TEXTURE_2D enabled on unit 1");
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
 
         // Call display list (simulates calling vanilla model/entity display lists)
         DisplayListManager.glCallList(listId);
 
         // Verify state changed by display list
         verifyState(GL11.GL_TEXTURE_BINDING_2D, texB, "After display list - unit 0 binding");
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
         verifyState(GL11.GL_TEXTURE_BINDING_2D, texC, "After display list - unit 1 binding");
         verifyIsEnabled(GL11.GL_TEXTURE_2D, true, "After display list - TEXTURE_2D still enabled on unit 1");
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
 
         // Pop attrib - should restore all state
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
 
         // === CRITICAL VERIFICATIONS ===
         // If any of these fail, we've found the bug
@@ -896,19 +896,19 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_TEXTURE_BINDING_2D, texA, "After pop - unit 0 binding");
 
         // Unit 1 state should be fully restored
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
         verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "After pop - unit 1 binding");
         verifyIsEnabled(GL11.GL_TEXTURE_2D, false, "After pop - TEXTURE_2D disabled on unit 1");
 
         // Cleanup - reset all state to defaults
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-        GLStateManager.glDeleteTextures(texA);
-        GLStateManager.glDeleteTextures(texB);
-        GLStateManager.glDeleteTextures(texC);
-        GLStateManager.glDeleteLists(listId, 1);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        GLSMTextures.glDeleteTextures(texA);
+        GLSMTextures.glDeleteTextures(texB);
+        GLSMTextures.glDeleteTextures(texC);
+        GLSMDraws.glDeleteLists(listId, 1);
     }
 
     @Test
@@ -922,23 +922,23 @@ class GLSM_PushPop_UnitTest {
         final int texA = GL11.glGenTextures();
         final int texB = GL11.glGenTextures();
 
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texA);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texA);
         verifyState(GL11.GL_TEXTURE_BINDING_2D, texA, "Initial binding");
 
         // Create display list with its own push/pop
         final int listId = GL11.glGenLists(1);
-        GLStateManager.glNewList(listId, GL11.GL_COMPILE);
-        GLStateManager.glPushAttrib(GL11.GL_TEXTURE_BIT);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texB);
-        GLStateManager.glPopAttrib();
-        GLStateManager.glEndList();
+        GLSMDraws.glNewList(listId, GL11.GL_COMPILE);
+        GLSMAttribStack.glPushAttrib(GL11.GL_TEXTURE_BIT);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texB);
+        GLSMAttribStack.glPopAttrib();
+        GLSMDraws.glEndList();
 
         // Outer push
-        GLStateManager.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+        GLSMAttribStack.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
 
         // Change texture
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
         verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "After unbind in outer push");
 
         // Call display list with nested push/pop
@@ -948,16 +948,16 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "After display list with nested push/pop");
 
         // Outer pop
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
 
         // Should restore to original texA
         verifyState(GL11.GL_TEXTURE_BINDING_2D, texA, "After outer pop");
 
         // Cleanup - reset state to defaults
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-        GLStateManager.glDeleteTextures(texA);
-        GLStateManager.glDeleteTextures(texB);
-        GLStateManager.glDeleteLists(listId, 1);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        GLSMTextures.glDeleteTextures(texA);
+        GLSMTextures.glDeleteTextures(texB);
+        GLSMDraws.glDeleteLists(listId, 1);
     }
 
     @Test
@@ -970,53 +970,53 @@ class GLSM_PushPop_UnitTest {
         final int texC = GL11.glGenTextures();
 
         // Initial state: texA on unit 0, nothing on unit 1
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texA);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texA);
 
         // Create display list that only modifies unit 0
         final int listId = GL11.glGenLists(1);
-        GLStateManager.glNewList(listId, GL11.GL_COMPILE);
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texC);
-        GLStateManager.glEndList();
+        GLSMDraws.glNewList(listId, GL11.GL_COMPILE);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texC);
+        GLSMDraws.glEndList();
 
         // Push, then work on unit 1
-        GLStateManager.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+        GLSMAttribStack.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
 
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texB);
-        GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texB);
+        GLSMEnable.glEnable(GL11.GL_TEXTURE_2D);
 
         // Call display list - modifies unit 0 while we're "on" unit 1
         DisplayListManager.glCallList(listId);
 
         // Verify: unit 0 changed, unit 1 unchanged
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
         verifyState(GL11.GL_TEXTURE_BINDING_2D, texC, "After list - unit 0 changed to texC");
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
         verifyState(GL11.GL_TEXTURE_BINDING_2D, texB, "After list - unit 1 still texB");
         verifyIsEnabled(GL11.GL_TEXTURE_2D, true, "After list - unit 1 still enabled");
 
         // Pop
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
 
         // Both units should be restored
         verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE0, "After pop - active unit");
         verifyState(GL11.GL_TEXTURE_BINDING_2D, texA, "After pop - unit 0 restored to texA");
 
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
         verifyState(GL11.GL_TEXTURE_BINDING_2D, 0, "After pop - unit 1 restored to 0");
         verifyIsEnabled(GL11.GL_TEXTURE_2D, false, "After pop - unit 1 disabled");
 
         // Cleanup - reset all state to defaults
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-        GLStateManager.glDeleteTextures(texA);
-        GLStateManager.glDeleteTextures(texB);
-        GLStateManager.glDeleteTextures(texC);
-        GLStateManager.glDeleteLists(listId, 1);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        GLSMTextures.glDeleteTextures(texA);
+        GLSMTextures.glDeleteTextures(texB);
+        GLSMTextures.glDeleteTextures(texC);
+        GLSMDraws.glDeleteLists(listId, 1);
     }
 
     @Test
@@ -1028,15 +1028,15 @@ class GLSM_PushPop_UnitTest {
 
         // Create display list that sets color to red
         final int listId = GL11.glGenLists(1);
-        GLStateManager.glNewList(listId, GL11.GL_COMPILE);
-        GLStateManager.glColor4f(1.0f, 0.0f, 0.0f, 1.0f);
-        GLStateManager.glEndList();
+        GLSMDraws.glNewList(listId, GL11.GL_COMPILE);
+        GLSMCurrentAttribs.glColor4f(1.0f, 0.0f, 0.0f, 1.0f);
+        GLSMDraws.glEndList();
 
         // Push (note: GL_CURRENT_BIT includes color)
-        GLStateManager.glPushAttrib(GL11.GL_CURRENT_BIT);
+        GLSMAttribStack.glPushAttrib(GL11.GL_CURRENT_BIT);
 
         // Set color to green
-        GLStateManager.glColor4f(0.0f, 1.0f, 0.0f, 1.0f);
+        GLSMCurrentAttribs.glColor4f(0.0f, 1.0f, 0.0f, 1.0f);
         verifyState(GL11.GL_CURRENT_COLOR, new float[]{0.0f, 1.0f, 0.0f, 1.0f}, "After setting green");
 
         // Call display list - sets to red
@@ -1044,12 +1044,12 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_CURRENT_COLOR, new float[]{1.0f, 0.0f, 0.0f, 1.0f}, "After display list - red");
 
         // Pop - should restore to white (initial state before push)
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
         verifyState(GL11.GL_CURRENT_COLOR, FLOAT_ARRAY_4_1, "After pop - restored to white");
 
         // Cleanup - ensure color is reset to white
-        GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-        GLStateManager.glDeleteLists(listId, 1);
+        GLSMCurrentAttribs.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        GLSMDraws.glDeleteLists(listId, 1);
     }
 
     @Test
@@ -1064,17 +1064,17 @@ class GLSM_PushPop_UnitTest {
 
         // Create display list that enables blend with specific function
         final int listId = GL11.glGenLists(1);
-        GLStateManager.glNewList(listId, GL11.GL_COMPILE);
-        GLStateManager.enableBlend();
-        GLStateManager.glBlendFunc(GL11.GL_ONE, GL11.GL_ONE);
-        GLStateManager.glEndList();
+        GLSMDraws.glNewList(listId, GL11.GL_COMPILE);
+        GLSMBlend.enableBlend();
+        GLSMBlend.glBlendFunc(GL11.GL_ONE, GL11.GL_ONE);
+        GLSMDraws.glEndList();
 
         // Push
-        GLStateManager.glPushAttrib(GL11.GL_COLOR_BUFFER_BIT);
+        GLSMAttribStack.glPushAttrib(GL11.GL_COLOR_BUFFER_BIT);
 
         // Set different blend state
-        GLStateManager.enableBlend();
-        GLStateManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GLSMBlend.enableBlend();
+        GLSMBlend.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 
         // Call display list - changes blend function
         DisplayListManager.glCallList(listId);
@@ -1083,15 +1083,15 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_BLEND_DST, GL11.GL_ONE, "After list - blend dst ONE");
 
         // Pop
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
         verifyIsEnabled(GL11.GL_BLEND, false, "After pop - blend disabled");
         verifyState(GL11.GL_BLEND_SRC, GL11.GL_ONE, "After pop - blend src restored");
         verifyState(GL11.GL_BLEND_DST, GL11.GL_ZERO, "After pop - blend dst restored");
 
         // Cleanup - ensure blend is reset to defaults
-        GLStateManager.disableBlend();
-        GLStateManager.glBlendFunc(GL11.GL_ONE, GL11.GL_ZERO);
-        GLStateManager.glDeleteLists(listId, 1);
+        GLSMBlend.disableBlend();
+        GLSMBlend.glBlendFunc(GL11.GL_ONE, GL11.GL_ZERO);
+        GLSMDraws.glDeleteLists(listId, 1);
 
         // Verify GLSM cache matches actual GL state (exposes cache sync bugs)
         verifyState(GL11.GL_CURRENT_COLOR, FLOAT_ARRAY_4_1, "color should still be white");
@@ -1100,67 +1100,67 @@ class GLSM_PushPop_UnitTest {
     @Test
     void testTextureUnitPopAttribRestoresCorrectUnit() {
         // Setup: Unit 0 ENABLED, Unit 1 disabled
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-        GLStateManager.glDisable(GL11.GL_TEXTURE_2D);
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMEnable.glEnable(GL11.GL_TEXTURE_2D);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
+        GLSMEnable.glDisable(GL11.GL_TEXTURE_2D);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
 
         verifyIsEnabled(GL11.GL_TEXTURE_2D, true, "Initial - Unit 0 enabled");
 
-        GLStateManager.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+        GLSMAttribStack.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
 
         // Modify ONLY unit 1
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-        GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
+        GLSMEnable.glEnable(GL11.GL_TEXTURE_2D);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
 
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPopAttrib();
 
         // Unit 0 should still be enabled - bug causes it to be disabled
         verifyIsEnabled(GL11.GL_TEXTURE_2D, true, "After pop - Unit 0 still enabled");
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
         verifyIsEnabled(GL11.GL_TEXTURE_2D, false, "After pop - Unit 1 disabled");
 
         // Cleanup
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glDisable(GL11.GL_TEXTURE_2D);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMEnable.glDisable(GL11.GL_TEXTURE_2D);
     }
 
     @Test
     void testBlendFuncGL11AliasesMatchGL14() {
-        GLStateManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GLSMBlend.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 
         verifyState(GL11.GL_BLEND_SRC, GL11.GL_SRC_ALPHA, "Blend Source");
         verifyState(GL14.GL_BLEND_SRC_RGB, GL11.GL_SRC_ALPHA, "Blend Source RGB");
         verifyState(GL11.GL_BLEND_DST, GL11.GL_ONE_MINUS_SRC_ALPHA, "Blend Destination");
         verifyState(GL14.GL_BLEND_DST_RGB, GL11.GL_ONE_MINUS_SRC_ALPHA, "Blend Destination RGB");
 
-        GLStateManager.glBlendFunc(GL11.GL_ONE, GL11.GL_ZERO);
+        GLSMBlend.glBlendFunc(GL11.GL_ONE, GL11.GL_ZERO);
     }
 
     @Test
     void testBlendFuncSeparateGL11AliasesTrackRgb() {
-        GLStateManager.glBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        GLSMBlend.glBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
 
         verifyState(GL11.GL_BLEND_SRC, GL11.GL_SRC_ALPHA, "Blend Source");
         verifyState(GL11.GL_BLEND_DST, GL11.GL_ONE_MINUS_SRC_ALPHA, "Blend Destination");
         verifyState(GL14.GL_BLEND_SRC_ALPHA, GL11.GL_ONE, "Blend Source Alpha");
         verifyState(GL14.GL_BLEND_DST_ALPHA, GL11.GL_ZERO, "Blend Destination Alpha");
 
-        GLStateManager.glBlendFunc(GL11.GL_ONE, GL11.GL_ZERO);
+        GLSMBlend.glBlendFunc(GL11.GL_ONE, GL11.GL_ZERO);
     }
 
     @Test
     void testUntouchedPushPopRoundTripLeavesStateIdentical() {
-        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
-        GLStateManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-        GLStateManager.glLineWidth(3.0f);
-        GLStateManager.glViewport(2, 2, 640, 480);
-        GLStateManager.glCullFace(GL11.GL_FRONT);
+        GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_LEQUAL);
+        GLSMBlend.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GLSMRasterizer.glLineWidth(3.0f);
+        GLSMRasterizer.glViewport(2, 2, 640, 480);
+        GLSMRasterizer.glCullFace(GL11.GL_FRONT);
 
-        GLStateManager.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+        GLSMAttribStack.glPopAttrib();
 
         verifyState(GL11.GL_DEPTH_FUNC, GL11.GL_LEQUAL, "Depth Func - untouched round trip");
         verifyState(GL11.GL_BLEND_SRC, GL11.GL_SRC_ALPHA, "Blend Source - untouched round trip");
@@ -1170,10 +1170,10 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_CULL_FACE_MODE, GL11.GL_FRONT, "Cull Face Mode - untouched round trip");
         verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE0, "Active Texture - untouched round trip");
 
-        GLStateManager.glDepthFunc(GL11.GL_LESS);
-        GLStateManager.glBlendFunc(GL11.GL_ONE, GL11.GL_ZERO);
-        GLStateManager.glLineWidth(1.0f);
-        GLStateManager.glViewport(0, 0, 800, 600);
-        GLStateManager.glCullFace(GL11.GL_BACK);
+        GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_LESS);
+        GLSMBlend.glBlendFunc(GL11.GL_ONE, GL11.GL_ZERO);
+        GLSMRasterizer.glLineWidth(1.0f);
+        GLSMRasterizer.glViewport(0, 0, 800, 600);
+        GLSMRasterizer.glCullFace(GL11.GL_BACK);
     }
 }

@@ -1,6 +1,6 @@
 package net.coderbot.iris.gl.program;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayDeque;
@@ -51,7 +51,7 @@ public final class RetainedPrograms {
 	public static void afterPipelineBuilt() {
 		for (ArrayDeque<Integer> programs : older.values()) {
 			for (int program : programs) {
-				GLStateManager.glDeleteProgram(program);
+				GLSMPrograms.glDeleteProgram(program);
 			}
 		}
 		older = recent;

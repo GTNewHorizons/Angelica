@@ -1,6 +1,10 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.GlTestSupport;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.sdlgpu.SDLGPUGate;
@@ -53,22 +57,22 @@ class GlsmSdlInstancedConstantTest {
         Reflect.set(device, "driverName", "metal");
         final int program = GlTestSupport.program(VERT, FRAG);
 
-        final int vao = GLStateManager.glGenVertexArrays();
-        final int vbo = GLStateManager.glGenBuffers();
+        final int vao = GLSMVertexInput.glGenVertexArrays();
+        final int vbo = GLSMBuffers.glGenBuffers();
         final FloatBuffer quad = MemoryUtil.memAllocFloat(12);
         try {
             quad.put(new float[] { 0, -1, 1, -1, 1, 1, 0, -1, 1, 1, 0, 1 }).flip();
-            GLStateManager.glBindVertexArray(vao);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-            GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, quad, GL15.GL_STATIC_DRAW);
-            GLStateManager.glEnableVertexAttribArray(0);
-            GLStateManager.glVertexAttribPointer(0, 2, GL11.GL_FLOAT, false, 8, 0L);
-            GLStateManager.glDisableVertexAttribArray(TINT_LOCATION);
-            GLStateManager.glVertexAttrib4f(TINT_LOCATION, 0.2f, 0.4f, 0.6f, 1.0f);
+            GLSMVertexInput.glBindVertexArray(vao);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+            GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, quad, GL15.GL_STATIC_DRAW);
+            GLSMVertexInput.glEnableVertexAttribArray(0);
+            GLSMVertexInput.glVertexAttribPointer(0, 2, GL11.GL_FLOAT, false, 8, 0L);
+            GLSMVertexInput.glDisableVertexAttribArray(TINT_LOCATION);
+            GLSMCurrentAttribs.glVertexAttrib4f(TINT_LOCATION, 0.2f, 0.4f, 0.6f, 1.0f);
 
-            GLStateManager.glUseProgram(program);
-            GLStateManager.glDrawArraysInstanced(GL11.GL_TRIANGLES, 0, 6, INSTANCES);
-            GLStateManager.glUseProgram(0);
+            GLSMPrograms.glUseProgram(program);
+            GLSMDraws.glDrawArraysInstanced(GL11.GL_TRIANGLES, 0, 6, INSTANCES);
+            GLSMPrograms.glUseProgram(0);
 
             final int[] row = GlsmSdlHeadlessRig.readTarget(0, GlsmSdlHeadlessRig.SIZE / 2, GlsmSdlHeadlessRig.SIZE, 1);
             final int expected = 0xFF000000 | (51 << 16) | (102 << 8) | 153;
@@ -80,11 +84,11 @@ class GlsmSdlInstancedConstantTest {
         } finally {
             Reflect.set(device, "driverName", driver);
             MemoryUtil.memFree(quad);
-            GLStateManager.glBindVertexArray(0);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-            GLStateManager.glDeleteBuffers(vbo);
-            GLStateManager.glDeleteVertexArrays(vao);
-            GLStateManager.glDeleteProgram(program);
+            GLSMVertexInput.glBindVertexArray(0);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            GLSMBuffers.glDeleteBuffers(vbo);
+            GLSMVertexInput.glDeleteVertexArrays(vao);
+            GLSMPrograms.glDeleteProgram(program);
         }
     }
 }

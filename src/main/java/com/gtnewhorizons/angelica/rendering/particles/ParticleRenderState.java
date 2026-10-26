@@ -1,6 +1,9 @@
 package com.gtnewhorizons.angelica.rendering.particles;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import org.lwjgl.opengl.GL11;
 
@@ -17,14 +20,14 @@ public final class ParticleRenderState {
     public boolean depthMask;
 
     public void sample() {
-        texture = GLStateManager.getBoundTextureForServerState();
-        blend = GLStateManager.isEffectiveBlendEnabled();
-        GLStateManager.getEffectiveBlendState(scratch);
+        texture = GLSMTextures.getBoundTextureForServerState();
+        blend = GLSMBlend.isEffectiveBlendEnabled();
+        GLSMBlend.getEffectiveBlendState(scratch);
         blendSrc = scratch.getSrcRgb();
         blendDst = scratch.getDstRgb();
         blendSrcAlpha = scratch.getSrcAlpha();
         blendDstAlpha = scratch.getDstAlpha();
-        depthMask = GLStateManager.isEffectiveDepthMaskEnabled();
+        depthMask = GLSMDepthStencilAlpha.isEffectiveDepthMaskEnabled();
     }
 
     public void set(ParticleRenderState other) {
@@ -42,13 +45,13 @@ public final class ParticleRenderState {
     }
 
     public void apply() {
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texture);
         if (blend) {
-            GLStateManager.glEnable(GL11.GL_BLEND);
-            GLStateManager.glBlendFuncSeparate(blendSrc, blendDst, blendSrcAlpha, blendDstAlpha);
+            GLSMEnable.glEnable(GL11.GL_BLEND);
+            GLSMBlend.glBlendFuncSeparate(blendSrc, blendDst, blendSrcAlpha, blendDstAlpha);
         } else {
-            GLStateManager.glDisable(GL11.GL_BLEND);
+            GLSMEnable.glDisable(GL11.GL_BLEND);
         }
-        GLStateManager.glDepthMask(depthMask);
+        GLSMDepthStencilAlpha.glDepthMask(depthMask);
     }
 }

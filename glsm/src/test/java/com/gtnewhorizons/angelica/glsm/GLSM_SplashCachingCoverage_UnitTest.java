@@ -29,21 +29,21 @@ public class GLSM_SplashCachingCoverage_UnitTest {
     @AfterEach
     void leaveSplashWindow() throws IllegalAccessException {
         SplashWindow.leave();
-        GLStateManager.glDepthFunc(GL11.GL_LESS);
-        GLStateManager.glCullFace(GL11.GL_BACK);
+        GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_LESS);
+        GLSMRasterizer.glCullFace(GL11.GL_BACK);
     }
 
     @Test
     void popAttribDoesNotRevertDepthFuncSetDuringSplash() throws IllegalAccessException {
-        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
+        GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_LEQUAL);
 
         SplashWindow.setSplashComplete(true);
         GLStateManager.setDrawableGLHolder(Thread.currentThread());
 
-        GLStateManager.glPushAttrib(GL11.GL_DEPTH_BUFFER_BIT);
-        GLStateManager.glPopAttrib();
+        GLSMAttribStack.glPushAttrib(GL11.GL_DEPTH_BUFFER_BIT);
+        GLSMAttribStack.glPopAttrib();
 
-        assertEquals(GL11.GL_LEQUAL, GLStateManager.getDepthState().getFunc(), "popAttrib reverted to the stale default");
+        assertEquals(GL11.GL_LEQUAL, GLSMDepthStencilAlpha.getDepthState().getFunc(), "popAttrib reverted to the stale default");
         assertEquals(GL11.GL_LEQUAL, GL11.glGetInteger(GL11.GL_DEPTH_FUNC));
     }
 
@@ -77,26 +77,26 @@ public class GLSM_SplashCachingCoverage_UnitTest {
 
     @Test
     void replayPushesCachedStateWithoutDisturbingIt() {
-        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
-        GLStateManager.glCullFace(GL11.GL_FRONT);
-        assertEquals(GL11.GL_LEQUAL, GLStateManager.getDepthState().getFunc(), "cache write dropped while caching=false");
-        assertEquals(GL11.GL_FRONT, GLStateManager.getPolygonState().getCullFaceMode(), "cache write dropped while caching=false");
+        GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_LEQUAL);
+        GLSMRasterizer.glCullFace(GL11.GL_FRONT);
+        assertEquals(GL11.GL_LEQUAL, GLSMDepthStencilAlpha.getDepthState().getFunc(), "cache write dropped while caching=false");
+        assertEquals(GL11.GL_FRONT, GLSMRasterizer.getPolygonState().getCullFaceMode(), "cache write dropped while caching=false");
 
-        GLStateManager.replayStateToBackend();
+        GLSMAttribStack.replayStateToBackend();
 
-        assertEquals(GL11.GL_LEQUAL, GLStateManager.getDepthState().getFunc(), "replay must not mutate the cache");
-        assertEquals(GL11.GL_FRONT, GLStateManager.getPolygonState().getCullFaceMode(), "replay must not mutate the cache");
+        assertEquals(GL11.GL_LEQUAL, GLSMDepthStencilAlpha.getDepthState().getFunc(), "replay must not mutate the cache");
+        assertEquals(GL11.GL_FRONT, GLSMRasterizer.getPolygonState().getCullFaceMode(), "replay must not mutate the cache");
     }
 
     @Test
     void replayPushesDepthFuncToRealGL() {
         assertNotNull(BackendManager.RENDER_BACKEND, "no backend: replay would no-op and this test would pass vacuously");
 
-        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
+        GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_LEQUAL);
         GL11.glDepthFunc(GL11.GL_LESS);
         assertEquals(GL11.GL_LESS, GL11.glGetInteger(GL11.GL_DEPTH_FUNC), "setup failed to diverge real GL");
 
-        GLStateManager.replayStateToBackend();
+        GLSMAttribStack.replayStateToBackend();
 
         assertEquals(GL11.GL_LEQUAL, GL11.glGetInteger(GL11.GL_DEPTH_FUNC), "cached depth func never reached real GL; GUI draws at equal depth would be rejected");
     }
@@ -105,7 +105,7 @@ public class GLSM_SplashCachingCoverage_UnitTest {
     void firstFrameAfterSplashSeedsRealGL() throws IllegalAccessException {
         assertNotNull(BackendManager.RENDER_BACKEND, "no backend: this test would pass vacuously");
 
-        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
+        GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_LEQUAL);
         GL11.glDepthFunc(GL11.GL_LESS);
 
         SplashWindow.setSplashComplete(false);
@@ -123,7 +123,7 @@ public class GLSM_SplashCachingCoverage_UnitTest {
 
     @Test
     void splashCompleteRequestsSeedOnceAndIssuesNoGLItself() throws IllegalAccessException {
-        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
+        GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_LEQUAL);
         GL11.glDepthFunc(GL11.GL_LESS);
 
         SplashWindow.setSplashComplete(false);

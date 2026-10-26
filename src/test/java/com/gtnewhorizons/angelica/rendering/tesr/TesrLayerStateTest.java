@@ -5,7 +5,17 @@ import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
 import com.gtnewhorizons.angelica.api.tesr.TesrShaders;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMFog;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMLighting;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.GlTestSupport;
 import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
@@ -65,16 +75,16 @@ class TesrLayerStateTest {
 
     @BeforeEach
     void liveState() {
-        GLStateManager.disableFog();
-        GLStateManager.enableAlphaTest();
-        GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.1f);
-        GLStateManager.enableDepthTest();
-        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
-        GLStateManager.glDepthMask(true);
-        GLStateManager.glColorMask(true, true, true, true);
-        GLStateManager.disableBlend();
-        GLStateManager.enableCull();
-        GLStateManager.enableLighting();
+        GLSMFog.disableFog();
+        GLSMDepthStencilAlpha.enableAlphaTest();
+        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, 0.1f);
+        GLSMDepthStencilAlpha.enableDepthTest();
+        GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_LEQUAL);
+        GLSMDepthStencilAlpha.glDepthMask(true);
+        GLSMBlend.glColorMask(true, true, true, true);
+        GLSMBlend.disableBlend();
+        GLSMRasterizer.enableCull();
+        GLSMLighting.enableLighting();
     }
 
     @AfterEach
@@ -85,22 +95,22 @@ class TesrLayerStateTest {
 
         ModelPartBatcher.INSTANCE.clear();
         TesrShaderPrograms.invalidateAll();
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-        GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
+        GLSMMatrices.glMatrixMode(GL11.GL_TEXTURE);
+        GLSMMatrices.glLoadIdentity();
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
         final ShaderManager ffp = ShaderManager.getInstance();
         if (ffp.isActive()) ffp.deactivate();
 
-        GLStateManager.disableBlend();
-        GLStateManager.disableAlphaTest();
-        GLStateManager.glAlphaFunc(GL11.GL_ALWAYS, 0f);
-        GLStateManager.glDepthFunc(GL11.GL_LESS);
-        GLStateManager.glDepthMask(true);
-        GLStateManager.glColorMask(true, true, true, true);
-        GLStateManager.glDisable(GL11.GL_TEXTURE_2D);
+        GLSMBlend.disableBlend();
+        GLSMDepthStencilAlpha.disableAlphaTest();
+        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_ALWAYS, 0f);
+        GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_LESS);
+        GLSMDepthStencilAlpha.glDepthMask(true);
+        GLSMBlend.glColorMask(true, true, true, true);
+        GLSMEnable.glDisable(GL11.GL_TEXTURE_2D);
     }
 
     private static void assertDriverColorMask(boolean expected) {
@@ -117,9 +127,9 @@ class TesrLayerStateTest {
     @ValueSource(booleans = { false, true })
     void batchBracketRestoresCallerDepthAfterGlint(boolean held) {
         for (boolean enabled : new boolean[] { true, false }) {
-            GLStateManager.getDepthTest().setEnabled(enabled);
-            GLStateManager.glDepthFunc(GL11.GL_GREATER);
-            final int depth = GLStateManager.pushState(StateSet.BATCH);
+            GLSMDepthStencilAlpha.getDepthTest().setEnabled(enabled);
+            GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_GREATER);
+            final int depth = GLSMAttribStack.pushState(StateSet.BATCH);
             final RenderLayer base = layer(EntityMaterials.DROPPED_ITEM_CUTOUT);
             final RenderLayer glint = layer(held ? EntityMaterials.ITEM_GLINT : EntityMaterials.GLINT);
             base.startDrawing();
@@ -130,15 +140,15 @@ class TesrLayerStateTest {
             assertSame(SpecialCondition.GLINT, GbufferPrograms.getSpecialCondition());
             glint.endDrawing();
             assertNull(GbufferPrograms.getSpecialCondition());
-            GLStateManager.popStateTo(depth);
+            GLSMAttribStack.popStateTo(depth);
             assertDepth(enabled, GL11.GL_GREATER);
         }
     }
 
     private static void assertDepth(boolean enabled, int function) {
-        assertEquals(enabled, GLStateManager.getDepthTest().isEnabled(), "cached depth enable");
+        assertEquals(enabled, GLSMDepthStencilAlpha.getDepthTest().isEnabled(), "cached depth enable");
         assertEquals(enabled, GL11.glIsEnabled(GL11.GL_DEPTH_TEST), "driver depth enable");
-        assertEquals(function, GLStateManager.getDepthState().getFunc(), "cached depth function");
+        assertEquals(function, GLSMDepthStencilAlpha.getDepthState().getFunc(), "cached depth function");
         assertEquals(function, GL11.glGetInteger(GL11.GL_DEPTH_FUNC), "driver depth function");
     }
 
@@ -146,16 +156,16 @@ class TesrLayerStateTest {
     @ValueSource(booleans = { false, true })
     void skippedDroppedGlintPreservesDepthMaskAndTextureMatrix(boolean depthWrite) {
         final Matrix4f textureMatrix = new Matrix4f().translation(0.13f, 0.27f, 0);
-        GLStateManager.setTextureMatrix(0, textureMatrix);
-        GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
-        GLStateManager.glDepthMask(depthWrite);
-        GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        GLSMMatrices.setTextureMatrix(0, textureMatrix);
+        GLSMMatrices.glMatrixMode(GL11.GL_TEXTURE);
+        GLSMDepthStencilAlpha.glDepthMask(depthWrite);
+        GLSMBlend.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
         SkippedGlintBlock.applyDroppedItemExitState();
-        assertEquals(depthWrite, GLStateManager.isEffectiveDepthMaskEnabled());
-        assertEquals(textureMatrix, GLStateManager.getTextures().getTextureUnitMatrix(0));
-        assertEquals(GL11.GL_MODELVIEW, GLStateManager.getMatrixMode().getMode());
-        assertEquals(GL11.GL_SRC_COLOR, GLStateManager.getBlendState().getSrcAlpha(), "dropped glint blends alpha like color, unlike held");
-        assertEquals(GL11.GL_ONE, GLStateManager.getBlendState().getDstAlpha());
+        assertEquals(depthWrite, GLSMDepthStencilAlpha.isEffectiveDepthMaskEnabled());
+        assertEquals(textureMatrix, GLSMTextures.getTextures().getTextureUnitMatrix(0));
+        assertEquals(GL11.GL_MODELVIEW, GLSMMatrices.getMatrixMode().getMode());
+        assertEquals(GL11.GL_SRC_COLOR, GLSMBlend.getBlendState().getSrcAlpha(), "dropped glint blends alpha like color, unlike held");
+        assertEquals(GL11.GL_ONE, GLSMBlend.getBlendState().getDstAlpha());
     }
 
     @Test
@@ -196,62 +206,62 @@ class TesrLayerStateTest {
     static Stream<Arguments> batchDrawCases() {
         return Stream.of(
             Arguments.of("texture matrix and iris override", (Supplier<BatchScenario>) () -> {
-                GLStateManager.setTextureMatrix(0, new Matrix4f().translation(0.25f, 0f, 0f));
+                GLSMMatrices.setTextureMatrix(0, new Matrix4f().translation(0.25f, 0f, 0f));
                 GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.GLINT);
                 GbufferPrograms.pushOverridePhase(WorldRenderingPhase.TERRAIN_CUTOUT);
                 return new BatchScenario(
                     () -> {
-                        assertTrue(MatrixHelper.isIdentity(GLStateManager.getTextures().getTextureUnitMatrix(0)), "unit 0 texture matrix during batch draw");
+                        assertTrue(MatrixHelper.isIdentity(GLSMTextures.getTextures().getTextureUnitMatrix(0)), "unit 0 texture matrix during batch draw");
                         assertNull(GbufferPrograms.getSpecialCondition(), "special condition during batch draw");
                         assertNull(GbufferPrograms.getOverridePhase(), "override phase during batch draw");
                     },
                     () -> {
-                        assertEquals(0.25f, GLStateManager.getTextures().getTextureUnitMatrix(0).m30(), "caller texture matrix restored");
+                        assertEquals(0.25f, GLSMTextures.getTextures().getTextureUnitMatrix(0).m30(), "caller texture matrix restored");
                         assertEquals(SpecialCondition.GLINT, GbufferPrograms.getSpecialCondition(), "caller special condition restored");
                         assertEquals(WorldRenderingPhase.TERRAIN_CUTOUT, GbufferPrograms.getOverridePhase(), "caller override phase restored");
                     },
                     () -> {
                         GbufferPrograms.popOverridePhase();
                         GbufferPrograms.teardownSpecialRenderCondition();
-                        GLStateManager.setTextureMatrix(0, new Matrix4f());
+                        GLSMMatrices.setTextureMatrix(0, new Matrix4f());
                     });
             }),
             Arguments.of("foreign program and framebuffer", (Supplier<BatchScenario>) () -> {
                 final int program = GlTestSupport.program(GlTestSupport.TRIVIAL_VS, GlTestSupport.TRIVIAL_FS);
-                final int framebuffer = GLStateManager.glGenFramebuffers();
-                GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+                final int framebuffer = GLSMFramebuffer.glGenFramebuffers();
+                GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
                 BatchDrawDefaults.capturePassFramebuffer();
-                GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, framebuffer);
-                GLStateManager.glUseProgram(program);
+                GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, framebuffer);
+                GLSMPrograms.glUseProgram(program);
                 return new BatchScenario(
                     () -> {
-                        assertEquals(0, GLStateManager.getActiveProgram(), "program during batch draw");
-                        assertEquals(0, GLStateManager.getDrawFramebuffer(), "framebuffer during batch draw");
+                        assertEquals(0, GLSMPrograms.getActiveProgram(), "program during batch draw");
+                        assertEquals(0, GLSMFramebuffer.getDrawFramebuffer(), "framebuffer during batch draw");
                         assertEquals(0, GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING), "driver draw framebuffer during batch draw");
                     },
                     () -> {
-                        assertEquals(program, GLStateManager.getActiveProgram(), "caller program restored");
-                        assertEquals(framebuffer, GLStateManager.getDrawFramebuffer(), "caller framebuffer restored");
+                        assertEquals(program, GLSMPrograms.getActiveProgram(), "caller program restored");
+                        assertEquals(framebuffer, GLSMFramebuffer.getDrawFramebuffer(), "caller framebuffer restored");
                         assertEquals(program, GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM), "driver caller program restored");
                         assertEquals(framebuffer, GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING), "driver caller framebuffer restored");
                     },
                     () -> {
-                        GLStateManager.glUseProgram(0);
-                        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
-                        GLStateManager.glDeleteFramebuffers(framebuffer);
-                        GLStateManager.glDeleteProgram(program);
+                        GLSMPrograms.glUseProgram(0);
+                        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+                        GLSMFramebuffer.glDeleteFramebuffers(framebuffer);
+                        GLSMPrograms.glDeleteProgram(program);
                     });
             }),
             Arguments.of("filter from before an item renderer's blur window", (Supplier<BatchScenario>) () -> {
-                final int texture = GLStateManager.glGenTextures();
-                GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-                GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
-                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+                final int texture = GLSMTextures.glGenTextures();
+                GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+                GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+                GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+                GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
                 // What TextureUtil.func_152777_a(false, false, 1) does around an item render.
                 TextureUtilHooks.captureBoundFilterTexture();
-                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+                GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+                GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
                 return new BatchScenario(
                     () -> {
                         assertEquals(GL11.GL_LINEAR, TextureInfoCache.INSTANCE.getInfo(texture).getMinFilter(), "filter from before the window");
@@ -265,8 +275,8 @@ class TesrLayerStateTest {
                     },
                     () -> {
                         TextureUtilHooks.clearSavedFilterTexture();
-                        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-                        GLStateManager.glDeleteTextures(texture);
+                        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+                        GLSMTextures.glDeleteTextures(texture);
                     });
             }));
     }
@@ -305,23 +315,23 @@ class TesrLayerStateTest {
 
     @Test
     void clockwiseFrontFaceIsStoredWithTheLayer() {
-        GLStateManager.glCullFace(GL11.GL_BACK);
-        GLStateManager.glFrontFace(GL11.GL_CW);
+        GLSMRasterizer.glCullFace(GL11.GL_BACK);
+        GLSMRasterizer.glFrontFace(GL11.GL_CW);
         try {
             final int cull = DrawState.liveCull();
             assertEquals(DrawState.CULL_BACK | DrawState.FRONT_FACE_CLOCKWISE, cull);
             final RenderLayer layer = RenderLayer.tesr(null, TesrMaterial.builder().build(), PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, cull, true, true);
-            GLStateManager.glFrontFace(GL11.GL_CCW);
-            final int depth = GLStateManager.pushState(StateSet.BATCH);
+            GLSMRasterizer.glFrontFace(GL11.GL_CCW);
+            final int depth = GLSMAttribStack.pushState(StateSet.BATCH);
             layer.startDrawing();
-            assertEquals(GL11.GL_CW, GLStateManager.getPolygonState().getFrontFace(), "cached front face");
+            assertEquals(GL11.GL_CW, GLSMRasterizer.getPolygonState().getFrontFace(), "cached front face");
             assertEquals(GL11.GL_CW, GL11.glGetInteger(GL11.GL_FRONT_FACE), "driver front face");
             assertTrue(GL11.glIsEnabled(GL11.GL_CULL_FACE), "cull stays on");
             layer.endDrawing();
-            GLStateManager.popStateTo(depth);
-            assertEquals(GL11.GL_CCW, GLStateManager.getPolygonState().getFrontFace(), "front face restored by BATCH pop");
+            GLSMAttribStack.popStateTo(depth);
+            assertEquals(GL11.GL_CCW, GLSMRasterizer.getPolygonState().getFrontFace(), "front face restored by BATCH pop");
         } finally {
-            GLStateManager.glFrontFace(GL11.GL_CCW);
+            GLSMRasterizer.glFrontFace(GL11.GL_CCW);
         }
     }
 
@@ -395,11 +405,11 @@ class TesrLayerStateTest {
     }
 
     private static void drawInBatch(RenderLayer layer, boolean culled) {
-        final int depth = GLStateManager.pushState(StateSet.BATCH);
+        final int depth = GLSMAttribStack.pushState(StateSet.BATCH);
         layer.startDrawing();
         assertEquals(culled, GL11.glIsEnabled(GL11.GL_CULL_FACE));
         layer.endDrawing();
-        GLStateManager.popStateTo(depth);
+        GLSMAttribStack.popStateTo(depth);
     }
 
     static Stream<Arguments> layerCaches() {
@@ -414,18 +424,18 @@ class TesrLayerStateTest {
     @MethodSource("layerCaches")
     void queuedCullingSplitsLayerCachesAndRestoresTheDrawCaller(String name, Function<TesrMaterial, RenderLayer> layerFor, TesrMaterial[] materials) {
         for (TesrMaterial material : materials) {
-            GLStateManager.disableCull();
+            GLSMRasterizer.disableCull();
             final RenderLayer twoSided = layerFor.apply(material);
-            GLStateManager.enableCull();
+            GLSMRasterizer.enableCull();
             final RenderLayer culled = layerFor.apply(material);
             assertNotSame(twoSided, culled, "the last-layer shortcut must include culling");
-            GLStateManager.disableCull();
+            GLSMRasterizer.disableCull();
             assertSame(twoSided, layerFor.apply(material), "the layer map must retain both states");
         }
 
-        GLStateManager.disableCull();
+        GLSMRasterizer.disableCull();
         final RenderLayer twoSided = layerFor.apply(materials[0]);
-        GLStateManager.enableCull();
+        GLSMRasterizer.enableCull();
         final RenderLayer culled = layerFor.apply(materials[0]);
         twoSided.startDrawing();
         assertFalse(GL11.glIsEnabled(GL11.GL_CULL_FACE));
@@ -433,15 +443,15 @@ class TesrLayerStateTest {
         assertTrue(GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK));
         twoSided.endDrawing();
 
-        GLStateManager.enableCull();
+        GLSMRasterizer.enableCull();
         drawInBatch(twoSided, false);
         assertTrue(GL11.glIsEnabled(GL11.GL_CULL_FACE));
 
-        GLStateManager.disableCull();
+        GLSMRasterizer.disableCull();
         drawInBatch(culled, true);
         assertFalse(GL11.glIsEnabled(GL11.GL_CULL_FACE));
 
-        GLStateManager.enableCull();
+        GLSMRasterizer.enableCull();
         drawInBatch(layerFor.apply(TesrMaterial.builder().noCull().build()), false);
         assertTrue(GL11.glIsEnabled(GL11.GL_CULL_FACE));
     }
@@ -449,21 +459,21 @@ class TesrLayerStateTest {
     static Stream<Arguments> axisCases() {
         return Stream.of(
             Arguments.of("current state over a dirty caller", (Runnable) () -> {
-                    GLStateManager.disableCull();
-                    GLStateManager.glCullFace(GL11.GL_FRONT);
-                    GLStateManager.disableLighting();
-                    GLStateManager.glColorMask(false, false, false, false);
+                    GLSMRasterizer.disableCull();
+                    GLSMRasterizer.glCullFace(GL11.GL_FRONT);
+                    GLSMLighting.disableLighting();
+                    GLSMBlend.glColorMask(false, false, false, false);
                 }, TesrMaterial.CURRENT_STATE, (Runnable) () -> {
-                    assertFalse(GLStateManager.getAlphaTest().isEnabled(), "no cutout");
-                    assertTrue(GLStateManager.getDepthTest().isEnabled(), "depth test");
-                    assertEquals(GL11.GL_LEQUAL, GLStateManager.getDepthState().getFunc());
-                    assertTrue(GLStateManager.getDepthState().isEnabled(), "depth write");
-                    assertFalse(GLStateManager.getBlendMode().isEnabled(), "opaque");
-                    assertTrue(GLStateManager.getCullState().isEnabled(), "cull pinned on");
-                    assertEquals(GL11.GL_BACK, GLStateManager.getPolygonState().getCullFaceMode(), "cull face pinned to back");
-                    assertTrue(GLStateManager.getLightingState().isEnabled(), "lit");
-                    assertTrue(GLStateManager.getColorMask().red, "color mask pinned on");
-                    assertFalse(GLStateManager.glIsEnabled(GL11.GL_POLYGON_OFFSET_FILL), "no polygon offset");
+                    assertFalse(GLSMDepthStencilAlpha.getAlphaTest().isEnabled(), "no cutout");
+                    assertTrue(GLSMDepthStencilAlpha.getDepthTest().isEnabled(), "depth test");
+                    assertEquals(GL11.GL_LEQUAL, GLSMDepthStencilAlpha.getDepthState().getFunc());
+                    assertTrue(GLSMDepthStencilAlpha.getDepthState().isEnabled(), "depth write");
+                    assertFalse(GLSMBlend.getBlendMode().isEnabled(), "opaque");
+                    assertTrue(GLSMRasterizer.getCullState().isEnabled(), "cull pinned on");
+                    assertEquals(GL11.GL_BACK, GLSMRasterizer.getPolygonState().getCullFaceMode(), "cull face pinned to back");
+                    assertTrue(GLSMLighting.getLightingState().isEnabled(), "lit");
+                    assertTrue(GLSMBlend.getColorMask().red, "color mask pinned on");
+                    assertFalse(GLSMEnable.glIsEnabled(GL11.GL_POLYGON_OFFSET_FILL), "no polygon offset");
                     assertTrue(GL11.glIsEnabled(GL11.GL_DEPTH_TEST), "driver depth test");
                     assertEquals(GL11.GL_LEQUAL, GL11.glGetInteger(GL11.GL_DEPTH_FUNC), "driver depth func");
                     assertTrue(GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK), "driver depth write");
@@ -475,15 +485,15 @@ class TesrLayerStateTest {
                 }),
             Arguments.of("every material toggle", (Runnable) () -> { },
                 TesrMaterial.builder().noCull().unlit().noDepthWrite().cutout(0.5f).translucent().depthEqual().build(), (Runnable) () -> {
-                    assertFalse(GLStateManager.getCullState().isEnabled(), "noCull");
-                    assertFalse(GLStateManager.getLightingState().isEnabled(), "unlit");
-                    assertFalse(GLStateManager.getDepthState().isEnabled(), "noDepthWrite");
-                    assertTrue(GLStateManager.getAlphaTest().isEnabled(), "cutout");
-                    assertEquals(0.5f, GLStateManager.getAlphaState().getReference(), "cutout threshold");
-                    assertTrue(GLStateManager.getBlendMode().isEnabled(), "translucent");
-                    assertEquals(GL11.GL_SRC_ALPHA, GLStateManager.getBlendState().getSrcRgb());
-                    assertEquals(GL11.GL_ONE_MINUS_SRC_ALPHA, GLStateManager.getBlendState().getDstRgb());
-                    assertEquals(GL11.GL_EQUAL, GLStateManager.getDepthState().getFunc(), "depthEqual");
+                    assertFalse(GLSMRasterizer.getCullState().isEnabled(), "noCull");
+                    assertFalse(GLSMLighting.getLightingState().isEnabled(), "unlit");
+                    assertFalse(GLSMDepthStencilAlpha.getDepthState().isEnabled(), "noDepthWrite");
+                    assertTrue(GLSMDepthStencilAlpha.getAlphaTest().isEnabled(), "cutout");
+                    assertEquals(0.5f, GLSMDepthStencilAlpha.getAlphaState().getReference(), "cutout threshold");
+                    assertTrue(GLSMBlend.getBlendMode().isEnabled(), "translucent");
+                    assertEquals(GL11.GL_SRC_ALPHA, GLSMBlend.getBlendState().getSrcRgb());
+                    assertEquals(GL11.GL_ONE_MINUS_SRC_ALPHA, GLSMBlend.getBlendState().getDstRgb());
+                    assertEquals(GL11.GL_EQUAL, GLSMDepthStencilAlpha.getDepthState().getFunc(), "depthEqual");
                     assertFalse(GL11.glIsEnabled(GL11.GL_CULL_FACE), "driver noCull");
                     assertFalse(GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK), "driver noDepthWrite");
                     assertTrue(GL11.glIsEnabled(GL11.GL_BLEND), "driver translucent");
@@ -504,15 +514,15 @@ class TesrLayerStateTest {
     static Stream<Arguments> effectiveStateCases() {
         return Stream.of(
             Arguments.of("alpha test", (Runnable) () -> {
-                GLStateManager.getAlphaTest().setVanillaLayer(AlphaTestStorage.ENABLE_LAYER);
-                GLStateManager.getAlphaState().setVanillaLayer(AlphaTestStorage.FUNC_LAYER);
+                GLSMDepthStencilAlpha.getAlphaTest().setVanillaLayer(AlphaTestStorage.ENABLE_LAYER);
+                GLSMDepthStencilAlpha.getAlphaState().setVanillaLayer(AlphaTestStorage.FUNC_LAYER);
 
-                GLStateManager.disableBlend();
-                GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
-                GLStateManager.enableAlphaTest();
-                GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.1f);
-                GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
-                GLStateManager.glDepthMask(true);
+                GLSMBlend.disableBlend();
+                GLSMEnable.glEnable(GL11.GL_TEXTURE_2D);
+                GLSMDepthStencilAlpha.enableAlphaTest();
+                GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, 0.1f);
+                GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_LEQUAL);
+                GLSMDepthStencilAlpha.glDepthMask(true);
 
                 AlphaTestStorage.overrideAlphaTest(null);
 
@@ -520,29 +530,29 @@ class TesrLayerStateTest {
                 assertSame(EntityMaterials.DROPPED_ITEM_CUTOUT, EntityMaterials.itemFromCurrentState(true));
             }),
             Arguments.of("depth mask", (Runnable) () -> {
-                GLStateManager.getDepthState().setVanillaLayer(DepthColorStorage.DEPTH_LAYER);
-                GLStateManager.getColorMask().setVanillaLayer(DepthColorStorage.COLOR_LAYER);
+                GLSMDepthStencilAlpha.getDepthState().setVanillaLayer(DepthColorStorage.DEPTH_LAYER);
+                GLSMBlend.getColorMask().setVanillaLayer(DepthColorStorage.COLOR_LAYER);
 
-                GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
-                GLStateManager.enableBlend();
-                GLStateManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-                GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
-                GLStateManager.glDepthMask(true);
+                GLSMEnable.glEnable(GL11.GL_TEXTURE_2D);
+                GLSMBlend.enableBlend();
+                GLSMBlend.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+                GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_LEQUAL);
+                GLSMDepthStencilAlpha.glDepthMask(true);
 
                 DepthColorStorage.disableDepthColor();
 
                 assertSame(EntityMaterials.TRANSLUCENT_DEPTH_WRITE, EntityMaterials.fromCurrentState(true), "raw depth mask held off by another pass; the effective vanilla mask must pick the depth-write variant");
             }),
             Arguments.of("color mask", (Runnable) () -> {
-                GLStateManager.getDepthState().setVanillaLayer(DepthColorStorage.DEPTH_LAYER);
-                GLStateManager.getColorMask().setVanillaLayer(DepthColorStorage.COLOR_LAYER);
+                GLSMDepthStencilAlpha.getDepthState().setVanillaLayer(DepthColorStorage.DEPTH_LAYER);
+                GLSMBlend.getColorMask().setVanillaLayer(DepthColorStorage.COLOR_LAYER);
 
-                GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
-                GLStateManager.disableBlend();
-                GLStateManager.enableAlphaTest();
-                GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.1f);
-                GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
-                GLStateManager.glDepthMask(true);
+                GLSMEnable.glEnable(GL11.GL_TEXTURE_2D);
+                GLSMBlend.disableBlend();
+                GLSMDepthStencilAlpha.enableAlphaTest();
+                GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, 0.1f);
+                GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_LEQUAL);
+                GLSMDepthStencilAlpha.glDepthMask(true);
 
                 DepthColorStorage.disableDepthColor();
                 assertSame(EntityMaterials.CUTOUT, EntityMaterials.fromCurrentState(true), "raw color mask held off by another pass is not a depth-only draw");
@@ -568,48 +578,48 @@ class TesrLayerStateTest {
 
     @Test
     void memoTracksTextureModeOperationsOnUnitZero() {
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMMatrices.glMatrixMode(GL11.GL_TEXTURE);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
         final ShaderManager ffp = ShaderManager.getInstance();
         ShaderManager.enable();
         ffp.activate();
 
         assertTrue(unitTexIdentity(), "a freshly loaded identity unit-0 matrix must read as identity");
 
-        GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
-        GLStateManager.glTranslatef(0.3f, 0.1f, 0f);
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glMatrixMode(GL11.GL_TEXTURE);
+        GLSMMatrices.glTranslatef(0.3f, 0.1f, 0f);
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
         assertFalse(unitTexIdentity(), "a translate in texture mode must stop reading as identity");
         assertEquals(new Matrix4f().translation(0.3f, 0.1f, 0f), texMatrixScratch(), "the scratch copy must hold the unit-0 matrix once it stops being identity");
 
-        GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
-        GLStateManager.glPushMatrix();
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glMatrixMode(GL11.GL_TEXTURE);
+        GLSMMatrices.glPushMatrix();
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
         assertTrue(unitTexIdentity(), "loadIdentity after a push must read as identity again");
 
-        GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
-        GLStateManager.glPopMatrix();
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glMatrixMode(GL11.GL_TEXTURE);
+        GLSMMatrices.glPopMatrix();
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
         assertFalse(unitTexIdentity(), "popping back to the earlier translate must stop reading as identity");
         assertEquals(new Matrix4f().translation(0.3f, 0.1f, 0f), texMatrixScratch(), "pop must restore the memo to the popped matrix");
 
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-        GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
-        GLStateManager.glTranslatef(0.5f, 0.5f, 0f);
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
+        GLSMMatrices.glMatrixMode(GL11.GL_TEXTURE);
+        GLSMMatrices.glTranslatef(0.5f, 0.5f, 0f);
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
         assertFalse(unitTexIdentity(), "a unit-1 operation forces a recompute, but unit 0 itself is unchanged and stays non-identity");
         assertEquals(new Matrix4f().translation(0.3f, 0.1f, 0f), texMatrixScratch(), "the recompute must copy unit 0, not the active unit 1");
 
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-        GLStateManager.glTranslatef(0.5f, 0.5f, 0f);
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMMatrices.glMatrixMode(GL11.GL_TEXTURE);
+        GLSMMatrices.glLoadIdentity();
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
+        GLSMMatrices.glTranslatef(0.5f, 0.5f, 0f);
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
         assertTrue(unitTexIdentity(), "an identity unit 0 must read as identity while a non-identity unit 1 is active");
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
     }
 }

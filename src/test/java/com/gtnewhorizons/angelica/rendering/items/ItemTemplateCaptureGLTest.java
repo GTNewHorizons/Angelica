@@ -5,7 +5,9 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.compat.draconicevolution.PlacedItemRenderCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.rendering.tesr.AngelicaTesrMeshCache;
@@ -162,7 +164,7 @@ class ItemTemplateCaptureGLTest {
         final ShaderManager shaders = ShaderManager.getInstance();
         final boolean ffp = shaders.isEnabled();
         final ModelPartBatcher batcher = ModelPartBatcher.INSTANCE;
-        final Matrix4f originalMatrix = new Matrix4f(GLStateManager.getModelViewMatrix());
+        final Matrix4f originalMatrix = new Matrix4f(GLSMMatrices.getModelViewMatrix());
         final ItemPropCache<?> icons = Reflect.getStatic(DroppedItemInstancer.class, "icons");
         final Object[] templates = new Object[2];
         try {
@@ -172,39 +174,39 @@ class ItemTemplateCaptureGLTest {
             testMinecraft.thePlayer = mock(EntityClientPlayerMP.class);
             Reflect.setStatic(Minecraft.class, "theMinecraft", testMinecraft);
             shaders.enable();
-            GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-            GLStateManager.glLoadIdentity();
+            GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+            GLSMMatrices.glLoadIdentity();
             batcher.begin(ModelPartBatcher.Mode.BLOCK_ENTITIES);
             assertTrue(batcher.isActive());
-            ModelPartBatcher.onTextureBind(new ResourceLocation("test", "placed-items"), GLStateManager.getBoundTextureForServerState());
+            ModelPartBatcher.onTextureBind(new ResourceLocation("test", "placed-items"), GLSMTextures.getBoundTextureForServerState());
             final long parts = batcher.statParts();
             final long instances = DroppedItemInstancer.statInstanced();
-            BatchEligibility.begin(BatchEligibility.DENIED, GLStateManager.drawCalls);
+            BatchEligibility.begin(BatchEligibility.DENIED, GLSMDraws.drawCalls);
             try {
                 for (int item = 0; item < 2; item++) {
                     final int rotation = item * 90;
                     assertEquals(SAFE, PlacedItemRenderCompat.renderWithBatchState(item, 0, 0, SAFE, () -> {
-                        GLStateManager.glRotatef(rotation, 0, 1, 0);
+                        GLSMMatrices.glRotatef(rotation, 0, 1, 0);
                         DroppedItemInstancer.batchIcon(EntityMaterials.DROPPED_ITEM_CUTOUT, false, 1f, 0f, 0f, 1f, 16, 16, 0.0625f);
                     }));
                     templates[item] = Reflect.get(icons.get(1f, 0f, 0f, 1f, 16, 16, 0.0625f), "template");
                     PlacedItemRenderCompat.renderWithBatchState(0, 0, 0, BatchEligibility.DENIED, () -> {
-                        final long before = GLStateManager.drawCalls;
-                        GLStateManager.drawCalls++;
-                        BatchEligibility.onPartFallback(before, GLStateManager.drawCalls);
+                        final long before = GLSMDraws.drawCalls;
+                        GLSMDraws.drawCalls++;
+                        BatchEligibility.onPartFallback(before, GLSMDraws.drawCalls);
                     });
                 }
             } finally {
-                BatchEligibility.end(BatchEligibility.DENIED, GLStateManager.drawCalls);
+                BatchEligibility.end(BatchEligibility.DENIED, GLSMDraws.drawCalls);
             }
             assertNotNull(templates[0]);
             assertSame(templates[0], templates[1], "the second placement must reuse the icon mesh");
             assertEquals(2, batcher.statParts() - parts, "both transforms reach the shared batcher");
             assertEquals(2, DroppedItemInstancer.statInstanced() - instances);
-            assertTrue(new Matrix4f().equals(GLStateManager.getModelViewMatrix(), 1e-5f));
+            assertTrue(new Matrix4f().equals(GLSMMatrices.getModelViewMatrix(), 1e-5f));
         } finally {
             batcher.clear();
-            GLStateManager.setModelViewMatrix(originalMatrix);
+            GLSMMatrices.setModelViewMatrix(originalMatrix);
             AngelicaConfig.enableEntityBatching = batching;
             AngelicaConfig.itemRendererCacheSize = capacity;
             Reflect.setStatic(Minecraft.class, "theMinecraft", minecraft);
@@ -219,14 +221,14 @@ class ItemTemplateCaptureGLTest {
         final RenderBlocks rb = new RenderBlocks() {
             @Override
             public void renderBlockAsItem(Block b, int meta, float brightness) {
-                if (calls[0]++ > 0) GLStateManager.drawCalls++;
+                if (calls[0]++ > 0) GLSMDraws.drawCalls++;
             }
         };
 
-        BatchEligibility.begin(SAFE, GLStateManager.drawCalls);
+        BatchEligibility.begin(SAFE, GLSMDraws.drawCalls);
         drawBlock(rb, block);
         drawBlock(rb, block);
-        assertEquals(SAFE, BatchEligibility.end(SAFE, GLStateManager.drawCalls), "a block with no cached template draws vanilla and reports no part");
+        assertEquals(SAFE, BatchEligibility.end(SAFE, GLSMDraws.drawCalls), "a block with no cached template draws vanilla and reports no part");
 
         assertEquals(3, calls[0], "one capture, then a vanilla draw on the miss and on the cached null template");
     }

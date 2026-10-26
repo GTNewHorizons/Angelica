@@ -1,6 +1,6 @@
 package net.coderbot.iris.rendertarget;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import net.coderbot.iris.gl.GlResource;
 import net.coderbot.iris.gl.texture.TextureUploadHelper;
@@ -34,7 +34,7 @@ public class NoiseTexture extends GlResource {
 		RenderSystem.texParameterf(texture, GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_LOD_BIAS, 0.0F);
 		resize(texture, width, height);
 
-		GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+		GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
 	}
 
 	void resize(int texture, int width, int height) {
@@ -46,10 +46,10 @@ public class NoiseTexture extends GlResource {
 		TextureUploadHelper.resetTextureUploadState();
 
 		// Since we're using tightly-packed RGB data, we must use an alignment of 1 byte instead of the usual 4 bytes.
-		GLStateManager.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1);
+		GLSMTextures.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1);
 		RenderSystem.texImage2D(texture, GL11.GL_TEXTURE_2D, 0, GL11.GL_RGB, width, height, 0, GL11.GL_RGB, GL11.GL_UNSIGNED_BYTE, pixels);
 
-		GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+		GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
 	}
 
 	private ByteBuffer generateNoise() {
@@ -71,6 +71,6 @@ public class NoiseTexture extends GlResource {
 
 	@Override
 	protected void destroyInternal() {
-		GLStateManager.glDeleteTextures(getGlId());
+		GLSMTextures.glDeleteTextures(getGlId());
 	}
 }

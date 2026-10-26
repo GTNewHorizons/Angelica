@@ -24,58 +24,58 @@ public final class ReadbackFixture {
     }
 
     public static int colorFbo(int internalFormat, int format, int type, ByteBuffer data) {
-        final int tex = GLStateManager.glGenTextures();
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, internalFormat, SIZE, SIZE, 0, format, type, data);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-        final int fbo = GLStateManager.glGenFramebuffers();
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
-        GLStateManager.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, tex, 0);
-        GLStateManager.glViewport(0, 0, SIZE, SIZE);
+        final int tex = GLSMTextures.glGenTextures();
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, tex);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, internalFormat, SIZE, SIZE, 0, format, type, data);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        final int fbo = GLSMFramebuffer.glGenFramebuffers();
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
+        GLSMFramebuffer.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, tex, 0);
+        GLSMRasterizer.glViewport(0, 0, SIZE, SIZE);
         return fbo;
     }
 
     public static int depthStencilFbo() {
         final int fbo = colorFbo(GL11.GL_RGBA8, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE);
-        final int rb = GLStateManager.glGenRenderbuffers();
-        GLStateManager.glBindRenderbuffer(GL30.GL_RENDERBUFFER, rb);
-        GLStateManager.glRenderbufferStorage(GL30.GL_RENDERBUFFER, GL30.GL_DEPTH24_STENCIL8, SIZE, SIZE);
-        GLStateManager.glFramebufferRenderbuffer(GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_STENCIL_ATTACHMENT, GL30.GL_RENDERBUFFER, rb);
+        final int rb = GLSMFramebuffer.glGenRenderbuffers();
+        GLSMFramebuffer.glBindRenderbuffer(GL30.GL_RENDERBUFFER, rb);
+        GLSMFramebuffer.glRenderbufferStorage(GL30.GL_RENDERBUFFER, GL30.GL_DEPTH24_STENCIL8, SIZE, SIZE);
+        GLSMFramebuffer.glFramebufferRenderbuffer(GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_STENCIL_ATTACHMENT, GL30.GL_RENDERBUFFER, rb);
         return fbo;
     }
 
     public static void release(int fbo) {
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
-        GLStateManager.glDeleteFramebuffers(fbo);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+        GLSMFramebuffer.glDeleteFramebuffers(fbo);
         resetPack();
     }
 
     public static void clearColor(float r, float g, float b, float a) {
-        GLStateManager.glClearColor(r, g, b, a);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        GLSMBlend.glClearColor(r, g, b, a);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
     }
 
     public static void clearTopHalf(float r, float g, float b, float a) {
-        GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
-        GLStateManager.glScissor(0, SIZE / 2, SIZE, SIZE / 2);
+        GLSMEnable.glEnable(GL11.GL_SCISSOR_TEST);
+        GLSMRasterizer.glScissor(0, SIZE / 2, SIZE, SIZE / 2);
         clearColor(r, g, b, a);
-        GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
+        GLSMEnable.glDisable(GL11.GL_SCISSOR_TEST);
     }
 
     public static void resetPack() {
-        GLStateManager.glPixelStorei(GL11.GL_PACK_ALIGNMENT, 4);
-        GLStateManager.glPixelStorei(GL11.GL_PACK_ROW_LENGTH, 0);
-        GLStateManager.glPixelStorei(GL11.GL_PACK_SKIP_PIXELS, 0);
-        GLStateManager.glPixelStorei(GL11.GL_PACK_SKIP_ROWS, 0);
-        GLStateManager.glPixelStorei(GL11.GL_PACK_SWAP_BYTES, GL11.GL_FALSE);
+        GLSMTextures.glPixelStorei(GL11.GL_PACK_ALIGNMENT, 4);
+        GLSMTextures.glPixelStorei(GL11.GL_PACK_ROW_LENGTH, 0);
+        GLSMTextures.glPixelStorei(GL11.GL_PACK_SKIP_PIXELS, 0);
+        GLSMTextures.glPixelStorei(GL11.GL_PACK_SKIP_ROWS, 0);
+        GLSMTextures.glPixelStorei(GL11.GL_PACK_SWAP_BYTES, GL11.GL_FALSE);
     }
 
     public static ByteBuffer read(int format, int type, int bytes) {
         final ByteBuffer out = BufferUtils.createByteBuffer(bytes);
         for (int i = 0; i < bytes; i++) out.put(i, (byte) 0x7E);
-        GLStateManager.glReadPixels(0, 0, SIZE, SIZE, format, type, out);
+        GLSMFramebuffer.glReadPixels(0, 0, SIZE, SIZE, format, type, out);
         return out.order(ByteOrder.nativeOrder());
     }
 
@@ -138,14 +138,14 @@ public final class ReadbackFixture {
         clearColor(51 / 255f, 102 / 255f, 153 / 255f, 204 / 255f);
         clearTopHalf(1f, 0f, 0f, 1f);
 
-        GLStateManager.glPixelStorei(GL11.GL_PACK_ALIGNMENT, 1);
+        GLSMTextures.glPixelStorei(GL11.GL_PACK_ALIGNMENT, 1);
         final ByteBuffer rgb = read(GL11.GL_RGB, GL11.GL_UNSIGNED_BYTE, SIZE * SIZE * 3);
         assertBytes(rgb, (SIZE - 1) * SIZE * 3, new int[] { 255, 0, 0 }, "PACK_ALIGNMENT 1 tightly packs RGB rows");
 
-        GLStateManager.glPixelStorei(GL11.GL_PACK_ALIGNMENT, 4);
-        GLStateManager.glPixelStorei(GL11.GL_PACK_ROW_LENGTH, 6);
-        GLStateManager.glPixelStorei(GL11.GL_PACK_SKIP_PIXELS, 1);
-        GLStateManager.glPixelStorei(GL11.GL_PACK_SKIP_ROWS, 2);
+        GLSMTextures.glPixelStorei(GL11.GL_PACK_ALIGNMENT, 4);
+        GLSMTextures.glPixelStorei(GL11.GL_PACK_ROW_LENGTH, 6);
+        GLSMTextures.glPixelStorei(GL11.GL_PACK_SKIP_PIXELS, 1);
+        GLSMTextures.glPixelStorei(GL11.GL_PACK_SKIP_ROWS, 2);
         final int rowBytes = 6 * 4;
         final ByteBuffer skipped = read(GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, rowBytes * (SIZE + 2));
         assertBytes(skipped, 0, new int[] { 0x7E, 0x7E, 0x7E, 0x7E }, "skipped rows untouched");
@@ -155,7 +155,7 @@ public final class ReadbackFixture {
         assertBytes(skipped, 2 * rowBytes + 4 + SIZE * 4, new int[] { 0x7E, 0x7E, 0x7E, 0x7E }, "row padding untouched");
         resetPack();
 
-        GLStateManager.glPixelStorei(GL11.GL_PACK_SWAP_BYTES, GL11.GL_TRUE);
+        GLSMTextures.glPixelStorei(GL11.GL_PACK_SWAP_BYTES, GL11.GL_TRUE);
         final ByteBuffer swapped = read(GL11.GL_RGBA, GL30.GL_HALF_FLOAT, SIZE * SIZE * 8);
         assertBytes(swapped, 0, new int[] { 0x32, 0x66 }, "SWAP_BYTES on HALF_FLOAT");
         resetPack();
@@ -166,16 +166,16 @@ public final class ReadbackFixture {
     public static void pixelPackBuffer() {
         final int fbo = colorFbo(GL11.GL_RGBA8, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE);
         clearColor(51 / 255f, 102 / 255f, 153 / 255f, 204 / 255f);
-        final int pbo = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL21.GL_PIXEL_PACK_BUFFER, pbo);
-        GLStateManager.glBufferData(GL21.GL_PIXEL_PACK_BUFFER, 16 + SIZE * SIZE * 4, GL15.GL_STREAM_READ);
-        GLStateManager.glReadPixels(0, 0, SIZE, SIZE, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, 16L);
-        final ByteBuffer mapped = GLStateManager.glMapBuffer(GL21.GL_PIXEL_PACK_BUFFER, GL15.GL_READ_ONLY);
+        final int pbo = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL21.GL_PIXEL_PACK_BUFFER, pbo);
+        GLSMBuffers.glBufferData(GL21.GL_PIXEL_PACK_BUFFER, 16 + SIZE * SIZE * 4, GL15.GL_STREAM_READ);
+        GLSMFramebuffer.glReadPixels(0, 0, SIZE, SIZE, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, 16L);
+        final ByteBuffer mapped = GLSMBuffers.glMapBuffer(GL21.GL_PIXEL_PACK_BUFFER, GL15.GL_READ_ONLY);
         assertTrue(mapped != null, "PBO map");
         assertBytes(mapped, 16, new int[] { 51, 102, 153, 204 }, "PBO readPixels at offset 16");
-        GLStateManager.glUnmapBuffer(GL21.GL_PIXEL_PACK_BUFFER);
-        GLStateManager.glBindBuffer(GL21.GL_PIXEL_PACK_BUFFER, 0);
-        GLStateManager.glDeleteBuffers(pbo);
+        GLSMBuffers.glUnmapBuffer(GL21.GL_PIXEL_PACK_BUFFER);
+        GLSMBuffers.glBindBuffer(GL21.GL_PIXEL_PACK_BUFFER, 0);
+        GLSMBuffers.glDeleteBuffers(pbo);
         release(fbo);
     }
 
@@ -237,19 +237,19 @@ public final class ReadbackFixture {
 
     public static void depthStencil() {
         final int fbo = depthStencilFbo();
-        GLStateManager.glDepthMask(true);
-        GLStateManager.glStencilMask(0xFF);
-        GLStateManager.glClearDepth(0.25);
-        GLStateManager.glClearStencil(0xC3);
-        GLStateManager.glClear(GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT);
-        GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
-        GLStateManager.glScissor(0, SIZE / 2, SIZE, SIZE / 2);
-        GLStateManager.glClearDepth(0.75);
-        GLStateManager.glClearStencil(0x5A);
-        GLStateManager.glClear(GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT);
-        GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
-        GLStateManager.glClearDepth(1.0);
-        GLStateManager.glClearStencil(0);
+        GLSMDepthStencilAlpha.glDepthMask(true);
+        GLSMDepthStencilAlpha.glStencilMask(0xFF);
+        GLSMDepthStencilAlpha.glClearDepth(0.25);
+        GLSMDepthStencilAlpha.glClearStencil(0xC3);
+        GLSMFramebuffer.glClear(GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT);
+        GLSMEnable.glEnable(GL11.GL_SCISSOR_TEST);
+        GLSMRasterizer.glScissor(0, SIZE / 2, SIZE, SIZE / 2);
+        GLSMDepthStencilAlpha.glClearDepth(0.75);
+        GLSMDepthStencilAlpha.glClearStencil(0x5A);
+        GLSMFramebuffer.glClear(GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT);
+        GLSMEnable.glDisable(GL11.GL_SCISSOR_TEST);
+        GLSMDepthStencilAlpha.glClearDepth(1.0);
+        GLSMDepthStencilAlpha.glClearStencil(0);
 
         final ByteBuffer depth = read(GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, SIZE * SIZE * 4);
         assertEquals(0.25f, depth.getFloat(0), 1e-6f, "depth bottom row as FLOAT");

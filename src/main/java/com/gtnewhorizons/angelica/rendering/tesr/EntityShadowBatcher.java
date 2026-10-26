@@ -2,7 +2,11 @@ package com.gtnewhorizons.angelica.rendering.tesr;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
 import net.coderbot.batchedentityrendering.impl.AngelicaBufferSource;
@@ -103,10 +107,10 @@ final class EntityShadowBatcher {
             }
         }
 
-        GLStateManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-        GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
-        GLStateManager.glDisable(GL11.GL_BLEND);
-        GLStateManager.glDepthMask(true);
+        GLSMBlend.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GLSMCurrentAttribs.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        GLSMEnable.glDisable(GL11.GL_BLEND);
+        GLSMDepthStencilAlpha.glDepthMask(true);
         return true;
     }
 
@@ -136,10 +140,10 @@ final class EntityShadowBatcher {
     }
 
     private int currentMvIndex() {
-        final int mvGen = GLStateManager.getMvGeneration();
+        final int mvGen = GLSMMatrices.getMvGeneration();
         if (mvCount > 0 && mvGen == lastMvGeneration) return mvCount - 1;
         lastMvGeneration = mvGen;
-        mvScratch.set(GLStateManager.getModelViewMatrix());
+        mvScratch.set(GLSMMatrices.getModelViewMatrix());
         if (mvCount > 0 && mvs[mvCount - 1].equals(mvScratch)) return mvCount - 1;
         if (mvCount == mvs.length) mvs = Arrays.copyOf(mvs, mvs.length * 2);
         Matrix4f slot = mvs[mvCount];

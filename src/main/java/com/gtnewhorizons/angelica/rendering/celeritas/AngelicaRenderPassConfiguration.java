@@ -1,7 +1,8 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
 import com.google.common.collect.ImmutableListMultimap;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
 import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.utils.SpritePadding;
@@ -117,32 +118,32 @@ public class AngelicaRenderPassConfiguration {
 
         @Override
         public void setup() {
-            GLStateManager.glDepthMask(true);
+            GLSMDepthStencilAlpha.glDepthMask(true);
 
             if (alphaCutoff > 0.0f) {
                 if (alphaStateDepth >= 0) {
-                    GLStateManager.popStateTo(alphaStateDepth);
+                    GLSMAttribStack.popStateTo(alphaStateDepth);
                     alphaStateDepth = -1;
                 }
-                alphaStateDepth = GLStateManager.pushState(StateSet.ALPHA);
-                GLStateManager.glAlphaFunc(GL11.GL_GREATER, alphaCutoff);
+                alphaStateDepth = GLSMAttribStack.pushState(StateSet.ALPHA);
+                GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, alphaCutoff);
                 if (pass == 1) {
-                    GLStateManager.enableAlphaTest();
+                    GLSMDepthStencilAlpha.enableAlphaTest();
                 }
             }
             if (disableAlphaTest) {
-                GLStateManager.disableAlphaTest();
+                GLSMDepthStencilAlpha.disableAlphaTest();
             }
         }
 
         @Override
         public void clear() {
             if (alphaStateDepth >= 0) {
-                GLStateManager.popStateTo(alphaStateDepth);
+                GLSMAttribStack.popStateTo(alphaStateDepth);
                 alphaStateDepth = -1;
             }
             if (disableAlphaTest) {
-                GLStateManager.enableAlphaTest();
+                GLSMDepthStencilAlpha.enableAlphaTest();
             }
         }
     }

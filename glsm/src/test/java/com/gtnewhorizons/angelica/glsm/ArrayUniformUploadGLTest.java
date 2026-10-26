@@ -29,7 +29,7 @@ class ArrayUniformUploadGLTest {
             for (int i = 0; i < 20; i++) buf.put(i + 1.0f); // 1..20, all distinct, all non-zero
             buf.flip();
 
-            GLStateManager.glUniform2(GL20.glGetUniformLocation(p, "cosmicuvs"), buf);
+            GLSMPrograms.glUniform2(GL20.glGetUniformLocation(p, "cosmicuvs"), buf);
 
             final FloatBuffer read = BufferUtils.createFloatBuffer(2);
             for (int i = 0; i < 10; i++) {
@@ -42,7 +42,7 @@ class ArrayUniformUploadGLTest {
             }
         } finally {
             GL20.glUseProgram(0);
-            GLStateManager.glDeleteProgram(p);
+            GLSMPrograms.glDeleteProgram(p);
         }
     }
 
@@ -59,7 +59,7 @@ class ArrayUniformUploadGLTest {
 
             final IntBuffer buf = BufferUtils.createIntBuffer(4);
             buf.put(11).put(22).put(33).put(44).flip();
-            GLStateManager.glUniform1(GL20.glGetUniformLocation(p, "vals"), buf);
+            GLSMPrograms.glUniform1(GL20.glGetUniformLocation(p, "vals"), buf);
 
             final IntBuffer read = BufferUtils.createIntBuffer(1);
             final int[] expect = {11, 22, 33, 44};
@@ -72,7 +72,7 @@ class ArrayUniformUploadGLTest {
             }
         } finally {
             GL20.glUseProgram(0);
-            GLStateManager.glDeleteProgram(p);
+            GLSMPrograms.glDeleteProgram(p);
         }
     }
 }

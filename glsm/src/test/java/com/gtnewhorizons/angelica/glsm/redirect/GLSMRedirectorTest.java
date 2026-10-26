@@ -14,6 +14,7 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.FieldInsnNode;
 import org.objectweb.asm.tree.InsnNode;
 import org.objectweb.asm.tree.InvokeDynamicInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
@@ -227,7 +228,7 @@ class GLSMRedirectorTest {
     void ownerIndexAndSearchStrings() {
         assertFalse(GLSMRedirector.getNamedClassMethodRedirects().containsKey(GLSM));
         assertTrue(Arrays.asList(new GLSMRedirector().getConstantPoolSearchStrings()).contains(GLSM));
-        assertEquals(GLSM, GLSMRedirector.getTargetOwner("glPushMatrix"));
+        assertEquals("com/gtnewhorizons/angelica/glsm/GLSMMatrices", GLSMRedirector.getTargetOwner("glPushMatrix"));
     }
 
     @Test
@@ -289,6 +290,28 @@ class GLSMRedirectorTest {
             out.append(line).append('\n');
         }
         return out.append("    };\n").toString();
+    }
+
+    @Test
+    void legacyOwnerIsRewrittenToItsGroup() {
+        final String fogStateDesc = "()Lcom/gtnewhorizons/angelica/glsm/stacks/FogStateStack;";
+        final ClassNode moved = makeClassWithMethodCall(GLSM, "getFogState", fogStateDesc);
+        assertTrue(new GLSMRedirector().transformClassNode("com.example.TestClass", moved));
+        assertEquals("com/gtnewhorizons/angelica/glsm/GLSMFog", firstCall(moved).owner);
+
+        final ClassNode core = makeClassWithMethodCall(GLSM, "ctx", "()Lcom/gtnewhorizons/angelica/glsm/GLContextState;");
+        assertFalse(new GLSMRedirector().transformClassNode("com.example.TestClass", core));
+        assertEquals(GLSM, firstCall(core).owner);
+
+        final ClassNode field = makeClassWithMethodCall("java/lang/Object", "hashCode", "()I");
+        final FieldInsnNode read = new FieldInsnNode(Opcodes.GETSTATIC, GLSM, "DEFAULT_DRAW_BUFFER", "I");
+        field.methods.get(0).instructions.insert(read);
+        assertTrue(new GLSMRedirector().transformClassNode("com.example.TestClass", field));
+        assertEquals("com/gtnewhorizons/angelica/glsm/GLSMFramebuffer", read.owner);
+
+        final ClassNode handle = makeClassWithInvokeDynamic(new Handle(Opcodes.H_INVOKESTATIC, GLSM, "getFogState", fogStateDesc, false));
+        assertTrue(new GLSMRedirector().transformClassNode("com.example.TestClass", handle));
+        assertEquals("com/gtnewhorizons/angelica/glsm/GLSMFog", getResultHandle(handle).getOwner());
     }
 
     private static boolean glsmDeclares(String name, String desc) throws ClassNotFoundException {

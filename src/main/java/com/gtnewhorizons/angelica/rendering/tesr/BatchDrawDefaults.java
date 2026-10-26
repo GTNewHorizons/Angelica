@@ -1,7 +1,10 @@
 package com.gtnewhorizons.angelica.rendering.tesr;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.MatrixHelper;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.hooks.TextureUtilHooks;
 import net.coderbot.iris.gl.blending.DepthColorStorage;
 import net.coderbot.iris.gl.program.Program;
@@ -22,31 +25,31 @@ public final class BatchDrawDefaults {
     private boolean overridesCleared;
 
     public static void capturePassFramebuffer() {
-        passFramebuffer = GLStateManager.getDrawFramebuffer();
+        passFramebuffer = GLSMFramebuffer.getDrawFramebuffer();
     }
 
     public static boolean drawsToPassFramebuffer() {
         return passFramebuffer < 0 || TesrBatchRenderer.deferredPipeline() != null
-            || GLStateManager.getDrawFramebuffer() == passFramebuffer;
+            || GLSMFramebuffer.getDrawFramebuffer() == passFramebuffer;
     }
 
     public void apply() {
         if (passFramebuffer >= 0 && TesrBatchRenderer.deferredPipeline() == null) {
-            final int framebuffer = GLStateManager.getDrawFramebuffer();
+            final int framebuffer = GLSMFramebuffer.getDrawFramebuffer();
             if (framebuffer != passFramebuffer) {
                 callerFramebuffer = framebuffer;
-                GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, passFramebuffer);
+                GLSMFramebuffer.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, passFramebuffer);
             }
         }
-        final int program = GLStateManager.getActiveProgram();
+        final int program = GLSMPrograms.getActiveProgram();
         if (program != 0 && !Program.isManagedBind(program) && !DepthColorStorage.isOwnedProgram(program)) {
             callerProgram = program;
-            GLStateManager.glUseProgram(0);
+            GLSMPrograms.glUseProgram(0);
         }
-        final Matrix4f textureMatrix = GLStateManager.getTextures().getTextureUnitMatrix(0);
+        final Matrix4f textureMatrix = GLSMTextures.getTextures().getTextureUnitMatrix(0);
         if (!MatrixHelper.isIdentity(textureMatrix)) {
             callerTextureMatrix.set(textureMatrix);
-            GLStateManager.setTextureMatrix(0, IDENTITY);
+            GLSMMatrices.setTextureMatrix(0, IDENTITY);
             textureMatrixReset = true;
         }
         filterPaused = TextureUtilHooks.pauseTemporaryFilter();
@@ -68,17 +71,17 @@ public final class BatchDrawDefaults {
         }
         if (textureMatrixReset) {
             textureMatrixReset = false;
-            GLStateManager.setTextureMatrix(0, callerTextureMatrix);
+            GLSMMatrices.setTextureMatrix(0, callerTextureMatrix);
         }
         if (callerProgram != 0) {
             final int program = callerProgram;
             callerProgram = 0;
-            GLStateManager.glUseProgram(program);
+            GLSMPrograms.glUseProgram(program);
         }
         if (callerFramebuffer >= 0) {
             final int framebuffer = callerFramebuffer;
             callerFramebuffer = -1;
-            GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, framebuffer);
+            GLSMFramebuffer.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, framebuffer);
         }
     }
 }

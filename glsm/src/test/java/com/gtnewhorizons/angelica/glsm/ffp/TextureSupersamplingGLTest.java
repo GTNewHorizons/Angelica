@@ -1,7 +1,16 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTexEnvGen;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -52,13 +61,13 @@ class TextureSupersamplingGLTest {
             }
         }
         pixels.flip();
-        final int texture = GLStateManager.glGenTextures();
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 0);
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, atlasSize, atlasSize, 0,
+        final int texture = GLSMTextures.glGenTextures();
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 0);
+        GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, atlasSize, atlasSize, 0,
             GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
         return texture;
     }
@@ -97,33 +106,33 @@ class TextureSupersamplingGLTest {
     @BeforeEach
     void setup() {
         FfpFixture.resetFfpState();
-        GLStateManager.setTextureSupersamplingSamples(1);
-        GLStateManager.glDisable(GL11.GL_LIGHTING);
-        GLStateManager.glDisable(GL11.GL_FOG);
-        GLStateManager.glColor4f(1, 1, 1, 1);
-        GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
-        GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL11.GL_MODULATE);
-        GLStateManager.glViewport(0, 0, SIZE, SIZE);
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glOrtho(0, SIZE, SIZE, 0, -100, 100);
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMTextures.setTextureSupersamplingSamples(1);
+        GLSMEnable.glDisable(GL11.GL_LIGHTING);
+        GLSMEnable.glDisable(GL11.GL_FOG);
+        GLSMCurrentAttribs.glColor4f(1, 1, 1, 1);
+        GLSMEnable.glEnable(GL11.GL_TEXTURE_2D);
+        GLSMTexEnvGen.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL11.GL_MODULATE);
+        GLSMRasterizer.glViewport(0, 0, SIZE, SIZE);
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glOrtho(0, SIZE, SIZE, 0, -100, 100);
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
         FfpFixture.activateFfp();
     }
 
     @AfterEach
     void cleanup() {
-        GLStateManager.setTextureSupersamplingSamples(1);
+        GLSMTextures.setTextureSupersamplingSamples(1);
         FfpFixture.resetFfpState();
-        if (texture != 0) GLStateManager.glDeleteTextures(texture);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-        if (vbo != 0) GLStateManager.glDeleteBuffers(vbo);
-        if (vao != 0) GLStateManager.glDeleteVertexArrays(vao);
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glViewport(0, 0, 800, 600);
+        if (texture != 0) GLSMTextures.glDeleteTextures(texture);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        if (vbo != 0) GLSMBuffers.glDeleteBuffers(vbo);
+        if (vao != 0) GLSMVertexInput.glDeleteVertexArrays(vao);
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glLoadIdentity();
+        GLSMRasterizer.glViewport(0, 0, 800, 600);
     }
 
     @ParameterizedTest
@@ -133,9 +142,9 @@ class TextureSupersamplingGLTest {
 
         final int[] nearest = drawTop(3);
         assertEquals(0, countDotRegions(nearest));
-        final int previous = GLStateManager.setTextureSupersamplingSamples(samples);
+        final int previous = GLSMTextures.setTextureSupersamplingSamples(samples);
         assertEquals(12, countDotRegions(drawTop(3)));
-        GLStateManager.setTextureSupersamplingSamples(previous);
+        GLSMTextures.setTextureSupersamplingSamples(previous);
         assertArrayEquals(nearest, drawTop(3));
     }
 
@@ -143,11 +152,11 @@ class TextureSupersamplingGLTest {
     @ValueSource(ints = {4, 16})
     void highResolutionCheckerboardsStaySmoothWithTheDefaultAtlasGutter(int samples) {
         createAtlas(256, 16, (x, y) -> ((x ^ y) & 1) == 0 ? 0xFFFFFFFF : 0x000000FF);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 4);
-        GLStateManager.glGenerateMipmap(GL11.GL_TEXTURE_2D);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR_MIPMAP_LINEAR);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 4);
+        GLSMTextures.glGenerateMipmap(GL11.GL_TEXTURE_2D);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR_MIPMAP_LINEAR);
         final int[] filtered = drawFlat();
-        GLStateManager.setTextureSupersamplingSamples(samples);
+        GLSMTextures.setTextureSupersamplingSamples(samples);
         final int[] supersampled = drawFlat();
         for (int y = 97; y <= 102; y++) {
             for (int x = 97; x <= 102; x++) {
@@ -163,9 +172,9 @@ class TextureSupersamplingGLTest {
     @ValueSource(ints = {4, 16})
     void transparentTexelsDoNotTintPartialCoverage(int samples) {
         createAtlas(16, (x, y) -> x < 8 ? 0xFF0000FF : 0x0000FF00);
-        GLStateManager.glEnable(GL11.GL_BLEND);
-        GLStateManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-        GLStateManager.setTextureSupersamplingSamples(samples);
+        GLSMEnable.glEnable(GL11.GL_BLEND);
+        GLSMBlend.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GLSMTextures.setTextureSupersamplingSamples(samples);
         final int[] pixels = drawTop(3);
         int partialPixels = 0;
         for (int pixel : pixels) {
@@ -184,26 +193,26 @@ class TextureSupersamplingGLTest {
         createDotAtlas();
         final int modelTexture = uploadTexture(16, 1, TextureSupersamplingGLTest::dotColor);
         try {
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
             final int[] normal = drawTop(3);
-            GLStateManager.setTextureSupersamplingSamples(16);
+            GLSMTextures.setTextureSupersamplingSamples(16);
             assertArrayEquals(normal, drawTop(3));
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texture);
             assertFalse(Arrays.equals(normal, drawTop(3)));
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, modelTexture);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, modelTexture);
             assertArrayEquals(normal, drawTop(3));
         } finally {
-            GLStateManager.glDeleteTextures(modelTexture);
+            GLSMTextures.glDeleteTextures(modelTexture);
         }
     }
 
     @Test
     void atlasFetchesIgnoreSamplerFilteringAndRepeatAcrossNegativeUvs() {
         createAtlas(16, 4, TextureSupersamplingGLTest::dotColor);
-        GLStateManager.setTextureSupersamplingSamples(16);
+        GLSMTextures.setTextureSupersamplingSamples(16);
         final int[] nearest = drawTop(3);
         final int sampler = RenderSystem.genSampler();
         try {
@@ -212,14 +221,14 @@ class TextureSupersamplingGLTest {
             RenderSystem.samplerParameteri(sampler, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
             RenderSystem.samplerParameteri(sampler, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
             RenderSystem.bindSamplerToUnit(0, sampler);
-            GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
-            GLStateManager.glTranslatef(-2, 3, 0);
-            GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+            GLSMMatrices.glMatrixMode(GL11.GL_TEXTURE);
+            GLSMMatrices.glTranslatef(-2, 3, 0);
+            GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
             assertArrayEquals(nearest, drawTop(3));
         } finally {
-            GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
-            GLStateManager.glLoadIdentity();
-            GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+            GLSMMatrices.glMatrixMode(GL11.GL_TEXTURE);
+            GLSMMatrices.glLoadIdentity();
+            GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
             RenderSystem.bindSamplerToUnit(0, 0);
             RenderSystem.destroySampler(sampler);
         }
@@ -234,28 +243,28 @@ class TextureSupersamplingGLTest {
             final ByteBuffer pixels = BufferUtils.createByteBuffer(size * size * 4);
             for (int i = 0; i < size * size; i++) pixels.putInt(0xFFFF0000);
             pixels.flip();
-            GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, level, GL11.GL_RGBA8, size, size, 0,
+            GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, level, GL11.GL_RGBA8, size, size, 0,
                 GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
         }
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 6);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST_MIPMAP_NEAREST);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 6);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST_MIPMAP_NEAREST);
         final int[] mipFiltered = drawFlat();
         assertFalse(Arrays.equals(baseLevel, mipFiltered));
-        GLStateManager.setTextureSupersamplingSamples(16);
+        GLSMTextures.setTextureSupersamplingSamples(16);
         assertArrayEquals(baseLevel, drawFlat());
-        GLStateManager.markTextureAsAtlas(texture, 1);
+        GLSMTextures.markTextureAsAtlas(texture, 1);
         assertArrayEquals(mipFiltered, drawFlat());
-        GLStateManager.markTextureAsAtlas(texture, 4);
+        GLSMTextures.markTextureAsAtlas(texture, 4);
         assertArrayEquals(baseLevel, drawFlat());
     }
 
     private int[] drawFlat() {
         FfpFixture.clear();
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glTranslatef(100.25f, 100.125f, 0);
-        GLStateManager.glScalef(11, 11, 1);
-        GLStateManager.glRotatef(90, 1, 0, 0);
-        GLStateManager.glDrawArrays(GL11.GL_QUADS, 0, 4);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glTranslatef(100.25f, 100.125f, 0);
+        GLSMMatrices.glScalef(11, 11, 1);
+        GLSMMatrices.glRotatef(90, 1, 0, 0);
+        GLSMDraws.glDrawArrays(GL11.GL_QUADS, 0, 4);
         return FfpFixture.readRegion(SIZE);
     }
 
@@ -269,7 +278,7 @@ class TextureSupersamplingGLTest {
 
     private void createAtlas(int spriteSize, int gutter, IntBinaryOperator color) {
         texture = uploadTexture(spriteSize, gutter, color);
-        GLStateManager.markTextureAsAtlas(texture, gutter);
+        GLSMTextures.markTextureAsAtlas(texture, gutter);
         final int atlasSize = Integer.highestOneBit(spriteSize + 2 * gutter) << 1;
         final float minUv = (gutter + 0.01f) / atlasSize;
         final float maxUv = (spriteSize + gutter - 0.01f) / atlasSize;
@@ -279,11 +288,11 @@ class TextureSupersamplingGLTest {
         vertex(vertices, 0.5f, 0.5f, maxUv, maxUv);
         vertex(vertices, -0.5f, 0.5f, minUv, maxUv);
         vertices.flip();
-        vao = GLStateManager.glGenVertexArrays();
-        GLStateManager.glBindVertexArray(vao);
-        vbo = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-        GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, vertices, GL15.GL_STATIC_DRAW);
+        vao = GLSMVertexInput.glGenVertexArrays();
+        GLSMVertexInput.glBindVertexArray(vao);
+        vbo = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, vertices, GL15.GL_STATIC_DRAW);
         FfpFixture.attrib(0, 3, GL11.GL_FLOAT, false, 20, 0);
         FfpFixture.attrib(2, 2, GL11.GL_FLOAT, false, 20, 12);
         VAOManager.setCurrentVertexFlags(TEXTURE_BIT);
@@ -291,12 +300,12 @@ class TextureSupersamplingGLTest {
 
     private int[] drawTop(int scale) {
         FfpFixture.clear();
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glTranslatef(100 + 8 * scale, 100 + 8 * scale, 0);
-        GLStateManager.glScalef(10 * scale, 10 * scale, -10 * scale);
-        GLStateManager.glRotatef(210, 1, 0, 0);
-        GLStateManager.glRotatef(45, 0, 1, 0);
-        GLStateManager.glDrawArrays(GL11.GL_QUADS, 0, 4);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glTranslatef(100 + 8 * scale, 100 + 8 * scale, 0);
+        GLSMMatrices.glScalef(10 * scale, 10 * scale, -10 * scale);
+        GLSMMatrices.glRotatef(210, 1, 0, 0);
+        GLSMMatrices.glRotatef(45, 0, 1, 0);
+        GLSMDraws.glDrawArrays(GL11.GL_QUADS, 0, 4);
         return FfpFixture.readRegion(SIZE);
     }
 }

@@ -1,7 +1,11 @@
 package com.gtnewhorizons.angelica.rendering.tesr;
 
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
 import com.gtnewhorizons.angelica.glsm.GlTestSupport;
 import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
@@ -67,16 +71,16 @@ class StateSetOverrideGLTest {
         AlphaTestStorage.restoreAlphaTest();
         DepthColorStorage.unlockDepthColor();
         VanillaLayerRig.clear();
-        GLStateManager.disableBlend();
-        GLStateManager.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE, GL11.GL_ZERO);
-        GLStateManager.disableAlphaTest();
-        GLStateManager.glAlphaFunc(GL11.GL_ALWAYS, 0.0f);
-        GLStateManager.glDepthMask(true);
-        GLStateManager.glColorMask(true, true, true, true);
-        GLStateManager.disableCull();
-        GLStateManager.glUseProgram(0);
-        if (program != 0) GLStateManager.glDeleteProgram(program);
-        if (otherProgram != 0) GLStateManager.glDeleteProgram(otherProgram);
+        GLSMBlend.disableBlend();
+        GLSMBlend.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE, GL11.GL_ZERO);
+        GLSMDepthStencilAlpha.disableAlphaTest();
+        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_ALWAYS, 0.0f);
+        GLSMDepthStencilAlpha.glDepthMask(true);
+        GLSMBlend.glColorMask(true, true, true, true);
+        GLSMRasterizer.disableCull();
+        GLSMPrograms.glUseProgram(0);
+        if (program != 0) GLSMPrograms.glDeleteProgram(program);
+        if (otherProgram != 0) GLSMPrograms.glDeleteProgram(otherProgram);
     }
 
     private static int[] driverBlendFunc() {
@@ -94,8 +98,8 @@ class StateSetOverrideGLTest {
     private static void overrideVanillaBlend() {
         VanillaLayerRig.installBlend();
 
-        GLStateManager.enableBlend();
-        GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        GLSMBlend.enableBlend();
+        GLSMBlend.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
         BlendModeStorage.overrideBlend(new BlendState(GL11.GL_ONE, GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE));
     }
 
@@ -103,15 +107,15 @@ class StateSetOverrideGLTest {
     private static void overrideVanillaAlpha() {
         VanillaLayerRig.installAlpha();
 
-        GLStateManager.enableAlphaTest();
-        GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.5f);
+        GLSMDepthStencilAlpha.enableAlphaTest();
+        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, 0.5f);
         AlphaTestStorage.overrideAlphaTest(new AlphaTest(AlphaTestFunction.LEQUAL, 0.25f));
     }
 
     static Stream<Arguments> blendFuncSetters() {
         return Stream.of(
-            Arguments.of("glBlendFunc", (Runnable) () -> GLStateManager.glBlendFunc(GL11.GL_DST_COLOR, GL11.GL_ZERO)),
-            Arguments.of("tryBlendFuncSeparate", (Runnable) () -> GLStateManager.tryBlendFuncSeparate(GL11.GL_DST_COLOR, GL11.GL_ZERO, GL11.GL_DST_COLOR, GL11.GL_ZERO)));
+            Arguments.of("glBlendFunc", (Runnable) () -> GLSMBlend.glBlendFunc(GL11.GL_DST_COLOR, GL11.GL_ZERO)),
+            Arguments.of("tryBlendFuncSeparate", (Runnable) () -> GLSMBlend.tryBlendFuncSeparate(GL11.GL_DST_COLOR, GL11.GL_ZERO, GL11.GL_DST_COLOR, GL11.GL_ZERO)));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -119,19 +123,19 @@ class StateSetOverrideGLTest {
     void blendBracketUnderOverrideRestoresVanillaShadowAndLeavesLiveStateUntouched(String name, Runnable setBlendFunc) {
         overrideVanillaBlend();
 
-        final boolean liveEnabledBefore = GLStateManager.getBlendMode().isEnabled();
-        final BlendState liveBefore = new BlendState().set(GLStateManager.getBlendState());
+        final boolean liveEnabledBefore = GLSMBlend.getBlendMode().isEnabled();
+        final BlendState liveBefore = new BlendState().set(GLSMBlend.getBlendState());
         final boolean driverEnabledBefore = GL11.glIsEnabled(GL11.GL_BLEND);
         final int[] driverFuncBefore = driverBlendFunc();
         assertTrue(driverEnabledBefore, "driver blend enable carries the override");
         assertArrayEquals(new int[] {GL11.GL_ONE, GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE}, driverFuncBefore, "driver blend func carries the override");
 
-        final int d = GLStateManager.pushState(StateSet.BLEND);
+        final int d = GLSMAttribStack.pushState(StateSet.BLEND);
         final boolean vanillaEnabledBefore = BlendModeStorage.ENABLE_LAYER.getVanilla();
-        GLStateManager.disableBlend();
+        GLSMBlend.disableBlend();
         assertNotEquals(vanillaEnabledBefore, BlendModeStorage.ENABLE_LAYER.getVanilla(), "the defer branch changes the vanilla shadow immediately");
         setBlendFunc.run();
-        GLStateManager.popStateTo(d);
+        GLSMAttribStack.popStateTo(d);
 
         assertEquals(driverEnabledBefore, GL11.glIsEnabled(GL11.GL_BLEND), "driver blend enable left untouched by the bracket");
         assertArrayEquals(driverFuncBefore, driverBlendFunc(), "driver blend func left untouched by the bracket");
@@ -144,35 +148,35 @@ class StateSetOverrideGLTest {
         assertEquals(GL11.GL_ONE, vanillaAfter.getSrcAlpha(), "vanilla shadow src alpha restored");
         assertEquals(GL11.GL_ZERO, vanillaAfter.getDstAlpha(), "vanilla shadow dst alpha restored");
 
-        assertEquals(liveEnabledBefore, GLStateManager.getBlendMode().isEnabled(), "live overridden enable left untouched by the bracket");
-        assertEquals(liveBefore.getSrcRgb(), GLStateManager.getBlendState().getSrcRgb(), "live overridden src rgb left untouched");
-        assertEquals(liveBefore.getDstRgb(), GLStateManager.getBlendState().getDstRgb(), "live overridden dst rgb left untouched");
-        assertEquals(liveBefore.getSrcAlpha(), GLStateManager.getBlendState().getSrcAlpha(), "live overridden src alpha left untouched");
-        assertEquals(liveBefore.getDstAlpha(), GLStateManager.getBlendState().getDstAlpha(), "live overridden dst alpha left untouched");
+        assertEquals(liveEnabledBefore, GLSMBlend.getBlendMode().isEnabled(), "live overridden enable left untouched by the bracket");
+        assertEquals(liveBefore.getSrcRgb(), GLSMBlend.getBlendState().getSrcRgb(), "live overridden src rgb left untouched");
+        assertEquals(liveBefore.getDstRgb(), GLSMBlend.getBlendState().getDstRgb(), "live overridden dst rgb left untouched");
+        assertEquals(liveBefore.getSrcAlpha(), GLSMBlend.getBlendState().getSrcAlpha(), "live overridden src alpha left untouched");
+        assertEquals(liveBefore.getDstAlpha(), GLSMBlend.getBlendState().getDstAlpha(), "live overridden dst alpha left untouched");
     }
 
     @Test
     void alphaBracketUnderOverrideRestoresVanillaShadowAndLeavesLiveStateUntouched() {
         overrideVanillaAlpha();
 
-        final boolean liveEnabledBefore = GLStateManager.getAlphaTest().isEnabled();
-        final int liveFuncBefore = GLStateManager.getAlphaState().getFunction();
-        final float liveRefBefore = GLStateManager.getAlphaState().getReference();
+        final boolean liveEnabledBefore = GLSMDepthStencilAlpha.getAlphaTest().isEnabled();
+        final int liveFuncBefore = GLSMDepthStencilAlpha.getAlphaState().getFunction();
+        final float liveRefBefore = GLSMDepthStencilAlpha.getAlphaState().getReference();
 
-        final int d = GLStateManager.pushState(StateSet.ALPHA);
-        GLStateManager.disableAlphaTest();
-        GLStateManager.glAlphaFunc(GL11.GL_LESS, 0.1f);
+        final int d = GLSMAttribStack.pushState(StateSet.ALPHA);
+        GLSMDepthStencilAlpha.disableAlphaTest();
+        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_LESS, 0.1f);
         final int[] calls = { 0 };
         final AlphaState shadow = new AlphaState();
         listener = () -> {
             calls[0]++;
-            assertEquals(GL11.GL_LEQUAL, GLStateManager.getAlphaState().getFunction());
-            assertEquals(0.25f, GLStateManager.getAlphaState().getReference());
-            assertTrue(GLStateManager.isEffectiveAlphaTestEnabled());
-            assertEquals(GL11.GL_GREATER, GLStateManager.getEffectiveAlphaState(shadow).getFunction());
+            assertEquals(GL11.GL_LEQUAL, GLSMDepthStencilAlpha.getAlphaState().getFunction());
+            assertEquals(0.25f, GLSMDepthStencilAlpha.getAlphaState().getReference());
+            assertTrue(GLSMDepthStencilAlpha.isEffectiveAlphaTestEnabled());
+            assertEquals(GL11.GL_GREATER, GLSMDepthStencilAlpha.getEffectiveAlphaState(shadow).getFunction());
             assertEquals(0.5f, shadow.getReference());
         };
-        GLStateManager.popStateTo(d);
+        GLSMAttribStack.popStateTo(d);
         assertEquals(1, calls[0]);
 
         assertTrue(AlphaTestStorage.ENABLE_LAYER.getVanilla(), "vanilla shadow enable restored to the pre-bracket value");
@@ -181,31 +185,31 @@ class StateSetOverrideGLTest {
         assertEquals(GL11.GL_GREATER, vanillaAfter.getFunction(), "vanilla shadow func restored");
         assertEquals(0.5f, vanillaAfter.getReference(), 0.0001f, "vanilla shadow ref restored");
 
-        assertEquals(liveEnabledBefore, GLStateManager.getAlphaTest().isEnabled(), "live overridden enable left untouched by the bracket");
-        assertEquals(liveFuncBefore, GLStateManager.getAlphaState().getFunction(), "live overridden func left untouched");
-        assertEquals(liveRefBefore, GLStateManager.getAlphaState().getReference(), 0.0001f, "live overridden ref left untouched");
+        assertEquals(liveEnabledBefore, GLSMDepthStencilAlpha.getAlphaTest().isEnabled(), "live overridden enable left untouched by the bracket");
+        assertEquals(liveFuncBefore, GLSMDepthStencilAlpha.getAlphaState().getFunction(), "live overridden func left untouched");
+        assertEquals(liveRefBefore, GLSMDepthStencilAlpha.getAlphaState().getReference(), 0.0001f, "live overridden ref left untouched");
     }
 
     @Test
     void masksBracketUnderOverrideRestoresVanillaShadowAndLeavesLiveStateUntouched() {
         VanillaLayerRig.installDepthColor();
 
-        GLStateManager.glDepthMask(true);
-        GLStateManager.glColorMask(true, false, true, false);
+        GLSMDepthStencilAlpha.glDepthMask(true);
+        GLSMBlend.glColorMask(true, false, true, false);
 
         DepthColorStorage.disableDepthColor();
 
-        final boolean liveMaskBefore = GLStateManager.getDepthState().isEnabled();
-        final ColorMask liveColorBefore = new ColorMask().set(GLStateManager.getColorMask());
+        final boolean liveMaskBefore = GLSMDepthStencilAlpha.getDepthState().isEnabled();
+        final ColorMask liveColorBefore = new ColorMask().set(GLSMBlend.getColorMask());
         final boolean driverDepthBefore = GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
         final boolean[] driverColorBefore = driverColorMask();
         assertFalse(driverDepthBefore, "driver depth mask carries the held-off value");
         assertFalse(driverColorBefore[0] || driverColorBefore[1] || driverColorBefore[2] || driverColorBefore[3], "driver color mask carries the held-off value");
 
-        final int d = GLStateManager.pushState(StateSet.MASKS);
-        GLStateManager.glDepthMask(false);
-        GLStateManager.glColorMask(true, true, true, true);
-        GLStateManager.popStateTo(d);
+        final int d = GLSMAttribStack.pushState(StateSet.MASKS);
+        GLSMDepthStencilAlpha.glDepthMask(false);
+        GLSMBlend.glColorMask(true, true, true, true);
+        GLSMAttribStack.popStateTo(d);
 
         assertEquals(driverDepthBefore, GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK), "driver depth mask left untouched by the bracket");
         assertArrayEquals(driverColorBefore, driverColorMask(), "driver color mask left untouched by the bracket");
@@ -221,11 +225,11 @@ class StateSetOverrideGLTest {
         assertTrue(vanillaColorAfter.blue, "vanilla shadow color blue restored");
         assertFalse(vanillaColorAfter.alpha, "vanilla shadow color alpha restored");
 
-        assertEquals(liveMaskBefore, GLStateManager.getDepthState().isEnabled(), "live overridden depth mask left untouched by the bracket");
-        assertEquals(liveColorBefore.red, GLStateManager.getColorMask().red, "live overridden color red left untouched");
-        assertEquals(liveColorBefore.green, GLStateManager.getColorMask().green, "live overridden color green left untouched");
-        assertEquals(liveColorBefore.blue, GLStateManager.getColorMask().blue, "live overridden color blue left untouched");
-        assertEquals(liveColorBefore.alpha, GLStateManager.getColorMask().alpha, "live overridden color alpha left untouched");
+        assertEquals(liveMaskBefore, GLSMDepthStencilAlpha.getDepthState().isEnabled(), "live overridden depth mask left untouched by the bracket");
+        assertEquals(liveColorBefore.red, GLSMBlend.getColorMask().red, "live overridden color red left untouched");
+        assertEquals(liveColorBefore.green, GLSMBlend.getColorMask().green, "live overridden color green left untouched");
+        assertEquals(liveColorBefore.blue, GLSMBlend.getColorMask().blue, "live overridden color blue left untouched");
+        assertEquals(liveColorBefore.alpha, GLSMBlend.getColorMask().alpha, "live overridden color alpha left untouched");
     }
 
     @Test
@@ -235,35 +239,35 @@ class StateSetOverrideGLTest {
         final boolean vanillaEnabledBefore = BlendModeStorage.ENABLE_LAYER.getVanilla();
         final BlendState vanillaBefore = new BlendState();
         BlendModeStorage.FUNC_LAYER.readVanilla(vanillaBefore);
-        final boolean liveEnabledBefore = GLStateManager.getBlendMode().isEnabled();
-        final BlendState liveBefore = new BlendState().set(GLStateManager.getBlendState());
+        final boolean liveEnabledBefore = GLSMBlend.getBlendMode().isEnabled();
+        final BlendState liveBefore = new BlendState().set(GLSMBlend.getBlendState());
 
-        final int d = GLStateManager.pushState(StateSet.BLEND);
-        GLStateManager.popStateTo(d);
+        final int d = GLSMAttribStack.pushState(StateSet.BLEND);
+        GLSMAttribStack.popStateTo(d);
 
         assertEquals(vanillaEnabledBefore, BlendModeStorage.ENABLE_LAYER.getVanilla(), "untouched bracket leaves the vanilla enable shadow intact");
         final BlendState vanillaAfter = new BlendState();
         BlendModeStorage.FUNC_LAYER.readVanilla(vanillaAfter);
         assertEquals(vanillaBefore.getSrcRgb(), vanillaAfter.getSrcRgb(), "untouched bracket leaves the vanilla func shadow intact");
-        assertEquals(liveEnabledBefore, GLStateManager.getBlendMode().isEnabled(), "untouched bracket leaves the live overridden enable intact");
-        assertEquals(liveBefore.getSrcRgb(), GLStateManager.getBlendState().getSrcRgb(), "untouched bracket leaves the live overridden func intact");
+        assertEquals(liveEnabledBefore, GLSMBlend.getBlendMode().isEnabled(), "untouched bracket leaves the live overridden enable intact");
+        assertEquals(liveBefore.getSrcRgb(), GLSMBlend.getBlendState().getSrcRgb(), "untouched bracket leaves the live overridden func intact");
     }
 
     @Test
     void overrideAcquiredMidBracket() {
         VanillaLayerRig.installAlpha();
 
-        GLStateManager.enableAlphaTest();
-        GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.5f);
+        GLSMDepthStencilAlpha.enableAlphaTest();
+        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, 0.5f);
 
-        final int d = GLStateManager.pushState(StateSet.ALPHA);
+        final int d = GLSMAttribStack.pushState(StateSet.ALPHA);
         AlphaTestStorage.overrideAlphaTest(new AlphaTest(AlphaTestFunction.LEQUAL, 0.25f));
 
-        assertEquals(GL11.GL_LEQUAL, GLStateManager.getAlphaState().getFunction(), "the override value is visible live immediately after acquiring mid-bracket");
+        assertEquals(GL11.GL_LEQUAL, GLSMDepthStencilAlpha.getAlphaState().getFunction(), "the override value is visible live immediately after acquiring mid-bracket");
 
-        GLStateManager.popStateTo(d);
+        GLSMAttribStack.popStateTo(d);
 
-        assertEquals(GL11.GL_LEQUAL, GLStateManager.getAlphaState().getFunction(), "the live cache still shows the override value after pop: the vanilla-layer-aware restore writes the pre-bracket baseline into the vanilla shadow, not the live cache, while the override is held");
+        assertEquals(GL11.GL_LEQUAL, GLSMDepthStencilAlpha.getAlphaState().getFunction(), "the live cache still shows the override value after pop: the vanilla-layer-aware restore writes the pre-bracket baseline into the vanilla shadow, not the live cache, while the override is held");
         final AlphaState vanillaAfter = new AlphaState();
         AlphaTestStorage.FUNC_LAYER.readVanilla(vanillaAfter);
         assertEquals(GL11.GL_GREATER, vanillaAfter.getFunction(), "the vanilla shadow is restored to the pre-bracket baseline by the bracket pop");
@@ -275,18 +279,18 @@ class StateSetOverrideGLTest {
     void overrideReleasedMidBracket() {
         overrideVanillaAlpha();
 
-        assertEquals(GL11.GL_LEQUAL, GLStateManager.getAlphaState().getFunction(), "the override value is visible live before the bracket opens");
+        assertEquals(GL11.GL_LEQUAL, GLSMDepthStencilAlpha.getAlphaState().getFunction(), "the override value is visible live before the bracket opens");
 
-        final int d = GLStateManager.pushState(StateSet.ALPHA);
+        final int d = GLSMAttribStack.pushState(StateSet.ALPHA);
         AlphaTestStorage.restoreAlphaTest();
 
-        assertEquals(GL11.GL_GREATER, GLStateManager.getAlphaState().getFunction(), "releasing mid-bracket writes the vanilla value back through the live path immediately");
+        assertEquals(GL11.GL_GREATER, GLSMDepthStencilAlpha.getAlphaState().getFunction(), "releasing mid-bracket writes the vanilla value back through the live path immediately");
 
-        GLStateManager.glAlphaFunc(GL11.GL_NEVER, 0.9f);
+        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_NEVER, 0.9f);
 
-        GLStateManager.popStateTo(d);
+        GLSMAttribStack.popStateTo(d);
 
-        assertEquals(GL11.GL_GREATER, GLStateManager.getAlphaState().getFunction(), "once released, the bracket pop restores the live cache to the vanilla baseline captured at push time through the vanilla-layer-aware slot, proving the pop actually acted rather than the assertion coincidentally already holding");
+        assertEquals(GL11.GL_GREATER, GLSMDepthStencilAlpha.getAlphaState().getFunction(), "once released, the bracket pop restores the live cache to the vanilla baseline captured at push time through the vanilla-layer-aware slot, proving the pop actually acted rather than the assertion coincidentally already holding");
     }
 
     @Test
@@ -295,41 +299,41 @@ class StateSetOverrideGLTest {
 
         final boolean vanillaBefore = BlendModeStorage.ENABLE_LAYER.getVanilla();
 
-        final int outer = GLStateManager.pushState(StateSet.BLEND);
-        GLStateManager.pushState(StateSet.CULL);
+        final int outer = GLSMAttribStack.pushState(StateSet.BLEND);
+        GLSMAttribStack.pushState(StateSet.CULL);
 
-        GLStateManager.disableBlend();
+        GLSMBlend.disableBlend();
         assertNotEquals(vanillaBefore, BlendModeStorage.ENABLE_LAYER.getVanilla(), "the defer branch changes the vanilla shadow immediately");
 
-        GLStateManager.popState();
+        GLSMAttribStack.popState();
 
         assertNotEquals(vanillaBefore, BlendModeStorage.ENABLE_LAYER.getVanilla(), "a non-member bracket pop does not restore the change, it carries to the parent");
 
-        GLStateManager.popStateTo(outer);
+        GLSMAttribStack.popStateTo(outer);
 
         assertEquals(vanillaBefore, BlendModeStorage.ENABLE_LAYER.getVanilla(), "the enclosing member bracket pop restores the change that carried through the non-member pop");
     }
 
     @Test
     void functionEnableAndCombinedRestorationPostExactlyOnce() {
-        GLStateManager.enableAlphaTest();
-        GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.5f);
+        GLSMDepthStencilAlpha.enableAlphaTest();
+        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, 0.5f);
         for (int changes = 1; changes <= 3; changes++) {
-            final int depth = GLStateManager.pushState(StateSet.ALPHA);
-            if ((changes & 1) != 0) GLStateManager.glAlphaFunc(GL11.GL_LESS, 0.25f);
-            if ((changes & 2) != 0) GLStateManager.disableAlphaTest();
+            final int depth = GLSMAttribStack.pushState(StateSet.ALPHA);
+            if ((changes & 1) != 0) GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_LESS, 0.25f);
+            if ((changes & 2) != 0) GLSMDepthStencilAlpha.disableAlphaTest();
             final int[] calls = { 0 };
             listener = () -> {
                 calls[0]++;
-                assertFalse(GLStateManager.isPoppingAttributes());
-                assertEquals(depth, GLStateManager.getAttribDepth());
-                assertTrue(GLStateManager.getAlphaTest().isEnabled());
-                assertEquals(GL11.GL_GREATER, GLStateManager.getAlphaState().getFunction());
-                assertEquals(0.5f, GLStateManager.getAlphaState().getReference());
-                final int nested = GLStateManager.pushState(StateSet.ALPHA);
-                GLStateManager.popStateTo(nested);
+                assertFalse(GLSMAttribStack.isPoppingAttributes());
+                assertEquals(depth, GLSMAttribStack.getAttribDepth());
+                assertTrue(GLSMDepthStencilAlpha.getAlphaTest().isEnabled());
+                assertEquals(GL11.GL_GREATER, GLSMDepthStencilAlpha.getAlphaState().getFunction());
+                assertEquals(0.5f, GLSMDepthStencilAlpha.getAlphaState().getReference());
+                final int nested = GLSMAttribStack.pushState(StateSet.ALPHA);
+                GLSMAttribStack.popStateTo(nested);
             };
-            GLStateManager.popStateTo(depth);
+            GLSMAttribStack.popStateTo(depth);
             assertEquals(1, calls[0]);
             listener = null;
         }
@@ -337,56 +341,56 @@ class StateSetOverrideGLTest {
 
     @Test
     void unchangedAndNonmemberPopsDoNotPostAndOuterMemberDoes() {
-        GLStateManager.enableAlphaTest();
-        GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.5f);
+        GLSMDepthStencilAlpha.enableAlphaTest();
+        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, 0.5f);
         final int[] calls = { 0 };
         listener = () -> calls[0]++;
-        final int outer = GLStateManager.pushState(StateSet.ALPHA);
-        final int unchanged = GLStateManager.pushState(StateSet.ALPHA);
-        GLStateManager.popStateTo(unchanged);
+        final int outer = GLSMAttribStack.pushState(StateSet.ALPHA);
+        final int unchanged = GLSMAttribStack.pushState(StateSet.ALPHA);
+        GLSMAttribStack.popStateTo(unchanged);
         assertEquals(0, calls[0]);
-        final int inner = GLStateManager.pushState(StateSet.CULL);
-        GLStateManager.glAlphaFunc(GL11.GL_LESS, 0.25f);
+        final int inner = GLSMAttribStack.pushState(StateSet.CULL);
+        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_LESS, 0.25f);
         calls[0] = 0;
-        GLStateManager.popStateTo(inner);
+        GLSMAttribStack.popStateTo(inner);
         assertEquals(0, calls[0]);
-        GLStateManager.popStateTo(outer);
+        GLSMAttribStack.popStateTo(outer);
         assertEquals(1, calls[0]);
     }
 
     @Test
     void dynamicUniformsUpdateWithoutRebindingAndAfterProgramRestoration() {
-        GLStateManager.enableAlphaTest();
-        GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.5f);
+        GLSMDepthStencilAlpha.enableAlphaTest();
+        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, 0.5f);
         program = createProgram();
         otherProgram = createProgram();
-        GLStateManager.glUseProgram(program);
-        final int referenceLocation = GLStateManager.glGetUniformLocation(program, "alphaReference");
-        final int functionLocation = GLStateManager.glGetUniformLocation(program, "alphaFunction");
+        GLSMPrograms.glUseProgram(program);
+        final int referenceLocation = GLSMPrograms.glGetUniformLocation(program, "alphaReference");
+        final int functionLocation = GLSMPrograms.glGetUniformLocation(program, "alphaFunction");
         Reflect.setStatic(ProgramUniforms.class, "active", ProgramUniforms.builder("alpha", program).buildUniforms());
         final Runnable[] updates = new Runnable[2];
-        final FloatUniform reference = newFloatUniform(referenceLocation, () -> GLStateManager.getAlphaState().getReference(), update -> updates[0] = update);
-        final IntUniform function = newIntUniform(functionLocation, () -> GLStateManager.getAlphaState().getFunction(), update -> updates[1] = update);
+        final FloatUniform reference = newFloatUniform(referenceLocation, () -> GLSMDepthStencilAlpha.getAlphaState().getReference(), update -> updates[0] = update);
+        final IntUniform function = newIntUniform(functionLocation, () -> GLSMDepthStencilAlpha.getAlphaState().getFunction(), update -> updates[1] = update);
         reference.update();
         function.update();
         listener = () -> {
-            assertEquals(program, GLStateManager.getActiveProgram());
+            assertEquals(program, GLSMPrograms.getActiveProgram());
             assertEquals(program, GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM));
-            assertFalse(GLStateManager.isPoppingAttributes());
+            assertFalse(GLSMAttribStack.isPoppingAttributes());
             updates[0].run();
             updates[1].run();
         };
-        final int depth = GLStateManager.pushState(StateSet.ALPHA);
-        GLStateManager.glAlphaFunc(GL11.GL_LESS, 0.25f);
+        final int depth = GLSMAttribStack.pushState(StateSet.ALPHA);
+        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_LESS, 0.25f);
         assertUniforms(referenceLocation, functionLocation, 0.25f, GL11.GL_LESS);
-        GLStateManager.popStateTo(depth);
+        GLSMAttribStack.popStateTo(depth);
         assertUniforms(referenceLocation, functionLocation, 0.5f, GL11.GL_GREATER);
-        final int saved = GLStateManager.pushState(StateSet.FONT);
-        GLStateManager.disableAlphaTest();
-        GLStateManager.glUseProgram(otherProgram);
-        GLStateManager.popStateTo(saved);
-        assertTrue(GLStateManager.getAlphaTest().isEnabled());
-        assertEquals(program, GLStateManager.getActiveProgram());
+        final int saved = GLSMAttribStack.pushState(StateSet.FONT);
+        GLSMDepthStencilAlpha.disableAlphaTest();
+        GLSMPrograms.glUseProgram(otherProgram);
+        GLSMAttribStack.popStateTo(saved);
+        assertTrue(GLSMDepthStencilAlpha.getAlphaTest().isEnabled());
+        assertEquals(program, GLSMPrograms.getActiveProgram());
     }
 
     private void assertUniforms(int referenceLocation, int functionLocation, float reference, int function) {

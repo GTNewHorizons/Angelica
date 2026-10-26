@@ -1,7 +1,7 @@
 package net.coderbot.iris.pipeline;
 
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
@@ -42,7 +42,7 @@ public class FixedFunctionWorldRenderingPipeline implements WorldRenderingPipeli
 		}
 		// Use the default Minecraft framebuffer and ensure that no programs are in use
         mainFb.bindFramebuffer(true);
-		GLStateManager.glUseProgram(0);
+		GLSMPrograms.glUseProgram(0);
 	}
 
 	@Override

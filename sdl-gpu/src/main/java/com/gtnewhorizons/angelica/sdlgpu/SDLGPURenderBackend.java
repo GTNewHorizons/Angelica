@@ -6,6 +6,8 @@ import com.gtnewhorizons.angelica.sdlgpu.compute.VoxelizationDispatcher;
 import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.CaptureGate;
 import com.gtnewhorizons.angelica.glsm.GLContextState;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.backend.BackendOptions;
@@ -620,7 +622,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             beginSplashFrame();
         } else if (st.needsSeed) {
             st.needsSeed = false;
-            GLStateManager.replayStateToBackend();
+            GLSMAttribStack.replayStateToBackend();
         }
     }
 
@@ -693,7 +695,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         final ContextState st = s();
         if (st.needsSeed) {
             st.needsSeed = false;
-            GLStateManager.replayStateToBackend();
+            GLSMAttribStack.replayStateToBackend();
         }
         ResourceManager.setSingleThreadedReads(GLStateManager.isSplashComplete());
         st.pendingColorTextures.clear();
@@ -4557,7 +4559,7 @@ public class SDLGPURenderBackend extends RenderBackend {
 
     @Override public void voxelizeRegion(long pass, boolean rebindVertexBuffer, float x, float y, float z, int rangeBase, int rangeCount, int vertexTotal) {
         final ContextState st = s();
-        if (voxLocRegionOffset >= 0) GLStateManager.glUniform3f(voxLocRegionOffset, x, y, z);
+        if (voxLocRegionOffset >= 0) GLSMPrograms.glUniform3f(voxLocRegionOffset, x, y, z);
         if (rebindVertexBuffer) voxelizationDispatcher.rebindVertexBuffer(st, pass);
         voxelizationDispatcher.dispatchRegion(pass, voxLocRangeBase, voxLocRangeCount, voxLocVertexTotal, voxLocInvocationBase, rangeBase, rangeCount, vertexTotal, st);
     }

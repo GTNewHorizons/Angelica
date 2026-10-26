@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.rendering.tesr;
 
 import com.gtnewhorizons.angelica.api.tesr.TesrMeshProvider;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.minecraft.tileentity.TileEntity;
 
@@ -26,12 +26,12 @@ public final class TesrProviderDispatch {
 
         CapturedRenderingState.INSTANCE.pushCurrentBlockEntity();
         CapturedRenderingState.INSTANCE.setCurrentBlockEntity(te == null ? null : te.getBlockType(), blockMetadata(te));
-        GLStateManager.glPushMatrix();
+        GLSMMatrices.glPushMatrix();
         try {
             provider.angelica$transform(te, x, y, z);
             AngelicaTesrMeshCache.INSTANCE.renderCached(key, provider.angelica$meshDirty(te), provider, te);
         } finally {
-            GLStateManager.glPopMatrix();
+            GLSMMatrices.glPopMatrix();
             CapturedRenderingState.INSTANCE.popCurrentBlockEntity();
         }
         return true;

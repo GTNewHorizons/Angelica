@@ -7,7 +7,14 @@ import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
 import com.gtnewhorizons.angelica.api.tesr.TesrShader;
 import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard;
 import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
@@ -183,12 +190,12 @@ public final class TesrBatchRenderer {
     }
 
     public void queue(TemplateBuffer template, ResourceLocation texture, TesrMaterial material) {
-        modelView.set(GLStateManager.getModelViewMatrix());
+        modelView.set(GLSMMatrices.getModelViewMatrix());
         final int packedLight = currentPackedLight(material);
         final int colorABGR = resolveColor(material);
         if (activePass >= 0) {
-            final boolean offset = GLStateManager.glIsEnabled(GL11.GL_POLYGON_OFFSET_FILL);
-            final PolygonState polygon = GLStateManager.getPolygonState();
+            final boolean offset = GLSMEnable.glIsEnabled(GL11.GL_POLYGON_OFFSET_FILL);
+            final PolygonState polygon = GLSMRasterizer.getPolygonState();
             final PassOverride pass = PassOverride.capture();
             final int cullCode = DrawState.liveCull(material);
             final boolean lit = DrawState.liveLit(material);
@@ -206,7 +213,7 @@ public final class TesrBatchRenderer {
     }
 
     private static Matrix4f captureTextureMatrix() {
-        final Matrix4f texMatrix = GLStateManager.getTextures().getTextureUnitMatrix(0);
+        final Matrix4f texMatrix = GLSMTextures.getTextures().getTextureUnitMatrix(0);
         return MatrixHelper.isIdentity(texMatrix) ? null : texMatrix;
     }
 
@@ -367,7 +374,7 @@ public final class TesrBatchRenderer {
         if (material.hasColor()) {
             return AngelicaBufferSource.packAbgr(material.colorRed(), material.colorGreen(), material.colorBlue(), material.colorAlpha());
         }
-        final Color4 color = GLStateManager.getColor();
+        final Color4 color = GLSMCurrentAttribs.getColor();
         return AngelicaBufferSource.packAbgr(color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha());
     }
 
@@ -437,15 +444,15 @@ public final class TesrBatchRenderer {
         if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_DEFERRED);
         try {
             final EntityRenderer entityRenderer = Minecraft.getMinecraft().entityRenderer;
-            final int deferredDepth = GLStateManager.pushState(StateSet.BATCH);
+            final int deferredDepth = GLSMAttribStack.pushState(StateSet.BATCH);
             try {
-                GLStateManager.glDepthMask(true);
-                GLStateManager.enableDepthTest();
-                GLStateManager.enableBlend();
-                GLStateManager.defaultBlendFunc();
+                GLSMDepthStencilAlpha.glDepthMask(true);
+                GLSMDepthStencilAlpha.enableDepthTest();
+                GLSMBlend.enableBlend();
+                GLSMBlend.defaultBlendFunc();
                 entityRenderer.enableLightmap(0);
-                GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-                GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+                GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+                GLSMEnable.glEnable(GL11.GL_TEXTURE_2D);
                 final boolean wrap = Iris.enabled && GbufferPrograms.getCurrentPhase() == WorldRenderingPhase.NONE;
                 boolean blockEntitiesBegun = false;
                 if (wrap) {
@@ -461,7 +468,7 @@ public final class TesrBatchRenderer {
                     entityRenderer.disableLightmap(0);
                 }
             } finally {
-                GLStateManager.popStateTo(deferredDepth);
+                GLSMAttribStack.popStateTo(deferredDepth);
             }
         } finally {
             if (Tracy.ENABLED) Tracy.endZone();
@@ -594,9 +601,9 @@ public final class TesrBatchRenderer {
         immediateScratch.position((int) (end - addr));
         immediateScratch.flip();
         final RenderLayer layer = noPassLayerFor(texture, material);
-        final int d = GLStateManager.pushState(StateSet.BATCH);
+        final int d = GLSMAttribStack.pushState(StateSet.BATCH);
         try {
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
             boolean layerStarted = false;
             Throwable failure = null;
             try {
@@ -617,7 +624,7 @@ public final class TesrBatchRenderer {
             }
             if (failure != null) RenderFailures.rethrow(failure);
         } finally {
-            GLStateManager.popStateTo(d);
+            GLSMAttribStack.popStateTo(d);
         }
     }
 }

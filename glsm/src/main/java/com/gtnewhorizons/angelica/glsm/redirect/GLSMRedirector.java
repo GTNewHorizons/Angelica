@@ -30,7 +30,7 @@ import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Core GL call redirector for GLSM. Rewrites bytecode so that GL calls go through {@code GLStateManager} for state tracking and backend abstraction.
+ * Core GL call redirector for GLSM. Rewrites bytecode so GL calls go through the GLSM classes for state tracking and backend abstraction.
  * <p>
  * THIS CLASS MIGHT BE LOADED ON A DIFFERENT CLASS LOADER.
  * IT SHOULD NOT CALL ANY CODE FROM THE MAIN MOD.

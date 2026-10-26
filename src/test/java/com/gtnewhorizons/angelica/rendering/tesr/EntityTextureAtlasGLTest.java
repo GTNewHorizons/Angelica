@@ -3,6 +3,9 @@ package com.gtnewhorizons.angelica.rendering.tesr;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.ExitState;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
@@ -67,9 +70,9 @@ class EntityTextureAtlasGLTest {
         Reflect.setStatic(Minecraft.class, "theMinecraft", minecraft);
 
         passColor = texture(GL11.GL_NEAREST, 0);
-        passFbo = GLStateManager.glGenFramebuffers();
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, passFbo);
-        GLStateManager.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, passColor, 0);
+        passFbo = GLSMFramebuffer.glGenFramebuffers();
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, passFbo);
+        GLSMFramebuffer.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, passColor, 0);
         source = texture(GL11.GL_NEAREST, 0);
     }
 
@@ -77,10 +80,10 @@ class EntityTextureAtlasGLTest {
     void tearDown() {
         GLStateManager.cancelExitCapture();
         EntityTextureAtlas.INSTANCE.freePages();
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
-        GLStateManager.glDeleteFramebuffers(passFbo);
-        GLStateManager.glDeleteTextures(source);
-        GLStateManager.glDeleteTextures(passColor);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+        GLSMFramebuffer.glDeleteFramebuffers(passFbo);
+        GLSMTextures.glDeleteTextures(source);
+        GLSMTextures.glDeleteTextures(passColor);
         Reflect.setStatic(Minecraft.class, "theMinecraft", previous);
     }
 
@@ -144,17 +147,17 @@ class EntityTextureAtlasGLTest {
             Reflect.set(batcher, "activeGroups", previousGroups);
             AngelicaConfig.enableEntityTextureAtlas = atlasEnabled;
             groups.clear();
-            GLStateManager.glDeleteTextures(otherTexture);
+            GLSMTextures.glDeleteTextures(otherTexture);
         }
     }
 
     private static int texture(int filter, int seed) {
-        final int id = GLStateManager.glGenTextures();
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, id);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, filter);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, filter);
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, WIDTH, HEIGHT, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels(seed));
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        final int id = GLSMTextures.glGenTextures();
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, id);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, filter);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, filter);
+        GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, WIDTH, HEIGHT, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels(seed));
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
         return id;
     }
 
@@ -172,9 +175,9 @@ class EntityTextureAtlasGLTest {
 
     private void assertSlotHolds(EntityTextureAtlas.Slot slot, int seed) {
         final ByteBuffer page = BufferUtils.createByteBuffer(PAGE * PAGE * 4);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, pages.get(0).getGlTextureId());
-        GLStateManager.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, page);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, pages.get(0).getGlTextureId());
+        GLSMTextures.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, page);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
         for (int y = -1; y <= HEIGHT; y++) {
             for (int x = -1; x <= WIDTH; x++) {
                 final int at = ((slot.y + 1 + y) * PAGE + slot.x + 1 + x) * 4;
@@ -192,8 +195,8 @@ class EntityTextureAtlasGLTest {
         final EntityTextureAtlas.Slot slot = EntityTextureAtlas.INSTANCE.slotFor(source, false);
         assertTrue(GLStateManager.finishExitCapture(state), "first-use atlas resources are internal batch operations");
         assertNotNull(slot);
-        assertEquals(passFbo, GLStateManager.getDrawFramebuffer(), "draw framebuffer restored");
-        assertEquals(passFbo, GLStateManager.getReadFramebuffer(), "read framebuffer restored");
+        assertEquals(passFbo, GLSMFramebuffer.getDrawFramebuffer(), "draw framebuffer restored");
+        assertEquals(passFbo, GLSMFramebuffer.getReadFramebuffer(), "read framebuffer restored");
         assertEquals((slot.x + 1) / (float) PAGE, slot.u);
         assertEquals(WIDTH / (float) PAGE, slot.w);
         assertSlotHolds(slot, 0);
@@ -202,9 +205,9 @@ class EntityTextureAtlasGLTest {
     @Test
     void reuploadingTheTextureRefreshesItsSlot() {
         final EntityTextureAtlas.Slot slot = EntityTextureAtlas.INSTANCE.slotFor(source, false);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, source);
-        GLStateManager.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, WIDTH, HEIGHT, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels(7));
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, source);
+        GLSMTextures.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, WIDTH, HEIGHT, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels(7));
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
         assertSame(slot, EntityTextureAtlas.INSTANCE.slotFor(source, false));
         assertSlotHolds(slot, 7);
     }
@@ -215,7 +218,7 @@ class EntityTextureAtlasGLTest {
         try {
             assertNull(EntityTextureAtlas.INSTANCE.slotFor(filtered, false));
         } finally {
-            GLStateManager.glDeleteTextures(filtered);
+            GLSMTextures.glDeleteTextures(filtered);
         }
     }
 
@@ -223,28 +226,28 @@ class EntityTextureAtlasGLTest {
     void switchingToLinearFilteringDropsTheSlot() {
         final EntityTextureAtlas.Slot slot = EntityTextureAtlas.INSTANCE.slotFor(source, false);
         assertNotNull(slot);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, source);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, source);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
         assertNull(EntityTextureAtlas.INSTANCE.slotFor(source, false), "integer filter change");
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
         assertSame(slot, EntityTextureAtlas.INSTANCE.slotFor(source, false), "the kept slot comes back");
-        GLStateManager.glTexParameterf(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        GLSMTextures.glTexParameterf(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
         assertNull(EntityTextureAtlas.INSTANCE.slotFor(source, false), "float filter change");
     }
 
     @Test
     void drawingIntoTheTextureDropsItsSlot() {
         assertNotNull(EntityTextureAtlas.INSTANCE.slotFor(source, false));
-        final int target = GLStateManager.glGenFramebuffers();
+        final int target = GLSMFramebuffer.glGenFramebuffers();
         try {
-            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, target);
-            GLStateManager.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, source, 0);
-            GLStateManager.glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
-            GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
+            GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, target);
+            GLSMFramebuffer.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, source, 0);
+            GLSMBlend.glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+            GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
         } finally {
-            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, passFbo);
-            GLStateManager.glDeleteFramebuffers(target);
+            GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, passFbo);
+            GLSMFramebuffer.glDeleteFramebuffers(target);
         }
         assertNull(EntityTextureAtlas.INSTANCE.slotFor(source, false));
     }
@@ -265,7 +268,7 @@ class EntityTextureAtlasGLTest {
     void aDeletedTexturesRegionIsReusedOnlyFromTheNextPass() {
         final EntityTextureAtlas.Slot first = EntityTextureAtlas.INSTANCE.slotFor(source, false);
         assertNotNull(first);
-        GLStateManager.glDeleteTextures(source);
+        GLSMTextures.glDeleteTextures(source);
         final int samePass = texture(GL11.GL_NEAREST, 3);
         try {
             final EntityTextureAtlas.Slot taken = EntityTextureAtlas.INSTANCE.slotFor(samePass, false);
@@ -279,7 +282,7 @@ class EntityTextureAtlasGLTest {
             assertEquals(first.y, reused.y);
             assertSlotHolds(reused, 5);
         } finally {
-            GLStateManager.glDeleteTextures(samePass);
+            GLSMTextures.glDeleteTextures(samePass);
         }
     }
 
@@ -294,18 +297,18 @@ class EntityTextureAtlasGLTest {
             assertNull(EntityTextureAtlas.INSTANCE.slotFor(filling[filling.length - 1], false), "no page has room for another 512");
             assertNotNull(EntityTextureAtlas.INSTANCE.slotFor(small, false), "shelves still have room for a small texture");
         } finally {
-            for (int id : filling) if (id != 0) GLStateManager.glDeleteTextures(id);
-            GLStateManager.glDeleteTextures(small);
+            for (int id : filling) if (id != 0) GLSMTextures.glDeleteTextures(id);
+            GLSMTextures.glDeleteTextures(small);
         }
     }
 
     private static int blankTexture(int size) {
-        final int id = GLStateManager.glGenTextures();
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, id);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, size, size, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        final int id = GLSMTextures.glGenTextures();
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, id);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, size, size, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
         return id;
     }
 }

@@ -1,6 +1,14 @@
 package com.gtnewhorizons.angelica.render;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.client.rendering.GlUniformFloat2v;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.MathHelper;
@@ -81,7 +89,7 @@ public class PanoramaRenderer {
         fboB = createFbo(texB);
 
         buildCubeGeometry();
-        emptyVao = GLStateManager.glGenVertexArrays();
+        emptyVao = GLSMVertexInput.glGenVertexArrays();
         initShaders();
     }
 
@@ -100,7 +108,7 @@ public class PanoramaRenderer {
         try {
             final GlProgram<T> program = GlProgram.builder(name).attachShader(vert).attachShader(frag).link(factory);
             program.bind();
-            GLStateManager.glUniform1i(GLStateManager.glGetUniformLocation(program.handle(), "u_Texture"), 0);
+            GLSMPrograms.glUniform1i(GLSMPrograms.glGetUniformLocation(program.handle(), "u_Texture"), 0);
             program.unbind();
             return program;
         } finally {
@@ -136,48 +144,48 @@ public class PanoramaRenderer {
         }
         ibuf.flip();
 
-        cubeVao = GLStateManager.glGenVertexArrays();
-        GLStateManager.glBindVertexArray(cubeVao);
+        cubeVao = GLSMVertexInput.glGenVertexArrays();
+        GLSMVertexInput.glBindVertexArray(cubeVao);
 
-        cubeVbo = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, cubeVbo);
-        GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, vbuf, GL15.GL_STATIC_DRAW);
+        cubeVbo = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, cubeVbo);
+        GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, vbuf, GL15.GL_STATIC_DRAW);
 
-        GLStateManager.glEnableVertexAttribArray(0);
-        GLStateManager.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, VERTEX_STRIDE, 0);
-        GLStateManager.glEnableVertexAttribArray(1);
-        GLStateManager.glVertexAttribPointer(1, 2, GL11.GL_FLOAT, false, VERTEX_STRIDE, 12);
-        GLStateManager.glEnableVertexAttribArray(2);
-        GLStateManager.glVertexAttribPointer(2, 1, GL11.GL_FLOAT, false, VERTEX_STRIDE, 20);
+        GLSMVertexInput.glEnableVertexAttribArray(0);
+        GLSMVertexInput.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, VERTEX_STRIDE, 0);
+        GLSMVertexInput.glEnableVertexAttribArray(1);
+        GLSMVertexInput.glVertexAttribPointer(1, 2, GL11.GL_FLOAT, false, VERTEX_STRIDE, 12);
+        GLSMVertexInput.glEnableVertexAttribArray(2);
+        GLSMVertexInput.glVertexAttribPointer(2, 1, GL11.GL_FLOAT, false, VERTEX_STRIDE, 20);
 
-        cubeIbo = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, cubeIbo);
-        GLStateManager.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, ibuf, GL15.GL_STATIC_DRAW);
+        cubeIbo = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, cubeIbo);
+        GLSMBuffers.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, ibuf, GL15.GL_STATIC_DRAW);
 
-        GLStateManager.glBindVertexArray(0);
+        GLSMVertexInput.glBindVertexArray(0);
     }
 
     private static int createTexture() {
-        final int tex = GLStateManager.glGenTextures();
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex);
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, FBO_SIZE, FBO_SIZE, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        final int tex = GLSMTextures.glGenTextures();
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, tex);
+        GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, FBO_SIZE, FBO_SIZE, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
         return tex;
     }
 
     private static int createFbo(int colorTex) {
-        final int fbo = GLStateManager.glGenFramebuffers();
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
-        GLStateManager.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, colorTex, 0);
-        final int status = GLStateManager.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER);
+        final int fbo = GLSMFramebuffer.glGenFramebuffers();
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
+        GLSMFramebuffer.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, colorTex, 0);
+        final int status = GLSMFramebuffer.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER);
         if (status != GL30.GL_FRAMEBUFFER_COMPLETE) {
             throw new RuntimeException("Panorama FBO incomplete: 0x" + Integer.toHexString(status));
         }
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
         return fbo;
     }
 
@@ -185,35 +193,35 @@ public class PanoramaRenderer {
         if (!initialized) return;
         initialized = false;
         if (fboA != 0) {
-            GLStateManager.glDeleteFramebuffers(fboA);
+            GLSMFramebuffer.glDeleteFramebuffers(fboA);
             fboA = 0;
         }
         if (fboB != 0) {
-            GLStateManager.glDeleteFramebuffers(fboB);
+            GLSMFramebuffer.glDeleteFramebuffers(fboB);
             fboB = 0;
         }
         if (texA != 0) {
-            GLStateManager.glDeleteTextures(texA);
+            GLSMTextures.glDeleteTextures(texA);
             texA = 0;
         }
         if (texB != 0) {
-            GLStateManager.glDeleteTextures(texB);
+            GLSMTextures.glDeleteTextures(texB);
             texB = 0;
         }
         if (cubeVao != 0) {
-            GLStateManager.glDeleteVertexArrays(cubeVao);
+            GLSMVertexInput.glDeleteVertexArrays(cubeVao);
             cubeVao = 0;
         }
         if (cubeVbo != 0) {
-            GLStateManager.glDeleteBuffers(cubeVbo);
+            GLSMBuffers.glDeleteBuffers(cubeVbo);
             cubeVbo = 0;
         }
         if (cubeIbo != 0) {
-            GLStateManager.glDeleteBuffers(cubeIbo);
+            GLSMBuffers.glDeleteBuffers(cubeIbo);
             cubeIbo = 0;
         }
         if (emptyVao != 0) {
-            GLStateManager.glDeleteVertexArrays(emptyVao);
+            GLSMVertexInput.glDeleteVertexArrays(emptyVao);
             emptyVao = 0;
         }
         if (cubeProgram != null) {
@@ -233,54 +241,54 @@ public class PanoramaRenderer {
     public void renderSkybox(int panoramaTimer, float partialTicks, ResourceLocation[] panoramaPaths, Minecraft mc, int screenWidth, int screenHeight, float zLevel) {
         init();
 
-        GLStateManager.glColorMask(true, true, true, true);
-        GLStateManager.disableCull();
-        GLStateManager.disableScissorTest();
-        GLStateManager.disableDepthTest();
+        GLSMBlend.glColorMask(true, true, true, true);
+        GLSMRasterizer.disableCull();
+        GLSMRasterizer.disableScissorTest();
+        GLSMDepthStencilAlpha.disableDepthTest();
 
         mc.getFramebuffer().unbindFramebuffer();
-        GLStateManager.glViewport(0, 0, FBO_SIZE, FBO_SIZE);
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fboA);
-        GLStateManager.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        GLSMRasterizer.glViewport(0, 0, FBO_SIZE, FBO_SIZE);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fboA);
+        GLSMBlend.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
 
         drawCubeFaces(panoramaTimer, partialTicks, panoramaPaths, mc);
 
-        GLStateManager.disableBlend();
+        GLSMBlend.disableBlend();
         blurProgram.bind();
-        GLStateManager.glBindVertexArray(emptyVao);
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMVertexInput.glBindVertexArray(emptyVao);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
 
         final BlurUniforms bu = blurProgram.getInterface();
 
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fboB);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texA);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fboB);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texA);
         bu.direction.set(1.0f / FBO_SIZE, 0.0f);
-        GLStateManager.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
+        GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
 
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fboA);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texB);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fboA);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texB);
         bu.direction.set(0.0f, 1.0f / FBO_SIZE);
-        GLStateManager.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
+        GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
 
         mc.getFramebuffer().bindFramebuffer(true);
-        GLStateManager.glViewport(0, 0, mc.displayWidth, mc.displayHeight);
+        GLSMRasterizer.glViewport(0, 0, mc.displayWidth, mc.displayHeight);
 
         blitProgram.bind();
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texA);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texA);
 
         final float f1 = screenWidth > screenHeight ? 120.0F / screenWidth : 120.0F / screenHeight;
         blitProgram.getInterface().scaleV.setFloat(screenHeight * f1 / 256.0F);
         blitProgram.getInterface().scaleU.setFloat(screenWidth * f1 / 256.0F);
-        GLStateManager.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
+        GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
 
-        GLStateManager.glBindVertexArray(0);
+        GLSMVertexInput.glBindVertexArray(0);
         blitProgram.unbind();
 
-        GLStateManager.disableDepthTest();
-        GLStateManager.disableCull();
-        GLStateManager.enableBlend();
-        GLStateManager.enableTexture();
+        GLSMDepthStencilAlpha.disableDepthTest();
+        GLSMRasterizer.disableCull();
+        GLSMBlend.enableBlend();
+        GLSMTextures.enableTexture();
     }
 
     private void drawCubeFaces(int panoramaTimer, float partialTicks, ResourceLocation[] panoramaPaths, Minecraft mc) {
@@ -292,13 +300,13 @@ public class PanoramaRenderer {
 
         final Matrix4f proj = projScratch.setPerspective((float) Math.toRadians(120.0), 1.0f, 0.05f, 10.0f);
 
-        GLStateManager.enableBlend();
-        GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
-        GLStateManager.glDepthMask(false);
+        GLSMBlend.enableBlend();
+        GLSMBlend.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        GLSMDepthStencilAlpha.glDepthMask(false);
 
         cubeProgram.bind();
-        GLStateManager.glBindVertexArray(cubeVao);
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMVertexInput.glBindVertexArray(cubeVao);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
 
         final CubeUniforms cu = cubeProgram.getInterface();
 
@@ -307,12 +315,12 @@ public class PanoramaRenderer {
             cu.mvp.set(mvpScratch);
 
             mc.getTextureManager().bindTexture(panoramaPaths[face]);
-            GLStateManager.glDrawElements(GL11.GL_TRIANGLES, INDICES_PER_FACE, GL11.GL_UNSIGNED_SHORT, 0);
+            GLSMDraws.glDrawElements(GL11.GL_TRIANGLES, INDICES_PER_FACE, GL11.GL_UNSIGNED_SHORT, 0);
         }
 
-        GLStateManager.glBindVertexArray(0);
+        GLSMVertexInput.glBindVertexArray(0);
         cubeProgram.unbind();
-        GLStateManager.glDepthMask(true);
+        GLSMDepthStencilAlpha.glDepthMask(true);
     }
 
 

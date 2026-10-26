@@ -1,7 +1,10 @@
 package com.gtnewhorizons.angelica.client.rendering;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import lombok.Getter;
 import net.minecraft.client.renderer.Tessellator;
@@ -107,7 +110,7 @@ public class DeferredDrawBatcher {
                 subEnd++;
 
                 // Don't try to merge strips, fans, loops or polygons
-                if (GLStateManager.isContinuousDraw(drawMode)) break;
+                if (GLSMDraws.isContinuousDraw(drawMode)) break;
             }
 
             drawPackedBatch(batchTessellator, ranges, i, subEnd, totalBytes, totalVertices, drawMode, flags);
@@ -150,14 +153,14 @@ public class DeferredDrawBatcher {
      * - fog state (mode, color, start/end — constant for the frame)
      */
     static long captureStateKey() {
-        final int activeUnit = GLStateManager.getActiveTextureUnit();
-        final int textureId = GLStateManager.getTextures().getTextureUnitBindings(activeUnit).getBinding();
-        final int srcRgb = GLStateManager.getBlendState().getSrcRgb();
-        final int dstRgb = GLStateManager.getBlendState().getDstRgb();
-        final boolean blendEnabled = GLStateManager.getBlendMode().isEnabled();
-        final boolean depthMask = GLStateManager.getDepthState().isEnabled();
-        final boolean tex0Enabled = GLStateManager.getTextures().getTextureUnitStates(0).isEnabled();
-        final boolean tex1Enabled = GLStateManager.getTextures().getTextureUnitStates(1).isEnabled();
+        final int activeUnit = GLSMTextures.getActiveTextureUnit();
+        final int textureId = GLSMTextures.getTextures().getTextureUnitBindings(activeUnit).getBinding();
+        final int srcRgb = GLSMBlend.getBlendState().getSrcRgb();
+        final int dstRgb = GLSMBlend.getBlendState().getDstRgb();
+        final boolean blendEnabled = GLSMBlend.getBlendMode().isEnabled();
+        final boolean depthMask = GLSMDepthStencilAlpha.getDepthState().isEnabled();
+        final boolean tex0Enabled = GLSMTextures.getTextures().getTextureUnitStates(0).isEnabled();
+        final boolean tex1Enabled = GLSMTextures.getTextures().getTextureUnitStates(1).isEnabled();
 
         return packStateKey(textureId, srcRgb, dstRgb, blendEnabled, depthMask, tex0Enabled, tex1Enabled);
     }
@@ -189,15 +192,15 @@ public class DeferredDrawBatcher {
         final boolean tex0Enabled = unpackTex0Enabled(key);
         final boolean tex1Enabled = unpackTex1Enabled(key);
 
-        GLStateManager.getTextures().getTextureUnitStates(0).setEnabled(tex0Enabled);
-        GLStateManager.getTextures().getTextureUnitStates(1).setEnabled(tex1Enabled);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, textureId);
-        GLStateManager.glBlendFunc(srcRgb, dstRgb);
+        GLSMTextures.getTextures().getTextureUnitStates(0).setEnabled(tex0Enabled);
+        GLSMTextures.getTextures().getTextureUnitStates(1).setEnabled(tex1Enabled);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, textureId);
+        GLSMBlend.glBlendFunc(srcRgb, dstRgb);
         if (blendEnabled) {
-            GLStateManager.enableBlend();
+            GLSMBlend.enableBlend();
         } else {
-            GLStateManager.disableBlend();
+            GLSMBlend.disableBlend();
         }
-        GLStateManager.glDepthMask(depthMask);
+        GLSMDepthStencilAlpha.glDepthMask(depthMask);
     }
 }

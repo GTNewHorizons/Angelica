@@ -1,6 +1,10 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -23,19 +27,19 @@ class GlsmSdlWideLineTest {
 
     @AfterEach
     void resetLineState() {
-        GLStateManager.glLineWidth(1.0f);
-        GLStateManager.glDisable(GL11.GL_LINE_STIPPLE);
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMRasterizer.glLineWidth(1.0f);
+        GLSMEnable.glDisable(GL11.GL_LINE_STIPPLE);
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
     }
 
     private static void line(float[] start, float[] end) {
-        GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-        GLStateManager.glBegin(GL11.GL_LINES);
-        GLStateManager.glVertex3f(start[0], start[1], start[2]);
-        GLStateManager.glVertex3f(end[0], end[1], end[2]);
-        GLStateManager.glEnd();
+        GLSMCurrentAttribs.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        GLSMDraws.glBegin(GL11.GL_LINES);
+        GLSMDraws.glVertex3f(start[0], start[1], start[2]);
+        GLSMDraws.glVertex3f(end[0], end[1], end[2]);
+        GLSMDraws.glEnd();
     }
 
     private static int litInRow(int[] pixels, int y) {
@@ -48,9 +52,9 @@ class GlsmSdlWideLineTest {
 
     @Test
     void stippledWideLineKeepsOnePhaseAcrossItsWidth() {
-        GLStateManager.glLineWidth(3.0f);
-        GLStateManager.glEnable(GL11.GL_LINE_STIPPLE);
-        GLStateManager.glLineStipple(2, (short) 0x0F0F);
+        GLSMRasterizer.glLineWidth(3.0f);
+        GLSMEnable.glEnable(GL11.GL_LINE_STIPPLE);
+        GLSMRasterizer.glLineStipple(2, (short) 0x0F0F);
         final float y = pixelCenter(32);
         line(new float[] { pixelCenter(8), y, 0f }, new float[] { pixelCenter(56), y, 0f });
 
@@ -70,11 +74,11 @@ class GlsmSdlWideLineTest {
     private static final float[] BEHIND = { 0f, 0.8f, 2f };
 
     private static void nearPlaneScene() {
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glFrustum(-0.05, 0.05, -0.05, 0.05, 0.05, 100.0);
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glLineWidth(3.0f);
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glFrustum(-0.05, 0.05, -0.05, 0.05, 0.05, 100.0);
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMRasterizer.glLineWidth(3.0f);
     }
 
     private static void assertWidthAcrossTheNearPlane(float[] start, float[] end) {
@@ -124,15 +128,15 @@ class GlsmSdlWideLineTest {
     }
 
     private static void horizontalLines(float width, float lowerY, float upperY) {
-        GLStateManager.glEnable(GL11.GL_CULL_FACE);
-        GLStateManager.glLineWidth(width);
-        GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-        GLStateManager.glBegin(GL11.GL_LINES);
-        GLStateManager.glVertex3f(-0.8f, lowerY, 0.0f);
-        GLStateManager.glVertex3f(0.8f, lowerY, 0.0f);
-        GLStateManager.glVertex3f(0.8f, upperY, 0.0f);
-        GLStateManager.glVertex3f(-0.8f, upperY, 0.0f);
-        GLStateManager.glEnd();
+        GLSMEnable.glEnable(GL11.GL_CULL_FACE);
+        GLSMRasterizer.glLineWidth(width);
+        GLSMCurrentAttribs.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        GLSMDraws.glBegin(GL11.GL_LINES);
+        GLSMDraws.glVertex3f(-0.8f, lowerY, 0.0f);
+        GLSMDraws.glVertex3f(0.8f, lowerY, 0.0f);
+        GLSMDraws.glVertex3f(0.8f, upperY, 0.0f);
+        GLSMDraws.glVertex3f(-0.8f, upperY, 0.0f);
+        GLSMDraws.glEnd();
     }
 
     @Test
@@ -154,7 +158,7 @@ class GlsmSdlWideLineTest {
     @Test
     void wideLineCoversItsFirstPixelButNotItsLast() {
         final float y = pixelCenter(16);
-        GLStateManager.glLineWidth(2.0f);
+        GLSMRasterizer.glLineWidth(2.0f);
         line(new float[] { pixelCenter(40), y, 0.0f }, new float[] { pixelCenter(20), y, 0.0f });
 
         final int[] pixels = GlsmSdlHeadlessRig.readTarget();

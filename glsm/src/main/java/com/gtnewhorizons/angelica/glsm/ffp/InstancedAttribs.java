@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import org.lwjgl.opengl.GL11;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutFloat;
@@ -68,20 +68,20 @@ public final class InstancedAttribs {
 
     public static void pointHead(long base, int stride) {
         for (int r = 0; r < 3; r++) {
-            GLStateManager.glVertexAttribPointer(LOC_ROW0 + r, 4, GL11.GL_FLOAT, false, stride, base + OFFSET_ROWS + r * 16L);
+            GLSMVertexInput.glVertexAttribPointer(LOC_ROW0 + r, 4, GL11.GL_FLOAT, false, stride, base + OFFSET_ROWS + r * 16L);
         }
-        GLStateManager.glVertexAttribPointer(LOC_COLOR, 4, GL11.GL_UNSIGNED_BYTE, true, stride, base + OFFSET_COLOR);
-        GLStateManager.glVertexAttribPointer(LOC_OVERLAY, 4, GL11.GL_UNSIGNED_BYTE, true, stride, base + OFFSET_OVERLAY);
+        GLSMVertexInput.glVertexAttribPointer(LOC_COLOR, 4, GL11.GL_UNSIGNED_BYTE, true, stride, base + OFFSET_COLOR);
+        GLSMVertexInput.glVertexAttribPointer(LOC_OVERLAY, 4, GL11.GL_UNSIGNED_BYTE, true, stride, base + OFFSET_OVERLAY);
         pointEntityIds(LOC_ENTITY, stride, base + OFFSET_ENTITY);
     }
 
     public static void pointEntityIds(int location, int stride, long offset) {
-        GLStateManager.glVertexAttribPointer(location, 4, GL11.GL_UNSIGNED_SHORT, true, stride, offset);
+        GLSMVertexInput.glVertexAttribPointer(location, 4, GL11.GL_UNSIGNED_SHORT, true, stride, offset);
     }
 
     public static void pointTemplate(long base) {
         pointHead(base, STRIDE);
-        GLStateManager.glVertexAttribPointer(LOC_LIGHTMAP, 2, GL11.GL_FLOAT, false, STRIDE, base + OFFSET_LIGHTMAP);
+        GLSMVertexInput.glVertexAttribPointer(LOC_LIGHTMAP, 2, GL11.GL_FLOAT, false, STRIDE, base + OFFSET_LIGHTMAP);
     }
 
     public static void enableHeadArrays() {
@@ -91,8 +91,8 @@ public final class InstancedAttribs {
     }
 
     static void enableInstanced(int loc) {
-        GLStateManager.glEnableVertexAttribArray(loc);
-        GLStateManager.glVertexAttribDivisor(loc, 1);
+        GLSMVertexInput.glEnableVertexAttribArray(loc);
+        GLSMVertexInput.glVertexAttribDivisor(loc, 1);
     }
 
     private InstancedAttribs() {}

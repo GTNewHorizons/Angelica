@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.stacks;
 
 import com.gtnewhorizons.angelica.glsm.GLContextState;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.hooks.VanillaBooleanLayer;
 import com.gtnewhorizons.angelica.glsm.states.BooleanState;
@@ -90,7 +91,7 @@ public class BooleanStateStack extends BooleanState implements CowStateStack<Boo
 
     @Override
     public int getDepth() {
-        return GLStateManager.getAttribDepth();
+        return GLSMAttribStack.getAttribDepth();
     }
 
     @Override

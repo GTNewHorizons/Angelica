@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.rendering.items;
 
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.ffp.CombinedGlint;
 import com.gtnewhorizons.angelica.rendering.GlintClock;
@@ -39,8 +41,8 @@ public final class ItemGlint {
     }
 
     public static boolean canResetStencil() {
-        if (!GLStateManager.getStencilTest().isEnabled()) return true;
-        final var stencil = GLStateManager.getStencilState();
+        if (!GLSMDepthStencilAlpha.getStencilTest().isEnabled()) return true;
+        final var stencil = GLSMDepthStencilAlpha.getStencilState();
         return stencil.getFuncFront() == GL11.GL_ALWAYS && stencil.getFuncBack() == GL11.GL_ALWAYS && stencil.getFailOpFront() == GL11.GL_KEEP && stencil.getFailOpBack() == GL11.GL_KEEP && stencil.getZFailOpFront() == GL11.GL_KEEP
             && stencil.getZFailOpBack() == GL11.GL_KEEP && stencil.getZPassOpFront() == GL11.GL_KEEP && stencil.getZPassOpBack() == GL11.GL_KEEP;
     }
@@ -53,8 +55,8 @@ public final class ItemGlint {
         if (!eligible()) return false;
         final var mc = Minecraft.getMinecraft();
         final var texture = mc.getTextureManager().getTexture(TEXTURE);
-        if (texture == null || texture.getGlTextureId() != GLStateManager.getTextures().getTextureUnitBindings(0).getBinding()) return false;
-        return firstMatrix().equals(GLStateManager.getTextures().getTextureUnitMatrix(0), 0.000001f) && CombinedGlint.begin(secondMatrix());
+        if (texture == null || texture.getGlTextureId() != GLSMTextures.getTextures().getTextureUnitBindings(0).getBinding()) return false;
+        return firstMatrix().equals(GLSMTextures.getTextures().getTextureUnitMatrix(0), 0.000001f) && CombinedGlint.begin(secondMatrix());
     }
 
     public static ResourceLocation texture() {

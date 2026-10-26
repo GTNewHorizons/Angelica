@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.glsm.recording.commands;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.GLTypes;
 import com.gtnewhorizons.angelica.glsm.QuadConverter;
@@ -64,12 +66,12 @@ public final class IndexedDrawCapture {
         final int srcIndexSize = GLTypes.sizeBytes(srcIndexType);
         if (srcIndexSize <= 0) return null;
 
-        final int prevEBO = GLStateManager.getBoundEBO();
-        final int prevVBO = GLStateManager.getBoundVBO();
+        final int prevEBO = GLSMVertexInput.getBoundEBO();
+        final int prevVBO = GLSMBuffers.getBoundVBO();
         ByteBuffer eboSrc = null;
         try {
-            GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
-            final int eboBufferSize = GLStateManager.glGetBufferParameteri(GL15.GL_ELEMENT_ARRAY_BUFFER, GL15.GL_BUFFER_SIZE);
+            GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
+            final int eboBufferSize = GLSMBuffers.glGetBufferParameteri(GL15.GL_ELEMENT_ARRAY_BUFFER, GL15.GL_BUFFER_SIZE);
             if (eboBufferSize <= 0) {
                 GLStateManager.warnOnce("ebo-size", "[IndexedDrawCapture] GL_BUFFER_SIZE={} for EBO {}", eboBufferSize, eboId);
                 return null;
@@ -80,12 +82,12 @@ public final class IndexedDrawCapture {
                 return null;
             }
             eboSrc = MemoryUtilities.memAlloc((int) eboReadSize);
-            GLStateManager.glGetBufferSubData(GL15.GL_ELEMENT_ARRAY_BUFFER, indicesOffset, eboSrc);
+            GLSMBuffers.glGetBufferSubData(GL15.GL_ELEMENT_ARRAY_BUFFER, indicesOffset, eboSrc);
             return bake(mode, indicesCount, srcIndexType, MemoryUtilities.memAddress0(eboSrc));
         } finally {
             if (eboSrc != null) MemoryUtilities.memFree(eboSrc);
-            GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, prevEBO);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, prevVBO);
+            GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, prevEBO);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, prevVBO);
         }
     }
 

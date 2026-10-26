@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.streaming;
 
 import com.gtnewhorizons.angelica.config.SystemProperties;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import org.lwjgl.opengl.GL30;
@@ -50,15 +51,15 @@ final class GlStreamingRing {
 
     static GlStreamingRing create(int target, int capacity, boolean forceOrphan) {
         if (forceOrphan || !RenderSystem.supportsBufferStorage()) return null;
-        final int id = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(target, id);
+        final int id = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(target, id);
         final int storageFlags = GL44.GL_MAP_PERSISTENT_BIT | GL30.GL_MAP_WRITE_BIT | GL44.GL_MAP_COHERENT_BIT | GL44.GL_CLIENT_STORAGE_BIT;
         RenderSystem.bufferStorage(target, capacity, storageFlags);
         final int mapFlags = GL44.GL_MAP_PERSISTENT_BIT | GL30.GL_MAP_WRITE_BIT | GL44.GL_MAP_COHERENT_BIT;
-        final ByteBuffer mapped = GLStateManager.glMapBufferRange(target, 0, capacity, mapFlags);
-        GLStateManager.glBindBuffer(target, 0);
+        final ByteBuffer mapped = GLSMBuffers.glMapBufferRange(target, 0, capacity, mapFlags);
+        GLSMBuffers.glBindBuffer(target, 0);
         if (mapped == null) {
-            GLStateManager.glDeleteBuffers(id);
+            GLSMBuffers.glDeleteBuffers(id);
             GLStateManager.LOGGER.warn("Persistent map failed for streaming ring (target=0x{}, {} bytes)", Integer.toHexString(target), capacity);
             return null;
         }
@@ -102,7 +103,7 @@ final class GlStreamingRing {
 
     private void fence() {
         if (pendingBytes > 0) {
-            fences.enqueue(GLStateManager.glFenceSync(GL32.GL_SYNC_GPU_COMMANDS_COMPLETE, 0), pendingBytes);
+            fences.enqueue(GLSMBuffers.glFenceSync(GL32.GL_SYNC_GPU_COMMANDS_COMPLETE, 0), pendingBytes);
             pendingBytes = 0;
             fencesIssued++;
             totalFencesIssued++;
@@ -116,8 +117,8 @@ final class GlStreamingRing {
     private void reclaim() {
         while (!fences.isEmpty()) {
             final long fenceId = fences.firstId();
-            if (!signaled(GLStateManager.glClientWaitSync(fenceId, 0, 0L))) break;
-            GLStateManager.glDeleteSync(fenceId);
+            if (!signaled(GLSMBuffers.glClientWaitSync(fenceId, 0, 0L))) break;
+            GLSMBuffers.glDeleteSync(fenceId);
             remaining += fences.firstBytes();
             fences.dequeue();
         }
@@ -132,14 +133,14 @@ final class GlStreamingRing {
         long remainingNanos = SYNC_WAIT_TOTAL_NANOS;
         int status;
         do {
-            status = GLStateManager.glClientWaitSync(fenceId, GL32.GL_SYNC_FLUSH_COMMANDS_BIT,
+            status = GLSMBuffers.glClientWaitSync(fenceId, GL32.GL_SYNC_FLUSH_COMMANDS_BIT,
                 Math.min(SYNC_WAIT_SLICE_NANOS, remainingNanos));
             remainingNanos = deadline - System.nanoTime();
         } while (status == GL32.GL_TIMEOUT_EXPIRED && remainingNanos > 0);
         if (!signaled(status)) {
             GLStateManager.LOGGER.warn("Streaming ring fence wait did not signal (status=0x{}); reclaiming anyway", Integer.toHexString(status));
         }
-        GLStateManager.glDeleteSync(fenceId);
+        GLSMBuffers.glDeleteSync(fenceId);
         remaining += bytes;
         reclaim();
     }
@@ -161,14 +162,14 @@ final class GlStreamingRing {
 
     void destroy() {
         while (!fences.isEmpty()) {
-            GLStateManager.glDeleteSync(fences.firstId());
+            GLSMBuffers.glDeleteSync(fences.firstId());
             fences.dequeue();
         }
         if (bufferId != 0) {
-            GLStateManager.glBindBuffer(target, bufferId);
-            GLStateManager.glUnmapBuffer(target);
-            GLStateManager.glBindBuffer(target, 0);
-            GLStateManager.glDeleteBuffers(bufferId);
+            GLSMBuffers.glBindBuffer(target, bufferId);
+            GLSMBuffers.glUnmapBuffer(target);
+            GLSMBuffers.glBindBuffer(target, 0);
+            GLSMBuffers.glDeleteBuffers(bufferId);
             bufferId = 0;
         }
     }

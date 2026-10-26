@@ -6,6 +6,8 @@ import org.lwjgl.opengl.ARBDebugOutput;
 import org.lwjgl.opengl.GL11;
 
 import com.gtnewhorizons.angelica.config.SystemProperties;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMQueries;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.LTWWorkaround;
 
@@ -21,9 +23,9 @@ public class DriverCompatabilityCheck {
      * Should be called after GL context is created and GLStateManager is initialized.
      */
     public static void checkDriverCompatibility() {
-        final String vendor = GLStateManager.glGetString(GL11.GL_VENDOR);
-        final String renderer = GLStateManager.glGetString(GL11.GL_RENDERER);
-        final String version = GLStateManager.glGetString(GL11.GL_VERSION);
+        final String vendor = GLSMQueries.glGetString(GL11.GL_VENDOR);
+        final String renderer = GLSMQueries.glGetString(GL11.GL_RENDERER);
+        final String version = GLSMQueries.glGetString(GL11.GL_VERSION);
 
         LOGGER.info("OpenGL Vendor: {}", vendor);
         LOGGER.info("OpenGL Renderer: {}", renderer);
@@ -58,6 +60,6 @@ public class DriverCompatabilityCheck {
         }
 
         LOGGER.info("Enabling workaround for NVIDIA threaded optimizations");
-        GLStateManager.glEnable(ARBDebugOutput.GL_DEBUG_OUTPUT_SYNCHRONOUS_ARB);
+        GLSMEnable.glEnable(ARBDebugOutput.GL_DEBUG_OUTPUT_SYNCHRONOUS_ARB);
     }
 }

@@ -3,7 +3,8 @@ package com.gtnewhorizons.angelica.mixins.early.angelica.entity;
 import com.gtnewhorizons.angelica.rendering.SkippedGlintBlock;
 import com.gtnewhorizons.angelica.helpers.RendererLivingEntityHelper;
 import com.gtnewhorizons.angelica.rendering.GlintClock;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.rendering.tesr.EntityShadowReplay;
 import com.gtnewhorizons.angelica.rendering.tesr.GlintCapture;
@@ -59,7 +60,7 @@ public abstract class MixinRendererLivingEntity_GlintClock {
         final ModelBase model = ((RendererLivingEntity) (Object) this).renderPassModel;
         if ((angelica$armorPassFlags & 15) != 15) return mask;
         angelica$nextGlintLayer = 0;
-        if (model != angelica$baseModel || GLStateManager.getOverlayA() != 0.0F || RendererLivingEntityHelper.hasEyePass(this)
+        if (model != angelica$baseModel || GLSMCurrentAttribs.getOverlayA() != 0.0F || RendererLivingEntityHelper.hasEyePass(this)
             || !ModelPartBatcher.INSTANCE.queueSkippedArmorGlint(angelica$armorBase, RES_ITEM_GLINT)) return mask;
         SkippedGlintBlock.applyArmorExitState();
         return 0;
@@ -84,7 +85,7 @@ public abstract class MixinRendererLivingEntity_GlintClock {
         }
         angelica$baseModel = null;
         angelica$capturingBase = (angelica$armorPassFlags & 15) == 15 && ModelPartBatcher.INSTANCE.beginArmorCapture(angelica$armorBase);
-        if (angelica$capturingBase) GLStateManager.glPushMatrix();
+        if (angelica$capturingBase) GLSMMatrices.glPushMatrix();
     }
 
     @Inject(method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
@@ -95,7 +96,7 @@ public abstract class MixinRendererLivingEntity_GlintClock {
     private void angelica$endArmorBase(CallbackInfo ci) {
         if (angelica$capturingBase) {
             angelica$capturingBase = false;
-            GLStateManager.glPopMatrix();
+            GLSMMatrices.glPopMatrix();
             angelica$armorBase.endWithRestoredPose();
             angelica$baseModel = ((RendererLivingEntity) (Object) this).renderPassModel;
         }
@@ -121,7 +122,7 @@ public abstract class MixinRendererLivingEntity_GlintClock {
         }
         if (layer == 1 && batcher.replayGlint(angelica$armorGlint)) return false;
         angelica$glintLayer = layer == 0 && batcher.beginGlintCapture(angelica$armorGlint) ? GLINT_LAYER_CAPTURED : GLINT_LAYER_DRAWN;
-        GLStateManager.glPushMatrix();
+        GLSMMatrices.glPushMatrix();
         return true;
     }
 
@@ -130,7 +131,7 @@ public abstract class MixinRendererLivingEntity_GlintClock {
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/model/ModelBase;render(Lnet/minecraft/entity/Entity;FFFFFF)V", ordinal = 0, shift = At.Shift.AFTER))
     private void angelica$endArmorGlintLayer(CallbackInfo ci) {
         if (angelica$glintLayer != GLINT_LAYER_QUEUED) {
-            GLStateManager.glPopMatrix();
+            GLSMMatrices.glPopMatrix();
             if (angelica$glintLayer == GLINT_LAYER_CAPTURED) {
                 angelica$armorGlint.endWithRestoredPose();
                 angelica$secondArmorQueued = ModelPartBatcher.INSTANCE.queueSecondArmorGlint(angelica$armorGlint);
@@ -146,12 +147,12 @@ public abstract class MixinRendererLivingEntity_GlintClock {
         EntityShadowReplay.rejectRenderFailed();
         if (angelica$capturingBase) {
             angelica$capturingBase = false;
-            GLStateManager.glPopMatrix();
+            GLSMMatrices.glPopMatrix();
             angelica$armorBase.reset();
         }
         if (angelica$glintLayer != GLINT_LAYER_QUEUED) {
             angelica$glintLayer = GLINT_LAYER_QUEUED;
-            GLStateManager.glPopMatrix();
+            GLSMMatrices.glPopMatrix();
             angelica$armorGlint.reset();
         }
         angelica$endZone();
@@ -180,7 +181,7 @@ public abstract class MixinRendererLivingEntity_GlintClock {
         method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
         at = @At(
             value = "INVOKE",
-            target = "Lcom/gtnewhorizons/angelica/glsm/GLStateManager;glTranslatef(FFF)V",
+            target = "Lcom/gtnewhorizons/angelica/glsm/GLSMMatrices;glTranslatef(FFF)V",
             ordinal = 1,
             remap = false
         ),

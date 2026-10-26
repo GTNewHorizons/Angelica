@@ -33,20 +33,20 @@ class GLSM_BlendUnknownState_UnitTest {
     @Test
     void testSetUnknownStateForcesCacheBypass() {
         // Enable blend via GLSM — both cache and GL should agree
-        GLStateManager.enableBlend();
+        GLSMBlend.enableBlend();
         assertTrue(GL11.glIsEnabled(GL11.GL_BLEND), "GL blend should be enabled");
-        assertTrue(GLStateManager.getBlendMode().isEnabled(), "GLSM blend cache should be enabled");
+        assertTrue(GLSMBlend.getBlendMode().isEnabled(), "GLSM blend cache should be enabled");
 
         // Simulate a per-buffer disable that bypasses the cache (as glDisablei does)
         GL30.glDisablei(GL11.GL_BLEND, 0);
-        GLStateManager.getBlendMode().setUnknownState();
+        GLSMBlend.getBlendMode().setUnknownState();
 
         // Cache still says enabled, but GL state for buffer 0 is now disabled
-        assertTrue(GLStateManager.getBlendMode().isEnabled(), "GLSM cache should still say enabled");
+        assertTrue(GLSMBlend.getBlendMode().isEnabled(), "GLSM cache should still say enabled");
 
         // Re-enable blend via GLSM — without setUnknownState, this would be a no-op
         // because the cache thinks blend is already enabled
-        GLStateManager.enableBlend();
+        GLSMBlend.enableBlend();
 
         // Per GL spec, glEnable(GL_BLEND) enables blend for ALL draw buffers,
         // overriding any per-buffer disables
@@ -72,9 +72,9 @@ class GLSM_BlendUnknownState_UnitTest {
 
     private static void setBlend(boolean enabled) {
         if (enabled) {
-            GLStateManager.enableBlend();
+            GLSMBlend.enableBlend();
         } else {
-            GLStateManager.disableBlend();
+            GLSMBlend.disableBlend();
         }
     }
 }

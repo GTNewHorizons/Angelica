@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement.Usage;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.GLTypes;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
@@ -630,8 +631,8 @@ public final class VAOManager {
             clientArraysVBO = RENDER_BACKEND.genBuffers();
         }
 
-        final int savedVBO = GLStateManager.getBoundVBO();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, clientArraysVBO);
+        final int savedVBO = GLSMBuffers.getBoundVBO();
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, clientArraysVBO);
 
         if (totalBytes > clientArraysVBOCapacity) {
             int newCap = Math.max(4096, clientArraysVBOCapacity);
@@ -651,7 +652,7 @@ public final class VAOManager {
             }
         }
 
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, savedVBO);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, savedVBO);
     }
 
 

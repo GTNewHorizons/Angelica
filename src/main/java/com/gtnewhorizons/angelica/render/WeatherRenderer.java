@@ -3,7 +3,14 @@ package com.gtnewhorizons.angelica.render;
 import com.gtnewhorizons.angelica.compat.dragonapi.DragonAPICompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.SystemProperties;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
 import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
 import com.gtnewhorizons.angelica.glsm.ffp.WeatherInstancedAttribs;
@@ -273,20 +280,20 @@ public final class WeatherRenderer {
             updateCount & 31, updateCount & 511, rainStrength);
 
         mc.entityRenderer.enableLightmap(partialTicks);
-        GLStateManager.disableCull();
-        GLStateManager.glNormal3f(0.0F, 1.0F, 0.0F);
-        GLStateManager.enableBlend();
+        GLSMRasterizer.disableCull();
+        GLSMCurrentAttribs.glNormal3f(0.0F, 1.0F, 0.0F);
+        GLSMBlend.enableBlend();
         OpenGlHelper.glBlendFunc(770, 771, 1, 0);
-        GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.1F);
-        GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, 0.1F);
+        GLSMCurrentAttribs.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
 
         int drawCalls = 0;
         drawCalls += drawRange(mc, deferred, RAIN_TEXTURE, 0, rainInstances);
         drawCalls += drawRange(mc, deferred, SNOW_TEXTURE, rainInstances, instanceCount - rainInstances);
 
-        GLStateManager.enableCull();
-        GLStateManager.disableBlend();
-        GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.1F);
+        GLSMRasterizer.enableCull();
+        GLSMBlend.disableBlend();
+        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, 0.1F);
         mc.entityRenderer.disableLightmap(partialTicks);
 
         report(instanceCount, drawCalls, startNanos);
@@ -303,15 +310,15 @@ public final class WeatherRenderer {
             deferred.bindInstancedVariant(Instancing.WEATHER);
         }
 
-        GLStateManager.glBindVertexArray(WeatherQuadMesh.vao());
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, instanceBuffer);
+        GLSMVertexInput.glBindVertexArray(WeatherQuadMesh.vao());
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, instanceBuffer);
         WeatherInstancedAttribs.pointInstanceAttribs((long) first * WeatherInstancedAttribs.STRIDE);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         VAOManager.setCurrentVertexFlags(WeatherQuadMesh.VERTEX_FLAGS);
-        if (deferred == null) GLStateManager.setFfpInstancing(Instancing.WEATHER);
-        GLStateManager.glDrawArraysInstanced(GL11.GL_TRIANGLE_FAN, 0, WeatherQuadMesh.VERTEX_COUNT, count);
-        GLStateManager.setFfpInstancing(Instancing.NONE);
-        GLStateManager.glBindVertexArray(0);
+        if (deferred == null) GLSMPrograms.setFfpInstancing(Instancing.WEATHER);
+        GLSMDraws.glDrawArraysInstanced(GL11.GL_TRIANGLE_FAN, 0, WeatherQuadMesh.VERTEX_COUNT, count);
+        GLSMPrograms.setFfpInstancing(Instancing.NONE);
+        GLSMVertexInput.glBindVertexArray(0);
 
         if (deferred != null) deferred.rebindCurrentPass();
         return 1;
@@ -324,10 +331,10 @@ public final class WeatherRenderer {
         if (instanceCapacity < slots) {
             instanceCapacity = slots;
             instanceData = ByteBuffer.allocateDirect(slots * stride).order(ByteOrder.nativeOrder());
-            if (instanceBuffer == 0) instanceBuffer = GLStateManager.glGenBuffers();
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, instanceBuffer);
-            GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, (long) slots * stride, GL15.GL_DYNAMIC_DRAW);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            if (instanceBuffer == 0) instanceBuffer = GLSMBuffers.glGenBuffers();
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, instanceBuffer);
+            GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, (long) slots * stride, GL15.GL_DYNAMIC_DRAW);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
             WeatherQuadMesh.bindInstanceBuffer(instanceBuffer);
         }
 
@@ -339,9 +346,9 @@ public final class WeatherRenderer {
 
         instanceData.position(0);
         instanceData.limit(count * stride);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, instanceBuffer);
-        GLStateManager.glBufferSubData(GL15.GL_ARRAY_BUFFER, 0L, instanceData);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, instanceBuffer);
+        GLSMBuffers.glBufferSubData(GL15.GL_ARRAY_BUFFER, 0L, instanceData);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         instanceData.clear();
     }
 
@@ -394,12 +401,12 @@ public final class WeatherRenderer {
         mc.entityRenderer.enableLightmap(partialTicks);
 
         final float age = updateCount + partialTicks;
-        GLStateManager.disableCull();
-        GLStateManager.glNormal3f(0.0F, 1.0F, 0.0F);
-        GLStateManager.enableBlend();
+        GLSMRasterizer.disableCull();
+        GLSMCurrentAttribs.glNormal3f(0.0F, 1.0F, 0.0F);
+        GLSMBlend.enableBlend();
         OpenGlHelper.glBlendFunc(770, 771, 1, 0);
-        GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.1F);
-        GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, 0.1F);
+        GLSMCurrentAttribs.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
 
         final Tessellator tessellator = Tessellator.instance;
         int bound = -1;
@@ -473,9 +480,9 @@ public final class WeatherRenderer {
             drawCalls++;
         }
 
-        GLStateManager.enableCull();
-        GLStateManager.disableBlend();
-        GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.1F);
+        GLSMRasterizer.enableCull();
+        GLSMBlend.disableBlend();
+        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, 0.1F);
         mc.entityRenderer.disableLightmap(partialTicks);
 
         report(quads, drawCalls, startNanos);
@@ -517,7 +524,7 @@ public final class WeatherRenderer {
     public static void clear() {
         WeatherQuadMesh.delete();
         if (instanceBuffer != 0) {
-            GLStateManager.glDeleteBuffers(instanceBuffer);
+            GLSMBuffers.glDeleteBuffers(instanceBuffer);
             instanceBuffer = 0;
         }
         instanceData = null;

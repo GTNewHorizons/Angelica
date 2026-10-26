@@ -11,6 +11,8 @@ import com.gtnewhorizons.angelica.glsm.hooks.LineDrawHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.ShaderTransformPostProcessor;
 import com.gtnewhorizons.angelica.glsm.shader.ShaderType;
 import org.taumc.glsl.grammar.GLSLParser;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.sdlgpu.SDLGPUGate;
 import net.coderbot.iris.Iris;
@@ -70,7 +72,7 @@ public class IrisGLSMBridge {
         state.setEntityIdsListener(() -> {
             final boolean suspended = GLStateManager.suspendExitCapture();
             try {
-                GLStateManager.setEntityIds(
+                GLSMCurrentAttribs.setEntityIds(
                     state.getCurrentRenderedEntity(), state.getCurrentRenderedBlockEntity(), state.getCurrentRenderedItem());
             } finally {
                 GLStateManager.resumeExitCapture(suspended);
@@ -278,7 +280,7 @@ public class IrisGLSMBridge {
                 programRestoreDeferred = false;
                 final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
                 if (pipeline instanceof DeferredWorldRenderingPipeline drp && drp.shouldOverrideShaders()) {
-                    drp.restorePassAfterModProgram(GLStateManager.getActiveProgram());
+                    drp.restorePassAfterModProgram(GLSMPrograms.getActiveProgram());
                 }
             }
         });

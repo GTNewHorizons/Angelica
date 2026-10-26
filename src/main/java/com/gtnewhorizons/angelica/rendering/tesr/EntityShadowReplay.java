@@ -5,6 +5,9 @@ import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.ExitState;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.rendering.DeferredEntityOverlay;
@@ -94,7 +97,7 @@ public final class EntityShadowReplay {
     static void beginPass(boolean shadow, int renderPass) {
         if (shadow) {
             resetRecords();
-            shadowInverse.set(GLStateManager.getModelViewMatrix()).invert();
+            shadowInverse.set(GLSMMatrices.getModelViewMatrix()).invert();
             shadowViewValid = shadowInverse.isFinite();
             shadowX = RenderManager.renderPosX;
             shadowY = RenderManager.renderPosY;
@@ -104,7 +107,7 @@ public final class EntityShadowReplay {
         } else {
             mainReady = shadowAvailable && renderPass == 0;
             if (mainReady) {
-                mainFromShadow.set(GLStateManager.getModelViewMatrix()).translate(
+                mainFromShadow.set(GLSMMatrices.getModelViewMatrix()).translate(
                     (float) (shadowX - RenderManager.renderPosX), (float) (shadowY - RenderManager.renderPosY),
                     (float) (shadowZ - RenderManager.renderPosZ)).mul(shadowInverse);
             }
@@ -135,7 +138,7 @@ public final class EntityShadowReplay {
         recording = record;
         record.capturingState = true;
         GLStateManager.beginExitCapture(record.exitState);
-        drawsAtStart = GLStateManager.drawCalls;
+        drawsAtStart = GLSMDraws.drawCalls;
         return true;
     }
 
@@ -145,7 +148,7 @@ public final class EntityShadowReplay {
             recording.capturingState = false;
             if (!GLStateManager.finishExitCapture(recording.exitState)) reject(Rejection.EXIT_STATE_UNSUPPORTED);
         }
-        if (GLStateManager.drawCalls != drawsAtStart) reject(Rejection.FOREIGN_DRAW);
+        if (GLSMDraws.drawCalls != drawsAtStart) reject(Rejection.FOREIGN_DRAW);
         if (recording.renderer == null) reject(Rejection.UNSAFE_RENDERER);
         if (!completed) reject(Rejection.RENDER_FAILED);
         if (recording.entity instanceof IBossDisplayData && (!recording.hasBossStatus || bossStatusChanged())) {
@@ -215,7 +218,7 @@ public final class EntityShadowReplay {
             else if (record.partialTicks != partialTicks) reason = Rejection.PARTIAL_TICKS_CHANGED;
             else if (shadowYaw != RenderManager.instance.playerViewY || shadowPitch != RenderManager.instance.playerViewX) reason = Rejection.VIEW_CHANGED;
             else if (!GLStateManager.canApplyExitState(record.exitState)) reason = Rejection.ENTRY_STATE_CHANGED;
-            else if (GLStateManager.getPolygonState().getOffsetClamp() != 0) reason = Rejection.UNCAPTURED_STATE;
+            else if (GLSMRasterizer.getPolygonState().getOffsetClamp() != 0) reason = Rejection.UNCAPTURED_STATE;
         }
         if (reason == null) {
             reason = commands.validate(record.start, record.end);
@@ -274,7 +277,7 @@ public final class EntityShadowReplay {
     }
 
     private static boolean captureInheritedState(DrawInputs inputs) {
-        if (GLStateManager.getPolygonState().getOffsetClamp() != 0) reject(Rejection.UNCAPTURED_STATE);
+        if (GLSMRasterizer.getPolygonState().getOffsetClamp() != 0) reject(Rejection.UNCAPTURED_STATE);
         if (!isRecording()) return false;
         final int offsetWrites = GLStateManager.getExitPolygonOffsetWrites();
         inputs.inheritedOffsetEnable = (offsetWrites & ExitState.POLYGON_OFFSET_ENABLE_WRITTEN) == 0;

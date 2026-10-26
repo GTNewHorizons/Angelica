@@ -3,7 +3,7 @@ package com.gtnewhorizons.angelica.client.font;
 import com.gtnewhorizon.gtnhlib.util.font.FontRendering;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.FontConfig;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.glsm.testutil.TestPaths;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
@@ -54,7 +54,7 @@ public final class FontTestFixture implements AutoCloseable {
 
         @Override
         public void angelica$bindTexture(ResourceLocation location) {
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texture);
         }
     }
 
@@ -124,14 +124,14 @@ public final class FontTestFixture implements AutoCloseable {
         if (font.batcher == null) font.batcher = new BatchingFontRenderer(font, charWidths(), new int[32], ASCII);
         if (font.texture == 0) {
             font.texture = GL11.glGenTextures();
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, font.texture);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, font.texture);
             final ByteBuffer pixels = BufferUtils.createByteBuffer(4 * 4 * 4);
             while (pixels.hasRemaining()) pixels.put((byte) 0xFF);
             pixels.flip();
             GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, 4, 4, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
         }
         return font.batcher;
     }

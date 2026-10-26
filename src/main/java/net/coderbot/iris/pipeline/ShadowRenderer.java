@@ -6,7 +6,12 @@ import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLDebug;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.profiling.RenderClassTimings;
 import com.gtnewhorizons.angelica.rendering.tesr.EntityShadowReplay;
@@ -329,7 +334,7 @@ public class ShadowRenderer {
 		final ImmutableList<PackShadowDirectives.SamplingSettings> colorSamplingSettings =
 			shadowDirectives.getColorSamplingSettings();
 
-		GLStateManager.glActiveTexture(GL13.GL_TEXTURE4);
+		GLSMTextures.glActiveTexture(GL13.GL_TEXTURE4);
 
 		configureDepthSampler(targets.getDepthTexture().getTextureId(), depthSamplingSettings.get(0));
 
@@ -342,7 +347,7 @@ public class ShadowRenderer {
 			configureSampler(glTextureId, colorSamplingSettings.get(i));
 		}
 
-		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+		GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
 	}
 
     private final IntBuffer swizzleBuf = BufferUtils.createIntBuffer(4);
@@ -379,13 +384,13 @@ public class ShadowRenderer {
 	}
 
 	private void generateMipmaps() {
-		GLStateManager.glActiveTexture(GL13.GL_TEXTURE4);
+		GLSMTextures.glActiveTexture(GL13.GL_TEXTURE4);
 
 		for (MipmapPass mipmapPass : mipmapPasses) {
 			setupMipmappingForTexture(mipmapPass.getTexture(), mipmapPass.getTargetFilteringMode());
 		}
 
-		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+		GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
 	}
 
 	private void setupMipmappingForTexture(int texture, int filteringMode) {
@@ -520,7 +525,7 @@ public class ShadowRenderer {
 	}
 
 	private void setupGlState(Matrix4f projMatrix) {
-		GLStateManager.glViewport(0, 0, resolution, resolution);
+		GLSMRasterizer.glViewport(0, 0, resolution, resolution);
 
 		// Set up our projection matrix and load it into the legacy matrix stack
 		RenderSystem.setupProjectionMatrix(projMatrix);
@@ -532,23 +537,23 @@ public class ShadowRenderer {
 		// However, it only partially resolves issues of light leaking into caves.
 		//
 		// TODO: Better way of preventing light from leaking into places where it shouldn't
-		GLStateManager.disableCull();
+		GLSMRasterizer.disableCull();
 	}
 
 	private void restoreGlState() {
 		// Restore backface culling
-        GLStateManager.enableCull();
+        GLSMRasterizer.enableCull();
 
 		// Make sure to unload the projection matrix
 		RenderSystem.restoreProjectionMatrix();
 
-		GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
-		GLStateManager.glClearDepth(1.0);
+		GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_LEQUAL);
+		GLSMDepthStencilAlpha.glClearDepth(1.0);
 
 		// Restore main framebuffer and viewport
 		Minecraft mc = Minecraft.getMinecraft();
 		mc.getFramebuffer().bindFramebuffer(false);
-		GLStateManager.glViewport(0, 0, mc.displayWidth, mc.displayHeight);
+		GLSMRasterizer.glViewport(0, 0, mc.displayWidth, mc.displayHeight);
 	}
 
 	private void copyPreTranslucentDepth() {
@@ -663,7 +668,7 @@ public class ShadowRenderer {
 		}
 
 		// Reset viewport in case terrain rendering changed it
-		GLStateManager.glViewport(0, 0, resolution, resolution);
+		GLSMRasterizer.glViewport(0, 0, resolution, resolution);
 	}
 
 	// Saved RenderManager position for shadow pass
@@ -689,20 +694,20 @@ public class ShadowRenderer {
         RenderManager.renderPosY = cameraY;
         RenderManager.renderPosZ = cameraZ;
 
-        GLStateManager.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
-        GLStateManager.glPolygonOffset(1.0f, 1.0f);
+        GLSMEnable.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
+        GLSMRasterizer.glPolygonOffset(1.0f, 1.0f);
 
-        GLStateManager.glPushMatrix();
+        GLSMMatrices.glPushMatrix();
         MODELVIEW_BUFFER.clear().rewind();
         modelView.peek().getModel().get(MODELVIEW_BUFFER);
-        GLStateManager.glLoadMatrix(MODELVIEW_BUFFER);
+        GLSMMatrices.glLoadMatrix(MODELVIEW_BUFFER);
     }
 
     private void teardownEntityShadowState() {
-        GLStateManager.glPopMatrix();
+        GLSMMatrices.glPopMatrix();
 
-        GLStateManager.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
-        GLStateManager.glPolygonOffset(0.0f, 0.0f);
+        GLSMEnable.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
+        GLSMRasterizer.glPolygonOffset(0.0f, 0.0f);
 
         RenderManager.renderPosX = savedRenderPosX;
         RenderManager.renderPosY = savedRenderPosY;
@@ -784,8 +789,8 @@ public class ShadowRenderer {
         final World world = tile.getWorldObj();
         int brightness = TileEntityLight.packedLight(world, tile.xCoord, tile.yCoord, tile.zCoord, world.getLightBrightnessForSkyBlocks(tile.xCoord, tile.yCoord, tile.zCoord, 0));
         PendingTesrDraws.beforeTileEntity(tile);
-        GLStateManager.setLightmapTextureCoords(GL13.GL_TEXTURE1, (float) brightness % 65536, (float) brightness / 65536);
-        GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        GLSMCurrentAttribs.setLightmapTextureCoords(GL13.GL_TEXTURE1, (float) brightness % 65536, (float) brightness / 65536);
+        GLSMCurrentAttribs.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
         TileEntityRendererDispatcher.instance.renderTileEntityAt(tile,
             (double)tile.xCoord - cameraX,
             (double)tile.yCoord - cameraY,
@@ -809,10 +814,10 @@ public class ShadowRenderer {
 			culler.setPosition(cameraX, cameraY, cameraZ);
 		}
 
-        GLStateManager.glPushMatrix();
+        GLSMMatrices.glPushMatrix();
         MODELVIEW_BUFFER.clear().rewind();
         modelView.peek().getModel().get(MODELVIEW_BUFFER);
-        GLStateManager.glLoadMatrix(MODELVIEW_BUFFER);
+        GLSMMatrices.glLoadMatrix(MODELVIEW_BUFFER);
 
         TesrBatchRenderer.INSTANCE.beginPass(TesrBatchRenderer.PASS_SHADOW, modelView.peek().getModel(), cameraX, cameraY, cameraZ);
 
@@ -857,7 +862,7 @@ public class ShadowRenderer {
         TesrBatchRenderer.INSTANCE.flush();
 
         GbufferPrograms.endBlockEntities();
-        GLStateManager.glPopMatrix();
+        GLSMMatrices.glPopMatrix();
 
 		renderedShadowTileEntities = shadowTileEntities;
 

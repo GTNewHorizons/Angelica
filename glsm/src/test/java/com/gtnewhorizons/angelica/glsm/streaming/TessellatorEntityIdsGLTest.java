@@ -2,7 +2,12 @@ package com.gtnewhorizons.angelica.glsm.streaming;
 
 import com.gtnewhorizons.angelica.glsm.EntityIdsOnlyHandler;
 import com.gtnewhorizons.angelica.glsm.GLCompatTest;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
 import com.gtnewhorizons.angelica.glsm.GlTestSupport;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpFixture;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
@@ -29,20 +34,20 @@ class TessellatorEntityIdsGLTest {
     void setUp() {
         previousHandler = EntityIdsOnlyHandler.install();
         program = GlTestSupport.program(TessellatorEntityIdsFixture.VERTEX, TessellatorEntityIdsFixture.FRAGMENT);
-        GLStateManager.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-        GLStateManager.disableDepthTest();
-        GLStateManager.disableCull();
-        GLStateManager.glViewport(0, 0, 8, 8);
-        GLStateManager.glUseProgram(program);
-        GLStateManager.glClearColor(0, 0, 0, 1);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        GLSMAttribStack.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+        GLSMDepthStencilAlpha.disableDepthTest();
+        GLSMRasterizer.disableCull();
+        GLSMRasterizer.glViewport(0, 0, 8, 8);
+        GLSMPrograms.glUseProgram(program);
+        GLSMBlend.glClearColor(0, 0, 0, 1);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
     }
 
     @AfterEach
     void tearDown() {
-        GLStateManager.glUseProgram(0);
-        GLStateManager.glDeleteProgram(program);
-        GLStateManager.glPopAttrib();
+        GLSMPrograms.glUseProgram(0);
+        GLSMPrograms.glDeleteProgram(program);
+        GLSMAttribStack.glPopAttrib();
         GLSMHooks.immediateExtendedHandler = previousHandler;
     }
 

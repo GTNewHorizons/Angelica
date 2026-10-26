@@ -24,7 +24,7 @@ import java.util.regex.Pattern;
  * <pre>{@code
  * script = "importPackage(Packages.com.gtnewhorizons.angelica.glsm);\n" + script;
  *
- * // Rewrite: GL11.glPushMatrix() -> GLStateManager.glPushMatrix()
+ * // Rewrite: GL11.glPushMatrix() -> GLSMMatrices.glPushMatrix()
  * script = GLRedirects.getMethodRedirectPattern().matcher(script).replaceAll(mr -> {
  *     String ref = GLRedirects.getTargetReference(mr.group(0));
  *     return ref != null ? ref : mr.group(0);
@@ -87,7 +87,7 @@ public final class GLRedirects {
      * Looks up the simple-class-qualified redirect target for a short-name reference.
      *
      * @param classAndMethod short class name and method, e.g., {@code "GL11.glPushMatrix"}
-     * @return e.g. {@code "GLStateManager.glPushMatrix"}, or {@code null} if this reference is not redirected
+     * @return e.g. {@code "GLSMMatrices.glPushMatrix"}, or {@code null} if this reference is not redirected
      */
     public static String getTargetReference(String classAndMethod) {
         final String method = getTargetMethodName(classAndMethod);

@@ -24,7 +24,8 @@ package com.gtnewhorizons.angelica.render;
 import com.gtnewhorizons.angelica.api.clouds.CloudLayer;
 import com.gtnewhorizons.angelica.api.clouds.CloudLayerProvider;
 import com.gtnewhorizons.angelica.compat.galaxyspace.GalaxySpaceClouds;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
 import com.gtnewhorizons.angelica.glsm.states.ViewportState;
 import jss.notfine.core.Settings;
 import jss.notfine.gui.options.named.GraphicsQualityOff;
@@ -157,8 +158,8 @@ public class CloudRenderer implements IResourceManagerReloadListener {
             return true;
         });
 
-        final ViewportState viewport = GLStateManager.getViewportState();
-        cloudView.update(GLStateManager.getProjectionMatrix(), GLStateManager.getModelViewMatrix(), viewport.width, viewport.height);
+        final ViewportState viewport = GLSMRasterizer.getViewportState();
+        cloudView.update(GLSMMatrices.getProjectionMatrix(), GLSMMatrices.getModelViewMatrix(), viewport.width, viewport.height);
         final Entity view = mc.renderViewEntity;
         final double cameraY = view.lastTickPosY + (view.posY - view.lastTickPosY) * partialTicks + cloudView.offsetY;
         sortCameraY = cameraY;

@@ -9,7 +9,11 @@ import com.gtnewhorizons.angelica.debug.render.DebugGeometry;
 import com.gtnewhorizons.angelica.debug.render.DebugPrograms;
 import com.gtnewhorizons.angelica.debug.render.DebugProgram;
 import com.gtnewhorizons.angelica.debug.render.NativeScratch;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.states.ViewportState;
 import com.gtnewhorizons.angelica.glsm.streaming.LineQuads;
 import net.minecraft.client.Minecraft;
@@ -40,25 +44,25 @@ public class F3Direction {
             final int width = event.resolution.getScaledWidth();
             final int height = event.resolution.getScaledHeight();
 
-            GLStateManager.glPushMatrix();
+            GLSMMatrices.glPushMatrix();
 
-            GLStateManager.glTranslatef((float) (width / 2), (float) (height / 2), -90);
+            GLSMMatrices.glTranslatef((float) (width / 2), (float) (height / 2), -90);
 
             final Entity entity = mc.renderViewEntity;
-            GLStateManager.glRotatef(entity.prevRotationPitch + (entity.rotationPitch - entity.prevRotationPitch) * event.partialTicks, -1.0F, 0.0F, 0.0F);
-            GLStateManager.glRotatef(entity.prevRotationYaw + (entity.rotationYaw - entity.prevRotationYaw) * event.partialTicks, 0.0F, 1.0F, 0.0F);
+            GLSMMatrices.glRotatef(entity.prevRotationPitch + (entity.rotationPitch - entity.prevRotationPitch) * event.partialTicks, -1.0F, 0.0F, 0.0F);
+            GLSMMatrices.glRotatef(entity.prevRotationYaw + (entity.rotationYaw - entity.prevRotationYaw) * event.partialTicks, 0.0F, 1.0F, 0.0F);
 
-            GLStateManager.glScalef(-1.0F, -1.0F, -1.0F);
+            GLSMMatrices.glScalef(-1.0F, -1.0F, -1.0F);
 
             renderWorldDirections();
 
-            GLStateManager.glPopMatrix();
+            GLSMMatrices.glPopMatrix();
         }
     }
 
     public static void renderWorldDirections() {
-        GLStateManager.getProjectionMatrix().mul(GLStateManager.getModelViewMatrix(), MVP);
-        final ViewportState viewport = GLStateManager.getViewportState();
+        GLSMMatrices.getProjectionMatrix().mul(GLSMMatrices.getModelViewMatrix(), MVP);
+        final ViewportState viewport = GLSMRasterizer.getViewportState();
 
         SCOPE.beginHud();
         try {
@@ -68,8 +72,8 @@ public class F3Direction {
             lines.mvp(MVP);
             lines.lineWidth(LINE_WIDTH);
             lines.viewport(viewport.width, viewport.height);
-            GLStateManager.glBindVertexArray(vao);
-            GLStateManager.glDrawArrays(GL11.GL_TRIANGLES, 0, QUAD_VERTICES);
+            GLSMVertexInput.glBindVertexArray(vao);
+            GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, 0, QUAD_VERTICES);
         } finally {
             SCOPE.end();
         }
@@ -88,11 +92,11 @@ public class F3Direction {
             putAxis(p, 0.0F, AXIS_LENGTH, 0.0F, 0xFF00FF00);
             LineQuads.expandWithOtherEnd(source.address(), FORMAT, GL11.GL_LINES, LINE_VERTICES, expanded.address());
 
-            final int vbo = GLStateManager.glGenBuffers();
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-            GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, expanded.window(quadBytes), GL15.GL_STATIC_DRAW);
+            final int vbo = GLSMBuffers.glGenBuffers();
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+            GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, expanded.window(quadBytes), GL15.GL_STATIC_DRAW);
             vao = DebugGeometry.createVao(vbo, QUAD_FORMAT);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         } finally {
             source.free();
             expanded.free();

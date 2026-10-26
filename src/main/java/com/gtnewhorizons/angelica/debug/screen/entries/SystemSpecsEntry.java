@@ -4,7 +4,7 @@ import com.gtnewhorizons.angelica.api.debug.DebugContext;
 import com.gtnewhorizons.angelica.api.debug.DebugScreenDisplayer;
 import com.gtnewhorizons.angelica.api.debug.DebugScreenEntry;
 import com.gtnewhorizons.angelica.debug.screen.DebugGroup;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMQueries;
 import net.minecraft.client.Minecraft;
 import org.lwjgl.opengl.GL11;
 
@@ -33,8 +33,8 @@ public final class SystemSpecsEntry implements DebugScreenEntry {
         resolved = true;
         java = System.getProperty("java.version", UNKNOWN) + " (" + System.getProperty("java.vendor", UNKNOWN) + ")";
         cores = Runtime.getRuntime().availableProcessors();
-        gpu = orUnknown(GLStateManager.glGetString(GL11.GL_RENDERER));
-        openGl = orUnknown(GLStateManager.glGetString(GL11.GL_VERSION));
+        gpu = orUnknown(GLSMQueries.glGetString(GL11.GL_RENDERER));
+        openGl = orUnknown(GLSMQueries.glGetString(GL11.GL_VERSION));
     }
 
     private static String orUnknown(String value) {

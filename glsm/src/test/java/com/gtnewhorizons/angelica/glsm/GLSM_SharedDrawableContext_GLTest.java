@@ -45,9 +45,9 @@ public class GLSM_SharedDrawableContext_GLTest {
 
     @AfterEach
     void cleanup() {
-        if (indexedList != 0) GLStateManager.glDeleteLists(indexedList, 1);
-        if (listVbo != 0) GLStateManager.glDeleteBuffers(listVbo);
-        if (listEbo != 0) GLStateManager.glDeleteBuffers(listEbo);
+        if (indexedList != 0) GLSMDraws.glDeleteLists(indexedList, 1);
+        if (listVbo != 0) GLSMBuffers.glDeleteBuffers(listVbo);
+        if (listEbo != 0) GLSMBuffers.glDeleteBuffers(listEbo);
         if (sharedDrawable != null) {
             DrawableContexts.destroy(sharedDrawable);
             sharedDrawable = null;
@@ -109,52 +109,52 @@ public class GLSM_SharedDrawableContext_GLTest {
     @Test
     void foreignThreadCannotFinishOrRecordIntoActiveList() throws Exception {
         sharedDrawable = new SharedDrawable(Display.getDrawable());
-        final int existing = GLStateManager.glGenLists(1);
-        final int active = GLStateManager.glGenLists(1);
-        final int rejected = GLStateManager.glGenLists(1);
-        GLStateManager.glNewList(existing, GL11.GL_COMPILE);
-        GLStateManager.enableBlend();
-        GLStateManager.glEndList();
-        GLStateManager.disableBlend();
+        final int existing = GLSMDraws.glGenLists(1);
+        final int active = GLSMDraws.glGenLists(1);
+        final int rejected = GLSMDraws.glGenLists(1);
+        GLSMDraws.glNewList(existing, GL11.GL_COMPILE);
+        GLSMBlend.enableBlend();
+        GLSMDraws.glEndList();
+        GLSMBlend.disableBlend();
 
         final CountDownLatch started = new CountDownLatch(1);
         final CountDownLatch finish = new CountDownLatch(1);
         final TestThreads.Worker worker = DrawableContexts.start(sharedDrawable, "SharedDrawableContext-List-Thread", () -> {
-            GLStateManager.glNewList(active, GL11.GL_COMPILE);
+            GLSMDraws.glNewList(active, GL11.GL_COMPILE);
             started.countDown();
             if (!finish.await(5, TimeUnit.SECONDS)) throw new AssertionError("finish timed out");
-            GLStateManager.glEndList();
+            GLSMDraws.glEndList();
         });
         try {
             try {
                 assertTrue(started.await(5, TimeUnit.SECONDS));
-                assertThrows(IllegalStateException.class, () -> GLStateManager.glNewList(rejected, GL11.GL_COMPILE));
-                assertThrows(IllegalStateException.class, GLStateManager::glEndList);
-                assertEquals(0, GLStateManager.getListMode());
+                assertThrows(IllegalStateException.class, () -> GLSMDraws.glNewList(rejected, GL11.GL_COMPILE));
+                assertThrows(IllegalStateException.class, GLSMDraws::glEndList);
+                assertEquals(0, GLSMDraws.getListMode());
                 DisplayListManager.abortIfLeaked();
                 assertThrows(IllegalStateException.class, DisplayListManager::abortCompilation);
-                GLStateManager.glCallList(existing);
-                assertTrue(GLStateManager.glIsEnabled(GL11.GL_BLEND));
-                assertEquals(0, GLStateManager.getListMode());
+                GLSMDraws.glCallList(existing);
+                assertTrue(GLSMEnable.glIsEnabled(GL11.GL_BLEND));
+                assertEquals(0, GLSMDraws.getListMode());
             } finally {
                 finish.countDown();
                 worker.join();
             }
             assertTrue(DisplayListManager.displayListExists(active));
-            GLStateManager.glCallList(active);
+            GLSMDraws.glCallList(active);
         } finally {
-            GLStateManager.glDeleteLists(existing, 1);
-            GLStateManager.glDeleteLists(active, 1);
-            GLStateManager.glDeleteLists(rejected, 1);
-            GLStateManager.disableBlend();
+            GLSMDraws.glDeleteLists(existing, 1);
+            GLSMDraws.glDeleteLists(active, 1);
+            GLSMDraws.glDeleteLists(rejected, 1);
+            GLSMBlend.disableBlend();
         }
     }
 
     @Test
     void simultaneousListStartsClaimOneOwner() throws Exception {
         sharedDrawable = new SharedDrawable(Display.getDrawable());
-        final int first = GLStateManager.glGenLists(1);
-        final int second = GLStateManager.glGenLists(1);
+        final int first = GLSMDraws.glGenLists(1);
+        final int second = GLSMDraws.glGenLists(1);
         final CyclicBarrier start = new CyclicBarrier(2);
         final CountDownLatch attempted = new CountDownLatch(2);
         final AtomicInteger completed = new AtomicInteger();
@@ -162,7 +162,7 @@ public class GLSM_SharedDrawableContext_GLTest {
         final TestThreads.Worker worker = DrawableContexts.start(sharedDrawable, "SharedDrawableContext-List-Race-Thread", () -> {
             start.await();
             try {
-                GLStateManager.glNewList(second, GL11.GL_COMPILE);
+                GLSMDraws.glNewList(second, GL11.GL_COMPILE);
             } catch (IllegalStateException expected) {
                 rejected.incrementAndGet();
                 attempted.countDown();
@@ -170,27 +170,27 @@ public class GLSM_SharedDrawableContext_GLTest {
             }
             attempted.countDown();
             if (!attempted.await(5, TimeUnit.SECONDS)) throw new AssertionError("attempts timed out");
-            GLStateManager.glEndList();
+            GLSMDraws.glEndList();
             completed.incrementAndGet();
         });
         try {
             start.await();
             try {
-                GLStateManager.glNewList(first, GL11.GL_COMPILE);
+                GLSMDraws.glNewList(first, GL11.GL_COMPILE);
             } catch (IllegalStateException expected) {
                 rejected.incrementAndGet();
                 attempted.countDown();
             }
-            if (GLStateManager.getListMode() != 0) {
+            if (GLSMDraws.getListMode() != 0) {
                 attempted.countDown();
                 assertTrue(attempted.await(5, TimeUnit.SECONDS));
-                GLStateManager.glEndList();
+                GLSMDraws.glEndList();
                 completed.incrementAndGet();
             }
             worker.join();
         } finally {
-            GLStateManager.glDeleteLists(first, 1);
-            GLStateManager.glDeleteLists(second, 1);
+            GLSMDraws.glDeleteLists(first, 1);
+            GLSMDraws.glDeleteLists(second, 1);
         }
         assertEquals(1, completed.get());
         assertEquals(1, rejected.get());
@@ -208,23 +208,23 @@ public class GLSM_SharedDrawableContext_GLTest {
                 final FloatBuffer vertices = BufferUtils.createFloatBuffer(9);
                 vertices.put(new float[] { -0.5f, -0.5f, 0f, 0.5f, -0.5f, 0f, 0f, 0.5f, 0f });
                 vertices.flip();
-                final int vbo = GLStateManager.glGenBuffers();
-                GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-                GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, vertices, GL15.GL_STATIC_DRAW);
+                final int vbo = GLSMBuffers.glGenBuffers();
+                GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+                GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, vertices, GL15.GL_STATIC_DRAW);
                 FfpFixture.attrib(0, 3, GL11.GL_FLOAT, false, 12, 0);
                 VAOManager.setCurrentVertexFlags(0);
 
-                GLStateManager.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
+                GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
 
                 GLStateManager.releaseContext(sharedDrawable);
                 GLStateManager.makeCurrent(sharedDrawable);
 
-                GLStateManager.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
+                GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
 
                 assertNotEquals(0, GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM), "invalidateProgram must force a rebind after replay clears the program to 0");
 
-                GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-                GLStateManager.glDeleteBuffers(vbo);
+                GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+                GLSMBuffers.glDeleteBuffers(vbo);
             } finally {
                 sm.deactivate();
             }
@@ -241,20 +241,20 @@ public class GLSM_SharedDrawableContext_GLTest {
             indices.putShort((short) 0).putShort((short) 1).putShort((short) 2);
             indices.flip();
 
-            listVbo = GLStateManager.glGenBuffers();
-            listEbo = GLStateManager.glGenBuffers();
-            GLStateManager.glBindVertexArray(GLStateManager.glGenVertexArrays());
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, listVbo);
-            GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, vertices, GL15.GL_STATIC_DRAW);
-            GLStateManager.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 12, 0L);
-            GLStateManager.glEnableVertexAttribArray(0);
-            GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, listEbo);
-            GLStateManager.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, indices, GL15.GL_STATIC_DRAW);
+            listVbo = GLSMBuffers.glGenBuffers();
+            listEbo = GLSMBuffers.glGenBuffers();
+            GLSMVertexInput.glBindVertexArray(GLSMVertexInput.glGenVertexArrays());
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, listVbo);
+            GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, vertices, GL15.GL_STATIC_DRAW);
+            GLSMVertexInput.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 12, 0L);
+            GLSMVertexInput.glEnableVertexAttribArray(0);
+            GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, listEbo);
+            GLSMBuffers.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, indices, GL15.GL_STATIC_DRAW);
 
-            indexedList = GLStateManager.glGenLists(1);
-            GLStateManager.glNewList(indexedList, GL11.GL_COMPILE);
-            GLStateManager.glDrawElements(GL11.GL_TRIANGLES, 3, GL11.GL_UNSIGNED_SHORT, 0L);
-            GLStateManager.glEndList();
+            indexedList = GLSMDraws.glGenLists(1);
+            GLSMDraws.glNewList(indexedList, GL11.GL_COMPILE);
+            GLSMDraws.glDrawElements(GL11.GL_TRIANGLES, 3, GL11.GL_UNSIGNED_SHORT, 0L);
+            GLSMDraws.glEndList();
 
             final IndexedDrawBatch batch = indexedBatch();
             batch.bind();
@@ -274,13 +274,13 @@ public class GLSM_SharedDrawableContext_GLTest {
         ShaderManager.enable();
         sm.activate();
         try {
-            GLStateManager.glCallList(list);
+            GLSMDraws.glCallList(list);
 
             indexedBatch().bind();
             assertEquals(indexedBatch().getSharedEBO(), GL11.glGetInteger(GL15.GL_ELEMENT_ARRAY_BUFFER_BINDING));
         } finally {
             sm.deactivate();
-            GLStateManager.glBindVertexArray(0);
+            GLSMVertexInput.glBindVertexArray(0);
         }
     }
 
@@ -289,63 +289,63 @@ public class GLSM_SharedDrawableContext_GLTest {
         final int list = compileIndexedListOnSharedDrawable();
         final IntBuffer made = BufferUtils.createIntBuffer(4096);
         while (!GL30.glIsVertexArray(sharedContextVao) && made.hasRemaining()) {
-            final int v = GLStateManager.glGenVertexArrays();
+            final int v = GLSMVertexInput.glGenVertexArrays();
             made.put(v);
-            if (v == sharedContextVao) GLStateManager.glBindVertexArray(v);
+            if (v == sharedContextVao) GLSMVertexInput.glBindVertexArray(v);
         }
-        GLStateManager.glBindVertexArray(0);
+        GLSMVertexInput.glBindVertexArray(0);
         assumeTrue(GL30.glIsVertexArray(sharedContextVao));
 
-        GLStateManager.glDeleteLists(list, 1);
+        GLSMDraws.glDeleteLists(list, 1);
         indexedList = 0;
 
         assertTrue(GL30.glIsVertexArray(sharedContextVao));
         made.flip();
-        while (made.hasRemaining()) GLStateManager.glDeleteVertexArrays(made.get());
+        while (made.hasRemaining()) GLSMVertexInput.glDeleteVertexArrays(made.get());
     }
 
     @Test
     void recordedVaoBindReplaysOnlyOnItsCompileContext() throws Exception {
-        final int bound = GLStateManager.glGenVertexArrays();
-        final int local = GLStateManager.glGenVertexArrays();
-        final int localList = GLStateManager.glGenLists(1);
-        final int foreignList = GLStateManager.glGenLists(1);
-        GLStateManager.glNewList(localList, GL11.GL_COMPILE);
-        GLStateManager.glBindVertexArray(local);
-        GLStateManager.glEndList();
+        final int bound = GLSMVertexInput.glGenVertexArrays();
+        final int local = GLSMVertexInput.glGenVertexArrays();
+        final int localList = GLSMDraws.glGenLists(1);
+        final int foreignList = GLSMDraws.glGenLists(1);
+        GLSMDraws.glNewList(localList, GL11.GL_COMPILE);
+        GLSMVertexInput.glBindVertexArray(local);
+        GLSMDraws.glEndList();
 
         sharedDrawable = new SharedDrawable(Display.getDrawable());
         DrawableContexts.run(sharedDrawable, "SharedDrawableContext-VaoBind-Thread", () -> {
             int foreign;
-            do foreign = GLStateManager.glGenVertexArrays(); while (foreign == bound);
-            GLStateManager.glNewList(foreignList, GL11.GL_COMPILE);
-            GLStateManager.glBindVertexArray(foreign);
-            GLStateManager.glEndList();
+            do foreign = GLSMVertexInput.glGenVertexArrays(); while (foreign == bound);
+            GLSMDraws.glNewList(foreignList, GL11.GL_COMPILE);
+            GLSMVertexInput.glBindVertexArray(foreign);
+            GLSMDraws.glEndList();
         });
 
-        GLStateManager.glBindVertexArray(bound);
-        GLStateManager.glCallList(foreignList);
-        assertEquals(bound, GLStateManager.getBoundVAO());
+        GLSMVertexInput.glBindVertexArray(bound);
+        GLSMDraws.glCallList(foreignList);
+        assertEquals(bound, GLSMVertexInput.getBoundVAO());
         assertEquals(bound, GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING));
-        GLStateManager.glCallList(localList);
-        assertEquals(local, GLStateManager.getBoundVAO());
+        GLSMDraws.glCallList(localList);
+        assertEquals(local, GLSMVertexInput.getBoundVAO());
         assertEquals(local, GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING));
 
-        GLStateManager.glBindVertexArray(0);
-        GLStateManager.glDeleteVertexArrays(bound);
-        GLStateManager.glDeleteVertexArrays(local);
-        GLStateManager.glDeleteLists(localList, 1);
-        GLStateManager.glDeleteLists(foreignList, 1);
+        GLSMVertexInput.glBindVertexArray(0);
+        GLSMVertexInput.glDeleteVertexArrays(bound);
+        GLSMVertexInput.glDeleteVertexArrays(local);
+        GLSMDraws.glDeleteLists(localList, 1);
+        GLSMDraws.glDeleteLists(foreignList, 1);
     }
 
     @Test
     void deferredTextureDeletesWaitForSplashAndScrubDrawableContexts() throws Exception {
         sharedDrawable = new SharedDrawable(Display.getDrawable());
-        final int t = GLStateManager.glGenTextures();
+        final int t = GLSMTextures.glGenTextures();
 
         final AtomicReference<GLContextState> workerCtxRef = new AtomicReference<>();
         DrawableContexts.run(sharedDrawable, "SharedDrawableContext-DeferredDelete-Thread", () -> {
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, t);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, t);
             workerCtxRef.set(GLStateManager.ctx());
         });
 
@@ -355,14 +355,14 @@ public class GLSM_SharedDrawableContext_GLTest {
 
         try {
             SplashWindow.setSplashComplete(false);
-            GLStateManager.glDeleteTextures(t);
-            deferredGen = GLStateManager.glGenTextures();
+            GLSMTextures.glDeleteTextures(t);
+            deferredGen = GLSMTextures.glGenTextures();
 
             assertTrue(GL11.glIsTexture(t), "delete must stay deferred while the splash is not complete");
             assertEquals(t, workerCtx.textures.getTextureUnitBindings(0).getBinding(), "worker ctx binding must survive until the flush");
 
             SplashWindow.setSplashComplete(true);
-            flushGen = GLStateManager.glGenTextures();
+            flushGen = GLSMTextures.glGenTextures();
 
             assertFalse(GL11.glIsTexture(t), "the flush must delete the texture once the splash is complete");
             assertEquals(0, workerCtx.textures.getTextureUnitBindings(0).getBinding(), "the flush must scrub the drawable context's binding");
@@ -384,21 +384,21 @@ public class GLSM_SharedDrawableContext_GLTest {
             workerCtxRef.set(GLStateManager.ctx());
             barrier.await();
             for (int i = 0; i < 20000; i++) {
-                final int t = GLStateManager.pushState(StateSet.FONT);
-                GLStateManager.glNormal3f(0.1f, 0.2f, 0.3f);
-                GLStateManager.popStateTo(t);
+                final int t = GLSMAttribStack.pushState(StateSet.FONT);
+                GLSMCurrentAttribs.glNormal3f(0.1f, 0.2f, 0.3f);
+                GLSMAttribStack.popStateTo(t);
             }
-            GLStateManager.glNormal3f(0.1f, 0.2f, 0.3f);
+            GLSMCurrentAttribs.glNormal3f(0.1f, 0.2f, 0.3f);
         });
 
         try {
             barrier.await();
             for (int i = 0; i < 20000; i++) {
-                final int t = GLStateManager.pushState(StateSet.FONT);
-                GLStateManager.glNormal3f(0.25f, 0.5f, 0.75f);
-                GLStateManager.popStateTo(t);
+                final int t = GLSMAttribStack.pushState(StateSet.FONT);
+                GLSMCurrentAttribs.glNormal3f(0.25f, 0.5f, 0.75f);
+                GLSMAttribStack.popStateTo(t);
             }
-            GLStateManager.glNormal3f(0.25f, 0.5f, 0.75f);
+            GLSMCurrentAttribs.glNormal3f(0.25f, 0.5f, 0.75f);
             worker.join();
 
             final GLContextState workerCtx = workerCtxRef.get();
@@ -412,7 +412,7 @@ public class GLSM_SharedDrawableContext_GLTest {
             assertEquals(0.2f, workerCtx.ffp.currentNormal.y, 0.0f);
             assertEquals(0.3f, workerCtx.ffp.currentNormal.z, 0.0f);
         } finally {
-            GLStateManager.glNormal3f(0.0f, 0.0f, 1.0f);
+            GLSMCurrentAttribs.glNormal3f(0.0f, 0.0f, 1.0f);
         }
     }
 }

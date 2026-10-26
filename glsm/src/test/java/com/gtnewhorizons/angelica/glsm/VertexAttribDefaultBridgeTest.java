@@ -34,24 +34,24 @@ class VertexAttribDefaultBridgeTest {
 
     @Test
     void testGlColor4fSetsVertexAttrib() {
-        GLStateManager.glColor4f(0.5f, 0.25f, 0.75f, 0.8f);
-        GLStateManager.flushDeferredVertexAttribs(GLStateManager.ctx(), false, false, false, false);
+        GLSMCurrentAttribs.glColor4f(0.5f, 0.25f, 0.75f, 0.8f);
+        GLSMCurrentAttribs.flushDeferredVertexAttribs(GLStateManager.ctx(), false, false, false, false);
 
         assertAttrib(COLOR_ATTRIB, "color", 0.5f, 0.25f, 0.75f, 0.8f);
     }
 
     @Test
     void testGlNormal3fSetsVertexAttrib() {
-        GLStateManager.glNormal3f(0.0f, 1.0f, 0.0f);
-        GLStateManager.flushDeferredVertexAttribs(GLStateManager.ctx(), false, false, false, false);
+        GLSMCurrentAttribs.glNormal3f(0.0f, 1.0f, 0.0f);
+        GLSMCurrentAttribs.flushDeferredVertexAttribs(GLStateManager.ctx(), false, false, false, false);
 
         assertAttrib(NORMAL_ATTRIB, "normal", 0.0f, 1.0f, 0.0f);
     }
 
     @Test
     void testSetLightmapTextureCoordsOnUnit1SetsVertexAttrib() {
-        GLStateManager.setLightmapTextureCoords(GL13.GL_TEXTURE1, 240.0f, 128.0f);
-        GLStateManager.flushDeferredVertexAttribs(GLStateManager.ctx(), false, false, false, false);
+        GLSMCurrentAttribs.setLightmapTextureCoords(GL13.GL_TEXTURE1, 240.0f, 128.0f);
+        GLSMCurrentAttribs.flushDeferredVertexAttribs(GLStateManager.ctx(), false, false, false, false);
 
         assertAttrib(SECONDARY_UV_ATTRIB, "lightmap", 240.0f, 128.0f, 0.0f, 1.0f);
     }
@@ -59,37 +59,37 @@ class VertexAttribDefaultBridgeTest {
     @Test
     void testGlTexCoord2fSetsVertexAttrib() {
         // glTexCoord2f outside recording → sets default vertex attrib 2 (PRIMARY_UV)
-        GLStateManager.glTexCoord2f(0.5f, 0.75f);
-        GLStateManager.flushDeferredVertexAttribs(GLStateManager.ctx(), false, false, false, false);
+        GLSMCurrentAttribs.glTexCoord2f(0.5f, 0.75f);
+        GLSMCurrentAttribs.flushDeferredVertexAttribs(GLStateManager.ctx(), false, false, false, false);
 
         assertAttrib(PRIMARY_UV_ATTRIB, "texcoord", 0.5f, 0.75f);
     }
 
     @Test
     void testCacheDedup_SameColorTwice_AttribStillCorrect() {
-        GLStateManager.glColor4f(0.3f, 0.6f, 0.9f, 1.0f);
+        GLSMCurrentAttribs.glColor4f(0.3f, 0.6f, 0.9f, 1.0f);
         // Second call is a cache hit — changeColor not called.
         // Vertex attrib should still hold the correct value from the first call.
-        GLStateManager.glColor4f(0.3f, 0.6f, 0.9f, 1.0f);
-        GLStateManager.flushDeferredVertexAttribs(GLStateManager.ctx(), false, false, false, false);
+        GLSMCurrentAttribs.glColor4f(0.3f, 0.6f, 0.9f, 1.0f);
+        GLSMCurrentAttribs.flushDeferredVertexAttribs(GLStateManager.ctx(), false, false, false, false);
 
         assertAttrib(COLOR_ATTRIB, "color after dedup", 0.3f, 0.6f, 0.9f, 1.0f);
     }
 
     @Test
     void testCompileMode_DoesNotSetVertexAttrib() {
-        GLStateManager.glColor4f(0.1f, 0.2f, 0.3f, 1.0f);
-        GLStateManager.flushDeferredVertexAttribs(GLStateManager.ctx(), false, false, false, false);
+        GLSMCurrentAttribs.glColor4f(0.1f, 0.2f, 0.3f, 1.0f);
+        GLSMCurrentAttribs.flushDeferredVertexAttribs(GLStateManager.ctx(), false, false, false, false);
 
-        int listId = GLStateManager.glGenLists(1);
-        GLStateManager.glNewList(listId, GL11.GL_COMPILE);
+        int listId = GLSMDraws.glGenLists(1);
+        GLSMDraws.glNewList(listId, GL11.GL_COMPILE);
 
         // Color during COMPILE should NOT reach changeColor (early return)
-        GLStateManager.glColor4f(0.9f, 0.8f, 0.7f, 0.6f);
+        GLSMCurrentAttribs.glColor4f(0.9f, 0.8f, 0.7f, 0.6f);
 
         assertAttrib(COLOR_ATTRIB, "color unchanged during COMPILE", 0.1f, 0.2f, 0.3f, 1.0f);
 
-        GLStateManager.glEndList();
-        GLStateManager.glDeleteLists(listId, 1);
+        GLSMDraws.glEndList();
+        GLSMDraws.glDeleteLists(listId, 1);
     }
 }

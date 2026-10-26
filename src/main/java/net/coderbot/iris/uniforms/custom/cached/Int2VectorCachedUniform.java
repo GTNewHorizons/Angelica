@@ -5,7 +5,7 @@ import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
 import net.coderbot.iris.parsing.VectorType;
 import org.joml.Vector2i;
 import org.joml.Vector2ic;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
 
 import java.util.function.Supplier;
 
@@ -30,7 +30,7 @@ public class Int2VectorCachedUniform extends VectorCachedUniform<Vector2i> {
 
 	@Override
 	public void push(int location) {
-		GLStateManager.glUniform2i(location, this.cached.x, this.cached.y);
+		GLSMPrograms.glUniform2i(location, this.cached.x, this.cached.y);
 	}
 
 	@Override

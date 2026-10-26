@@ -34,48 +34,48 @@ public class GLSM_LineStipple_GLTest {
 
     @BeforeEach
     void setUp() {
-        final ViewportState vp = GLStateManager.getViewportState();
+        final ViewportState vp = GLSMRasterizer.getViewportState();
         savedX = vp.x;
         savedY = vp.y;
         savedW = vp.width;
         savedH = vp.height;
 
-        GLStateManager.glUseProgram(0);
+        GLSMPrograms.glUseProgram(0);
 
-        vao = GLStateManager.glGenVertexArrays();
-        GLStateManager.glBindVertexArray(vao);
-        vbo = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-        GLStateManager.glVertexAttribPointer(POSITION_LOC, 3, GL11.GL_FLOAT, false, 12, 0L);
-        GLStateManager.glEnableVertexAttribArray(POSITION_LOC);
+        vao = GLSMVertexInput.glGenVertexArrays();
+        GLSMVertexInput.glBindVertexArray(vao);
+        vbo = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        GLSMVertexInput.glVertexAttribPointer(POSITION_LOC, 3, GL11.GL_FLOAT, false, 12, 0L);
+        GLSMVertexInput.glEnableVertexAttribArray(POSITION_LOC);
 
-        GLStateManager.glViewport(0, 0, W, 1);
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glPushMatrix();
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glOrtho(0, W, 0, 1, -1, 1);
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glPushMatrix();
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glDisable(GL11.GL_DEPTH_TEST);
-        GLStateManager.glDisable(GL11.GL_BLEND);
-        GLStateManager.glDisable(GL11.GL_TEXTURE_2D);
-        GLStateManager.glColor4f(1f, 1f, 1f, 1f);
+        GLSMRasterizer.glViewport(0, 0, W, 1);
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glPushMatrix();
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glOrtho(0, W, 0, 1, -1, 1);
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glPushMatrix();
+        GLSMMatrices.glLoadIdentity();
+        GLSMEnable.glDisable(GL11.GL_DEPTH_TEST);
+        GLSMEnable.glDisable(GL11.GL_BLEND);
+        GLSMEnable.glDisable(GL11.GL_TEXTURE_2D);
+        GLSMCurrentAttribs.glColor4f(1f, 1f, 1f, 1f);
     }
 
     @AfterEach
     void tearDown() {
-        GLStateManager.glDisable(GL11.GL_LINE_STIPPLE);
-        GLStateManager.glLineStipple(1, (short) 0xFFFF);
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glPopMatrix();
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glPopMatrix();
-        GLStateManager.glViewport(savedX, savedY, savedW, savedH);
-        GLStateManager.glBindVertexArray(0);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-        if (vbo != 0) GLStateManager.glDeleteBuffers(vbo);
-        if (vao != 0) GLStateManager.glDeleteVertexArrays(vao);
+        GLSMEnable.glDisable(GL11.GL_LINE_STIPPLE);
+        GLSMRasterizer.glLineStipple(1, (short) 0xFFFF);
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glPopMatrix();
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glPopMatrix();
+        GLSMRasterizer.glViewport(savedX, savedY, savedW, savedH);
+        GLSMVertexInput.glBindVertexArray(0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        if (vbo != 0) GLSMBuffers.glDeleteBuffers(vbo);
+        if (vao != 0) GLSMVertexInput.glDeleteVertexArrays(vao);
     }
 
     private boolean[] renderLine(float x0, float x1) {
@@ -88,18 +88,18 @@ public class GLSM_LineStipple_GLTest {
         verts.clear();
         for (float x : xs) verts.putFloat(x).putFloat(0.5f).putFloat(0f);
         verts.flip();
-        GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, verts, GL15.GL_STREAM_DRAW);
-        GLStateManager.glDrawArrays(xs.length == 2 ? GL11.GL_LINES : GL11.GL_LINE_STRIP, 0, xs.length);
+        GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, verts, GL15.GL_STREAM_DRAW);
+        GLSMDraws.glDrawArrays(xs.length == 2 ? GL11.GL_LINES : GL11.GL_LINE_STRIP, 0, xs.length);
     }
 
     private void clear() {
-        GLStateManager.glClearColor(0f, 0f, 0f, 1f);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        GLSMBlend.glClearColor(0f, 0f, 0f, 1f);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
     }
 
     private boolean[] readCoverage() {
         pixels.clear();
-        GLStateManager.glReadPixels(0, 0, W, 1, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
+        GLSMFramebuffer.glReadPixels(0, 0, W, 1, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
         assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "GL error during readback");
 
         final boolean[] covered = new boolean[W];
@@ -116,8 +116,8 @@ public class GLSM_LineStipple_GLTest {
     }
 
     private static void stipple(int factor, int pattern) {
-        GLStateManager.glEnable(GL11.GL_LINE_STIPPLE);
-        GLStateManager.glLineStipple(factor, (short) pattern);
+        GLSMEnable.glEnable(GL11.GL_LINE_STIPPLE);
+        GLSMRasterizer.glLineStipple(factor, (short) pattern);
     }
 
     static Stream<Arguments> patterns() {
@@ -136,11 +136,11 @@ public class GLSM_LineStipple_GLTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("patterns")
     void patternSelectsTheCoveredPixels(String name, boolean enabled, int factor, int pattern, IntPredicate on) {
-        GLStateManager.glLineStipple(factor, (short) pattern);
+        GLSMRasterizer.glLineStipple(factor, (short) pattern);
         if (enabled) {
-            GLStateManager.glEnable(GL11.GL_LINE_STIPPLE);
+            GLSMEnable.glEnable(GL11.GL_LINE_STIPPLE);
         } else {
-            GLStateManager.glDisable(GL11.GL_LINE_STIPPLE);
+            GLSMEnable.glDisable(GL11.GL_LINE_STIPPLE);
         }
         assertArrayEquals(expected(on), renderLine(0f, W));
     }
@@ -175,7 +175,7 @@ public class GLSM_LineStipple_GLTest {
         stipple(1, 0xAAAA);
         renderLine(0f, W);
 
-        GLStateManager.glDisable(GL11.GL_LINE_STIPPLE);
+        GLSMEnable.glDisable(GL11.GL_LINE_STIPPLE);
         assertArrayEquals(expected(i -> true), renderLine(0f, W));
     }
 }

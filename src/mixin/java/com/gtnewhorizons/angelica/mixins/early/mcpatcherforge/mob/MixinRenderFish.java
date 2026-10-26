@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.mcpatcherforge.mob;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.entity.Render;
@@ -26,10 +27,10 @@ public abstract class MixinRenderFish extends Render {
     @SuppressWarnings({ "DuplicatedCode", "ExtractMethodRecommender" })
     @Overwrite
     public void doRender(EntityFishHook entity, double x, double y, double z, float p_76986_8_, float p_76986_9_) {
-        GLStateManager.glPushMatrix();
-        GLStateManager.glTranslatef((float) x, (float) y, (float) z);
-        GLStateManager.glEnable(GL12.GL_RESCALE_NORMAL);
-        GLStateManager.glScalef(0.5F, 0.5F, 0.5F);
+        GLSMMatrices.glPushMatrix();
+        GLSMMatrices.glTranslatef((float) x, (float) y, (float) z);
+        GLSMEnable.glEnable(GL12.GL_RESCALE_NORMAL);
+        GLSMMatrices.glScalef(0.5F, 0.5F, 0.5F);
         this.bindEntityTexture(entity);
         Tessellator tessellator = Tessellator.instance;
         byte b0 = 1;
@@ -41,8 +42,8 @@ public abstract class MixinRenderFish extends Render {
         float f6 = 1.0F;
         float f7 = 0.5F;
         float f8 = 0.5F;
-        GLStateManager.glRotatef(180.0F - this.renderManager.playerViewY, 0.0F, 1.0F, 0.0F);
-        GLStateManager.glRotatef(-this.renderManager.playerViewX, 1.0F, 0.0F, 0.0F);
+        GLSMMatrices.glRotatef(180.0F - this.renderManager.playerViewY, 0.0F, 1.0F, 0.0F);
+        GLSMMatrices.glRotatef(-this.renderManager.playerViewX, 1.0F, 0.0F, 0.0F);
         tessellator.startDrawingQuads();
         tessellator.setNormal(0.0F, 1.0F, 0.0F);
         tessellator.addVertexWithUV(0.0F - f7, 0.0F - f8, 0.0D, f2, f5);
@@ -50,8 +51,8 @@ public abstract class MixinRenderFish extends Render {
         tessellator.addVertexWithUV(f6 - f7, 1.0F - f8, 0.0D, f3, f4);
         tessellator.addVertexWithUV(0.0F - f7, 1.0F - f8, 0.0D, f2, f4);
         tessellator.draw();
-        GLStateManager.glDisable(GL12.GL_RESCALE_NORMAL);
-        GLStateManager.glPopMatrix();
+        GLSMEnable.glDisable(GL12.GL_RESCALE_NORMAL);
+        GLSMMatrices.glPopMatrix();
 
         if (entity.field_146042_b != null) {
             float f9 = entity.field_146042_b.getSwingProgress(p_76986_9_);
@@ -110,8 +111,8 @@ public abstract class MixinRenderFish extends Render {
             double d13 = (float) (d5 - d10);
             // patch start (= if statement)
             if (!LineRenderer.renderLine(0, x, y, z, d11, d12, d13)) {
-                GLStateManager.glDisable(GL11.GL_TEXTURE_2D);
-                GLStateManager.glDisable(GL11.GL_LIGHTING);
+                GLSMEnable.glDisable(GL11.GL_TEXTURE_2D);
+                GLSMEnable.glDisable(GL11.GL_LIGHTING);
                 tessellator.startDrawing(3);
                 tessellator.setColorOpaque_I(0);
                 byte b2 = 16;
@@ -125,8 +126,8 @@ public abstract class MixinRenderFish extends Render {
                 }
 
                 tessellator.draw();
-                GLStateManager.glEnable(GL11.GL_LIGHTING);
-                GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+                GLSMEnable.glEnable(GL11.GL_LIGHTING);
+                GLSMEnable.glEnable(GL11.GL_TEXTURE_2D);
             }
         }
     }

@@ -2,7 +2,8 @@ package com.gtnewhorizons.angelica.debug.render;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import org.lwjgl.opengl.GL15;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutByte;
@@ -13,9 +14,9 @@ public final class DebugGeometry {
     private DebugGeometry() {}
 
     public static int createVao(int vbo, VertexFormat format) {
-        final int vao = GLStateManager.glGenVertexArrays();
-        GLStateManager.glBindVertexArray(vao);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        final int vao = GLSMVertexInput.glGenVertexArrays();
+        GLSMVertexInput.glBindVertexArray(vao);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
         format.setupBufferState(0L);
         return vao;
     }

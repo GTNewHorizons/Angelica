@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.streaming;
 
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
@@ -46,39 +47,39 @@ class StreamingBindingCacheGLTest {
     @ParameterizedTest
     @EnumSource(UploadStrategy.class)
     void orphanUploadLeavesTheArrayBufferCacheMatchingTheDriver(UploadStrategy strategy) {
-        final int other = GLStateManager.glGenBuffers();
+        final int other = GLSMBuffers.glGenBuffers();
         final OrphanStreamingBuffer buf = new OrphanStreamingBuffer();
         final ByteBuffer data = filled(64);
         try {
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, other);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, other);
             buf.upload(strategy, data);
-            assertEquals(GL11.glGetInteger(GL15.GL_ARRAY_BUFFER_BINDING), GLStateManager.getBoundVBO(), "first upload respecifies the buffer");
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, other);
+            assertEquals(GL11.glGetInteger(GL15.GL_ARRAY_BUFFER_BINDING), GLSMBuffers.getBoundVBO(), "first upload respecifies the buffer");
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, other);
             buf.upload(strategy, data);
-            assertEquals(GL11.glGetInteger(GL15.GL_ARRAY_BUFFER_BINDING), GLStateManager.getBoundVBO(), "second upload takes the in-capacity path");
+            assertEquals(GL11.glGetInteger(GL15.GL_ARRAY_BUFFER_BINDING), GLSMBuffers.getBoundVBO(), "second upload takes the in-capacity path");
         } finally {
             memFree(data);
             buf.destroy();
-            GLStateManager.glDeleteBuffers(other);
+            GLSMBuffers.glDeleteBuffers(other);
         }
     }
 
     @Test
     void uniformRingOrphanPathLeavesTheUniformBufferCacheMatchingTheDriver() {
-        final int other = GLStateManager.glGenBuffers();
+        final int other = GLSMBuffers.glGenBuffers();
         final ByteBuffer src = filled(64);
         UniformRingBuffer ring = null;
         try {
-            GLStateManager.glBindBuffer(GL31.GL_UNIFORM_BUFFER, other);
+            GLSMBuffers.glBindBuffer(GL31.GL_UNIFORM_BUFFER, other);
             ring = new UniformRingBuffer(1024, 64, true);
             assertFalse(ring.isPersistent());
             assertEquals(GL11.glGetInteger(GL31.GL_UNIFORM_BUFFER_BINDING), glsmUniformBufferBinding(), "constructor allocation");
-            GLStateManager.glBindBuffer(GL31.GL_UNIFORM_BUFFER, other);
+            GLSMBuffers.glBindBuffer(GL31.GL_UNIFORM_BUFFER, other);
             ring.writeBlock(src);
             assertEquals(GL11.glGetInteger(GL31.GL_UNIFORM_BUFFER_BINDING), glsmUniformBufferBinding(), "writeBlock");
         } finally {
             if (ring != null) ring.destroy();
-            GLStateManager.glDeleteBuffers(other);
+            GLSMBuffers.glDeleteBuffers(other);
             memFree(src);
         }
     }
@@ -86,19 +87,19 @@ class StreamingBindingCacheGLTest {
     @Test
     void persistentRingMarksItsOwnBufferAndLeavesTheCacheMatchingTheDriver() {
         assumeTrue(RenderSystem.supportsBufferStorage(), "GL4.4+ required");
-        final int other = GLStateManager.glGenBuffers();
+        final int other = GLSMBuffers.glGenBuffers();
         PersistentStreamingBuffer ring = null;
         try {
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, other);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, other);
             ring = PersistentStreamingBuffer.createOrNull(4096, false);
             assertNotNull(ring);
             final IntSet persistent = Reflect.getStatic(FfpExtendedAttribs.class, "persistentSources");
             assertTrue(persistent.contains(ring.getBufferId()), "the ring buffer is the persistent source");
             assertFalse(persistent.contains(other), "the previously bound buffer is not persistent");
-            assertEquals(GL11.glGetInteger(GL15.GL_ARRAY_BUFFER_BINDING), GLStateManager.getBoundVBO());
+            assertEquals(GL11.glGetInteger(GL15.GL_ARRAY_BUFFER_BINDING), GLSMBuffers.getBoundVBO());
         } finally {
             if (ring != null) ring.destroy();
-            GLStateManager.glDeleteBuffers(other);
+            GLSMBuffers.glDeleteBuffers(other);
         }
     }
 }

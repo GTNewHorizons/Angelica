@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.glsm.texture.TextureStaging;
@@ -95,7 +96,7 @@ class GlsmSdlTextureStagingTest {
                 fail("level " + level + ": " + mismatches + " texels differ; first (" + fx + "," + fy + ") expected " + GlsmSdlHeadlessRig.describe(stagedColor(level, fx, fy)) + " got " + GlsmSdlHeadlessRig.describe(got[first]));
             }
         }
-        GLStateManager.glDeleteTextures(tex);
+        GLSMTextures.glDeleteTextures(tex);
     }
 
     @ParameterizedTest
@@ -103,15 +104,15 @@ class GlsmSdlTextureStagingTest {
     void directUploadLandsAfterEarlierBatchedUpload(boolean inFrame, boolean fboAttached) {
         if (inFrame) GlsmSdlHeadlessRig.beginFrame();
         final int tex = GlsmSdlHeadlessRig.newNearestTexture();
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, BIG_TEX, BIG_TEX, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+        GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, BIG_TEX, BIG_TEX, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
 
         int fbo = 0;
         if (fboAttached) {
-            fbo = GLStateManager.glGenFramebuffers();
-            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
-            GLStateManager.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, tex, 0);
-            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex);
+            fbo = GLSMFramebuffer.glGenFramebuffers();
+            GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
+            GLSMFramebuffer.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, tex, 0);
+            GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, tex);
         }
 
         final ByteBuffer small = solidRgba(SMALL, SMALL, COLOR_A);
@@ -119,11 +120,11 @@ class GlsmSdlTextureStagingTest {
         final ByteBuffer out = MemoryUtil.memAlloc(BIG_TEX * BIG_TEX * 4);
         try {
             assertTrue(big.remaining() > ResourceManager.BATCH_SEGMENT_CAPACITY, "second upload must take the direct path");
-            GLStateManager.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, SMALL, SMALL, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, small);
-            GLStateManager.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, BIG_W, BIG_H, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, big);
+            GLSMTextures.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, SMALL, SMALL, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, small);
+            GLSMTextures.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, BIG_W, BIG_H, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, big);
 
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex);
-            GLStateManager.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, out);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, tex);
+            GLSMTextures.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, out);
             final int[] got = GlsmSdlHeadlessRig.toArgb(out, BIG_TEX * BIG_TEX);
             int mismatches = 0;
             for (int y = 0; y < BIG_H; y++) {
@@ -138,14 +139,14 @@ class GlsmSdlTextureStagingTest {
             MemoryUtil.memFree(big);
             MemoryUtil.memFree(out);
         }
-        if (fbo != 0) GLStateManager.glDeleteFramebuffers(fbo);
-        GLStateManager.glDeleteTextures(tex);
+        if (fbo != 0) GLSMFramebuffer.glDeleteFramebuffers(fbo);
+        GLSMTextures.glDeleteTextures(tex);
     }
 
     private static void stageBand(int tex, int level, int y0, int w, int h) {
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex);
-        final TextureStaging staging = GLStateManager.beginTextureStaging(level, 0, y0, w, h);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, tex);
+        final TextureStaging staging = GLSMTextures.beginTextureStaging(level, 0, y0, w, h);
         assertNotNull(staging, "beginTextureStaging level " + level + " y " + y0);
         final ByteBuffer buf = staging.buffer();
         assertEquals(w * h * 4, buf.remaining(), "staging capacity");
@@ -162,7 +163,7 @@ class GlsmSdlTextureStagingTest {
                 buf.put(i + 3, (byte) (c >>> 24));
             }
         }
-        assertTrue(GLStateManager.commitTextureStaging(staging), "commitTextureStaging level " + level + " y " + y0);
+        assertTrue(GLSMTextures.commitTextureStaging(staging), "commitTextureStaging level " + level + " y " + y0);
     }
 
     private static int stagedColor(int level, int x, int y) {

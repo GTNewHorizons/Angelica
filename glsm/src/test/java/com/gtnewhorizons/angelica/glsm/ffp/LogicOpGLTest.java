@@ -1,7 +1,10 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,21 +21,21 @@ class LogicOpGLTest {
     void setUp() {
         FfpFixture.resetFfpState();
         FfpFixture.activateFfp();
-        GLStateManager.glViewport(0, 0, SIZE, SIZE);
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glDisable(GL11.GL_DEPTH_TEST);
-        GLStateManager.glDisable(GL11.GL_BLEND);
-        GLStateManager.glDisable(GL11.GL_TEXTURE_2D);
+        GLSMRasterizer.glViewport(0, 0, SIZE, SIZE);
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glLoadIdentity();
+        GLSMEnable.glDisable(GL11.GL_DEPTH_TEST);
+        GLSMEnable.glDisable(GL11.GL_BLEND);
+        GLSMEnable.glDisable(GL11.GL_TEXTURE_2D);
     }
 
     @AfterEach
     void tearDown() {
-        GLStateManager.glDisable(GL11.GL_COLOR_LOGIC_OP);
-        GLStateManager.glLogicOp(GL11.GL_COPY);
-        GLStateManager.glDisable(GL11.GL_BLEND);
+        GLSMEnable.glDisable(GL11.GL_COLOR_LOGIC_OP);
+        GLSMBlend.glLogicOp(GL11.GL_COPY);
+        GLSMEnable.glDisable(GL11.GL_BLEND);
         LogicOpFixture.deleteResources();
         FfpFixture.resetFfpState();
     }
@@ -50,8 +53,8 @@ class LogicOpGLTest {
 
     @Test
     void blendingIsIgnoredWhileLogicOpIsEnabled() {
-        GLStateManager.glEnable(GL11.GL_BLEND);
-        GLStateManager.glBlendFunc(GL11.GL_ONE, GL11.GL_ONE);
+        GLSMEnable.glEnable(GL11.GL_BLEND);
+        GLSMBlend.glBlendFunc(GL11.GL_ONE, GL11.GL_ONE);
         final int[] src = LogicOpFixture.SOURCES[1];
         LogicOpFixture.clearToDst();
         LogicOpFixture.drawQuad(GL11.GL_XOR, src);

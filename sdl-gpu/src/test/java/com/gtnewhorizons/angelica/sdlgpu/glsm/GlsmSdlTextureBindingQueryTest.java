@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,10 +20,10 @@ class GlsmSdlTextureBindingQueryTest {
 
     @Test
     void everyBindingQueryReadsThePerUnitSlot() {
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE3);
-        final int tex = GLStateManager.glGenTextures();
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE3);
+        final int tex = GLSMTextures.glGenTextures();
         try {
-            GLStateManager.glBindTexture(GL12.GL_TEXTURE_3D, tex);
+            GLSMTextures.glBindTexture(GL12.GL_TEXTURE_3D, tex);
             assertEquals(tex, RENDER_BACKEND.getInteger(GL11.GL_TEXTURE_BINDING_2D), "GL_TEXTURE_BINDING_2D");
             assertEquals(tex, RENDER_BACKEND.getInteger(GL11.GL_TEXTURE_BINDING_1D), "GL_TEXTURE_BINDING_1D");
             assertEquals(tex, RENDER_BACKEND.getInteger(GL12.GL_TEXTURE_BINDING_3D), "GL_TEXTURE_BINDING_3D");
@@ -33,9 +33,9 @@ class GlsmSdlTextureBindingQueryTest {
             assertEquals(tex, RENDER_BACKEND.getInteger(GL31.GL_TEXTURE_BINDING_RECTANGLE), "GL_TEXTURE_BINDING_RECTANGLE");
             assertEquals(tex, RENDER_BACKEND.getInteger(GL40.GL_TEXTURE_BINDING_CUBE_MAP_ARRAY), "GL_TEXTURE_BINDING_CUBE_MAP_ARRAY");
         } finally {
-            GLStateManager.glBindTexture(GL12.GL_TEXTURE_3D, 0);
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-            GLStateManager.glDeleteTextures(tex);
+            GLSMTextures.glBindTexture(GL12.GL_TEXTURE_3D, 0);
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+            GLSMTextures.glDeleteTextures(tex);
         }
     }
 }

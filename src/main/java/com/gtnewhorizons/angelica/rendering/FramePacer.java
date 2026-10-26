@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.rendering;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend.GateSample;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
@@ -165,7 +166,7 @@ public final class FramePacer {
     }
 
     public static void beforePresent() {
-        final long firstClearBlockNanos = GLStateManager.takeFirstClearBlockNanos();
+        final long firstClearBlockNanos = GLSMFramebuffer.takeFirstClearBlockNanos();
         Tracy.beginZone(Z_PACER_PRESENT_SLEEP);
         try {
             core.beforePresent(nanoTime(), firstClearBlockNanos);

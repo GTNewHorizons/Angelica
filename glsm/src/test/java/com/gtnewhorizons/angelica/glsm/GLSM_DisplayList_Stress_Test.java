@@ -33,11 +33,11 @@ class GLSM_DisplayList_Stress_Test {
     void cleanup() {
         for (int list : testLists) {
             if (list > 0) {
-                GLStateManager.glDeleteLists(list, 1);
+                GLSMDraws.glDeleteLists(list, 1);
             }
         }
         testLists.clear();
-        GLStateManager.glLoadIdentity();
+        GLSMMatrices.glLoadIdentity();
     }
 
     private int createAndTrackList() {
@@ -53,12 +53,12 @@ class GLSM_DisplayList_Stress_Test {
 
         for (int i = 0; i < numLists; i++) {
             int list = createAndTrackList();
-            GLStateManager.glNewList(list, GL11.GL_COMPILE);
+            GLSMDraws.glNewList(list, GL11.GL_COMPILE);
 
             // Each list has a unique transform
-            GLStateManager.glTranslatef(i * 0.1f, 0, 0);
+            GLSMMatrices.glTranslatef(i * 0.1f, 0, 0);
 
-            GLStateManager.glEndList();
+            GLSMDraws.glEndList();
 
             // Verify each list was compiled
             assertTrue(DisplayListManager.displayListExists(list),
@@ -78,20 +78,20 @@ class GLSM_DisplayList_Stress_Test {
         final int numTransforms = 1000;
 
         int list = createAndTrackList();
-        GLStateManager.glNewList(list, GL11.GL_COMPILE);
+        GLSMDraws.glNewList(list, GL11.GL_COMPILE);
 
         // Many push/pop pairs with transforms
         for (int i = 0; i < numTransforms; i++) {
-            GLStateManager.glPushMatrix();
-            GLStateManager.glTranslatef(i * 0.001f, 0, 0);
-            GLStateManager.glRotatef(i * 0.36f, 0, 1, 0);
-            GLStateManager.glPopMatrix();
+            GLSMMatrices.glPushMatrix();
+            GLSMMatrices.glTranslatef(i * 0.001f, 0, 0);
+            GLSMMatrices.glRotatef(i * 0.36f, 0, 1, 0);
+            GLSMMatrices.glPopMatrix();
         }
 
         // Final transform that should be the result
-        GLStateManager.glTranslatef(42.0f, 0, 0);
+        GLSMMatrices.glTranslatef(42.0f, 0, 0);
 
-        GLStateManager.glEndList();
+        GLSMDraws.glEndList();
 
         assertEquals(42.0f, modelviewAfterCall(list).get(12), 0.0001f, "After many push/pop pairs, only final transform should remain");
     }
@@ -104,12 +104,12 @@ class GLSM_DisplayList_Stress_Test {
         for (int cycle = 0; cycle < cycles; cycle++) {
             int list = GL11.glGenLists(1);
 
-            GLStateManager.glNewList(list, GL11.GL_COMPILE);
-            GLStateManager.glTranslatef(cycle, 0, 0);
-            GLStateManager.glEndList();
+            GLSMDraws.glNewList(list, GL11.GL_COMPILE);
+            GLSMMatrices.glTranslatef(cycle, 0, 0);
+            GLSMDraws.glEndList();
 
             // Immediately delete
-            GLStateManager.glDeleteLists(list, 1);
+            GLSMDraws.glDeleteLists(list, 1);
 
             // Verify it's gone
             assertFalse(DisplayListManager.displayListExists(list),
@@ -126,16 +126,16 @@ class GLSM_DisplayList_Stress_Test {
         // Create from innermost to outermost
         for (int i = 0; i < chainLength; i++) {
             chain[i] = createAndTrackList();
-            GLStateManager.glNewList(chain[i], GL11.GL_COMPILE);
+            GLSMDraws.glNewList(chain[i], GL11.GL_COMPILE);
 
             // Each list translates by 1 and calls the previous list (if any)
-            GLStateManager.glTranslatef(1.0f, 0.0f, 0.0f);
+            GLSMMatrices.glTranslatef(1.0f, 0.0f, 0.0f);
 
             if (i > 0) {
-                GLStateManager.glCallList(chain[i - 1]);
+                GLSMDraws.glCallList(chain[i - 1]);
             }
 
-            GLStateManager.glEndList();
+            GLSMDraws.glEndList();
         }
 
         assertModelviewAfterCall(chain[chainLength - 1], new Matrix4f().translate(chainLength, 0.0f, 0.0f), "chain of " + chainLength + " lists");
@@ -145,24 +145,24 @@ class GLSM_DisplayList_Stress_Test {
     void testManyPushPopOperations() {
         // Stress test push/pop stack operations
         int list = createAndTrackList();
-        GLStateManager.glNewList(list, GL11.GL_COMPILE);
+        GLSMDraws.glNewList(list, GL11.GL_COMPILE);
 
         // Go deep into the stack
         final int stackDepth = 30;  // GL minimum is 32
         for (int i = 0; i < stackDepth; i++) {
-            GLStateManager.glPushMatrix();
-            GLStateManager.glTranslatef(1.0f, 0.0f, 0.0f);
+            GLSMMatrices.glPushMatrix();
+            GLSMMatrices.glTranslatef(1.0f, 0.0f, 0.0f);
         }
 
         // Pop all the way back
         for (int i = 0; i < stackDepth; i++) {
-            GLStateManager.glPopMatrix();
+            GLSMMatrices.glPopMatrix();
         }
 
         // Add final known transform
-        GLStateManager.glTranslatef(99.0f, 0.0f, 0.0f);
+        GLSMMatrices.glTranslatef(99.0f, 0.0f, 0.0f);
 
-        GLStateManager.glEndList();
+        GLSMDraws.glEndList();
 
         assertEquals(99.0f, modelviewAfterCall(list).get(12), 0.0001f, "After balanced push/pop, only final transform should remain");
     }
@@ -176,9 +176,9 @@ class GLSM_DisplayList_Stress_Test {
         // Create all lists with unique transforms
         for (int i = 0; i < numLists; i++) {
             lists[i] = createAndTrackList();
-            GLStateManager.glNewList(lists[i], GL11.GL_COMPILE);
-            GLStateManager.glTranslatef(i + 1, 0, 0);  // List i translates by (i+1)
-            GLStateManager.glEndList();
+            GLSMDraws.glNewList(lists[i], GL11.GL_COMPILE);
+            GLSMMatrices.glTranslatef(i + 1, 0, 0);  // List i translates by (i+1)
+            GLSMDraws.glEndList();
         }
 
         // Rapidly switch between calling different lists
@@ -195,16 +195,16 @@ class GLSM_DisplayList_Stress_Test {
         int list = createAndTrackList();
 
         // First compilation
-        GLStateManager.glNewList(list, GL11.GL_COMPILE);
-        GLStateManager.glTranslatef(5.0f, 0.0f, 0.0f);
-        GLStateManager.glEndList();
+        GLSMDraws.glNewList(list, GL11.GL_COMPILE);
+        GLSMMatrices.glTranslatef(5.0f, 0.0f, 0.0f);
+        GLSMDraws.glEndList();
 
         assertEquals(5.0f, modelviewAfterCall(list).get(12), 0.0001f, "First compilation should translate by 5");
 
         // Recompile with different transform
-        GLStateManager.glNewList(list, GL11.GL_COMPILE);
-        GLStateManager.glTranslatef(10.0f, 0.0f, 0.0f);
-        GLStateManager.glEndList();
+        GLSMDraws.glNewList(list, GL11.GL_COMPILE);
+        GLSMMatrices.glTranslatef(10.0f, 0.0f, 0.0f);
+        GLSMDraws.glEndList();
 
         assertEquals(10.0f, modelviewAfterCall(list).get(12), 0.0001f, "Recompilation should translate by 10");
     }
@@ -213,23 +213,23 @@ class GLSM_DisplayList_Stress_Test {
     void testComplexTransformSequence() {
         // Test a complex sequence of transforms that could expose numerical issues
         int list = createAndTrackList();
-        GLStateManager.glNewList(list, GL11.GL_COMPILE);
+        GLSMDraws.glNewList(list, GL11.GL_COMPILE);
 
         // Apply transforms that together should result in a known value
-        GLStateManager.glTranslatef(100.0f, 0.0f, 0.0f);
-        GLStateManager.glRotatef(90.0f, 0.0f, 0.0f, 1.0f);
-        GLStateManager.glTranslatef(50.0f, 0.0f, 0.0f);  // This goes in Y direction after rotate
-        GLStateManager.glRotatef(-90.0f, 0.0f, 0.0f, 1.0f);  // Cancel the rotation
-        GLStateManager.glTranslatef(25.0f, 0.0f, 0.0f);
+        GLSMMatrices.glTranslatef(100.0f, 0.0f, 0.0f);
+        GLSMMatrices.glRotatef(90.0f, 0.0f, 0.0f, 1.0f);
+        GLSMMatrices.glTranslatef(50.0f, 0.0f, 0.0f);  // This goes in Y direction after rotate
+        GLSMMatrices.glRotatef(-90.0f, 0.0f, 0.0f, 1.0f);  // Cancel the rotation
+        GLSMMatrices.glTranslatef(25.0f, 0.0f, 0.0f);
 
-        GLStateManager.glEndList();
+        GLSMDraws.glEndList();
 
-        GLStateManager.glPushMatrix();
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glCallList(list);
+        GLSMMatrices.glPushMatrix();
+        GLSMMatrices.glLoadIdentity();
+        GLSMDraws.glCallList(list);
 
         FloatBuffer actualBuf = BufferUtils.createFloatBuffer(16);
-        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
+        GLSMQueries.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
 
         // Build expected with JOML
         Matrix4f expected = new Matrix4f()
@@ -247,6 +247,6 @@ class GLSM_DisplayList_Stress_Test {
                 String.format("Matrix[%d] mismatch in complex transform", i));
         }
 
-        GLStateManager.glPopMatrix();
+        GLSMMatrices.glPopMatrix();
     }
 }

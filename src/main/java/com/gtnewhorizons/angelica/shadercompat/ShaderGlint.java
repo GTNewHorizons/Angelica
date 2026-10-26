@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.shadercompat;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.GlintColorHandler;
 import com.gtnewhorizons.angelica.iris.IrisDisplayListState;
@@ -72,7 +73,7 @@ public final class ShaderGlint {
         injecting = false;
 
         // Save the texture bound before the glint section so endGlint can put it back if we swap
-        prevTexture = GLStateManager.getBoundTextureForServerState(0);
+        prevTexture = GLSMTextures.getBoundTextureForServerState(0);
 
         // Observe vertex-color changes for the rest of the glint section
         GLSMHooks.glintColorHandler = COLOR_HANDLER;
@@ -85,7 +86,7 @@ public final class ShaderGlint {
         GLSMHooks.glintColorHandler = null;
 
         if (swapped) {
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, prevTexture);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, prevTexture);
             ModelPartBatcher.onTextureSwap(prevTexture, NO_TINT);
         }
         swapped = false;
@@ -100,8 +101,8 @@ public final class ShaderGlint {
 
         final int texture = slotTextures[slot];
         injecting = true;
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-        GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, alpha);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        GLSMCurrentAttribs.glColor4f(1.0F, 1.0F, 1.0F, alpha);
         injecting = false;
         swapped = true;
         ModelPartBatcher.onTextureSwap(texture, slot);
@@ -110,7 +111,7 @@ public final class ShaderGlint {
     public static void invalidate() {
         for (int i = 0; i < slotTextures.length; i++) {
             if (slotTextures[i] != 0) {
-                GLStateManager.glDeleteTextures(slotTextures[i]);
+                GLSMTextures.glDeleteTextures(slotTextures[i]);
                 slotTextures[i] = 0;
             }
         }
@@ -129,8 +130,8 @@ public final class ShaderGlint {
         }
         if (!IrisApi.getInstance().isShaderPackInUse()) return;
         final ITextureObject mask = Minecraft.getMinecraft().getTextureManager().getTexture(GLINT_MASK);
-        if (mask == null || GLStateManager.getBoundTextureForServerState() != mask.getGlTextureId()) return;
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, slotTextures[slot]);
+        if (mask == null || GLSMTextures.getBoundTextureForServerState() != mask.getGlTextureId()) return;
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, slotTextures[slot]);
     }
 
     private static int tintSlot(float r, float g, float b) {
@@ -148,7 +149,7 @@ public final class ShaderGlint {
         final int slot;
         if (colorToSlot.size() >= TINT_SLOTS) {
             slot = colorToSlot.remove(colorToSlot.firstIntKey());
-            GLStateManager.glDeleteTextures(slotTextures[slot]);
+            GLSMTextures.glDeleteTextures(slotTextures[slot]);
         } else {
             slot = colorToSlot.size();
         }
@@ -168,14 +169,14 @@ public final class ShaderGlint {
         }
         pixels.flip();
 
-        final int texture = GLStateManager.glGenTextures();
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        final int texture = GLSMTextures.glGenTextures();
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texture);
         // Match the vanilla glint texture
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, maskW, maskH, 0,
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
+        GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, maskW, maskH, 0,
             GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
         return texture;
     }

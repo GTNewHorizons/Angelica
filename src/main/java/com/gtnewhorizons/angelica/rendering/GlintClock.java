@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.rendering;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import org.joml.Matrix4fc;
 import org.joml.Matrix4f;
 
@@ -57,10 +57,10 @@ public final class GlintClock {
     }
 
     public static void translateArmorGlint() {
-        if (secondArmorLayer(GLStateManager.getMatrixStack())) {
-            GLStateManager.glTranslatef(armorU1, armorV1, 0f);
+        if (secondArmorLayer(GLSMMatrices.getMatrixStack())) {
+            GLSMMatrices.glTranslatef(armorU1, armorV1, 0f);
         } else {
-            GLStateManager.glTranslatef(armorU0, armorV0, 0f);
+            GLSMMatrices.glTranslatef(armorU0, armorV0, 0f);
         }
     }
 

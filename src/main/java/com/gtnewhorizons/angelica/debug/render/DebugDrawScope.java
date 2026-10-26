@@ -1,6 +1,13 @@
 package com.gtnewhorizons.angelica.debug.render;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.StateSet;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -17,42 +24,42 @@ public final class DebugDrawScope {
 
     public void beginHud() {
         capture();
-        GLStateManager.disableDepthTest();
+        GLSMDepthStencilAlpha.disableDepthTest();
         common();
     }
 
     public void beginWorld() {
         capture();
-        GLStateManager.enableDepthTest();
-        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
-        GLStateManager.glCullFace(GL11.GL_BACK);
-        GLStateManager.glFrontFace(GL11.GL_CCW);
+        GLSMDepthStencilAlpha.enableDepthTest();
+        GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_LEQUAL);
+        GLSMRasterizer.glCullFace(GL11.GL_BACK);
+        GLSMRasterizer.glFrontFace(GL11.GL_CCW);
         common();
     }
 
     private void capture() {
-        depth = GLStateManager.pushState(SET);
-        program = GLStateManager.getActiveProgram();
-        vao = GLStateManager.getBoundVAO();
-        vbo = GLStateManager.getBoundVBO();
+        depth = GLSMAttribStack.pushState(SET);
+        program = GLSMPrograms.getActiveProgram();
+        vao = GLSMVertexInput.getBoundVAO();
+        vbo = GLSMBuffers.getBoundVBO();
     }
 
     public void end() {
-        GLStateManager.glUseProgram(program);
-        GLStateManager.glBindVertexArray(vao);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-        GLStateManager.popStateTo(depth);
+        GLSMPrograms.glUseProgram(program);
+        GLSMVertexInput.glBindVertexArray(vao);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        GLSMAttribStack.popStateTo(depth);
     }
 
     private static void common() {
-        GLStateManager.glDepthMask(false);
-        GLStateManager.enableBlend();
-        GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
-        GLStateManager.disableCull();
-        GLStateManager.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
-        GLStateManager.disableScissorTest();
-        GLStateManager.glColorMask(true, true, true, true);
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glLineWidth(1.0F);
+        GLSMDepthStencilAlpha.glDepthMask(false);
+        GLSMBlend.enableBlend();
+        GLSMBlend.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        GLSMRasterizer.disableCull();
+        GLSMRasterizer.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
+        GLSMRasterizer.disableScissorTest();
+        GLSMBlend.glColorMask(true, true, true, true);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMRasterizer.glLineWidth(1.0F);
     }
 }

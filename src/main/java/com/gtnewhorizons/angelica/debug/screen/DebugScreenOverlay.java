@@ -6,7 +6,8 @@ import com.gtnewhorizons.angelica.client.font.GlyphSettings;
 import com.gtnewhorizons.angelica.client.font.TextMesh;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.debug.F3Graph;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
@@ -312,12 +313,12 @@ public final class DebugScreenOverlay {
         if (placedCount == 0) return;
         if (Tracy.ENABLED) Tracy.beginZone(Z_DRAW);
         if (scaled) {
-            GLStateManager.glPushMatrix();
+            GLSMMatrices.glPushMatrix();
             final float factor = scale / (float) gameScale;
-            GLStateManager.glScalef(factor, factor, 1.0f);
+            GLSMMatrices.glScalef(factor, factor, 1.0f);
         }
         try {
-            GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+            GLSMCurrentAttribs.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
             text.batcher.beginBatch();
             try {
                 drawChrome();
@@ -326,7 +327,7 @@ public final class DebugScreenOverlay {
                 text.batcher.endBatch();
             }
         } finally {
-            if (scaled) GLStateManager.glPopMatrix();
+            if (scaled) GLSMMatrices.glPopMatrix();
             if (Tracy.ENABLED) Tracy.endZone();
         }
     }

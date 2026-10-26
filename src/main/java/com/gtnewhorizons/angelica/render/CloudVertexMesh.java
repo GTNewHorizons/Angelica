@@ -4,7 +4,9 @@ import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VertexBufferType;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
@@ -644,10 +646,10 @@ final class CloudVertexMesh {
 
     private void setupShadeAttrib() {
         vao.bind();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vao.getVBO().getId());
-        GLStateManager.glEnableVertexAttribArray(FACE_SHADE_ATTRIB);
-        GLStateManager.glVertexAttribPointer(FACE_SHADE_ATTRIB, 4, GL11.GL_UNSIGNED_BYTE, true, vertexStride, normalOffset);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vao.getVBO().getId());
+        GLSMVertexInput.glEnableVertexAttribArray(FACE_SHADE_ATTRIB);
+        GLSMVertexInput.glVertexAttribPointer(FACE_SHADE_ATTRIB, 4, GL11.GL_UNSIGNED_BYTE, true, vertexStride, normalOffset);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         vao.unbind();
     }
 
@@ -752,9 +754,9 @@ final class CloudVertexMesh {
     void reorderUpload() {
         if (orderPendingQuads <= 0) return;
         if (Tracy.FINE_ZONES) Tracy.beginZone(Z_REORDER_UPLOAD);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
-        GLStateManager.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, orderIndexBuffer, GL15.GL_DYNAMIC_DRAW);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
+        GLSMBuffers.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, orderIndexBuffer, GL15.GL_DYNAMIC_DRAW);
+        GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
         System.arraycopy(plateStartScratch, 0, plateStart, 0, plateStart.length);
         System.arraycopy(wallStartScratch, 0, wallStart, 0, wallStart.length);
         eboQuadCapacity = orderPendingQuads;
@@ -771,7 +773,7 @@ final class CloudVertexMesh {
 
     private void ensureEbo(int quads) {
         if (eboId == -1) {
-            eboId = GLStateManager.glGenBuffers();
+            eboId = GLSMBuffers.glGenBuffers();
         }
 
         if (quads <= eboQuadCapacity && eboIsSequential) return;
@@ -779,9 +781,9 @@ final class CloudVertexMesh {
         final int capacity = Math.max(quads + (quads >> 1), 4096);
         final IntBuffer indices = sequentialIndices(capacity);
         indices.position(0).limit(capacity * 6);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
-        GLStateManager.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, indices, GL15.GL_STATIC_DRAW);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
+        GLSMBuffers.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, indices, GL15.GL_STATIC_DRAW);
+        GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
         eboQuadCapacity = capacity;
     }
 
@@ -802,7 +804,7 @@ final class CloudVertexMesh {
 
     void deleteEbo() {
         if (eboId != -1) {
-            GLStateManager.glDeleteBuffers(eboId);
+            GLSMBuffers.glDeleteBuffers(eboId);
             eboId = -1;
             eboQuadCapacity = 0;
         }
@@ -819,7 +821,7 @@ final class CloudVertexMesh {
 
     void bind() {
         vao.bind();
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
+        GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
     }
 
     void unbind() {
@@ -829,11 +831,11 @@ final class CloudVertexMesh {
     void drawRange(int startQuad, int endQuad) {
         final int quads = endQuad - startQuad;
         if (quads <= 0) return;
-        GLStateManager.glDrawElements(GL11.GL_TRIANGLES, quads * 6, GL11.GL_UNSIGNED_INT, (long) startQuad * 6L * 4L);
+        GLSMDraws.glDrawElements(GL11.GL_TRIANGLES, quads * 6, GL11.GL_UNSIGNED_INT, (long) startQuad * 6L * 4L);
     }
 
     void drawAll() {
-        GLStateManager.glDrawElements(GL11.GL_TRIANGLES, (vertexCount / 4) * 6, GL11.GL_UNSIGNED_INT, 0L);
+        GLSMDraws.glDrawElements(GL11.GL_TRIANGLES, (vertexCount / 4) * 6, GL11.GL_UNSIGNED_INT, 0L);
     }
 
     boolean faceEmpty(int face) {

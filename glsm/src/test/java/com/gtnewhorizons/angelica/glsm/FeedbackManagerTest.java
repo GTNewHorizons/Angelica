@@ -120,28 +120,28 @@ class FeedbackManagerTest {
     }
 
     private static int feedbackDraw(int mode, float... verts) {
-        GLStateManager.getModelViewMatrix().identity();
-        GLStateManager.getProjectionMatrix().identity();
-        GLStateManager.getViewportState().setViewPort(0, 0, 800, 600);
-        GLStateManager.getViewportState().setDepthRange(0.0, 1.0);
+        GLSMMatrices.getModelViewMatrix().identity();
+        GLSMMatrices.getProjectionMatrix().identity();
+        GLSMRasterizer.getViewportState().setViewPort(0, 0, 800, 600);
+        GLSMRasterizer.getViewportState().setDepthRange(0.0, 1.0);
 
         final int vao = GL30.glGenVertexArrays();
-        GLStateManager.glBindVertexArray(vao);
+        GLSMVertexInput.glBindVertexArray(vao);
         final FloatBuffer vertBuf = BufferUtils.createFloatBuffer(verts.length);
         vertBuf.put(verts).flip();
         final int vbo = GL15.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
         GL15.glBufferData(GL15.GL_ARRAY_BUFFER, vertBuf, GL15.GL_STATIC_DRAW);
-        GLStateManager.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 12, 0);
-        GLStateManager.glEnableVertexAttribArray(0);
+        GLSMVertexInput.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 12, 0);
+        GLSMVertexInput.glEnableVertexAttribArray(0);
         try {
             FeedbackManager.processDrawArrays(mode, 0, verts.length / 3);
             return FeedbackManager.glRenderMode(GL11.GL_RENDER);
         } finally {
-            GLStateManager.glDisableVertexAttribArray(0);
-            GLStateManager.glBindVertexArray(0);
+            GLSMVertexInput.glDisableVertexAttribArray(0);
+            GLSMVertexInput.glBindVertexArray(0);
             GL15.glDeleteBuffers(vbo);
-            GLStateManager.glDeleteVertexArrays(vao);
+            GLSMVertexInput.glDeleteVertexArrays(vao);
         }
     }
 }

@@ -16,9 +16,9 @@ import static org.junit.jupiter.api.Assertions.assertNotSame;
 public class GLSM_TextureUploadGeneration_GLTest {
 
     private static int allocate(int size) {
-        final int texId = GLStateManager.glGenTextures();
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texId);
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, size, size, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, BufferUtils.createByteBuffer(size * size * 4));
+        final int texId = GLSMTextures.glGenTextures();
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texId);
+        GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, size, size, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, BufferUtils.createByteBuffer(size * size * 4));
         return texId;
     }
 
@@ -26,14 +26,14 @@ public class GLSM_TextureUploadGeneration_GLTest {
     void aLevelBeyondTheShiftWidthClampsToOne() {
         final int texId = allocate(64);
         try {
-            assertEquals(64, GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH));
-            assertEquals(1, GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 6, GL11.GL_TEXTURE_WIDTH));
-            assertEquals(1, GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 31, GL11.GL_TEXTURE_WIDTH));
-            assertEquals(1, GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 32, GL11.GL_TEXTURE_WIDTH));
-            assertEquals(1, GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 64, GL11.GL_TEXTURE_HEIGHT));
+            assertEquals(64, GLSMTextures.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH));
+            assertEquals(1, GLSMTextures.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 6, GL11.GL_TEXTURE_WIDTH));
+            assertEquals(1, GLSMTextures.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 31, GL11.GL_TEXTURE_WIDTH));
+            assertEquals(1, GLSMTextures.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 32, GL11.GL_TEXTURE_WIDTH));
+            assertEquals(1, GLSMTextures.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 64, GL11.GL_TEXTURE_HEIGHT));
         } finally {
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-            GLStateManager.glDeleteTextures(texId);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+            GLSMTextures.glDeleteTextures(texId);
         }
     }
 
@@ -46,13 +46,13 @@ public class GLSM_TextureUploadGeneration_GLTest {
 
             TextureInfoCache.INSTANCE.onDeleteTexture(texId);
             final ByteBuffer pixels = BufferUtils.createByteBuffer(4 * 4 * 4);
-            GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, 4, 4, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
+            GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, 4, 4, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
 
             final TextureInfo second = TextureInfoCache.INSTANCE.getInfo(texId);
             assertNotSame(first, second, "a deleted id drops its entry, so the replacement must be a distinct instance");
             assertEquals(firstGeneration, second.getUploadGeneration(), "generations alias across a delete/recreate cycle, which is exactly why identity has to carry the distinction");
         } finally {
-            GLStateManager.glDeleteTextures(texId);
+            GLSMTextures.glDeleteTextures(texId);
         }
     }
 
@@ -64,16 +64,16 @@ public class GLSM_TextureUploadGeneration_GLTest {
             final int afterAlloc = info.getUploadGeneration();
             assertNotEquals(0, afterAlloc);
 
-            GLStateManager.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 2, 2, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, BufferUtils.createByteBuffer(2 * 2 * 4));
+            GLSMTextures.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 2, 2, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, BufferUtils.createByteBuffer(2 * 2 * 4));
             assertNotEquals(afterAlloc, info.getUploadGeneration(), "content changed, so anything caching the pixels is stale");
 
             final int afterSub = info.getUploadGeneration();
-            GLStateManager.glTexSubImage2D(GL11.GL_TEXTURE_2D, 1, 0, 0, 1, 1, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, BufferUtils.createByteBuffer(4));
+            GLSMTextures.glTexSubImage2D(GL11.GL_TEXTURE_2D, 1, 0, 0, 1, 1, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, BufferUtils.createByteBuffer(4));
             assertEquals(afterSub, info.getUploadGeneration(), "only level 0 is tracked");
             // Level 1 was never allocated, so the driver rejects that upload.
             assertEquals(GL11.GL_INVALID_OPERATION, GL11.glGetError());
         } finally {
-            GLStateManager.glDeleteTextures(texId);
+            GLSMTextures.glDeleteTextures(texId);
         }
     }
 }

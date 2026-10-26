@@ -2,7 +2,14 @@ package net.coderbot.iris.postprocess;
 
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMQueries;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import org.lwjgl.BufferUtils;
@@ -22,13 +29,13 @@ public class FullScreenQuadRenderer {
 	public static final FullScreenQuadRenderer INSTANCE = new FullScreenQuadRenderer();
 
 	private FullScreenQuadRenderer() {
-		this.vao = GLStateManager.glGenVertexArrays();
-		GLStateManager.glBindVertexArray(vao);
+		this.vao = GLSMVertexInput.glGenVertexArrays();
+		GLSMVertexInput.glBindVertexArray(vao);
 		this.quadBuffer = createQuad();
-		GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, quadBuffer);
+		GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, quadBuffer);
 		DefaultVertexFormat.POSITION_TEXTURE.setupBufferState(0L);
-		GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-		GLStateManager.glBindVertexArray(0);
+		GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+		GLSMVertexInput.glBindVertexArray(0);
 	}
 
 	public void render() {
@@ -40,37 +47,37 @@ public class FullScreenQuadRenderer {
 	}
 
 	public void begin() {
-        GLStateManager.disableDepthTest();
+        GLSMDepthStencilAlpha.disableDepthTest();
 
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glPushMatrix();
-        GLStateManager.glLoadIdentity();
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glPushMatrix();
+        GLSMMatrices.glLoadIdentity();
 		// scale the quad from [0, 1] to [-1, 1]
-		GLStateManager.glTranslatef(-1.0F, -1.0F, 0.0F);
-        GLStateManager.glScalef(2.0F, 2.0F, 1.0F);
+		GLSMMatrices.glTranslatef(-1.0F, -1.0F, 0.0F);
+        GLSMMatrices.glScalef(2.0F, 2.0F, 1.0F);
 
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glPushMatrix();
-        GLStateManager.glLoadIdentity();
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glPushMatrix();
+        GLSMMatrices.glLoadIdentity();
 
-		GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+		GLSMCurrentAttribs.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
 
-        GLStateManager.glBindVertexArray(vao);
+        GLSMVertexInput.glBindVertexArray(vao);
 	}
 
 	public void renderQuad() {
-        GLStateManager.glDrawArrays(GL11.GL_TRIANGLE_STRIP, 0, 4);
+        GLSMDraws.glDrawArrays(GL11.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
 	public static void end() {
-        GLStateManager.glBindVertexArray(0);
+        GLSMVertexInput.glBindVertexArray(0);
 
-        GLStateManager.enableDepthTest();
+        GLSMDepthStencilAlpha.enableDepthTest();
 
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-		GLStateManager.glPopMatrix();
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glPopMatrix();
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+		GLSMMatrices.glPopMatrix();
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glPopMatrix();
 	}
 
 	private static final FloatBuffer matBuf = BufferUtils.createFloatBuffer(16);
@@ -84,28 +91,28 @@ public class FullScreenQuadRenderer {
 	}
 
 	public static void uploadCompositeMatrices() {
-		final int program = GLStateManager.glGetInteger(GL20.GL_CURRENT_PROGRAM);
+		final int program = GLSMQueries.glGetInteger(GL20.GL_CURRENT_PROGRAM);
 		if (program == 0) return;
 
 		int[] locs = compositeLocCache.get(program);
 		if (locs == null) {
 			locs = new int[] {
-				GLStateManager.glGetUniformLocation(program, "iris_ModelViewMatrix"),
-				GLStateManager.glGetUniformLocation(program, "iris_ProjectionMatrix")
+				GLSMPrograms.glGetUniformLocation(program, "iris_ModelViewMatrix"),
+				GLSMPrograms.glGetUniformLocation(program, "iris_ProjectionMatrix")
 			};
 			compositeLocCache.put(program, locs);
 		}
 
 		if (locs[0] != -1) {
-			GLStateManager.getModelViewMatrix().get(matBuf);
+			GLSMMatrices.getModelViewMatrix().get(matBuf);
 			matBuf.rewind();
-			GLStateManager.glUniformMatrix4(locs[0], false, matBuf);
+			GLSMPrograms.glUniformMatrix4(locs[0], false, matBuf);
 		}
 
 		if (locs[1] != -1) {
-			GLStateManager.getProjectionMatrix().get(matBuf);
+			GLSMMatrices.getProjectionMatrix().get(matBuf);
 			matBuf.rewind();
-			GLStateManager.glUniformMatrix4(locs[1], false, matBuf);
+			GLSMPrograms.glUniformMatrix4(locs[1], false, matBuf);
 		}
 	}
 

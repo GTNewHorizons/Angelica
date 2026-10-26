@@ -68,10 +68,10 @@ public class Feature {
      */
     private static void addTextureGenStates(Set<IStateStack<?>> collection) {
         for(int i = 0 ; i < GLStateManager.MAX_TEXTURE_UNITS; i++) {
-            collection.add(GLStateManager.getTextures().getTexGenSStates(i));
-            collection.add(GLStateManager.getTextures().getTexGenTStates(i));
-            collection.add(GLStateManager.getTextures().getTexGenRStates(i));
-            collection.add(GLStateManager.getTextures().getTexGenQStates(i));
+            collection.add(GLSMTextures.getTextures().getTexGenSStates(i));
+            collection.add(GLSMTextures.getTextures().getTexGenTStates(i));
+            collection.add(GLSMTextures.getTextures().getTexGenRStates(i));
+            collection.add(GLSMTextures.getTextures().getTexGenQStates(i));
         }
     }
 
@@ -79,24 +79,24 @@ public class Feature {
         final Int2ObjectMap<Set<IStateStack<?>>> attribToFeatures = new Int2ObjectOpenHashMap<>();
 
         attribToFeatures.put(GL11.GL_COLOR_BUFFER_BIT, ImmutableSet.of(
-              GLStateManager.getAlphaTest()
-            , GLStateManager.getAlphaState()
-            , GLStateManager.getBlendMode()
-            , GLStateManager.getBlendState()
-            , GLStateManager.getColorLogicOpState()
-            , GLStateManager.getDitherState()
-            , GLStateManager.getDrawBuffer()
-            , GLStateManager.getIndexLogicOpState()
-            , GLStateManager.getLogicOpMode()
-            , GLStateManager.getColorMask()
-            , GLStateManager.getClearColor()
+              GLSMDepthStencilAlpha.getAlphaTest()
+            , GLSMDepthStencilAlpha.getAlphaState()
+            , GLSMBlend.getBlendMode()
+            , GLSMBlend.getBlendState()
+            , GLSMBlend.getColorLogicOpState()
+            , GLSMRasterizer.getDitherState()
+            , GLSMFramebuffer.getDrawBuffer()
+            , GLSMBlend.getIndexLogicOpState()
+            , GLSMBlend.getLogicOpMode()
+            , GLSMBlend.getColorMask()
+            , GLSMBlend.getClearColor()
         ));
         attribToFeatures.put(GL11.GL_CURRENT_BIT, ImmutableSet.of(
-              GLStateManager.getColor()
-            , GLStateManager.getSecondaryColor() // Current secondary color
+              GLSMCurrentAttribs.getColor()
+            , GLSMCurrentAttribs.getSecondaryColor() // Current secondary color
             , ShaderManager.getNormalStack()    // Current normal vector
             , ShaderManager.getTexCoordStack()  // Current texture coordinates
-            , GLStateManager.getEdgeFlagState()
+            , GLSMRasterizer.getEdgeFlagState()
             // Current color index
             // Current raster position
             // GL_CURRENT_RASTER_POSITION_VALID flag
@@ -106,82 +106,82 @@ public class Feature {
             // GL_EDGE_FLAG flag
         ));
         attribToFeatures.put(GL11.GL_DEPTH_BUFFER_BIT, ImmutableSet.of(
-              GLStateManager.getDepthTest()
-            , GLStateManager.getDepthState()
+              GLSMDepthStencilAlpha.getDepthTest()
+            , GLSMDepthStencilAlpha.getDepthState()
             // Depth buffer clear value
             // GL_DEPTH_WRITEMASK enable bit
         ));
 
         final HashSet<IStateStack<?>> enableBits = new HashSet<>(ImmutableSet.of(
-              GLStateManager.getAlphaTest()
-            , GLStateManager.getAutoNormalState()
-            , GLStateManager.getBlendMode()
-            , GLStateManager.getColorLogicOpState()
-            , GLStateManager.getColorMaterial()
-            , GLStateManager.getColorSumState()
-            , GLStateManager.getCullState()
-            , GLStateManager.getDepthTest()
-            , GLStateManager.getDitherState()
-            , GLStateManager.getFogMode()
-            , GLStateManager.getIndexLogicOpState()
-            , GLStateManager.getLightStates()[0] // GL_LIGHT0
-            , GLStateManager.getLightStates()[1] // GL_LIGHT1
-            , GLStateManager.getLightStates()[2] // GL_LIGHT2
-            , GLStateManager.getLightStates()[3] // GL_LIGHT3
-            , GLStateManager.getLightStates()[4] // GL_LIGHT4
-            , GLStateManager.getLightStates()[5] // GL_LIGHT5
-            , GLStateManager.getLightStates()[6] // GL_LIGHT6
-            , GLStateManager.getLightStates()[7] // GL_LIGHT7
-            , GLStateManager.getLightingState()
-            , GLStateManager.getLineSmoothState()
-            , GLStateManager.getLineStippleState()
-            , GLStateManager.getMap1Color4State()
-            , GLStateManager.getMap1IndexState()
-            , GLStateManager.getMap1NormalState()
-            , GLStateManager.getMap1TextureCoord1State()
-            , GLStateManager.getMap1TextureCoord2State()
-            , GLStateManager.getMap1TextureCoord3State()
-            , GLStateManager.getMap1TextureCoord4State()
-            , GLStateManager.getMap1Vertex3State()
-            , GLStateManager.getMap1Vertex4State()
-            , GLStateManager.getMap2Color4State()
-            , GLStateManager.getMap2IndexState()
-            , GLStateManager.getMap2NormalState()
-            , GLStateManager.getMap2TextureCoord1State()
-            , GLStateManager.getMap2TextureCoord2State()
-            , GLStateManager.getMap2TextureCoord3State()
-            , GLStateManager.getMap2TextureCoord4State()
-            , GLStateManager.getMap2Vertex3State()
-            , GLStateManager.getMap2Vertex4State()
-            , GLStateManager.getMultisampleState()
-            , GLStateManager.getNormalizeState()
-            , GLStateManager.getPointSmoothState()
-            , GLStateManager.getPolygonOffsetPointState()
-            , GLStateManager.getPolygonOffsetLineState()
-            , GLStateManager.getPolygonOffsetFillState()
-            , GLStateManager.getPointSpriteState()
-            , GLStateManager.getVertexProgramTwoSideState()
-            , GLStateManager.getPolygonSmoothState()
-            , GLStateManager.getPolygonStippleState()
-            , GLStateManager.getRescaleNormalState()
-            , GLStateManager.getSampleAlphaToCoverageState()
-            , GLStateManager.getSampleAlphaToOneState()
-            , GLStateManager.getSampleCoverageState()
-            , GLStateManager.getScissorTest()
-            , GLStateManager.getStencilTest()
+              GLSMDepthStencilAlpha.getAlphaTest()
+            , GLSMRasterizer.getAutoNormalState()
+            , GLSMBlend.getBlendMode()
+            , GLSMBlend.getColorLogicOpState()
+            , GLSMLighting.getColorMaterial()
+            , GLSMCurrentAttribs.getColorSumState()
+            , GLSMRasterizer.getCullState()
+            , GLSMDepthStencilAlpha.getDepthTest()
+            , GLSMRasterizer.getDitherState()
+            , GLSMFog.getFogMode()
+            , GLSMBlend.getIndexLogicOpState()
+            , GLSMLighting.getLightStates()[0] // GL_LIGHT0
+            , GLSMLighting.getLightStates()[1] // GL_LIGHT1
+            , GLSMLighting.getLightStates()[2] // GL_LIGHT2
+            , GLSMLighting.getLightStates()[3] // GL_LIGHT3
+            , GLSMLighting.getLightStates()[4] // GL_LIGHT4
+            , GLSMLighting.getLightStates()[5] // GL_LIGHT5
+            , GLSMLighting.getLightStates()[6] // GL_LIGHT6
+            , GLSMLighting.getLightStates()[7] // GL_LIGHT7
+            , GLSMLighting.getLightingState()
+            , GLSMRasterizer.getLineSmoothState()
+            , GLSMRasterizer.getLineStippleState()
+            , GLSMRasterizer.getMap1Color4State()
+            , GLSMRasterizer.getMap1IndexState()
+            , GLSMRasterizer.getMap1NormalState()
+            , GLSMRasterizer.getMap1TextureCoord1State()
+            , GLSMRasterizer.getMap1TextureCoord2State()
+            , GLSMRasterizer.getMap1TextureCoord3State()
+            , GLSMRasterizer.getMap1TextureCoord4State()
+            , GLSMRasterizer.getMap1Vertex3State()
+            , GLSMRasterizer.getMap1Vertex4State()
+            , GLSMRasterizer.getMap2Color4State()
+            , GLSMRasterizer.getMap2IndexState()
+            , GLSMRasterizer.getMap2NormalState()
+            , GLSMRasterizer.getMap2TextureCoord1State()
+            , GLSMRasterizer.getMap2TextureCoord2State()
+            , GLSMRasterizer.getMap2TextureCoord3State()
+            , GLSMRasterizer.getMap2TextureCoord4State()
+            , GLSMRasterizer.getMap2Vertex3State()
+            , GLSMRasterizer.getMap2Vertex4State()
+            , GLSMRasterizer.getMultisampleState()
+            , GLSMLighting.getNormalizeState()
+            , GLSMRasterizer.getPointSmoothState()
+            , GLSMRasterizer.getPolygonOffsetPointState()
+            , GLSMRasterizer.getPolygonOffsetLineState()
+            , GLSMRasterizer.getPolygonOffsetFillState()
+            , GLSMRasterizer.getPointSpriteState()
+            , GLSMPrograms.getVertexProgramTwoSideState()
+            , GLSMRasterizer.getPolygonSmoothState()
+            , GLSMRasterizer.getPolygonStippleState()
+            , GLSMLighting.getRescaleNormalState()
+            , GLSMRasterizer.getSampleAlphaToCoverageState()
+            , GLSMRasterizer.getSampleAlphaToOneState()
+            , GLSMRasterizer.getSampleCoverageState()
+            , GLSMRasterizer.getScissorTest()
+            , GLSMDepthStencilAlpha.getStencilTest()
         ));
 
         // Enable bits for the user-definable clipping planes
-        for(int i = 0; i < GLStateManager.getClipPlaneStates().length; i++) {
-            enableBits.add(GLStateManager.getClipPlaneStates()[i]);
+        for(int i = 0; i < GLSMRasterizer.getClipPlaneStates().length; i++) {
+            enableBits.add(GLSMRasterizer.getClipPlaneStates()[i]);
         }
 
         // GL_TEXTURE_1D, GL_TEXTURE_2D, GL_TEXTURE_3D flags
         for(int i = 0 ; i < GLStateManager.MAX_TEXTURE_UNITS; i++) {
-            enableBits.add(GLStateManager.getTextures().getTexture1DStates(i));
-            enableBits.add(GLStateManager.getTextures().getTextureUnitStates(i));
-            enableBits.add(GLStateManager.getTextures().getTexture3DStates(i));
-            enableBits.add(GLStateManager.getTextures().getTextureCubeMapStates(i));
+            enableBits.add(GLSMTextures.getTextures().getTexture1DStates(i));
+            enableBits.add(GLSMTextures.getTextures().getTextureUnitStates(i));
+            enableBits.add(GLSMTextures.getTextures().getTexture3DStates(i));
+            enableBits.add(GLSMTextures.getTextures().getTextureCubeMapStates(i));
         }
 
         // Flags GL_TEXTURE_GEN_x where x is S, T, R, or Q
@@ -189,30 +189,30 @@ public class Feature {
 
         attribToFeatures.put(GL11.GL_ENABLE_BIT, enableBits);
         attribToFeatures.put(GL11.GL_EVAL_BIT, ImmutableSet.of(
-              GLStateManager.getAutoNormalState()
-            , GLStateManager.getMap1Color4State()
-            , GLStateManager.getMap1IndexState()
-            , GLStateManager.getMap1NormalState()
-            , GLStateManager.getMap1TextureCoord1State()
-            , GLStateManager.getMap1TextureCoord2State()
-            , GLStateManager.getMap1TextureCoord3State()
-            , GLStateManager.getMap1TextureCoord4State()
-            , GLStateManager.getMap1Vertex3State()
-            , GLStateManager.getMap1Vertex4State()
-            , GLStateManager.getMap2Color4State()
-            , GLStateManager.getMap2IndexState()
-            , GLStateManager.getMap2NormalState()
-            , GLStateManager.getMap2TextureCoord1State()
-            , GLStateManager.getMap2TextureCoord2State()
-            , GLStateManager.getMap2TextureCoord3State()
-            , GLStateManager.getMap2TextureCoord4State()
-            , GLStateManager.getMap2Vertex3State()
-            , GLStateManager.getMap2Vertex4State()
+              GLSMRasterizer.getAutoNormalState()
+            , GLSMRasterizer.getMap1Color4State()
+            , GLSMRasterizer.getMap1IndexState()
+            , GLSMRasterizer.getMap1NormalState()
+            , GLSMRasterizer.getMap1TextureCoord1State()
+            , GLSMRasterizer.getMap1TextureCoord2State()
+            , GLSMRasterizer.getMap1TextureCoord3State()
+            , GLSMRasterizer.getMap1TextureCoord4State()
+            , GLSMRasterizer.getMap1Vertex3State()
+            , GLSMRasterizer.getMap1Vertex4State()
+            , GLSMRasterizer.getMap2Color4State()
+            , GLSMRasterizer.getMap2IndexState()
+            , GLSMRasterizer.getMap2NormalState()
+            , GLSMRasterizer.getMap2TextureCoord1State()
+            , GLSMRasterizer.getMap2TextureCoord2State()
+            , GLSMRasterizer.getMap2TextureCoord3State()
+            , GLSMRasterizer.getMap2TextureCoord4State()
+            , GLSMRasterizer.getMap2Vertex3State()
+            , GLSMRasterizer.getMap2Vertex4State()
         ));
         attribToFeatures.put(GL11.GL_FOG_BIT, ImmutableSet.of(
-              GLStateManager.getFogMode()
-            , GLStateManager.getColorSumState()
-            , GLStateManager.getFogState()
+              GLSMFog.getFogMode()
+            , GLSMCurrentAttribs.getColorSumState()
+            , GLSMFog.getFogState()
                                        // ^^ Fog density
                                        // ^^ Linear fog start
                                        // ^^ Linear fog end
@@ -220,54 +220,54 @@ public class Feature {
                                        // ^^ GL_FOG_MODE value
         ));
         attribToFeatures.put(GL11.GL_HINT_BIT, ImmutableSet.of(
-            GLStateManager.getHintState()
+            GLSMRasterizer.getHintState()
         ));
         attribToFeatures.put(GL11.GL_LIGHTING_BIT, ImmutableSet.of(
-            GLStateManager.getColorMaterial()
-            , GLStateManager.getColorMaterialFace()
-            , GLStateManager.getColorMaterialParameter()
-            , GLStateManager.getLightModel()
-            , GLStateManager.getLightingState()
+            GLSMLighting.getColorMaterial()
+            , GLSMLighting.getColorMaterialFace()
+            , GLSMLighting.getColorMaterialParameter()
+            , GLSMLighting.getLightModel()
+            , GLSMLighting.getLightingState()
             // Enable bit for each light
-            , GLStateManager.getLightStates()[0] // GL_LIGHT0
-            , GLStateManager.getLightStates()[1] // GL_LIGHT1
-            , GLStateManager.getLightStates()[2] // GL_LIGHT2
-            , GLStateManager.getLightStates()[3] // GL_LIGHT3
-            , GLStateManager.getLightStates()[4] // GL_LIGHT4
-            , GLStateManager.getLightStates()[5] // GL_LIGHT5
-            , GLStateManager.getLightStates()[6] // GL_LIGHT6
-            , GLStateManager.getLightStates()[7] // GL_LIGHT7
+            , GLSMLighting.getLightStates()[0] // GL_LIGHT0
+            , GLSMLighting.getLightStates()[1] // GL_LIGHT1
+            , GLSMLighting.getLightStates()[2] // GL_LIGHT2
+            , GLSMLighting.getLightStates()[3] // GL_LIGHT3
+            , GLSMLighting.getLightStates()[4] // GL_LIGHT4
+            , GLSMLighting.getLightStates()[5] // GL_LIGHT5
+            , GLSMLighting.getLightStates()[6] // GL_LIGHT6
+            , GLSMLighting.getLightStates()[7] // GL_LIGHT7
             // Ambient, diffuse, and specular intensity for each light
             // Direction, position, exponent, and cutoff angle for each light
             // Constant, linear, and quadratic attenuation factors for each light
-            , GLStateManager.getLightDataStates()[0]
-            , GLStateManager.getLightDataStates()[1]
-            , GLStateManager.getLightDataStates()[2]
-            , GLStateManager.getLightDataStates()[3]
-            , GLStateManager.getLightDataStates()[4]
-            , GLStateManager.getLightDataStates()[5]
-            , GLStateManager.getLightDataStates()[6]
-            , GLStateManager.getLightDataStates()[7]
+            , GLSMLighting.getLightDataStates()[0]
+            , GLSMLighting.getLightDataStates()[1]
+            , GLSMLighting.getLightDataStates()[2]
+            , GLSMLighting.getLightDataStates()[3]
+            , GLSMLighting.getLightDataStates()[4]
+            , GLSMLighting.getLightDataStates()[5]
+            , GLSMLighting.getLightDataStates()[6]
+            , GLSMLighting.getLightDataStates()[7]
             // Ambient, diffuse, specular, and emissive color for each material
             // Ambient, diffuse, and specular color indices for each material
             // Specular exponent for each material
-            , GLStateManager.getFrontMaterial()
-            , GLStateManager.getBackMaterial()
-            , GLStateManager.getShadeModelState()
+            , GLSMLighting.getFrontMaterial()
+            , GLSMLighting.getBackMaterial()
+            , GLSMRasterizer.getShadeModelState()
         ));
         attribToFeatures.put(GL11.GL_LINE_BIT, ImmutableSet.of(
-              GLStateManager.getLineSmoothState()
-            , GLStateManager.getLineStippleState()
-            , GLStateManager.getLineState()
+              GLSMRasterizer.getLineSmoothState()
+            , GLSMRasterizer.getLineStippleState()
+            , GLSMRasterizer.getLineState()
         ));
         attribToFeatures.put(GL11.GL_LIST_BIT, ImmutableSet.of(
             // GL_LIST_BASE setting
         ));
         attribToFeatures.put(GL13.GL_MULTISAMPLE_BIT, ImmutableSet.of(
-              GLStateManager.getMultisampleState()
-            , GLStateManager.getSampleAlphaToCoverageState()
-            , GLStateManager.getSampleAlphaToOneState()
-            , GLStateManager.getSampleCoverageState()
+              GLSMRasterizer.getMultisampleState()
+            , GLSMRasterizer.getSampleAlphaToCoverageState()
+            , GLSMRasterizer.getSampleAlphaToOneState()
+            , GLSMRasterizer.getSampleCoverageState()
             // GL_SAMPLE_COVERAGE_VALUE value
             // GL_SAMPLE_COVERAGE_INVERT value
         ));
@@ -283,32 +283,32 @@ public class Feature {
             // GL_READ_BUFFER setting
         ));
         attribToFeatures.put(GL11.GL_POINT_BIT, ImmutableSet.of(
-              GLStateManager.getPointSmoothState()
-            , GLStateManager.getPointSpriteState()
-            , GLStateManager.getPointState()
+              GLSMRasterizer.getPointSmoothState()
+            , GLSMRasterizer.getPointSpriteState()
+            , GLSMRasterizer.getPointState()
         ));
         attribToFeatures.put(GL11.GL_POLYGON_BIT, ImmutableSet.of(
-              GLStateManager.getCullState()
-            , GLStateManager.getPolygonSmoothState()
-            , GLStateManager.getPolygonStippleState()
-            , GLStateManager.getPolygonOffsetFillState()
-            , GLStateManager.getPolygonOffsetLineState()
-            , GLStateManager.getPolygonOffsetPointState()
-            , GLStateManager.getPolygonState()
+              GLSMRasterizer.getCullState()
+            , GLSMRasterizer.getPolygonSmoothState()
+            , GLSMRasterizer.getPolygonStippleState()
+            , GLSMRasterizer.getPolygonOffsetFillState()
+            , GLSMRasterizer.getPolygonOffsetLineState()
+            , GLSMRasterizer.getPolygonOffsetPointState()
+            , GLSMRasterizer.getPolygonState()
         ));
         attribToFeatures.put(GL11.GL_POLYGON_STIPPLE_BIT, ImmutableSet.of(
             // Polygon stipple pattern
         ));
         attribToFeatures.put(GL11.GL_SCISSOR_BIT, ImmutableSet.of(
-              GLStateManager.getScissorTest()
-            , GLStateManager.getScissorState()
+              GLSMRasterizer.getScissorTest()
+            , GLSMRasterizer.getScissorState()
         ));
         attribToFeatures.put(GL11.GL_STENCIL_BUFFER_BIT, ImmutableSet.of(
-              GLStateManager.getStencilTest()
-            , GLStateManager.getStencilState()
+              GLSMDepthStencilAlpha.getStencilTest()
+            , GLSMDepthStencilAlpha.getStencilState()
         ));
         final Set<IStateStack<?>> textureAttribs = new HashSet<>(ImmutableSet.of(
-            GLStateManager.getActiveTextureUnitStack()
+            GLSMTextures.getActiveTextureUnitStack()
                 // GL_TEXTURE_ENV_MODE + GL_TEXTURE_ENV_COLOR — now per-unit in TexEnvState (added below)
                 // Enable bits for the four texture coordinates
 
@@ -325,12 +325,12 @@ public class Feature {
 
         // Current Texture Bindings - GL_TEXTURE_BINDING_2D + per-unit TexEnvState
         for(int i = 0 ; i < GLStateManager.MAX_TEXTURE_UNITS; i++) {
-            textureAttribs.add(GLStateManager.getTextures().getTextureUnitBindings(i));
-            textureAttribs.add(GLStateManager.getTextures().getTexEnvState(i));
-            textureAttribs.add(GLStateManager.getTextures().getTexture1DStates(i));
-            textureAttribs.add(GLStateManager.getTextures().getTextureUnitStates(i));
-            textureAttribs.add(GLStateManager.getTextures().getTexture3DStates(i));
-            textureAttribs.add(GLStateManager.getTextures().getTextureCubeMapStates(i));
+            textureAttribs.add(GLSMTextures.getTextures().getTextureUnitBindings(i));
+            textureAttribs.add(GLSMTextures.getTextures().getTexEnvState(i));
+            textureAttribs.add(GLSMTextures.getTextures().getTexture1DStates(i));
+            textureAttribs.add(GLSMTextures.getTextures().getTextureUnitStates(i));
+            textureAttribs.add(GLSMTextures.getTextures().getTexture3DStates(i));
+            textureAttribs.add(GLSMTextures.getTextures().getTextureCubeMapStates(i));
         }
 
         // Enable bits GL_TEXTURE_GEN_x where x is S, T, R, or Q
@@ -341,17 +341,17 @@ public class Feature {
         final Set<IStateStack<?>> transformAttribs = new HashSet<>(ImmutableSet.of(
             // Coefficients of the six clipping planes
 
-              GLStateManager.getMatrixMode()
-            , GLStateManager.getNormalizeState()
-            , GLStateManager.getRescaleNormalState()
+              GLSMMatrices.getMatrixMode()
+            , GLSMLighting.getNormalizeState()
+            , GLSMLighting.getRescaleNormalState()
         ));
-        for(int i = 0; i < GLStateManager.getClipPlaneStates().length; i++) {
-            transformAttribs.add(GLStateManager.getClipPlaneStates()[i]);
+        for(int i = 0; i < GLSMRasterizer.getClipPlaneStates().length; i++) {
+            transformAttribs.add(GLSMRasterizer.getClipPlaneStates()[i]);
         }
         attribToFeatures.put(GL11.GL_TRANSFORM_BIT, transformAttribs);
         attribToFeatures.put(GL11.GL_VIEWPORT_BIT, ImmutableSet.of(
 
-            GLStateManager.getViewportState()
+            GLSMRasterizer.getViewportState()
         ));
 
         for (Int2ObjectMap.Entry<Set<IStateStack<?>>> entry : attribToFeatures.int2ObjectEntrySet()) {

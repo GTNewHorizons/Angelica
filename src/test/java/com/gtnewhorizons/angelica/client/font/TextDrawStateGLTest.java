@@ -1,6 +1,11 @@
 package com.gtnewhorizons.angelica.client.font;
 
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.StateSet;
 import org.junit.jupiter.api.AfterEach;
@@ -32,29 +37,29 @@ class TextDrawStateGLTest {
     }
 
     private static void setDefaults() {
-        GLStateManager.disableDepthTest();
-        GLStateManager.glDepthFunc(GL11.GL_LESS);
-        GLStateManager.glDepthMask(true);
-        GLStateManager.glColorMask(true, true, true, true);
-        GLStateManager.disableCull();
-        GLStateManager.glCullFace(GL11.GL_BACK);
-        GLStateManager.glFrontFace(GL11.GL_CCW);
-        GLStateManager.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
-        GLStateManager.glPolygonOffset(0.0f, 0.0f);
-        GLStateManager.glAlphaFunc(GL11.GL_ALWAYS, 0.0f);
+        GLSMDepthStencilAlpha.disableDepthTest();
+        GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_LESS);
+        GLSMDepthStencilAlpha.glDepthMask(true);
+        GLSMBlend.glColorMask(true, true, true, true);
+        GLSMRasterizer.disableCull();
+        GLSMRasterizer.glCullFace(GL11.GL_BACK);
+        GLSMRasterizer.glFrontFace(GL11.GL_CCW);
+        GLSMEnable.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
+        GLSMRasterizer.glPolygonOffset(0.0f, 0.0f);
+        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_ALWAYS, 0.0f);
     }
 
     private static void setNonDefaults() {
-        GLStateManager.enableDepthTest();
-        GLStateManager.glDepthFunc(GL11.GL_GEQUAL);
-        GLStateManager.glDepthMask(false);
-        GLStateManager.glColorMask(false, false, false, false);
-        GLStateManager.enableCull();
-        GLStateManager.glCullFace(GL11.GL_FRONT);
-        GLStateManager.glFrontFace(GL11.GL_CW);
-        GLStateManager.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
-        GLStateManager.glPolygonOffset(-10.0f, -10.0f);
-        GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.5f);
+        GLSMDepthStencilAlpha.enableDepthTest();
+        GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_GEQUAL);
+        GLSMDepthStencilAlpha.glDepthMask(false);
+        GLSMBlend.glColorMask(false, false, false, false);
+        GLSMRasterizer.enableCull();
+        GLSMRasterizer.glCullFace(GL11.GL_FRONT);
+        GLSMRasterizer.glFrontFace(GL11.GL_CW);
+        GLSMEnable.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
+        GLSMRasterizer.glPolygonOffset(-10.0f, -10.0f);
+        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, 0.5f);
     }
 
     private static TextDrawState capture() {
@@ -134,9 +139,9 @@ class TextDrawStateGLTest {
         setDefaults();
         final TextDrawState before = capture();
 
-        final int depth = GLStateManager.pushState(set);
+        final int depth = GLSMAttribStack.pushState(set);
         moved.apply();
-        GLStateManager.popStateTo(depth);
+        GLSMAttribStack.popStateTo(depth);
 
         final ByteBuffer driverColorMask = BufferUtils.createByteBuffer(16);
         GL11.glGetBoolean(GL11.GL_COLOR_WRITEMASK, driverColorMask);

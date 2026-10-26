@@ -22,64 +22,64 @@ public class GLSM_StateQueryRoundTrip_UnitTest {
     @Test
     void activeTextureRoundTrips() {
         try {
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE3);
-            assertEquals(GL13.GL_TEXTURE3, GLStateManager.glGetInteger(GL13.GL_ACTIVE_TEXTURE), "must return the GL_TEXTURE# enum, not the unit index");
-            assertEquals(GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE), GLStateManager.glGetInteger(GL13.GL_ACTIVE_TEXTURE));
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE3);
+            assertEquals(GL13.GL_TEXTURE3, GLSMQueries.glGetInteger(GL13.GL_ACTIVE_TEXTURE), "must return the GL_TEXTURE# enum, not the unit index");
+            assertEquals(GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE), GLSMQueries.glGetInteger(GL13.GL_ACTIVE_TEXTURE));
         } finally {
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
         }
     }
 
     @Test
     void invalidTextureUnitIsIgnored() {
         try {
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE2);
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE2);
 
-            GLStateManager.glActiveTexture(0);
-            assertEquals(GL13.GL_TEXTURE2, GLStateManager.glGetInteger(GL13.GL_ACTIVE_TEXTURE));
+            GLSMTextures.glActiveTexture(0);
+            assertEquals(GL13.GL_TEXTURE2, GLSMQueries.glGetInteger(GL13.GL_ACTIVE_TEXTURE));
             assertEquals(GL13.GL_TEXTURE2, GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE));
 
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + GLStateManager.MAX_TEXTURE_UNITS);
-            assertEquals(GL13.GL_TEXTURE2, GLStateManager.glGetInteger(GL13.GL_ACTIVE_TEXTURE));
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0 + GLStateManager.MAX_TEXTURE_UNITS);
+            assertEquals(GL13.GL_TEXTURE2, GLSMQueries.glGetInteger(GL13.GL_ACTIVE_TEXTURE));
             assertEquals(GL13.GL_TEXTURE2, GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE));
         } finally {
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
         }
     }
 
     @Test
     void depthWriteMaskRoundTripsAsInteger() {
         try {
-            GLStateManager.glDepthMask(false);
-            assertEquals(GL11.GL_FALSE, GLStateManager.glGetInteger(GL11.GL_DEPTH_WRITEMASK));
+            GLSMDepthStencilAlpha.glDepthMask(false);
+            assertEquals(GL11.GL_FALSE, GLSMQueries.glGetInteger(GL11.GL_DEPTH_WRITEMASK));
             assertEquals(GL11.GL_FALSE, GL11.glGetInteger(GL11.GL_DEPTH_WRITEMASK));
-            GLStateManager.glDepthMask(true);
-            assertEquals(GL11.GL_TRUE, GLStateManager.glGetInteger(GL11.GL_DEPTH_WRITEMASK));
+            GLSMDepthStencilAlpha.glDepthMask(true);
+            assertEquals(GL11.GL_TRUE, GLSMQueries.glGetInteger(GL11.GL_DEPTH_WRITEMASK));
             assertEquals(GL11.GL_TRUE, GL11.glGetInteger(GL11.GL_DEPTH_WRITEMASK));
         } finally {
-            GLStateManager.glDepthMask(true);
+            GLSMDepthStencilAlpha.glDepthMask(true);
         }
     }
 
     @Test
     void cullFaceModeRoundTrips() {
         try {
-            GLStateManager.glCullFace(GL11.GL_FRONT);
-            assertEquals(GL11.GL_FRONT, GLStateManager.glGetInteger(GL11.GL_CULL_FACE_MODE));
-            assertEquals(GL11.glGetInteger(GL11.GL_CULL_FACE_MODE), GLStateManager.glGetInteger(GL11.GL_CULL_FACE_MODE));
+            GLSMRasterizer.glCullFace(GL11.GL_FRONT);
+            assertEquals(GL11.GL_FRONT, GLSMQueries.glGetInteger(GL11.GL_CULL_FACE_MODE));
+            assertEquals(GL11.glGetInteger(GL11.GL_CULL_FACE_MODE), GLSMQueries.glGetInteger(GL11.GL_CULL_FACE_MODE));
         } finally {
-            GLStateManager.glCullFace(GL11.GL_BACK);
+            GLSMRasterizer.glCullFace(GL11.GL_BACK);
         }
     }
 
     @Test
     void polygonModeRoundTripsBothFaces() {
         try {
-            GLStateManager.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
-            assertEquals(GL11.GL_LINE, GLStateManager.glGetInteger(GL11.GL_POLYGON_MODE));
+            GLSMRasterizer.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
+            assertEquals(GL11.GL_LINE, GLSMQueries.glGetInteger(GL11.GL_POLYGON_MODE));
 
             final IntBuffer params = BufferUtils.createIntBuffer(2);
-            GLStateManager.glGetInteger(GL11.GL_POLYGON_MODE, params);
+            GLSMQueries.glGetInteger(GL11.GL_POLYGON_MODE, params);
             assertEquals(GL11.GL_LINE, params.get(0), "front mode");
             assertEquals(GL11.GL_LINE, params.get(1), "back mode");
 
@@ -87,41 +87,41 @@ public class GLSM_StateQueryRoundTrip_UnitTest {
             assertEquals(GL11.GL_LINE, driver.get(0), "driver front mode");
             assertEquals(GL11.GL_LINE, driver.get(1), "driver back mode");
         } finally {
-            GLStateManager.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
+            GLSMRasterizer.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
         }
     }
 
     @Test
     void pixelUnpackStateRoundTrips() {
         try {
-            GLStateManager.glPixelStorei(GL11.GL_UNPACK_ROW_LENGTH, 64);
-            GLStateManager.glPixelStorei(GL11.GL_UNPACK_SKIP_PIXELS, 2);
-            GLStateManager.glPixelStorei(GL11.GL_UNPACK_SKIP_ROWS, 3);
-            GLStateManager.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1);
+            GLSMTextures.glPixelStorei(GL11.GL_UNPACK_ROW_LENGTH, 64);
+            GLSMTextures.glPixelStorei(GL11.GL_UNPACK_SKIP_PIXELS, 2);
+            GLSMTextures.glPixelStorei(GL11.GL_UNPACK_SKIP_ROWS, 3);
+            GLSMTextures.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1);
 
-            assertEquals(64, GLStateManager.glGetInteger(GL11.GL_UNPACK_ROW_LENGTH));
-            assertEquals(2, GLStateManager.glGetInteger(GL11.GL_UNPACK_SKIP_PIXELS));
-            assertEquals(3, GLStateManager.glGetInteger(GL11.GL_UNPACK_SKIP_ROWS));
-            assertEquals(1, GLStateManager.glGetInteger(GL11.GL_UNPACK_ALIGNMENT));
+            assertEquals(64, GLSMQueries.glGetInteger(GL11.GL_UNPACK_ROW_LENGTH));
+            assertEquals(2, GLSMQueries.glGetInteger(GL11.GL_UNPACK_SKIP_PIXELS));
+            assertEquals(3, GLSMQueries.glGetInteger(GL11.GL_UNPACK_SKIP_ROWS));
+            assertEquals(1, GLSMQueries.glGetInteger(GL11.GL_UNPACK_ALIGNMENT));
 
             assertEquals(64, GL11.glGetInteger(GL11.GL_UNPACK_ROW_LENGTH));
             assertEquals(2, GL11.glGetInteger(GL11.GL_UNPACK_SKIP_PIXELS));
             assertEquals(3, GL11.glGetInteger(GL11.GL_UNPACK_SKIP_ROWS));
             assertEquals(1, GL11.glGetInteger(GL11.GL_UNPACK_ALIGNMENT));
         } finally {
-            GLStateManager.glPixelStorei(GL11.GL_UNPACK_ROW_LENGTH, 0);
-            GLStateManager.glPixelStorei(GL11.GL_UNPACK_SKIP_PIXELS, 0);
-            GLStateManager.glPixelStorei(GL11.GL_UNPACK_SKIP_ROWS, 0);
-            GLStateManager.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 4);
+            GLSMTextures.glPixelStorei(GL11.GL_UNPACK_ROW_LENGTH, 0);
+            GLSMTextures.glPixelStorei(GL11.GL_UNPACK_SKIP_PIXELS, 0);
+            GLSMTextures.glPixelStorei(GL11.GL_UNPACK_SKIP_ROWS, 0);
+            GLSMTextures.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 4);
         }
     }
 
     @Test
     void viewportFillsAllFourComponentsViaIntArray() {
-        GLStateManager.glViewport(3, 5, 17, 23);
+        GLSMRasterizer.glViewport(3, 5, 17, 23);
 
         final int[] params = new int[4];
-        GLStateManager.glGetInteger(GL11.GL_VIEWPORT, params);
+        GLSMQueries.glGetInteger(GL11.GL_VIEWPORT, params);
         assertEquals(3, params[0]);
         assertEquals(5, params[1]);
         assertEquals(17, params[2]);
@@ -136,13 +136,13 @@ public class GLSM_StateQueryRoundTrip_UnitTest {
 
     @Test
     void saveDisturbRestoreIsIdentity() {
-        final int activeTexture = GLStateManager.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
-        final int depthWriteMask = GLStateManager.glGetInteger(GL11.GL_DEPTH_WRITEMASK);
-        final int cullMode = GLStateManager.glGetInteger(GL11.GL_CULL_FACE_MODE);
-        final int polygonMode = GLStateManager.glGetInteger(GL11.GL_POLYGON_MODE);
-        final int unpackAlignment = GLStateManager.glGetInteger(GL11.GL_UNPACK_ALIGNMENT);
+        final int activeTexture = GLSMQueries.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
+        final int depthWriteMask = GLSMQueries.glGetInteger(GL11.GL_DEPTH_WRITEMASK);
+        final int cullMode = GLSMQueries.glGetInteger(GL11.GL_CULL_FACE_MODE);
+        final int polygonMode = GLSMQueries.glGetInteger(GL11.GL_POLYGON_MODE);
+        final int unpackAlignment = GLSMQueries.glGetInteger(GL11.GL_UNPACK_ALIGNMENT);
         final int[] viewport = new int[4];
-        GLStateManager.glGetInteger(GL11.GL_VIEWPORT, viewport);
+        GLSMQueries.glGetInteger(GL11.GL_VIEWPORT, viewport);
         final int driverActiveTexture = GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
         final int driverDepthWriteMask = GL11.glGetInteger(GL11.GL_DEPTH_WRITEMASK);
         final int driverCullMode = GL11.glGetInteger(GL11.GL_CULL_FACE_MODE);
@@ -150,27 +150,27 @@ public class GLSM_StateQueryRoundTrip_UnitTest {
         final int driverUnpackAlignment = GL11.glGetInteger(GL11.GL_UNPACK_ALIGNMENT);
         final IntBuffer driverViewport = driverInts(GL11.GL_VIEWPORT);
 
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + 4);
-        GLStateManager.glDepthMask(false);
-        GLStateManager.glCullFace(GL11.GL_FRONT_AND_BACK);
-        GLStateManager.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_POINT);
-        GLStateManager.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 8);
-        GLStateManager.glViewport(1, 1, 2, 2);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0 + 4);
+        GLSMDepthStencilAlpha.glDepthMask(false);
+        GLSMRasterizer.glCullFace(GL11.GL_FRONT_AND_BACK);
+        GLSMRasterizer.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_POINT);
+        GLSMTextures.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 8);
+        GLSMRasterizer.glViewport(1, 1, 2, 2);
 
-        GLStateManager.glActiveTexture(activeTexture);
-        GLStateManager.glDepthMask(depthWriteMask == GL11.GL_TRUE);
-        GLStateManager.glCullFace(cullMode);
-        GLStateManager.glPolygonMode(GL11.GL_FRONT_AND_BACK, polygonMode);
-        GLStateManager.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, unpackAlignment);
-        GLStateManager.glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
+        GLSMTextures.glActiveTexture(activeTexture);
+        GLSMDepthStencilAlpha.glDepthMask(depthWriteMask == GL11.GL_TRUE);
+        GLSMRasterizer.glCullFace(cullMode);
+        GLSMRasterizer.glPolygonMode(GL11.GL_FRONT_AND_BACK, polygonMode);
+        GLSMTextures.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, unpackAlignment);
+        GLSMRasterizer.glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
 
-        assertEquals(activeTexture, GLStateManager.glGetInteger(GL13.GL_ACTIVE_TEXTURE));
-        assertEquals(depthWriteMask, GLStateManager.glGetInteger(GL11.GL_DEPTH_WRITEMASK));
-        assertEquals(cullMode, GLStateManager.glGetInteger(GL11.GL_CULL_FACE_MODE));
-        assertEquals(polygonMode, GLStateManager.glGetInteger(GL11.GL_POLYGON_MODE));
-        assertEquals(unpackAlignment, GLStateManager.glGetInteger(GL11.GL_UNPACK_ALIGNMENT));
+        assertEquals(activeTexture, GLSMQueries.glGetInteger(GL13.GL_ACTIVE_TEXTURE));
+        assertEquals(depthWriteMask, GLSMQueries.glGetInteger(GL11.GL_DEPTH_WRITEMASK));
+        assertEquals(cullMode, GLSMQueries.glGetInteger(GL11.GL_CULL_FACE_MODE));
+        assertEquals(polygonMode, GLSMQueries.glGetInteger(GL11.GL_POLYGON_MODE));
+        assertEquals(unpackAlignment, GLSMQueries.glGetInteger(GL11.GL_UNPACK_ALIGNMENT));
         final int[] restored = new int[4];
-        GLStateManager.glGetInteger(GL11.GL_VIEWPORT, restored);
+        GLSMQueries.glGetInteger(GL11.GL_VIEWPORT, restored);
         assertEquals(viewport[0], restored[0]);
         assertEquals(viewport[1], restored[1]);
         assertEquals(viewport[2], restored[2]);
@@ -189,16 +189,16 @@ public class GLSM_StateQueryRoundTrip_UnitTest {
 
     @Test
     void uncachedTexParameterFallsThroughToTheDriver() {
-        final int tex = GLStateManager.glGenTextures();
+        final int tex = GLSMTextures.glGenTextures();
         try {
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, tex);
 
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_WRAP_R, GL12.GL_CLAMP_TO_EDGE);
-            assertEquals(GL12.GL_CLAMP_TO_EDGE, GLStateManager.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_WRAP_R), "uncached pname must fall through to the driver");
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_WRAP_R, GL12.GL_CLAMP_TO_EDGE);
+            assertEquals(GL12.GL_CLAMP_TO_EDGE, GLSMTextures.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_WRAP_R), "uncached pname must fall through to the driver");
             assertEquals(GL11.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_WRAP_R),
-                GLStateManager.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_WRAP_R), "uncached pname must match the driver");
+                GLSMTextures.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_WRAP_R), "uncached pname must match the driver");
         } finally {
-            GLStateManager.glDeleteTextures(tex);
+            GLSMTextures.glDeleteTextures(tex);
         }
     }
 }

@@ -3,6 +3,7 @@ package net.coderbot.iris.gl.program;
 import lombok.Getter;
 import net.coderbot.iris.gl.GlResource;
 import net.coderbot.iris.gl.blending.DepthColorStorage;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import org.jetbrains.annotations.Nullable;
@@ -59,7 +60,7 @@ public final class Program extends GlResource {
 		final int previousManagedBind = managedBindProgram;
 		managedBindProgram = program;
 		try {
-			GLStateManager.glUseProgram(program);
+			GLSMPrograms.glUseProgram(program);
 		} finally {
 			managedBindProgram = previousManagedBind;
 		}
@@ -70,7 +71,7 @@ public final class Program extends GlResource {
 		try {
 			ProgramUniforms.clearActiveUniforms();
 			ProgramSamplers.clearActiveSamplers();
-			GLStateManager.glUseProgram(0);
+			GLSMPrograms.glUseProgram(0);
 		} finally {
 			GLStateManager.resumeExitCapture(suspended);
 		}
@@ -82,7 +83,7 @@ public final class Program extends GlResource {
 		if (sources != null) {
 			RetainedPrograms.retain(sources, getGlId());
 		} else {
-			GLStateManager.glDeleteProgram(getGlId());
+			GLSMPrograms.glDeleteProgram(getGlId());
 		}
 	}
 

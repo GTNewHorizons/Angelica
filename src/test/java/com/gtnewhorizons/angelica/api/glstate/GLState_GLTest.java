@@ -1,7 +1,10 @@
 package com.gtnewhorizons.angelica.api.glstate;
 
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMFog;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
 import org.junit.jupiter.api.AfterEach;
@@ -24,34 +27,34 @@ class GLState_GLTest {
 
     @BeforeEach
     void saveState() {
-        GLStateManager.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glPushMatrix();
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glPushMatrix();
+        GLSMAttribStack.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glPushMatrix();
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glPushMatrix();
     }
 
     @AfterEach
     void restoreState() {
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glPopMatrix();
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glPopMatrix();
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glPopAttrib();
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glPopMatrix();
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glPopMatrix();
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMAttribStack.glPopAttrib();
     }
 
     @ParameterizedTest
     @ValueSource(ints = {GL11.GL_LINEAR, GL11.GL_EXP, GL11.GL_EXP2})
     void fogMirrorsGlsmState(int mode) {
-        GLStateManager.glEnable(GL11.GL_FOG);
-        GLStateManager.glFogi(GL11.GL_FOG_MODE, mode);
-        GLStateManager.glFogf(GL11.GL_FOG_START, 12.5f);
-        GLStateManager.glFogf(GL11.GL_FOG_END, 99.25f);
-        GLStateManager.glFogf(GL11.GL_FOG_DENSITY, 0.375f);
+        GLSMEnable.glEnable(GL11.GL_FOG);
+        GLSMFog.glFogi(GL11.GL_FOG_MODE, mode);
+        GLSMFog.glFogf(GL11.GL_FOG_START, 12.5f);
+        GLSMFog.glFogf(GL11.GL_FOG_END, 99.25f);
+        GLSMFog.glFogf(GL11.GL_FOG_DENSITY, 0.375f);
         final FloatBuffer color = BufferUtils.createFloatBuffer(4);
         color.put(new float[] {0.25f, 0.5f, 0.75f, 0.125f}).flip();
-        GLStateManager.glFog(GL11.GL_FOG_COLOR, color);
+        GLSMFog.glFog(GL11.GL_FOG_COLOR, color);
 
         assertTrue(GLState.isFogEnabled());
         assertEquals(mode, GLState.getFogMode());
@@ -71,7 +74,7 @@ class GLState_GLTest {
         assertEquals(0.75f, out.get(3));
         assertEquals(0.125f, out.get(4));
 
-        GLStateManager.glDisable(GL11.GL_FOG);
+        GLSMEnable.glDisable(GL11.GL_FOG);
         assertFalse(GLState.isFogEnabled());
     }
 
@@ -81,7 +84,7 @@ class GLState_GLTest {
         final Matrix4f projection = new Matrix4f().perspective(1.2f, 1.5f, 0.1f, 200f);
         loadMatrix(GL11.GL_MODELVIEW, modelView);
         loadMatrix(GL11.GL_PROJECTION, projection);
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
 
         final Matrix4f dest = new Matrix4f();
         assertSame(GLState.getModelViewMatrix(dest), dest);
@@ -97,7 +100,7 @@ class GLState_GLTest {
     private static void loadMatrix(int mode, Matrix4f m) {
         final FloatBuffer buf = BufferUtils.createFloatBuffer(16);
         m.get(buf);
-        GLStateManager.glMatrixMode(mode);
-        GLStateManager.glLoadMatrix(buf);
+        GLSMMatrices.glMatrixMode(mode);
+        GLSMMatrices.glLoadMatrix(buf);
     }
 }

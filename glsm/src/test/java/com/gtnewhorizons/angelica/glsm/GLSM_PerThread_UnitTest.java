@@ -93,16 +93,16 @@ public class GLSM_PerThread_UnitTest {
             GLStateManager.enterWorkerContext();
             try {
                 final int count = tid + 1;
-                GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-                GLStateManager.glLoadIdentity();
-                final int gen0 = GLStateManager.getMvGeneration();
+                GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+                GLSMMatrices.glLoadIdentity();
+                final int gen0 = GLSMMatrices.getMvGeneration();
 
-                for (int k = 0; k < count; k++) GLStateManager.glTranslatef(1.0f, 0.0f, 0.0f);
+                for (int k = 0; k < count; k++) GLSMMatrices.glTranslatef(1.0f, 0.0f, 0.0f);
 
                 barrier.await();
 
-                assertEquals(gen0 + count, GLStateManager.getMvGeneration(), "mvGeneration must advance only by this thread's own translate count");
-                final Matrix4f m = new Matrix4f(GLStateManager.getModelViewMatrix());
+                assertEquals(gen0 + count, GLSMMatrices.getMvGeneration(), "mvGeneration must advance only by this thread's own translate count");
+                final Matrix4f m = new Matrix4f(GLSMMatrices.getModelViewMatrix());
                 assertEquals((float) count, m.m30(), 1e-6f, "accumulated X translation must reflect only this thread's ops");
             } finally {
                 GLStateManager.exitWorkerContext();
@@ -116,14 +116,14 @@ public class GLSM_PerThread_UnitTest {
         runThreaded(n, (tid, barrier) -> {
             GLStateManager.enterWorkerContext();
             try {
-                GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-                GLStateManager.glLoadIdentity();
-                GLStateManager.glPushMatrix();
-                GLStateManager.glTranslatef(5.0f + tid, 0.0f, 0.0f);
-                assertEquals(5.0f + tid, new Matrix4f(GLStateManager.getModelViewMatrix()).m30(), 1e-6f, "translation must apply within the pushed scope");
+                GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+                GLSMMatrices.glLoadIdentity();
+                GLSMMatrices.glPushMatrix();
+                GLSMMatrices.glTranslatef(5.0f + tid, 0.0f, 0.0f);
+                assertEquals(5.0f + tid, new Matrix4f(GLSMMatrices.getModelViewMatrix()).m30(), 1e-6f, "translation must apply within the pushed scope");
                 barrier.await();
-                GLStateManager.glPopMatrix();
-                assertEquals(0.0f, new Matrix4f(GLStateManager.getModelViewMatrix()).m30(), 1e-6f, "pop must restore this thread's matrix independent of other threads");
+                GLSMMatrices.glPopMatrix();
+                assertEquals(0.0f, new Matrix4f(GLSMMatrices.getModelViewMatrix()).m30(), 1e-6f, "pop must restore this thread's matrix independent of other threads");
             } finally {
                 GLStateManager.exitWorkerContext();
             }
@@ -149,18 +149,18 @@ public class GLSM_PerThread_UnitTest {
         runThreaded(n, (tid, barrier) -> {
             final GLContextState c = GLStateManager.enterWorkerContext();
             try {
-                GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-                GLStateManager.glLoadIdentity();
+                GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+                GLSMMatrices.glLoadIdentity();
                 barrier.await();
                 for (int i = 0; i < iterations; i++) {
                     c.activeProgram = tid;
-                    GLStateManager.glPushMatrix();
-                    GLStateManager.glTranslatef(1.0f, 0.0f, 0.0f);
-                    GLStateManager.glPopMatrix();
-                    if (GLStateManager.getActiveProgram() != tid) mismatches.incrementAndGet();
+                    GLSMMatrices.glPushMatrix();
+                    GLSMMatrices.glTranslatef(1.0f, 0.0f, 0.0f);
+                    GLSMMatrices.glPopMatrix();
+                    if (GLSMPrograms.getActiveProgram() != tid) mismatches.incrementAndGet();
                     if (c.activeProgram != tid) mismatches.incrementAndGet();
                 }
-                assertEquals(0.0f, new Matrix4f(GLStateManager.getModelViewMatrix()).m30(), 1e-6f, "balanced push/pop must leave this thread's matrix at identity");
+                assertEquals(0.0f, new Matrix4f(GLSMMatrices.getModelViewMatrix()).m30(), 1e-6f, "balanced push/pop must leave this thread's matrix at identity");
             } finally {
                 GLStateManager.exitWorkerContext();
             }

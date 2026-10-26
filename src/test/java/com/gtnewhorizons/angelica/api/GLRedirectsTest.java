@@ -155,8 +155,8 @@ class GLRedirectsTest {
             return ref != null ? ref : mr.group(0);
         });
 
-        assertTrue(result.contains("GLStateManager.glPushMatrix()"), "glPushMatrix not redirected: " + result);
-        assertTrue(result.contains("GLStateManager.glTranslatef(1,2,3)"), "glTranslatef not redirected: " + result);
-        assertTrue(result.contains("GLStateManager.glEnable(GL11.GL_BLEND)"), "glEnable not redirected or GL_BLEND mangled: " + result);
+        assertTrue(result.contains("GLSMMatrices.glPushMatrix()"), "glPushMatrix not redirected: " + result);
+        assertTrue(result.contains("GLSMMatrices.glTranslatef(1,2,3)"), "glTranslatef not redirected: " + result);
+        assertTrue(result.contains("GLSMEnable.glEnable(GL11.GL_BLEND)"), "glEnable not redirected or GL_BLEND mangled: " + result);
     }
 }

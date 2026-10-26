@@ -1,6 +1,12 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
@@ -56,41 +62,41 @@ public final class LogicOpFixture {
     }
 
     public static void clearToDst() {
-        GLStateManager.glClearColor(DST_R / 255f, DST_G / 255f, DST_B / 255f, DST_A / 255f);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
+        GLSMBlend.glClearColor(DST_R / 255f, DST_G / 255f, DST_B / 255f, DST_A / 255f);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
     }
 
     public static void drawQuad(int op, int[] src) {
-        GLStateManager.glEnable(GL11.GL_COLOR_LOGIC_OP);
-        GLStateManager.glLogicOp(op);
+        GLSMEnable.glEnable(GL11.GL_COLOR_LOGIC_OP);
+        GLSMBlend.glLogicOp(op);
         quad(src);
-        GLStateManager.glDisable(GL11.GL_COLOR_LOGIC_OP);
-        GLStateManager.glLogicOp(GL11.GL_COPY);
+        GLSMEnable.glDisable(GL11.GL_COLOR_LOGIC_OP);
+        GLSMBlend.glLogicOp(GL11.GL_COPY);
     }
 
     public static void quad(int[] src) {
         if (vao == 0) {
-            vao = GLStateManager.glGenVertexArrays();
-            GLStateManager.glBindVertexArray(vao);
-            vbo = GLStateManager.glGenBuffers();
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+            vao = GLSMVertexInput.glGenVertexArrays();
+            GLSMVertexInput.glBindVertexArray(vao);
+            vbo = GLSMBuffers.glGenBuffers();
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
             final FloatBuffer positions = BufferUtils.createFloatBuffer(12);
             positions.put(new float[] { -1f, -1f, 0f, 1f, -1f, 0f, 1f, 1f, 0f, -1f, 1f, 0f }).flip();
-            GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, positions, GL15.GL_STATIC_DRAW);
+            GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, positions, GL15.GL_STATIC_DRAW);
             FfpFixture.attrib(0, 3, GL11.GL_FLOAT, false, 12, 0);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         }
-        GLStateManager.glBindVertexArray(vao);
+        GLSMVertexInput.glBindVertexArray(vao);
         VAOManager.setCurrentVertexFlags(0);
-        GLStateManager.glColor4f(src[0] / 255f, src[1] / 255f, src[2] / 255f, src[3] / 255f);
-        GLStateManager.glDrawArrays(GL11.GL_QUADS, 0, 4);
-        GLStateManager.glBindVertexArray(0);
-        GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        GLSMCurrentAttribs.glColor4f(src[0] / 255f, src[1] / 255f, src[2] / 255f, src[3] / 255f);
+        GLSMDraws.glDrawArrays(GL11.GL_QUADS, 0, 4);
+        GLSMVertexInput.glBindVertexArray(0);
+        GLSMCurrentAttribs.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
     }
 
     public static void deleteResources() {
-        if (vbo != 0) { GLStateManager.glDeleteBuffers(vbo); vbo = 0; }
-        if (vao != 0) { GLStateManager.glDeleteVertexArrays(vao); vao = 0; }
+        if (vbo != 0) { GLSMBuffers.glDeleteBuffers(vbo); vbo = 0; }
+        if (vao != 0) { GLSMVertexInput.glDeleteVertexArrays(vao); vao = 0; }
     }
 
     public static String label(int op, int[] src) {

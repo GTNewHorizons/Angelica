@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import org.lwjgl.opengl.GL11;
 
 
@@ -19,9 +19,9 @@ public final class WeatherInstancedAttribs {
     public static final int STRIDE = 48;
 
     public static void pointInstanceAttribs(long base) {
-        GLStateManager.glVertexAttribPointer(LOC_COLUMN_SPAN, 4, GL11.GL_FLOAT, false, STRIDE, base + OFFSET_COLUMN_SPAN);
-        GLStateManager.glVertexAttribPointer(LOC_JITTER, 4, GL11.GL_FLOAT, false, STRIDE, base + OFFSET_JITTER);
-        GLStateManager.glVertexAttribPointer(LOC_PARAMS, 4, GL11.GL_FLOAT, false, STRIDE, base + OFFSET_PARAMS);
+        GLSMVertexInput.glVertexAttribPointer(LOC_COLUMN_SPAN, 4, GL11.GL_FLOAT, false, STRIDE, base + OFFSET_COLUMN_SPAN);
+        GLSMVertexInput.glVertexAttribPointer(LOC_JITTER, 4, GL11.GL_FLOAT, false, STRIDE, base + OFFSET_JITTER);
+        GLSMVertexInput.glVertexAttribPointer(LOC_PARAMS, 4, GL11.GL_FLOAT, false, STRIDE, base + OFFSET_PARAMS);
     }
 
     static void enableInstanceArrays() {

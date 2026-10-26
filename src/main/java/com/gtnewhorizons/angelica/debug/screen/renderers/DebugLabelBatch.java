@@ -12,7 +12,13 @@ import com.gtnewhorizons.angelica.debug.render.DebugGeometry;
 import com.gtnewhorizons.angelica.debug.render.DebugProgram;
 import com.gtnewhorizons.angelica.debug.render.DebugPrograms;
 import com.gtnewhorizons.angelica.debug.render.NativeScratch;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMFog;
+import com.gtnewhorizons.angelica.glsm.GLSMLighting;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
@@ -245,26 +251,26 @@ final class DebugLabelBatch {
     private void drawFallback(int value, int argb, float eyeX, float eyeY, float eyeZ) {
         final String text = NUMBERS[value];
         labelMatrix.translation(eyeX, eyeY, eyeZ).scale(SCALE, -SCALE, SCALE);
-        GLStateManager.setModelViewMatrix(labelMatrix);
+        GLSMMatrices.setModelViewMatrix(labelMatrix);
         font.drawString(text, -Math.round(stringWidth(value, glyphAdvance) * 0.5F), 0, argb);
     }
 
     private void pinFallback() {
-        fallbackModelView.set(GLStateManager.getModelViewMatrix());
-        final Color4 color = GLStateManager.getColor();
+        fallbackModelView.set(GLSMMatrices.getModelViewMatrix());
+        final Color4 color = GLSMCurrentAttribs.getColor();
         fallbackColor[0] = color.getRed();
         fallbackColor[1] = color.getGreen();
         fallbackColor[2] = color.getBlue();
         fallbackColor[3] = color.getAlpha();
-        GLStateManager.glUseProgram(0);
-        GLStateManager.disableLighting();
-        GLStateManager.disableFog();
-        GLStateManager.disableAlphaTest();
-        GLStateManager.glActiveTexture(OpenGlHelper.lightmapTexUnit);
-        GLStateManager.disableTexture();
-        GLStateManager.glActiveTexture(OpenGlHelper.defaultTexUnit);
-        GLStateManager.enableTexture();
-        GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        GLSMPrograms.glUseProgram(0);
+        GLSMLighting.disableLighting();
+        GLSMFog.disableFog();
+        GLSMDepthStencilAlpha.disableAlphaTest();
+        GLSMTextures.glActiveTexture(OpenGlHelper.lightmapTexUnit);
+        GLSMTextures.disableTexture();
+        GLSMTextures.glActiveTexture(OpenGlHelper.defaultTexUnit);
+        GLSMTextures.enableTexture();
+        GLSMCurrentAttribs.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
     }
 
     void end() {
@@ -286,8 +292,8 @@ final class DebugLabelBatch {
             }
         } finally {
             if (batcher == null && font != null) {
-                GLStateManager.setModelViewMatrix(fallbackModelView);
-                GLStateManager.glColor4f(fallbackColor[0], fallbackColor[1], fallbackColor[2], fallbackColor[3]);
+                GLSMMatrices.setModelViewMatrix(fallbackModelView);
+                GLSMCurrentAttribs.glColor4f(fallbackColor[0], fallbackColor[1], fallbackColor[2], fallbackColor[3]);
             }
             for (int i = 0; i < bucketCount; i++) bucketBytes[i] = 0;
             batcher = null;

@@ -2,7 +2,8 @@ package com.gtnewhorizons.angelica.rendering.celeritas;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.client.rendering.AngelicaFogService;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMQueries;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.rendering.culling.GpuTerrainCuller;
@@ -391,7 +392,7 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
             return;
         }
 
-        final int prevProgram = GLStateManager.glGetInteger(GL20.GL_CURRENT_PROGRAM);
+        final int prevProgram = GLSMQueries.glGetInteger(GL20.GL_CURRENT_PROGRAM);
         voxelCompute.use();
         deferred.prepareShadowVoxelizationCompute(matrices.modelView());
         try {
@@ -399,7 +400,7 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
             shadowVoxelSink.flush();
         } finally {
             shadowVoxelSink.discard();
-            if (prevProgram != 0) GLStateManager.glUseProgram(prevProgram);
+            if (prevProgram != 0) GLSMPrograms.glUseProgram(prevProgram);
         }
     }
 

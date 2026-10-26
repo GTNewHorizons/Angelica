@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
 import com.gtnewhorizons.angelica.glsm.GlTestSupport;
 import org.embeddedt.embeddium.impl.gl.attribute.GlVertexAttribute;
 import org.embeddedt.embeddium.impl.gl.shader.ShaderConstants;
@@ -96,22 +96,22 @@ class TerrainShaderLinkTest {
         int program = 0;
         try {
             fsh = compile(GL20.GL_FRAGMENT_SHADER, FSH, constants);
-            program = GLStateManager.glCreateProgram();
-            GLStateManager.glAttachShader(program, vsh);
-            GLStateManager.glAttachShader(program, fsh);
+            program = GLSMPrograms.glCreateProgram();
+            GLSMPrograms.glAttachShader(program, vsh);
+            GLSMPrograms.glAttachShader(program, fsh);
             int i = 0;
             for (GlVertexAttribute attr : vertexType.getVertexFormat().getAttributes()) {
-                GLStateManager.glBindAttribLocation(program, i++, attr.getName());
+                GLSMPrograms.glBindAttribLocation(program, i++, attr.getName());
             }
-            GLStateManager.glBindFragDataLocation(program, ChunkShaderBindingPoints.FRAG_COLOR, "fragColor");
-            GLStateManager.glLinkProgram(program);
+            GLSMPrograms.glBindFragDataLocation(program, ChunkShaderBindingPoints.FRAG_COLOR, "fragColor");
+            GLSMPrograms.glLinkProgram(program);
             final int linked = program;
-            assertEquals(GL11.GL_TRUE, GLStateManager.glGetProgrami(program, GL20.GL_LINK_STATUS),
-                () -> "terrain program failed to link with " + constants.getDefineStrings() + ":\n" + GLStateManager.glGetProgramInfoLog(linked, 8192));
+            assertEquals(GL11.GL_TRUE, GLSMPrograms.glGetProgrami(program, GL20.GL_LINK_STATUS),
+                () -> "terrain program failed to link with " + constants.getDefineStrings() + ":\n" + GLSMPrograms.glGetProgramInfoLog(linked, 8192));
         } finally {
-            if (program != 0) GLStateManager.glDeleteProgram(program);
-            if (fsh != 0) GLStateManager.glDeleteShader(fsh);
-            GLStateManager.glDeleteShader(vsh);
+            if (program != 0) GLSMPrograms.glDeleteProgram(program);
+            if (fsh != 0) GLSMPrograms.glDeleteShader(fsh);
+            GLSMPrograms.glDeleteShader(vsh);
         }
     }
 }

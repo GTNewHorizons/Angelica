@@ -1,6 +1,11 @@
 package com.gtnewhorizons.angelica.rendering.tesr;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.ffp.FragmentKey;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
@@ -57,15 +62,15 @@ public final class GlintCapture {
 
     boolean begin(RetainedTesrGroups groups) {
         if (!open(groups)) return false;
-        parent.set(GLStateManager.getModelViewMatrix());
-        texture = GLStateManager.getBoundTextureForServerState();
+        parent.set(GLSMMatrices.getModelViewMatrix());
+        texture = GLSMTextures.getBoundTextureForServerState();
         color = currentColor();
         light = GLSMConfig.packedLastBrightness();
         fragmentLength = FragmentKey.packFromState(fragment);
-        GLStateManager.getEffectiveBlendState(blend);
-        blendEnabled = GLStateManager.isEffectiveBlendEnabled();
-        depthMask = GLStateManager.isEffectiveDepthMaskEnabled();
-        depthFunc = GLStateManager.getDepthState().getFunc();
+        GLSMBlend.getEffectiveBlendState(blend);
+        blendEnabled = GLSMBlend.isEffectiveBlendEnabled();
+        depthMask = GLSMDepthStencilAlpha.isEffectiveDepthMaskEnabled();
+        depthFunc = GLSMDepthStencilAlpha.getDepthState().getFunc();
         return true;
     }
 
@@ -74,7 +79,7 @@ public final class GlintCapture {
      */
     boolean beginBase(RetainedTesrGroups groups, int overlay) {
         if (!open(groups)) return false;
-        parent.set(GLStateManager.getModelViewMatrix());
+        parent.set(GLSMMatrices.getModelViewMatrix());
         light = GLSMConfig.packedLastBrightness();
         this.overlay = overlay;
         base = true;
@@ -98,7 +103,7 @@ public final class GlintCapture {
         owner = groups;
         pass = groups.captureVersion();
         groups.glintCapture = this;
-        draws = GLStateManager.drawCalls;
+        draws = GLSMDraws.drawCalls;
         valid = true;
         uniformLight = true;
         return true;
@@ -148,24 +153,24 @@ public final class GlintCapture {
     private void close(boolean poseRestored) {
         if (owner == null || owner.glintCapture != this) return;
         owner.glintCapture = null;
-        valid &= GLStateManager.drawCalls == draws && used > 0;
+        valid &= GLSMDraws.drawCalls == draws && used > 0;
         this.poseRestored = poseRestored;
-        restoredGeneration = GLStateManager.getMvGeneration();
+        restoredGeneration = GLSMMatrices.getMvGeneration();
         if (replayStart >= 0) replayEnd = EntityShadowReplay.splitCommands();
     }
 
     private boolean sameParentPose() {
-        return poseRestored && restoredGeneration == GLStateManager.getMvGeneration() || parent.equals(GLStateManager.getModelViewMatrix());
+        return poseRestored && restoredGeneration == GLSMMatrices.getMvGeneration() || parent.equals(GLSMMatrices.getModelViewMatrix());
     }
 
     boolean replay(RetainedTesrGroups groups) {
-        return replay(groups, GLStateManager.getTextures().getTextureUnitMatrix(0));
+        return replay(groups, GLSMTextures.getTextures().getTextureUnitMatrix(0));
     }
 
     boolean replay(RetainedTesrGroups groups, Matrix4f textureMatrix) {
-        if (base || !valid || owner != groups || pass != groups.captureVersion() || groups.glintCapture != null || GLStateManager.drawCalls != draws) return false;
-        if (!trusted && (blendEnabled != GLStateManager.isEffectiveBlendEnabled() || depthMask != GLStateManager.isEffectiveDepthMaskEnabled() || depthFunc != GLStateManager.getDepthState().getFunc()
-            || !blend.sameAs(GLStateManager.getEffectiveBlendState(scratchBlend)) || !sameParentPose() || texture != GLStateManager.getBoundTextureForServerState() || color != currentColor() || light != GLSMConfig.packedLastBrightness()
+        if (base || !valid || owner != groups || pass != groups.captureVersion() || groups.glintCapture != null || GLSMDraws.drawCalls != draws) return false;
+        if (!trusted && (blendEnabled != GLSMBlend.isEffectiveBlendEnabled() || depthMask != GLSMDepthStencilAlpha.isEffectiveDepthMaskEnabled() || depthFunc != GLSMDepthStencilAlpha.getDepthState().getFunc()
+            || !blend.sameAs(GLSMBlend.getEffectiveBlendState(scratchBlend)) || !sameParentPose() || texture != GLSMTextures.getBoundTextureForServerState() || color != currentColor() || light != GLSMConfig.packedLastBrightness()
             || fragmentLength != FragmentKey.packFromState(scratch) || !Arrays.equals(fragment, 0, fragmentLength, scratch, 0, fragmentLength))) return false;
         for (int i = 0; i < used; i++) {
             final Range range = ranges.get(i);
@@ -225,7 +230,7 @@ public final class GlintCapture {
     }
 
     private static int currentColor() {
-        final var c = GLStateManager.getColor();
+        final var c = GLSMCurrentAttribs.getColor();
         return AngelicaBufferSource.packAbgr(c.getRed(), c.getGreen(), c.getBlue(), c.getAlpha());
     }
 }

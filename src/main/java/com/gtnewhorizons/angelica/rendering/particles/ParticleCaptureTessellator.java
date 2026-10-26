@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.rendering.particles;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import net.minecraft.client.renderer.Tessellator;
 import org.joml.Matrix4fc;
 import org.lwjgl.opengl.GL11;
@@ -141,7 +141,7 @@ public final class ParticleCaptureTessellator extends Tessellator {
         }
         boolean overflow = !uvSet || closed || captured == MAX_VERTICES;
         if (!overflow && captured == 0) {
-            if (GLStateManager.getModelViewMatrix().equals(layerModelView)) state.sample();
+            if (GLSMMatrices.getModelViewMatrix().equals(layerModelView)) state.sample();
             else overflow = true;
         }
         if (overflow) {

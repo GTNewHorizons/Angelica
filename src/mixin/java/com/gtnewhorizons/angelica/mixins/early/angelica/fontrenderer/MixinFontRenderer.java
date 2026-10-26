@@ -10,7 +10,8 @@ import com.gtnewhorizons.angelica.client.font.ColorCodeUtils;
 import com.gtnewhorizons.angelica.client.font.FontEffectRegistry;
 import com.gtnewhorizons.angelica.compat.GTNHLibCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.texture.TextureManager;
@@ -140,7 +141,7 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
         target = "Lnet/minecraft/client/gui/FontRenderer;enableAlpha()V", shift = At.Shift.AFTER, remap = false), cancellable = true)
     public void angelica$BatchedFontRendererDrawString(String text, int x, int y, int argb, boolean dropShadow, CallbackInfoReturnable<Integer> cir)
     {
-        if (GLStateManager.getListMode() == 0) {
+        if (GLSMDraws.getListMode() == 0) {
             cir.setReturnValue(angelica$drawStringBatched(text, x, y, argb, dropShadow));
         }
     }
@@ -150,7 +151,7 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
      */
     @Inject(method = "renderString", at = @At("HEAD"), cancellable = true)
     public void angelica$BatchedFontRendererRenderString(String text, int x, int y, int argb, boolean dropShadow, CallbackInfoReturnable<Integer> cir) {
-        if (GLStateManager.getListMode() == 0) {
+        if (GLSMDraws.getListMode() == 0) {
             cir.setReturnValue(angelica$drawStringBatched(text, x, y, argb, dropShadow));
         }
     }
@@ -179,7 +180,7 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
             this.blue = (float)(argb >> 8 & 255) / 255.0F;
             this.green = (float)(argb & 255) / 255.0F;
             this.alpha = (float)(argb >> 24 & 255) / 255.0F;
-            GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+            GLSMCurrentAttribs.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
             this.posX = (float)x;
             this.posY = (float)y;
             return (int) angelica$batcher.drawString(x, y, argb, dropShadow, unicodeFlag, text, 0, text.length());

@@ -9,6 +9,9 @@ import org.lwjgl.sdl.SDL_GPUDepthStencilTargetInfo;
 import org.lwjgl.sdl.SDL_GPUViewport;
 import org.lwjgl.sdl.SDL_Rect;
 import com.gtnewhorizons.angelica.config.SystemProperties;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
@@ -420,10 +423,10 @@ public final class PipelineApplier {
         if (Tracy.ENABLED) frameManager.noteStateApply();
         if (SystemProperties.SDL_VERIFY_STATE_SYNC && Thread.currentThread() == GLStateManager.getMainThread()) {
             StateSyncVerifier.verify(
-                GLStateManager.getBoundVAO(), st.boundVAO,
-                GLStateManager.getDrawFramebuffer(), st.boundFboId,
-                GLStateManager.getReadFramebuffer(), st.boundReadFboId,
-                GLStateManager.getActiveTextureUnit(), st.activeTextureUnit);
+                GLSMVertexInput.getBoundVAO(), st.boundVAO,
+                GLSMFramebuffer.getDrawFramebuffer(), st.boundFboId,
+                GLSMFramebuffer.getReadFramebuffer(), st.boundReadFboId,
+                GLSMTextures.getActiveTextureUnit(), st.activeTextureUnit);
         }
         final long rp = f.renderPass;
         final long rpGeneration = f.renderPassGeneration;

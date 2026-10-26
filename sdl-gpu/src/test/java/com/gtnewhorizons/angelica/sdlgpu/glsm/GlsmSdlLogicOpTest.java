@@ -1,6 +1,11 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.GlTestSupport;
 import com.gtnewhorizons.angelica.glsm.ffp.LogicOpFixture;
 import org.junit.jupiter.api.AfterEach;
@@ -58,10 +63,10 @@ class GlsmSdlLogicOpTest {
 
     @AfterEach
     void cleanup() {
-        GLStateManager.glDisable(GL11.GL_COLOR_LOGIC_OP);
-        GLStateManager.glLogicOp(GL11.GL_COPY);
-        GLStateManager.glDisable(GL11.GL_BLEND);
-        GLStateManager.glUseProgram(0);
+        GLSMEnable.glDisable(GL11.GL_COLOR_LOGIC_OP);
+        GLSMBlend.glLogicOp(GL11.GL_COPY);
+        GLSMEnable.glDisable(GL11.GL_BLEND);
+        GLSMPrograms.glUseProgram(0);
         LogicOpFixture.deleteResources();
     }
 
@@ -80,8 +85,8 @@ class GlsmSdlLogicOpTest {
 
     @Test
     void blendingIsIgnoredWhileLogicOpIsEnabled() {
-        GLStateManager.glEnable(GL11.GL_BLEND);
-        GLStateManager.glBlendFunc(GL11.GL_ONE, GL11.GL_ONE);
+        GLSMEnable.glEnable(GL11.GL_BLEND);
+        GLSMBlend.glBlendFunc(GL11.GL_ONE, GL11.GL_ONE);
         final int[] src = LogicOpFixture.SOURCES[1];
         LogicOpFixture.clearToDst();
         LogicOpFixture.drawQuad(GL11.GL_XOR, src);
@@ -93,8 +98,8 @@ class GlsmSdlLogicOpTest {
         final int[] src = LogicOpFixture.SOURCES[1];
         LogicOpFixture.clearToDst();
         LogicOpFixture.drawQuad(GL11.GL_XOR, src);
-        GLStateManager.glEnable(GL11.GL_BLEND);
-        GLStateManager.glBlendFunc(GL11.GL_ONE, GL11.GL_ONE);
+        GLSMEnable.glEnable(GL11.GL_BLEND);
+        GLSMBlend.glBlendFunc(GL11.GL_ONE, GL11.GL_ONE);
         LogicOpFixture.quad(src);
 
         final int got = centerPixel();
@@ -112,9 +117,9 @@ class GlsmSdlLogicOpTest {
             GlsmSdlHeadlessRig.beginFrame();
             GlsmSdlHeadlessRig.bindTarget();
             LogicOpFixture.clearToDst();
-            GLStateManager.glUseProgram(singleProgram);
+            GLSMPrograms.glUseProgram(singleProgram);
             LogicOpFixture.drawQuad(op, PROGRAM_SRC);
-            GLStateManager.glUseProgram(0);
+            GLSMPrograms.glUseProgram(0);
             assertCenter(op, PROGRAM_SRC, "user program " + LogicOpFixture.label(op, PROGRAM_SRC));
         }
     }
@@ -124,54 +129,54 @@ class GlsmSdlLogicOpTest {
         mrtProgram = buildProgram(mrtProgram, FRAG_MRT);
         final int unorm = colorTexture(GL11.GL_RGBA8, GL11.GL_UNSIGNED_BYTE);
         final int half = colorTexture(GL30.GL_RGBA16F, GL11.GL_FLOAT);
-        final int fbo = GLStateManager.glGenFramebuffers();
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
-        GLStateManager.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, unorm, 0);
-        GLStateManager.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT1, GL11.GL_TEXTURE_2D, half, 0);
+        final int fbo = GLSMFramebuffer.glGenFramebuffers();
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
+        GLSMFramebuffer.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, unorm, 0);
+        GLSMFramebuffer.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT1, GL11.GL_TEXTURE_2D, half, 0);
         final IntBuffer bufs = BufferUtils.createIntBuffer(2);
         bufs.put(GL30.GL_COLOR_ATTACHMENT0).put(GL30.GL_COLOR_ATTACHMENT1).flip();
-        GLStateManager.glDrawBuffers(bufs);
-        GLStateManager.glViewport(0, 0, SIZE, SIZE);
+        GLSMFramebuffer.glDrawBuffers(bufs);
+        GLSMRasterizer.glViewport(0, 0, SIZE, SIZE);
 
-        GLStateManager.glEnable(GL11.GL_BLEND);
-        GLStateManager.glBlendFunc(GL11.GL_ONE, GL11.GL_ONE);
+        GLSMEnable.glEnable(GL11.GL_BLEND);
+        GLSMBlend.glBlendFunc(GL11.GL_ONE, GL11.GL_ONE);
         LogicOpFixture.clearToDst();
-        GLStateManager.glUseProgram(mrtProgram);
+        GLSMPrograms.glUseProgram(mrtProgram);
         LogicOpFixture.drawQuad(GL11.GL_OR_REVERSE, PROGRAM_SRC);
-        GLStateManager.glUseProgram(0);
-        GLStateManager.glDisable(GL11.GL_BLEND);
+        GLSMPrograms.glUseProgram(0);
+        GLSMEnable.glDisable(GL11.GL_BLEND);
         GlsmSdlHeadlessRig.endFrame();
 
-        GLStateManager.glReadBuffer(GL30.GL_COLOR_ATTACHMENT0);
+        GLSMFramebuffer.glReadBuffer(GL30.GL_COLOR_ATTACHMENT0);
         final ByteBuffer px = BufferUtils.createByteBuffer(4);
-        GLStateManager.glReadPixels(SIZE / 2, SIZE / 2, 1, 1, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, px);
+        GLSMFramebuffer.glReadPixels(SIZE / 2, SIZE / 2, 1, 1, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, px);
         assertEquals(LogicOpFixture.expected(GL11.GL_OR_REVERSE, PROGRAM_SRC[0], LogicOpFixture.DST_R), px.get(0) & 0xFF, "unorm red");
         assertEquals(LogicOpFixture.expected(GL11.GL_OR_REVERSE, PROGRAM_SRC[1], LogicOpFixture.DST_G), px.get(1) & 0xFF, "unorm green");
         assertEquals(LogicOpFixture.expected(GL11.GL_OR_REVERSE, PROGRAM_SRC[2], LogicOpFixture.DST_B), px.get(2) & 0xFF, "unorm blue");
         assertEquals(LogicOpFixture.expected(GL11.GL_OR_REVERSE, PROGRAM_SRC[3], LogicOpFixture.DST_A), px.get(3) & 0xFF, "unorm alpha");
 
-        GLStateManager.glReadBuffer(GL30.GL_COLOR_ATTACHMENT1);
+        GLSMFramebuffer.glReadBuffer(GL30.GL_COLOR_ATTACHMENT1);
         final ByteBuffer fpx = BufferUtils.createByteBuffer(16).order(ByteOrder.nativeOrder());
-        GLStateManager.glReadPixels(SIZE / 2, SIZE / 2, 1, 1, GL11.GL_RGBA, GL11.GL_FLOAT, fpx);
+        GLSMFramebuffer.glReadPixels(SIZE / 2, SIZE / 2, 1, 1, GL11.GL_RGBA, GL11.GL_FLOAT, fpx);
         assertEquals(0.2f, fpx.getFloat(0), 1e-3f, "float red passes through unblended");
         assertEquals(0.4f, fpx.getFloat(4), 1e-3f, "float green passes through unblended");
         assertEquals(0.8f, fpx.getFloat(8), 1e-3f, "float blue passes through unblended");
         assertEquals(1.0f, fpx.getFloat(12), 1e-3f, "float alpha passes through unblended");
-        GLStateManager.glReadBuffer(GL30.GL_COLOR_ATTACHMENT0);
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+        GLSMFramebuffer.glReadBuffer(GL30.GL_COLOR_ATTACHMENT0);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
 
-        GLStateManager.glDeleteFramebuffers(fbo);
-        GLStateManager.glDeleteTextures(unorm);
-        GLStateManager.glDeleteTextures(half);
+        GLSMFramebuffer.glDeleteFramebuffers(fbo);
+        GLSMTextures.glDeleteTextures(unorm);
+        GLSMTextures.glDeleteTextures(half);
     }
 
     private static int colorTexture(int internalFormat, int type) {
-        final int id = GLStateManager.glGenTextures();
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, id);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, internalFormat, SIZE, SIZE, 0, GL11.GL_RGBA, type, (ByteBuffer) null);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        final int id = GLSMTextures.glGenTextures();
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, id);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, internalFormat, SIZE, SIZE, 0, GL11.GL_RGBA, type, (ByteBuffer) null);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
         return id;
     }
 

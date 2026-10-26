@@ -25,37 +25,37 @@ class GLSM_DisplayList_Nesting_Test {
     @AfterEach
     void cleanup() {
         if (parentList > 0) {
-            GLStateManager.glDeleteLists(parentList, 1);
+            GLSMDraws.glDeleteLists(parentList, 1);
             parentList = -1;
         }
         if (childList > 0) {
-            GLStateManager.glDeleteLists(childList, 1);
+            GLSMDraws.glDeleteLists(childList, 1);
             childList = -1;
         }
         // Reset GL state
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        GLSMMatrices.glLoadIdentity();
+        GLSMCurrentAttribs.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
     }
 
     @Test
     void testNestedDisplayListWithParentTransform() {
         // Create child list: just a simple quad at origin
         childList = GL11.glGenLists(1);
-        GLStateManager.glNewList(childList, GL11.GL_COMPILE);
+        GLSMDraws.glNewList(childList, GL11.GL_COMPILE);
         GL11.glBegin(GL11.GL_QUADS);
         GL11.glVertex3f(0, 0, 0);
         GL11.glVertex3f(1, 0, 0);
         GL11.glVertex3f(1, 1, 0);
         GL11.glVertex3f(0, 1, 0);
         GL11.glEnd();
-        GLStateManager.glEndList();
+        GLSMDraws.glEndList();
 
         // Create parent list: translate then call child
         parentList = GL11.glGenLists(1);
-        GLStateManager.glNewList(parentList, GL11.GL_COMPILE);
-        GLStateManager.glTranslatef(10.0f, 0.0f, 0.0f);  // Parent transform
-        GLStateManager.glCallList(childList);             // Should render child at (10,0,0)
-        GLStateManager.glEndList();
+        GLSMDraws.glNewList(parentList, GL11.GL_COMPILE);
+        GLSMMatrices.glTranslatef(10.0f, 0.0f, 0.0f);  // Parent transform
+        GLSMDraws.glCallList(childList);             // Should render child at (10,0,0)
+        GLSMDraws.glEndList();
 
         DisplayListTestHelper.assertModelviewAfterCall(parentList, new Matrix4f().translate(10.0f, 0.0f, 0.0f), "parent transform applies to the child");
     }
@@ -73,8 +73,8 @@ class GLSM_DisplayList_Nesting_Test {
         try {
             for (int depth = chain.length - 1; depth >= 0; depth--) {
                 lists[depth] = GL11.glGenLists(1);
-                GLStateManager.glNewList(lists[depth], GL11.GL_COMPILE);
-                GLStateManager.glTranslatef(chain[depth], 0.0f, 0.0f);
+                GLSMDraws.glNewList(lists[depth], GL11.GL_COMPILE);
+                GLSMMatrices.glTranslatef(chain[depth], 0.0f, 0.0f);
                 if (depth == chain.length - 1) {
                     GL11.glBegin(GL11.GL_QUADS);
                     GL11.glVertex3f(0, 0, 0);
@@ -83,14 +83,14 @@ class GLSM_DisplayList_Nesting_Test {
                     GL11.glVertex3f(0, 1, 0);
                     GL11.glEnd();
                 } else {
-                    GLStateManager.glCallList(lists[depth + 1]);
+                    GLSMDraws.glCallList(lists[depth + 1]);
                 }
-                GLStateManager.glEndList();
+                GLSMDraws.glEndList();
             }
             DisplayListTestHelper.assertModelviewAfterCall(lists[0], new Matrix4f().translate(expectedX, 0.0f, 0.0f), "nested translations");
         } finally {
             for (int list : lists) {
-                if (list > 0) GLStateManager.glDeleteLists(list, 1);
+                if (list > 0) GLSMDraws.glDeleteLists(list, 1);
             }
         }
     }
@@ -99,24 +99,24 @@ class GLSM_DisplayList_Nesting_Test {
     void testNestedDisplayListWithPushPop() {
         // Create child list with push/pop (shouldn't affect parent's matrix)
         childList = GL11.glGenLists(1);
-        GLStateManager.glNewList(childList, GL11.GL_COMPILE);
-        GLStateManager.glPushMatrix();
-        GLStateManager.glTranslatef(1.0f, 0.0f, 0.0f);  // Child transform
+        GLSMDraws.glNewList(childList, GL11.GL_COMPILE);
+        GLSMMatrices.glPushMatrix();
+        GLSMMatrices.glTranslatef(1.0f, 0.0f, 0.0f);  // Child transform
         GL11.glBegin(GL11.GL_QUADS);
         GL11.glVertex3f(0, 0, 0);
         GL11.glVertex3f(1, 0, 0);
         GL11.glVertex3f(1, 1, 0);
         GL11.glVertex3f(0, 1, 0);
         GL11.glEnd();
-        GLStateManager.glPopMatrix();  // Restore matrix to parent's state
-        GLStateManager.glEndList();
+        GLSMMatrices.glPopMatrix();  // Restore matrix to parent's state
+        GLSMDraws.glEndList();
 
         // Create parent list
         parentList = GL11.glGenLists(1);
-        GLStateManager.glNewList(parentList, GL11.GL_COMPILE);
-        GLStateManager.glTranslatef(10.0f, 0.0f, 0.0f);  // Parent transform
-        GLStateManager.glCallList(childList);             // Child uses push/pop
-        GLStateManager.glEndList();
+        GLSMDraws.glNewList(parentList, GL11.GL_COMPILE);
+        GLSMMatrices.glTranslatef(10.0f, 0.0f, 0.0f);  // Parent transform
+        GLSMDraws.glCallList(childList);             // Child uses push/pop
+        GLSMDraws.glEndList();
 
         DisplayListTestHelper.assertModelviewAfterCall(parentList, new Matrix4f().translate(10.0f, 0.0f, 0.0f), "child push/pop leaves only the parent transform");
     }
@@ -127,38 +127,38 @@ class GLSM_DisplayList_Nesting_Test {
         // This is a uncommon but technically valid per the spec.
 
         // Get initial stack depth
-        int initialDepth = GLStateManager.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH);
+        int initialDepth = GLSMQueries.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH);
 
         // Create a display list that only pushes the matrix
         int matrixPushList = GL11.glGenLists(1);
-        GLStateManager.glNewList(matrixPushList, GL11.GL_COMPILE);
-        GLStateManager.glPushMatrix();
-        GLStateManager.glEndList();
+        GLSMDraws.glNewList(matrixPushList, GL11.GL_COMPILE);
+        GLSMMatrices.glPushMatrix();
+        GLSMDraws.glEndList();
 
         // Create a display list that only pops the matrix
         int matrixPopList = GL11.glGenLists(1);
-        GLStateManager.glNewList(matrixPopList, GL11.GL_COMPILE);
-        GLStateManager.glPopMatrix();
-        GLStateManager.glEndList();
+        GLSMDraws.glNewList(matrixPopList, GL11.GL_COMPILE);
+        GLSMMatrices.glPopMatrix();
+        GLSMDraws.glEndList();
 
         // Verify initial stack depth hasn't changed after compilation
-        assertEquals(initialDepth, GLStateManager.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH), "Stack depth should be unchanged after compiling display lists");
+        assertEquals(initialDepth, GLSMQueries.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH), "Stack depth should be unchanged after compiling display lists");
 
         // Call the push list - should increase stack depth
-        GLStateManager.glCallList(matrixPushList);
-        int depthAfterPush = GLStateManager.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH);
+        GLSMDraws.glCallList(matrixPushList);
+        int depthAfterPush = GLSMQueries.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH);
         assertEquals(initialDepth + 1, depthAfterPush, "Stack depth should increase by 1 after calling push list");
 
         // Optionally do some operations here that would benefit from the pushed matrix
-        GLStateManager.glTranslatef(5.0f, 0.0f, 0.0f);
+        GLSMMatrices.glTranslatef(5.0f, 0.0f, 0.0f);
 
         // Call the pop list - should restore stack depth
-        GLStateManager.glCallList(matrixPopList);
-        int depthAfterPop = GLStateManager.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH);
+        GLSMDraws.glCallList(matrixPopList);
+        int depthAfterPop = GLSMQueries.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH);
         assertEquals(initialDepth, depthAfterPop, "Stack depth should return to initial after calling pop list");
 
         // Cleanup
-        GLStateManager.glDeleteLists(matrixPushList, 1);
-        GLStateManager.glDeleteLists(matrixPopList, 1);
+        GLSMDraws.glDeleteLists(matrixPushList, 1);
+        GLSMDraws.glDeleteLists(matrixPopList, 1);
     }
 }

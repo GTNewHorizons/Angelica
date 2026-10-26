@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.iris;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
@@ -56,9 +57,9 @@ public final class ImmediateExtendedAttribs implements ImmediateExtendedAttribHa
             wants = programWantsExtCache.get(program);
         } else {
             wants = 0;
-            if (GLStateManager.glGetAttribLocation(program, "mc_midTexCoord") >= 0) wants |= WANTS_MID;
-            if (GLStateManager.glGetAttribLocation(program, "at_tangent") >= 0) wants |= WANTS_TANGENT;
-            if (GLStateManager.glGetAttribLocation(program, "iris_Entity") == LOC_ENTITY_IDS) wants |= WANTS_ENTITY_IDS;
+            if (GLSMPrograms.glGetAttribLocation(program, "mc_midTexCoord") >= 0) wants |= WANTS_MID;
+            if (GLSMPrograms.glGetAttribLocation(program, "at_tangent") >= 0) wants |= WANTS_TANGENT;
+            if (GLSMPrograms.glGetAttribLocation(program, "iris_Entity") == LOC_ENTITY_IDS) wants |= WANTS_ENTITY_IDS;
             programWantsExtCache.put(program, wants);
         }
         currentProgramWants = wants;
@@ -101,7 +102,7 @@ public final class ImmediateExtendedAttribs implements ImmediateExtendedAttribHa
     private static boolean programWants(int mask) {
         if (!Iris.enabled) return false;
         GLSMHooks.resolvePendingProgram();
-        return (currentProgramWants & mask) != 0 && GLStateManager.getActiveProgram() != 0;
+        return (currentProgramWants & mask) != 0 && GLSMPrograms.getActiveProgram() != 0;
     }
 
     @Override
@@ -281,7 +282,7 @@ public final class ImmediateExtendedAttribs implements ImmediateExtendedAttribHa
     }
 
     private static boolean isAtlasNotBound() {
-        final int tex = GLStateManager.getBoundTextureForServerState(0);
+        final int tex = GLSMTextures.getBoundTextureForServerState(0);
         if (tex <= 0) return true;
         final Minecraft mc = Minecraft.getMinecraft();
         if (mc == null || mc.getTextureManager() == null) return true;

@@ -1,7 +1,20 @@
 package com.gtnewhorizons.angelica.compat.thaumcraft;
 
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMFog;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMLighting;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTexEnvGen;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpFixture;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
@@ -59,37 +72,37 @@ class PortalDrawerTest {
             vertices.putShort((short) 180).putShort((short) 0);
         }
         vertices.flip();
-        final int vao = GLStateManager.glGenVertexArrays();
-        final int vbo = GLStateManager.glGenBuffers();
+        final int vao = GLSMVertexInput.glGenVertexArrays();
+        final int vbo = GLSMBuffers.glGenBuffers();
         try {
-            GLStateManager.glBindVertexArray(vao);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-            GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, vertices, GL15.GL_STATIC_DRAW);
-            GLStateManager.glVertexPointer(3, GL11.GL_FLOAT, 20, 0L);
-            GLStateManager.glColorPointer(4, GL11.GL_UNSIGNED_BYTE, 20, 12L);
-            GLStateManager.glClientActiveTexture(GL13.GL_TEXTURE1);
-            GLStateManager.glTexCoordPointer(2, GL11.GL_SHORT, 20, 16L);
-            GLStateManager.glEnableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
-            GLStateManager.glClientActiveTexture(GL13.GL_TEXTURE0);
-            GLStateManager.glEnableClientState(GL11.GL_VERTEX_ARRAY);
-            GLStateManager.glEnableClientState(GL11.GL_COLOR_ARRAY);
-            GLStateManager.glDrawArrays(GL11.GL_QUADS, 0, 4);
+            GLSMVertexInput.glBindVertexArray(vao);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+            GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, vertices, GL15.GL_STATIC_DRAW);
+            GLSMVertexInput.glVertexPointer(3, GL11.GL_FLOAT, 20, 0L);
+            GLSMVertexInput.glColorPointer(4, GL11.GL_UNSIGNED_BYTE, 20, 12L);
+            GLSMTextures.glClientActiveTexture(GL13.GL_TEXTURE1);
+            GLSMVertexInput.glTexCoordPointer(2, GL11.GL_SHORT, 20, 16L);
+            GLSMVertexInput.glEnableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
+            GLSMTextures.glClientActiveTexture(GL13.GL_TEXTURE0);
+            GLSMVertexInput.glEnableClientState(GL11.GL_VERTEX_ARRAY);
+            GLSMVertexInput.glEnableClientState(GL11.GL_COLOR_ARRAY);
+            GLSMDraws.glDrawArrays(GL11.GL_QUADS, 0, 4);
         } finally {
-            GLStateManager.glDisableClientState(GL11.GL_COLOR_ARRAY);
-            GLStateManager.glClientActiveTexture(GL13.GL_TEXTURE1);
-            GLStateManager.glDisableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
-            GLStateManager.glClientActiveTexture(GL13.GL_TEXTURE0);
-            GLStateManager.glBindVertexArray(0);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-            GLStateManager.glDeleteBuffers(vbo);
-            GLStateManager.glDeleteVertexArrays(vao);
+            GLSMVertexInput.glDisableClientState(GL11.GL_COLOR_ARRAY);
+            GLSMTextures.glClientActiveTexture(GL13.GL_TEXTURE1);
+            GLSMVertexInput.glDisableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
+            GLSMTextures.glClientActiveTexture(GL13.GL_TEXTURE0);
+            GLSMVertexInput.glBindVertexArray(0);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            GLSMBuffers.glDeleteBuffers(vbo);
+            GLSMVertexInput.glDeleteVertexArrays(vao);
         }
     }
 
     private static void clear() {
-        GLStateManager.glClearColor(10 / 255.0F, 20 / 255.0F, 30 / 255.0F, 1.0F);
-        GLStateManager.glClearDepth(1.0);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
+        GLSMBlend.glClearColor(10 / 255.0F, 20 / 255.0F, 30 / 255.0F, 1.0F);
+        GLSMDepthStencilAlpha.glClearDepth(1.0);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
     }
 
     private static int channelDifference(int a, int b) {
@@ -114,8 +127,8 @@ class PortalDrawerTest {
             }
             texels.flip();
             final int id = texture(width, height, GL11.GL_RGBA8, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels);
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
             return id;
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -130,21 +143,21 @@ class PortalDrawerTest {
         }
         texels.flip();
         final int id = texture(size, size, GL11.GL_RGBA8, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, filter);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, filter);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, filter);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, filter);
         final int wrap = filter == GL11.GL_LINEAR ? GL12.GL_CLAMP_TO_EDGE : GL11.GL_REPEAT;
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, wrap);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, wrap);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, wrap);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, wrap);
         return id;
     }
 
     private static int texture(int width, int height, int internalFormat, int format, int type, ByteBuffer data) {
-        final int id = GLStateManager.glGenTextures();
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, id);
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, type, data);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        final int id = GLSMTextures.glGenTextures();
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, id);
+        GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, type, data);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
         return id;
     }
 
@@ -157,15 +170,15 @@ class PortalDrawerTest {
     @BeforeEach
     void setup() {
         FfpFixture.resetFfpState();
-        GLStateManager.glUseProgram(0);
+        GLSMPrograms.glUseProgram(0);
         ShaderManager.enable();
-        GLStateManager.disableFog();
-        GLStateManager.disableLighting();
-        GLStateManager.disableCull();
-        GLStateManager.disableBlend();
-        GLStateManager.enableDepthTest();
-        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
-        GLStateManager.glDepthMask(true);
+        GLSMFog.disableFog();
+        GLSMLighting.disableLighting();
+        GLSMRasterizer.disableCull();
+        GLSMBlend.disableBlend();
+        GLSMDepthStencilAlpha.enableDepthTest();
+        GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_LEQUAL);
+        GLSMDepthStencilAlpha.glDepthMask(true);
 
         color = texture(SIZE, SIZE, GL11.GL_RGBA8, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, null);
         depth = texture(SIZE, SIZE, GL14.GL_DEPTH_COMPONENT24, GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, null);
@@ -175,23 +188,23 @@ class PortalDrawerTest {
         framebuffer.drawBuffers(new int[]{0});
         framebuffer.readBuffer(0);
         framebuffer.bind();
-        GLStateManager.glViewport(0, 0, SIZE, SIZE);
+        GLSMRasterizer.glViewport(0, 0, SIZE, SIZE);
 
         lightmap = noiseTexture(16, 3, GL11.GL_LINEAR);
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, lightmap);
-        GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, lightmap);
+        GLSMEnable.glEnable(GL11.GL_TEXTURE_2D);
         // EntityRenderer.enableLightmap's texture matrix
-        GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glScalef(0.00390625F, 0.00390625F, 0.00390625F);
-        GLStateManager.glTranslatef(8.0F, 8.0F, 8.0F);
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.enableTexture();
+        GLSMMatrices.glMatrixMode(GL11.GL_TEXTURE);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glScalef(0.00390625F, 0.00390625F, 0.00390625F);
+        GLSMMatrices.glTranslatef(8.0F, 8.0F, 8.0F);
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.enableTexture();
 
-        GLStateManager.setProjectionMatrix(new Matrix4f().perspective((float) Math.toRadians(70), 1.0F, 0.05F, 256.0F));
-        GLStateManager.setModelViewMatrix(new Matrix4f().rotateX(0.2F).rotateY(0.25F));
+        GLSMMatrices.setProjectionMatrix(new Matrix4f().perspective((float) Math.toRadians(70), 1.0F, 0.05F, 256.0F));
+        GLSMMatrices.setModelViewMatrix(new Matrix4f().rotateX(0.2F).rotateY(0.25F));
         addFaces();
     }
 
@@ -199,12 +212,12 @@ class PortalDrawerTest {
     void cleanup() {
         drawer.destroy();
         framebuffer.destroy();
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
-        GLStateManager.glDeleteTextures(color);
-        GLStateManager.glDeleteTextures(depth);
-        if (tunnel != 0) GLStateManager.glDeleteTextures(tunnel);
-        if (field != 0) GLStateManager.glDeleteTextures(field);
-        GLStateManager.glDeleteTextures(lightmap);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+        GLSMTextures.glDeleteTextures(color);
+        GLSMTextures.glDeleteTextures(depth);
+        if (tunnel != 0) GLSMTextures.glDeleteTextures(tunnel);
+        if (field != 0) GLSMTextures.glDeleteTextures(field);
+        GLSMTextures.glDeleteTextures(lightmap);
         FfpFixture.resetFfpState();
     }
 
@@ -229,16 +242,16 @@ class PortalDrawerTest {
     void fogsEachLayerLikeTheMirror() {
         tunnel = noiseTexture(64, 1, GL11.GL_NEAREST);
         field = noiseTexture(256, 2, GL11.GL_NEAREST);
-        GLStateManager.enableFog();
-        GLStateManager.glFog(GL11.GL_FOG_COLOR, floats(0.05F, 0.08F, 0.15F, 1.0F));
+        GLSMFog.enableFog();
+        GLSMFog.glFog(GL11.GL_FOG_COLOR, floats(0.05F, 0.08F, 0.15F, 1.0F));
         // Minecraft's distance fog, then its underwater fog
-        GLStateManager.glFogi(GL11.GL_FOG_MODE, GL11.GL_LINEAR);
-        GLStateManager.glFogf(GL11.GL_FOG_START, 2.0F);
-        GLStateManager.glFogf(GL11.GL_FOG_END, 40.0F);
+        GLSMFog.glFogi(GL11.GL_FOG_MODE, GL11.GL_LINEAR);
+        GLSMFog.glFogf(GL11.GL_FOG_START, 2.0F);
+        GLSMFog.glFogf(GL11.GL_FOG_END, 40.0F);
         final Parity linear = compare(true);
         assertTrue(linear.withinOne >= linear.covered * 0.97, "linear fog drifts from TC's layers: " + linear);
-        GLStateManager.glFogi(GL11.GL_FOG_MODE, GL11.GL_EXP);
-        GLStateManager.glFogf(GL11.GL_FOG_DENSITY, 0.02F);
+        GLSMFog.glFogi(GL11.GL_FOG_MODE, GL11.GL_EXP);
+        GLSMFog.glFogf(GL11.GL_FOG_DENSITY, 0.02F);
         final Parity exp = compare(true);
         assertTrue(exp.withinOne >= exp.covered * 0.97, "exp fog drifts from TC's layers: " + exp);
     }
@@ -254,8 +267,8 @@ class PortalDrawerTest {
 
         clear();
         final PortalDrawer.Frame frame = new PortalDrawer.Frame();
-        GLStateManager.getProjectionMatrix().mul(GLStateManager.getModelViewMatrix(), frame.modelViewProjection);
-        frame.modelView.set(GLStateManager.getModelViewMatrix());
+        GLSMMatrices.getProjectionMatrix().mul(GLSMMatrices.getModelViewMatrix(), frame.modelViewProjection);
+        frame.modelView.set(GLSMMatrices.getModelViewMatrix());
         frame.cameraX = CAMERA_X;
         frame.cameraY = CAMERA_Y;
         frame.cameraZ = CAMERA_Z;
@@ -328,22 +341,22 @@ class PortalDrawerTest {
         final float view = axis == AXIS_X ? VIEW_X : axis == AXIS_Y ? VIEW_Y : VIEW_Z;
         final Random random = new Random(31100L);
         for (int i = 0; i < 16; ++i) {
-            GLStateManager.glPushMatrix();
+            GLSMMatrices.glPushMatrix();
             float f5 = (float) (16 - i);
             float f6 = 0.0625F;
             float f7 = 1.0F / (f5 + 1.0F);
             if (i == 0) {
-                GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tunnel);
+                GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, tunnel);
                 f7 = 0.1F;
                 f5 = 65.0F;
                 f6 = 0.125F;
-                GLStateManager.enableBlend();
-                GLStateManager.glBlendFunc(770, 771);
+                GLSMBlend.enableBlend();
+                GLSMBlend.glBlendFunc(770, 771);
             }
             if (i == 1) {
-                GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, field);
-                GLStateManager.enableBlend();
-                GLStateManager.glBlendFunc(1, 1);
+                GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, field);
+                GLSMBlend.enableBlend();
+                GLSMBlend.glBlendFunc(1, 1);
                 f6 = 0.5F;
             }
             final float f8 = (float) (negative ? -plane : plane);
@@ -352,59 +365,59 @@ class PortalDrawerTest {
             float f11 = f9 / f10;
             f11 += (float) plane;
             switch (axis) {
-                case AXIS_X -> GLStateManager.glTranslatef(f11, py, pz);
-                case AXIS_Y -> GLStateManager.glTranslatef(px, f11, pz);
-                default -> GLStateManager.glTranslatef(px, py, f11);
+                case AXIS_X -> GLSMMatrices.glTranslatef(f11, py, pz);
+                case AXIS_Y -> GLSMMatrices.glTranslatef(px, f11, pz);
+                default -> GLSMMatrices.glTranslatef(px, py, f11);
             }
-            GLStateManager.glTexGeni(GL11.GL_S, GL11.GL_TEXTURE_GEN_MODE, GL11.GL_OBJECT_LINEAR);
-            GLStateManager.glTexGeni(GL11.GL_T, GL11.GL_TEXTURE_GEN_MODE, GL11.GL_OBJECT_LINEAR);
-            GLStateManager.glTexGeni(GL11.GL_R, GL11.GL_TEXTURE_GEN_MODE, GL11.GL_OBJECT_LINEAR);
-            GLStateManager.glTexGeni(GL11.GL_Q, GL11.GL_TEXTURE_GEN_MODE, GL11.GL_EYE_LINEAR);
+            GLSMTexEnvGen.glTexGeni(GL11.GL_S, GL11.GL_TEXTURE_GEN_MODE, GL11.GL_OBJECT_LINEAR);
+            GLSMTexEnvGen.glTexGeni(GL11.GL_T, GL11.GL_TEXTURE_GEN_MODE, GL11.GL_OBJECT_LINEAR);
+            GLSMTexEnvGen.glTexGeni(GL11.GL_R, GL11.GL_TEXTURE_GEN_MODE, GL11.GL_OBJECT_LINEAR);
+            GLSMTexEnvGen.glTexGeni(GL11.GL_Q, GL11.GL_TEXTURE_GEN_MODE, GL11.GL_EYE_LINEAR);
             switch (axis) {
                 case AXIS_X -> {
-                    GLStateManager.glTexGen(GL11.GL_T, GL11.GL_OBJECT_PLANE, floats(0, 1, 0, 0));
-                    GLStateManager.glTexGen(GL11.GL_S, GL11.GL_OBJECT_PLANE, floats(0, 0, 1, 0));
-                    GLStateManager.glTexGen(GL11.GL_R, GL11.GL_OBJECT_PLANE, floats(0, 0, 0, 1));
-                    GLStateManager.glTexGen(GL11.GL_Q, GL11.GL_EYE_PLANE, floats(1, 0, 0, 0));
+                    GLSMTexEnvGen.glTexGen(GL11.GL_T, GL11.GL_OBJECT_PLANE, floats(0, 1, 0, 0));
+                    GLSMTexEnvGen.glTexGen(GL11.GL_S, GL11.GL_OBJECT_PLANE, floats(0, 0, 1, 0));
+                    GLSMTexEnvGen.glTexGen(GL11.GL_R, GL11.GL_OBJECT_PLANE, floats(0, 0, 0, 1));
+                    GLSMTexEnvGen.glTexGen(GL11.GL_Q, GL11.GL_EYE_PLANE, floats(1, 0, 0, 0));
                 }
                 case AXIS_Y -> {
-                    GLStateManager.glTexGen(GL11.GL_S, GL11.GL_OBJECT_PLANE, floats(1, 0, 0, 0));
-                    GLStateManager.glTexGen(GL11.GL_T, GL11.GL_OBJECT_PLANE, floats(0, 0, 1, 0));
-                    GLStateManager.glTexGen(GL11.GL_R, GL11.GL_OBJECT_PLANE, floats(0, 0, 0, 1));
-                    GLStateManager.glTexGen(GL11.GL_Q, GL11.GL_EYE_PLANE, floats(0, 1, 0, 0));
+                    GLSMTexEnvGen.glTexGen(GL11.GL_S, GL11.GL_OBJECT_PLANE, floats(1, 0, 0, 0));
+                    GLSMTexEnvGen.glTexGen(GL11.GL_T, GL11.GL_OBJECT_PLANE, floats(0, 0, 1, 0));
+                    GLSMTexEnvGen.glTexGen(GL11.GL_R, GL11.GL_OBJECT_PLANE, floats(0, 0, 0, 1));
+                    GLSMTexEnvGen.glTexGen(GL11.GL_Q, GL11.GL_EYE_PLANE, floats(0, 1, 0, 0));
                 }
                 default -> {
-                    GLStateManager.glTexGen(GL11.GL_S, GL11.GL_OBJECT_PLANE, floats(1, 0, 0, 0));
-                    GLStateManager.glTexGen(GL11.GL_T, GL11.GL_OBJECT_PLANE, floats(0, 1, 0, 0));
-                    GLStateManager.glTexGen(GL11.GL_R, GL11.GL_OBJECT_PLANE, floats(0, 0, 0, 1));
-                    GLStateManager.glTexGen(GL11.GL_Q, GL11.GL_EYE_PLANE, floats(0, 0, 1, 0));
+                    GLSMTexEnvGen.glTexGen(GL11.GL_S, GL11.GL_OBJECT_PLANE, floats(1, 0, 0, 0));
+                    GLSMTexEnvGen.glTexGen(GL11.GL_T, GL11.GL_OBJECT_PLANE, floats(0, 1, 0, 0));
+                    GLSMTexEnvGen.glTexGen(GL11.GL_R, GL11.GL_OBJECT_PLANE, floats(0, 0, 0, 1));
+                    GLSMTexEnvGen.glTexGen(GL11.GL_Q, GL11.GL_EYE_PLANE, floats(0, 0, 1, 0));
                 }
             }
-            GLStateManager.glEnable(GL11.GL_TEXTURE_GEN_S);
-            GLStateManager.glEnable(GL11.GL_TEXTURE_GEN_T);
-            GLStateManager.glEnable(GL11.GL_TEXTURE_GEN_R);
-            GLStateManager.glEnable(GL11.GL_TEXTURE_GEN_Q);
-            GLStateManager.glPopMatrix();
-            GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
-            GLStateManager.glPushMatrix();
-            GLStateManager.glLoadIdentity();
-            GLStateManager.glTranslatef(0.0F, TIME, 0.0F);
-            GLStateManager.glScalef(f6, f6, f6);
-            GLStateManager.glTranslatef(0.5F, 0.5F, 0.0F);
-            GLStateManager.glRotatef((float) (i * i * 4321 + i * 9) * 2.0F, 0.0F, 0.0F, 1.0F);
-            GLStateManager.glTranslatef(-0.5F, -0.5F, 0.0F);
+            GLSMEnable.glEnable(GL11.GL_TEXTURE_GEN_S);
+            GLSMEnable.glEnable(GL11.GL_TEXTURE_GEN_T);
+            GLSMEnable.glEnable(GL11.GL_TEXTURE_GEN_R);
+            GLSMEnable.glEnable(GL11.GL_TEXTURE_GEN_Q);
+            GLSMMatrices.glPopMatrix();
+            GLSMMatrices.glMatrixMode(GL11.GL_TEXTURE);
+            GLSMMatrices.glPushMatrix();
+            GLSMMatrices.glLoadIdentity();
+            GLSMMatrices.glTranslatef(0.0F, TIME, 0.0F);
+            GLSMMatrices.glScalef(f6, f6, f6);
+            GLSMMatrices.glTranslatef(0.5F, 0.5F, 0.0F);
+            GLSMMatrices.glRotatef((float) (i * i * 4321 + i * 9) * 2.0F, 0.0F, 0.0F, 1.0F);
+            GLSMMatrices.glTranslatef(-0.5F, -0.5F, 0.0F);
             switch (axis) {
                 case AXIS_X -> {
-                    GLStateManager.glTranslatef(-pz, -py, -px);
-                    GLStateManager.glTranslatef(VIEW_Z * f5 / f9, VIEW_Y * f5 / f9, -px);
+                    GLSMMatrices.glTranslatef(-pz, -py, -px);
+                    GLSMMatrices.glTranslatef(VIEW_Z * f5 / f9, VIEW_Y * f5 / f9, -px);
                 }
                 case AXIS_Y -> {
-                    GLStateManager.glTranslatef(-px, -pz, -py);
-                    GLStateManager.glTranslatef(VIEW_X * f5 / f9, VIEW_Z * f5 / f9, -py);
+                    GLSMMatrices.glTranslatef(-px, -pz, -py);
+                    GLSMMatrices.glTranslatef(VIEW_X * f5 / f9, VIEW_Z * f5 / f9, -py);
                 }
                 default -> {
-                    GLStateManager.glTranslatef(-px, -py, -pz);
-                    GLStateManager.glTranslatef(VIEW_X * f5 / f9, VIEW_Y * f5 / f9, -pz);
+                    GLSMMatrices.glTranslatef(-px, -py, -pz);
+                    GLSMMatrices.glTranslatef(VIEW_X * f5 / f9, VIEW_Y * f5 / f9, -pz);
                 }
             }
             float red = random.nextFloat() * 0.5F + 0.1F;
@@ -413,14 +426,14 @@ class PortalDrawerTest {
             if (i == 0) red = green = blue = 1.0F;
             // Tessellator.setColorRGBA_F stores bytes, and its brightness 180 becomes the lightmap coordinate
             quad(f, (int) (red * f7 * 255.0F), (int) (green * f7 * 255.0F), (int) (blue * f7 * 255.0F));
-            GLStateManager.glPopMatrix();
-            GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+            GLSMMatrices.glPopMatrix();
+            GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
         }
-        GLStateManager.disableBlend();
-        GLStateManager.glDisable(GL11.GL_TEXTURE_GEN_S);
-        GLStateManager.glDisable(GL11.GL_TEXTURE_GEN_T);
-        GLStateManager.glDisable(GL11.GL_TEXTURE_GEN_R);
-        GLStateManager.glDisable(GL11.GL_TEXTURE_GEN_Q);
+        GLSMBlend.disableBlend();
+        GLSMEnable.glDisable(GL11.GL_TEXTURE_GEN_S);
+        GLSMEnable.glDisable(GL11.GL_TEXTURE_GEN_T);
+        GLSMEnable.glDisable(GL11.GL_TEXTURE_GEN_R);
+        GLSMEnable.glDisable(GL11.GL_TEXTURE_GEN_Q);
     }
 
     private record Parity(int covered, int exact, int withinOne, int worst) {

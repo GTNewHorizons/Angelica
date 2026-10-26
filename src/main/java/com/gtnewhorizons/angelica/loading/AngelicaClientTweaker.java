@@ -56,6 +56,7 @@ public final class AngelicaClientTweaker implements IFMLLoadingPlugin, IEarlyMix
         Launch.classLoader.addTransformerExclusion("jss.notfine.asm");
         Launch.classLoader.addTransformerExclusion("com.gtnewhorizons.angelica.loading");
         Launch.classLoader.addTransformerExclusion("com.gtnewhorizons.angelica.glsm.GLStateManager");
+        Launch.classLoader.addTransformerExclusion("com.gtnewhorizons.angelica.glsm.GLSM");
 
         final boolean rfbLoaded = Launch.blackboard.getOrDefault("angelica.rfbPluginLoaded", Boolean.FALSE) == Boolean.TRUE;
         if (rfbLoaded) {

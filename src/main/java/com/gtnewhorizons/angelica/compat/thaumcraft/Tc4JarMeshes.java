@@ -4,7 +4,8 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
 import com.gtnewhorizons.angelica.api.tesr.TesrMeshBuilder;
 import com.gtnewhorizons.angelica.api.tesr.TesrMeshSink;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import com.gtnewhorizons.angelica.rendering.tesr.AngelicaTesrMeshCache;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.client.renderer.RenderBlocks;
@@ -91,7 +92,7 @@ public final class Tc4JarMeshes {
     }
 
     private static void applyBrightness(int bright) {
-        GLStateManager.setLightmapTextureCoords(GL13.GL_TEXTURE1, bright % 65536, (float) (bright / 65536));
+        GLSMCurrentAttribs.setLightmapTextureCoords(GL13.GL_TEXTURE1, bright % 65536, (float) (bright / 65536));
     }
 
     private Tc4JarMeshes() {}
@@ -123,13 +124,13 @@ public final class Tc4JarMeshes {
             holder = new Holder(color);
             HOLDERS.put(liquidKey, holder);
         }
-        GLStateManager.glPushMatrix();
-        GLStateManager.glRotatef(180.0f, 1.0f, 0.0f, 0.0f);
+        GLSMMatrices.glPushMatrix();
+        GLSMMatrices.glRotatef(180.0f, 1.0f, 0.0f, 0.0f);
         BUILDER.material = holder.material;
         BUILDER.level64 = level64;
         BUILDER.icon = icon;
         AngelicaTesrMeshCache.INSTANCE.renderCached(holder.cacheKey, BUILDER);
-        GLStateManager.glPopMatrix();
+        GLSMMatrices.glPopMatrix();
         return true;
     }
 

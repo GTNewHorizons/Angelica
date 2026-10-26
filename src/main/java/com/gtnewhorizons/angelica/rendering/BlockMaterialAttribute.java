@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.rendering;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
 import com.gtnewhorizons.angelica.iris.IrisDisplayListState;
 import com.gtnewhorizons.angelica.rendering.celeritas.BlockRenderLayer;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
@@ -24,14 +24,14 @@ public final class BlockMaterialAttribute {
         IrisDisplayListState.recordBlockEntityAttribute(block, metadata);
         if (!shadersActive()) return;
         IrisDisplayListState.runUnrecorded(() ->
-            GLStateManager.glVertexAttrib2s(ProgramCreator.MC_ENTITY, (short) blockMaterialId(block, metadata), (short) 0));
+            GLSMCurrentAttribs.glVertexAttrib2s(ProgramCreator.MC_ENTITY, (short) blockMaterialId(block, metadata), (short) 0));
     }
 
     public static void reset() {
         IrisDisplayListState.recordBlockEntityAttribute(null, 0);
         if (!shadersActive()) return;
         IrisDisplayListState.runUnrecorded(() ->
-            GLStateManager.glVertexAttrib2s(ProgramCreator.MC_ENTITY, (short) -1, (short) -1));
+            GLSMCurrentAttribs.glVertexAttrib2s(ProgramCreator.MC_ENTITY, (short) -1, (short) -1));
     }
 
     static boolean shadersActive() {

@@ -1,7 +1,8 @@
 package com.gtnewhorizons.angelica.rendering.culling;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.mixins.interfaces.SectionRenderDataStorageRegionAccessor;
@@ -236,7 +237,7 @@ public final class GpuTerrainCuller {
 
     public void endPass() {
         if (indirectBufferBound) {
-            GLStateManager.glBindBuffer(GL40.GL_DRAW_INDIRECT_BUFFER, 0);
+            GLSMBuffers.glBindBuffer(GL40.GL_DRAW_INDIRECT_BUFFER, 0);
             indirectBufferBound = false;
         }
         currentDrawStart = 0;
@@ -258,8 +259,8 @@ public final class GpuTerrainCuller {
 
         ensureGpuBuffers(totalAppendedEntries);
         visibleStagingView.position(0).limit(totalAppendedEntries * ENTRY_BYTES);
-        GLStateManager.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, visibleSsboGlId);
-        GLStateManager.glBufferSubData(GL43.GL_SHADER_STORAGE_BUFFER, 0L, visibleStagingView);
+        GLSMBuffers.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, visibleSsboGlId);
+        GLSMBuffers.glBufferSubData(GL43.GL_SHADER_STORAGE_BUFFER, 0L, visibleStagingView);
 
         culler.beginDispatches(visibleSsboGlId, indirectSsboGlId);
         BackendManager.RENDER_BACKEND.beginComputeDispatchBatch();
@@ -287,14 +288,14 @@ public final class GpuTerrainCuller {
     }
 
     private void ensureGpuBuffers(int maxVisible) {
-        if (visibleSsboGlId == 0) visibleSsboGlId = GLStateManager.glGenBuffers();
-        if (indirectSsboGlId == 0) indirectSsboGlId = GLStateManager.glGenBuffers();
+        if (visibleSsboGlId == 0) visibleSsboGlId = GLSMBuffers.glGenBuffers();
+        if (indirectSsboGlId == 0) indirectSsboGlId = GLSMBuffers.glGenBuffers();
         if (maxVisible <= gpuCapacityEntries) return;
         final int newCap = Math.max(maxVisible, Math.max(gpuCapacityEntries * 2, 64));
-        GLStateManager.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, visibleSsboGlId);
-        GLStateManager.glBufferData(GL43.GL_SHADER_STORAGE_BUFFER, (long) newCap * ENTRY_BYTES, GL15.GL_STREAM_DRAW);
-        GLStateManager.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, indirectSsboGlId);
-        GLStateManager.glBufferData(GL43.GL_SHADER_STORAGE_BUFFER, (long) newCap * GpuDrivenChunkCuller.FACINGS_PER_SECTION * GpuDrivenChunkCuller.INDIRECT_COMMAND_BYTES, GL15.GL_STREAM_DRAW);
+        GLSMBuffers.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, visibleSsboGlId);
+        GLSMBuffers.glBufferData(GL43.GL_SHADER_STORAGE_BUFFER, (long) newCap * ENTRY_BYTES, GL15.GL_STREAM_DRAW);
+        GLSMBuffers.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, indirectSsboGlId);
+        GLSMBuffers.glBufferData(GL43.GL_SHADER_STORAGE_BUFFER, (long) newCap * GpuDrivenChunkCuller.FACINGS_PER_SECTION * GpuDrivenChunkCuller.INDIRECT_COMMAND_BYTES, GL15.GL_STREAM_DRAW);
         gpuCapacityEntries = newCap;
     }
 
@@ -624,19 +625,19 @@ public final class GpuTerrainCuller {
         }
 
         if (!indirectBufferBound) {
-            GLStateManager.glBindBuffer(GL40.GL_DRAW_INDIRECT_BUFFER, indirectSsboGlId);
+            GLSMBuffers.glBindBuffer(GL40.GL_DRAW_INDIRECT_BUFFER, indirectSsboGlId);
             indirectBufferBound = true;
         }
 
         final long offsetBytes = (long) drawStart * GpuDrivenChunkCuller.INDIRECT_COMMAND_BYTES;
         try (DrawCommandList ignored = commandList.beginTessellating(tessellation)) {
-            GLStateManager.glMultiDrawElementsIndirect(primitiveType.getId(), GL11.GL_UNSIGNED_INT, offsetBytes, drawCount, 0);
+            GLSMDraws.glMultiDrawElementsIndirect(primitiveType.getId(), GL11.GL_UNSIGNED_INT, offsetBytes, drawCount, 0);
         }
     }
 
     public void delete() {
         if (indirectBufferBound) {
-            GLStateManager.glBindBuffer(GL40.GL_DRAW_INDIRECT_BUFFER, 0);
+            GLSMBuffers.glBindBuffer(GL40.GL_DRAW_INDIRECT_BUFFER, 0);
             indirectBufferBound = false;
         }
         if (visibleStaging != null) {
@@ -646,11 +647,11 @@ public final class GpuTerrainCuller {
             stagingCapacityEntries = 0;
         }
         if (visibleSsboGlId != 0) {
-            GLStateManager.glDeleteBuffers(visibleSsboGlId);
+            GLSMBuffers.glDeleteBuffers(visibleSsboGlId);
             visibleSsboGlId = 0;
         }
         if (indirectSsboGlId != 0) {
-            GLStateManager.glDeleteBuffers(indirectSsboGlId);
+            GLSMBuffers.glDeleteBuffers(indirectSsboGlId);
             indirectSsboGlId = 0;
         }
         gpuCapacityEntries = 0;

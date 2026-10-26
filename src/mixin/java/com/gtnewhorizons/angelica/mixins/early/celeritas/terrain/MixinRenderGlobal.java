@@ -5,7 +5,8 @@ import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
 import com.gtnewhorizons.angelica.event.RenderChunkEvent;
 import com.gtnewhorizons.angelica.experimental.surround.Surround;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalExt;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
@@ -158,12 +159,12 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
 
         RenderHelper.disableStandardItemLighting();
 
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, this.mc.getTextureMapBlocks().getGlTextureId());
-        GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, this.mc.getTextureMapBlocks().getGlTextureId());
+        GLSMEnable.glEnable(GL11.GL_TEXTURE_2D);
 
-        GLStateManager.glEnable(GL11.GL_ALPHA_TEST);
-        GLStateManager.glEnable(GL11.GL_FOG);
+        GLSMEnable.glEnable(GL11.GL_ALPHA_TEST);
+        GLSMEnable.glEnable(GL11.GL_FOG);
 
         this.mc.entityRenderer.enableLightmap(partialTicks);
 

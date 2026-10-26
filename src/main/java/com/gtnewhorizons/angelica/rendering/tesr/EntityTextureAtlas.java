@@ -1,6 +1,9 @@
 package com.gtnewhorizons.angelica.rendering.tesr;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
@@ -246,20 +249,20 @@ public final class EntityTextureAtlas {
 
     private Page newPage() {
         if (pages.size() == MAX_PAGES) return null;
-        final int previous = GLStateManager.getBoundTextureForServerState();
+        final int previous = GLSMTextures.getBoundTextureForServerState();
         final int texture;
         BatchStateGuard.suspend();
         try {
-            texture = GLStateManager.glGenTextures();
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 0);
-            GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, PAGE_SIZE, PAGE_SIZE, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+            texture = GLSMTextures.glGenTextures();
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 0);
+            GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, PAGE_SIZE, PAGE_SIZE, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
         } finally {
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, previous);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, previous);
             BatchStateGuard.resume();
         }
         final ResourceLocation location = new ResourceLocation("angelica", "entity_atlas_" + pages.size());
@@ -270,22 +273,22 @@ public final class EntityTextureAtlas {
     }
 
     private void copy(int texture, Slot slot) {
-        final int previousRead = GLStateManager.getReadFramebuffer();
-        final int previousDraw = GLStateManager.getDrawFramebuffer();
-        final boolean scissor = GLStateManager.getScissorTest().isEnabled();
+        final int previousRead = GLSMFramebuffer.getReadFramebuffer();
+        final int previousDraw = GLSMFramebuffer.getDrawFramebuffer();
+        final boolean scissor = GLSMRasterizer.getScissorTest().isEnabled();
         BatchStateGuard.suspend();
         try {
             if (readFbo == 0) {
-                readFbo = GLStateManager.glGenFramebuffers();
-                drawFbo = GLStateManager.glGenFramebuffers();
+                readFbo = GLSMFramebuffer.glGenFramebuffers();
+                drawFbo = GLSMFramebuffer.glGenFramebuffers();
             }
-            if (scissor) GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
-            GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, readFbo);
-            GLStateManager.attachTextureForReading(GL30.GL_COLOR_ATTACHMENT0, texture);
-            GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, drawFbo);
+            if (scissor) GLSMEnable.glDisable(GL11.GL_SCISSOR_TEST);
+            GLSMFramebuffer.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, readFbo);
+            GLSMFramebuffer.attachTextureForReading(GL30.GL_COLOR_ATTACHMENT0, texture);
+            GLSMFramebuffer.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, drawFbo);
             assert slot.page != null;
             if (drawFboPage != slot.page.texture) {
-                GLStateManager.glFramebufferTexture2D(GL30.GL_DRAW_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, slot.page.texture, 0);
+                GLSMFramebuffer.glFramebufferTexture2D(GL30.GL_DRAW_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, slot.page.texture, 0);
                 drawFboPage = slot.page.texture;
             }
             final int w = slot.width, h = slot.height, x = slot.x + 1, y = slot.y + 1;
@@ -295,16 +298,16 @@ public final class EntityTextureAtlas {
                 for (int col = 0; col < 3; col++) blit(fromX[col], fromY[row], widths[col], heights[row], toX[col], toY[row]);
             }
         } finally {
-            GLStateManager.attachTextureForReading(GL30.GL_COLOR_ATTACHMENT0, 0);
-            GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, previousRead);
-            GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, previousDraw);
-            if (scissor) GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
+            GLSMFramebuffer.attachTextureForReading(GL30.GL_COLOR_ATTACHMENT0, 0);
+            GLSMFramebuffer.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, previousRead);
+            GLSMFramebuffer.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, previousDraw);
+            if (scissor) GLSMEnable.glEnable(GL11.GL_SCISSOR_TEST);
             BatchStateGuard.resume();
         }
     }
 
     private static void blit(int srcX, int srcY, int width, int height, int dstX, int dstY) {
-        GLStateManager.glBlitFramebuffer(srcX, srcY, srcX + width, srcY + height, dstX, dstY, dstX + width, dstY + height, GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
+        GLSMFramebuffer.glBlitFramebuffer(srcX, srcY, srcX + width, srcY + height, dstX, dstY, dstX + width, dstY + height, GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
     }
 
     public void clear() {
@@ -320,11 +323,11 @@ public final class EntityTextureAtlas {
     void freePages() {
         if (pages.isEmpty() && readFbo == 0) return;
         clear();
-        for (Page page : pages) GLStateManager.glDeleteTextures(page.texture);
+        for (Page page : pages) GLSMTextures.glDeleteTextures(page.texture);
         pages.clear();
         if (readFbo != 0) {
-            GLStateManager.glDeleteFramebuffers(readFbo);
-            GLStateManager.glDeleteFramebuffers(drawFbo);
+            GLSMFramebuffer.glDeleteFramebuffers(readFbo);
+            GLSMFramebuffer.glDeleteFramebuffers(drawFbo);
             readFbo = 0;
             drawFbo = 0;
         }

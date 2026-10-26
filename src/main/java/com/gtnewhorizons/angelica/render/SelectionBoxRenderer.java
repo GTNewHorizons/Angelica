@@ -4,7 +4,9 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VertexBufferType;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import net.irisshaders.iris.api.v0.IrisApi;
@@ -64,7 +66,7 @@ public final class SelectionBoxRenderer {
         final float extY = (float) (aabb.maxY - aabb.minY);
         final float extZ = (float) (aabb.maxZ - aabb.minZ);
 
-        if (GLStateManager.wideLineEmulationEnabled || (AngelicaConfig.enableIris && IrisApi.getInstance().isShaderPackInUse())) {
+        if (GLSMRasterizer.wideLineEmulationEnabled || (AngelicaConfig.enableIris && IrisApi.getInstance().isShaderPackInUse())) {
             drawAsLines(minX, minY, minZ, extX, extY, extZ, color);
         } else {
             drawFast(minX, minY, minZ, extX, extY, extZ, color);
@@ -76,7 +78,7 @@ public final class SelectionBoxRenderer {
 
         program.bind();
 
-        GLStateManager.getProjectionMatrix().mul(GLStateManager.getModelViewMatrix(), mvpMatrix);
+        GLSMMatrices.getProjectionMatrix().mul(GLSMMatrices.getModelViewMatrix(), mvpMatrix);
         mvpMatrix.translate(minX, minY, minZ).scale(extX, extY, extZ);
         uniforms.mvp.set(mvpMatrix);
 
@@ -86,7 +88,7 @@ public final class SelectionBoxRenderer {
             colorBuf[2] = (color & 0xFF) / 255.0f;
             colorBuf[3] = 1.0f;
         } else {
-            final Color4 c = GLStateManager.getColor();
+            final Color4 c = GLSMCurrentAttribs.getColor();
             colorBuf[0] = c.getRed();
             colorBuf[1] = c.getGreen();
             colorBuf[2] = c.getBlue();
@@ -101,24 +103,24 @@ public final class SelectionBoxRenderer {
 
     // The streaming drawer's line path widens the edges in the FFP vertex shader or sends them to a pack's gbuffers_line
     private static void drawAsLines(float minX, float minY, float minZ, float extX, float extY, float extZ, int color) {
-        GLStateManager.glPushMatrix();
-        GLStateManager.glTranslatef(minX, minY, minZ);
-        GLStateManager.glScalef(extX, extY, extZ);
+        GLSMMatrices.glPushMatrix();
+        GLSMMatrices.glTranslatef(minX, minY, minZ);
+        GLSMMatrices.glScalef(extX, extY, extZ);
 
-        final Color4 prev = GLStateManager.getColor();
+        final Color4 prev = GLSMCurrentAttribs.getColor();
         final float prevRed = prev.getRed(), prevGreen = prev.getGreen(), prevBlue = prev.getBlue(), prevAlpha = prev.getAlpha();
         final boolean overrideColor = color != -1;
         if (overrideColor) {
-            GLStateManager.glColor4f(((color >> 16) & 0xFF) / 255.0f, ((color >> 8) & 0xFF) / 255.0f, (color & 0xFF) / 255.0f, 1.0f);
+            GLSMCurrentAttribs.glColor4f(((color >> 16) & 0xFF) / 255.0f, ((color >> 8) & 0xFF) / 255.0f, (color & 0xFF) / 255.0f, 1.0f);
         }
 
         edges.clear();
         TessellatorStreamingDrawer.drawPacked(edges, GL11.GL_LINES, DefaultVertexFormat.POSITION.getVertexFlags(), VERT_COUNT);
 
         if (overrideColor) {
-            GLStateManager.glColor4f(prevRed, prevGreen, prevBlue, prevAlpha);
+            GLSMCurrentAttribs.glColor4f(prevRed, prevGreen, prevBlue, prevAlpha);
         }
-        GLStateManager.glPopMatrix();
+        GLSMMatrices.glPopMatrix();
     }
 
     public static void destroy() {

@@ -3,7 +3,7 @@ package net.coderbot.iris.uniforms.custom.cached;
 import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
 import net.coderbot.iris.parsing.MatrixType;
 import org.joml.Matrix4f;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
 import org.joml.Matrix4fc;
 
 import java.nio.ByteBuffer;
@@ -27,7 +27,7 @@ public class Float4MatrixCachedUniform extends VectorCachedUniform<Matrix4fc> {
 	public void push(int location) {
 		// `gets` the values from the matrix and put's them into a buffer
 		this.cached.get(buffer);
-		GLStateManager.glUniformMatrix4(location, false, buffer);
+		GLSMPrograms.glUniformMatrix4(location, false, buffer);
 	}
 
 	@Override

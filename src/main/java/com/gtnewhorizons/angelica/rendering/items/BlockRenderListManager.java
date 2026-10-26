@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.rendering.items;
 
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
@@ -49,15 +49,15 @@ public class BlockRenderListManager {
 
     public static int callOrStartCompiling(int cached) {
         if (cached != 0) {
-            GLStateManager.glCallList(cached);
+            GLSMDraws.glCallList(cached);
             return -1;
         }
         return startCompiling();
     }
 
     private static int startCompiling() {
-        final int list = GLStateManager.glGenLists(1);
-        GLStateManager.glNewList(list, GL11.GL_COMPILE);
+        final int list = GLSMDraws.glGenLists(1);
+        GLSMDraws.glNewList(list, GL11.GL_COMPILE);
         return list;
     }
 
@@ -65,25 +65,25 @@ public class BlockRenderListManager {
         if (list <= 0) return;
         finishCompiling();
         displayListMap.put(new BlockMeta(block, meta), list);
-        GLStateManager.glCallList(list);
+        GLSMDraws.glCallList(list);
     }
 
     public static void endItemFrameCompiling(int list, int variant) {
         if (list <= 0) return;
         finishCompiling();
         itemFrameDisplayLists[variant] = list;
-        GLStateManager.glCallList(list);
+        GLSMDraws.glCallList(list);
     }
 
     public static void abortCompiling(int list) {
         if (list <= 0) return;
         finishCompiling();
-        GLStateManager.glDeleteLists(list, 1);
+        GLSMDraws.glDeleteLists(list, 1);
     }
 
     private static void finishCompiling() {
         DisplayListManager.discardMatrixTransforms();
-        GLStateManager.glEndList();
+        GLSMDraws.glEndList();
     }
 
     public static void registerReloadListener(){
@@ -91,12 +91,12 @@ public class BlockRenderListManager {
             .getResourceManager();
         resourceManager.registerReloadListener(_ -> {
             for (int list : displayListMap.values()) {
-                GLStateManager.glDeleteLists(list, 1);
+                GLSMDraws.glDeleteLists(list, 1);
             }
             displayListMap.clear();
             for (int i = 0; i < itemFrameDisplayLists.length; i++) {
                 if (itemFrameDisplayLists[i] != 0) {
-                    GLStateManager.glDeleteLists(itemFrameDisplayLists[i], 1);
+                    GLSMDraws.glDeleteLists(itemFrameDisplayLists[i], 1);
                     itemFrameDisplayLists[i] = 0;
                 }
             }

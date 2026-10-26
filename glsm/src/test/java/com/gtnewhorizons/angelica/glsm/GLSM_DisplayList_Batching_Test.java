@@ -78,9 +78,9 @@ class GLSM_DisplayList_Batching_Test {
     void testDifferentTransformsSameFormatShareVBO() {
         CompiledDisplayList compiled = createDisplayList(() -> {
             createSimpleDraw();
-            GLStateManager.glTranslatef(1, 0, 0);
+            GLSMMatrices.glTranslatef(1, 0, 0);
             createSimpleDraw();
-            GLStateManager.glTranslatef(2, 0, 0);
+            GLSMMatrices.glTranslatef(2, 0, 0);
             createSimpleDraw();
         });
 
@@ -107,9 +107,9 @@ class GLSM_DisplayList_Batching_Test {
         // has a different transform, so they can't all be merged.
         CompiledDisplayList compiled = createDisplayList(() -> {
             createSimpleDraw();
-            GLStateManager.glTranslatef(0.5f, 0, 0);
+            GLSMMatrices.glTranslatef(0.5f, 0, 0);
             createSimpleDraw();
-            GLStateManager.glTranslatef(-0.5f, 0, 0);
+            GLSMMatrices.glTranslatef(-0.5f, 0, 0);
             createSimpleDraw();
         });
 
@@ -125,8 +125,8 @@ class GLSM_DisplayList_Batching_Test {
     @Test
     void testDrawsWithSameTransformProduceSingleDrawRangeCmd() {
         CompiledDisplayList compiled = createDisplayList(() -> {
-            GLStateManager.glTranslatef(1.0f, 2.0f, 3.0f);
-            GLStateManager.glScalef(2, 1, 3);
+            GLSMMatrices.glTranslatef(1.0f, 2.0f, 3.0f);
+            GLSMMatrices.glScalef(2, 1, 3);
             createSimpleDraw();
             createSimpleDraw();
             createSimpleDraw();

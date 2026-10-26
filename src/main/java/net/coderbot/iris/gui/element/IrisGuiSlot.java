@@ -1,6 +1,7 @@
 package net.coderbot.iris.gui.element;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
 import lombok.Getter;
 import lombok.Setter;
 import net.minecraft.client.Minecraft;
@@ -166,8 +167,8 @@ public abstract class IrisGuiSlot extends GuiSlot {
 
 
         this.bindAmountScrolled();
-        GLStateManager.glDisable(GL11.GL_LIGHTING);
-        GLStateManager.glDisable(GL11.GL_FOG);
+        GLSMEnable.glDisable(GL11.GL_LIGHTING);
+        GLSMEnable.glDisable(GL11.GL_FOG);
         final Tessellator tessellator = Tessellator.instance;
         drawContainerBackground(tessellator);
         final int elementRight = this.left + this.width / 2 - this.getListWidth() / 2 + 2;
@@ -178,14 +179,14 @@ public abstract class IrisGuiSlot extends GuiSlot {
         }
 
         this.drawSelectionBox(elementRight, relativeY, mouseX, mouseY);
-        GLStateManager.glDisable(GL11.GL_DEPTH_TEST);
+        GLSMEnable.glDisable(GL11.GL_DEPTH_TEST);
         this.overlayBackground(0, this.top, 255, 255);
         this.overlayBackground(this.bottom, this.height, 255, 255);
-        GLStateManager.glEnable(GL11.GL_BLEND);
+        GLSMEnable.glEnable(GL11.GL_BLEND);
         OpenGlHelper.glBlendFunc(770, 771, 0, 1);
-        GLStateManager.glDisable(GL11.GL_ALPHA_TEST);
-        GLStateManager.glShadeModel(GL11.GL_SMOOTH);
-        GLStateManager.glDisable(GL11.GL_TEXTURE_2D);
+        GLSMEnable.glDisable(GL11.GL_ALPHA_TEST);
+        GLSMRasterizer.glShadeModel(GL11.GL_SMOOTH);
+        GLSMEnable.glDisable(GL11.GL_TEXTURE_2D);
         tessellator.startDrawingQuads();
         tessellator.setColorRGBA_I(0, 0);
         tessellator.addVertexWithUV(this.left, (this.top + offset), 0.0D, 0.0D, 1.0D);
@@ -246,9 +247,9 @@ public abstract class IrisGuiSlot extends GuiSlot {
             tessellator.draw();
         }
 
-        GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
-        GLStateManager.glShadeModel(GL11.GL_FLAT);
-        GLStateManager.glEnable(GL11.GL_ALPHA_TEST);
-        GLStateManager.glDisable(GL11.GL_BLEND);
+        GLSMEnable.glEnable(GL11.GL_TEXTURE_2D);
+        GLSMRasterizer.glShadeModel(GL11.GL_FLAT);
+        GLSMEnable.glEnable(GL11.GL_ALPHA_TEST);
+        GLSMEnable.glDisable(GL11.GL_BLEND);
     }
 }

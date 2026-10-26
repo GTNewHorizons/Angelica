@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.debug.render;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
 import org.joml.Matrix4fc;
 import org.lwjgl.BufferUtils;
 
@@ -16,25 +16,25 @@ public final class DebugProgram {
 
     DebugProgram(int handle) {
         this.handle = handle;
-        this.mvpLocation = GLStateManager.glGetUniformLocation(handle, "u_MVP");
-        this.lineWidthLocation = GLStateManager.glGetUniformLocation(handle, "u_LineWidth");
-        this.viewportLocation = GLStateManager.glGetUniformLocation(handle, "u_ViewportSize");
+        this.mvpLocation = GLSMPrograms.glGetUniformLocation(handle, "u_MVP");
+        this.lineWidthLocation = GLSMPrograms.glGetUniformLocation(handle, "u_LineWidth");
+        this.viewportLocation = GLSMPrograms.glGetUniformLocation(handle, "u_ViewportSize");
     }
 
     public void use() {
-        GLStateManager.glUseProgram(handle);
+        GLSMPrograms.glUseProgram(handle);
     }
 
     public void mvp(Matrix4fc mvp) {
         mvp.get(matrix);
-        GLStateManager.glUniformMatrix4(mvpLocation, false, matrix);
+        GLSMPrograms.glUniformMatrix4(mvpLocation, false, matrix);
     }
 
     public void lineWidth(float pixels) {
-        GLStateManager.glUniform1f(lineWidthLocation, pixels);
+        GLSMPrograms.glUniform1f(lineWidthLocation, pixels);
     }
 
     public void viewport(int width, int height) {
-        GLStateManager.glUniform2f(viewportLocation, width, height);
+        GLSMPrograms.glUniform2f(viewportLocation, width, height);
     }
 }

@@ -3,7 +3,9 @@ package com.gtnewhorizons.angelica.mixins.early.shaders;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.experimental.surround.Surround;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
 import com.gtnewhorizons.angelica.rendering.tesr.EntityShadowReplay;
 import com.llamalad7.mixinextras.sugar.Local;
@@ -58,7 +60,7 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
         final WorldRenderingPipeline pipeline = Iris.getPipelineManager().preparePipeline(Iris.getCurrentDimensionName());
         mc.mcProfiler.endSection();
 
-        GLStateManager.setShaderColor(1f, 1f, 1f, 1f);
+        GLSMCurrentAttribs.setShaderColor(1f, 1f, 1f, 1f);
 
         pipeline.beginLevelRendering();
     }
@@ -72,10 +74,10 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
         Minecraft.getMinecraft().mcProfiler.endStartSection("iris_final");
         pipeline.finalizeLevelRendering();
         Program.unbind();
-        GLStateManager.glDepthMask(true);
-        GLStateManager.disableBlend();
-        GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.1F);
-        GLStateManager.enableAlphaTest();
+        GLSMDepthStencilAlpha.glDepthMask(true);
+        GLSMBlend.disableBlend();
+        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, 0.1F);
+        GLSMDepthStencilAlpha.enableAlphaTest();
     }
 
     @Surround(id = "disableVanillaRenderHand", method = "renderHand", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ItemRenderer;renderItemInFirstPerson(F)V"))
@@ -141,7 +143,7 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
         WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
         pipeline.setPhase(WorldRenderingPhase.RAIN_SNOW);
         if (pipeline.shouldWriteRainAndSnowToDepthBuffer()) {
-            GLStateManager.glDepthMask(true);
+            GLSMDepthStencilAlpha.glDepthMask(true);
         }
         @Surround.Skip
         boolean skip = !pipeline.shouldRenderWeather();

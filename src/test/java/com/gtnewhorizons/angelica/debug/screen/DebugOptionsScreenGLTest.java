@@ -4,7 +4,8 @@ import com.gtnewhorizons.angelica.api.debug.DebugScreenEntryStatus;
 import com.gtnewhorizons.angelica.client.font.FontTestFixture;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import net.minecraft.client.audio.SoundHandler;
@@ -220,22 +221,22 @@ class DebugOptionsScreenGLTest {
         final int viewTop = Reflect.get(screen, "viewTop");
         final int nameX = Reflect.get(screen, "nameX");
         final int rowH = Reflect.getStatic(DebugOptionsScreen.class, "ROW_H");
-        final boolean blend = GLStateManager.getBlendMode().isEnabled();
-        final boolean depth = GLStateManager.getDepthTest().isEnabled();
-        GLStateManager.enableDepthTest();
+        final boolean blend = GLSMBlend.getBlendMode().isEnabled();
+        final boolean depth = GLSMDepthStencilAlpha.getDepthTest().isEnabled();
+        GLSMDepthStencilAlpha.enableDepthTest();
         try {
             GL11.glGetError();
 
             screen.drawScreen(nameX + 1, viewTop + (hovered - first) * rowH + rowH / 2, 0.0f);
 
             assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
-            assertTrue(GLStateManager.getDepthTest().isEnabled());
-            assertEquals(blend, GLStateManager.getBlendMode().isEnabled());
+            assertTrue(GLSMDepthStencilAlpha.getDepthTest().isEnabled());
+            assertEquals(blend, GLSMBlend.getBlendMode().isEnabled());
             final Object batcher = Reflect.get(screen, "batcher");
             assertEquals(0, (int) Reflect.get(batcher, "batchDepth"));
             assertNotNull(Reflect.get(screen, "measuredTooltip"));
         } finally {
-            if (!depth) GLStateManager.disableDepthTest();
+            if (!depth) GLSMDepthStencilAlpha.disableDepthTest();
         }
     }
 }

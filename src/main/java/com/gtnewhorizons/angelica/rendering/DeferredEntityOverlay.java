@@ -1,6 +1,9 @@
 package com.gtnewhorizons.angelica.rendering;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import com.gtnewhorizons.angelica.rendering.tesr.EntityShadowReplay;
 import lombok.Getter;
 import net.coderbot.iris.layer.GbufferPrograms;
@@ -87,7 +90,7 @@ public class DeferredEntityOverlay {
         entry.set(pendingShouldRenderPass, pendingRenderer, pendingEntity, pendingPartialTick,
             limbSwing, limbSwingAmount, ageInTicks, headYaw, headPitch, scale);
 
-        GLStateManager.getModelViewMatrix().get(entry.matrix);
+        GLSMMatrices.getModelViewMatrix().get(entry.matrix);
 
         deferred.add(entry);
         EntityShadowReplay.recordDeferredOverlay(entry);
@@ -145,29 +148,29 @@ public class DeferredEntityOverlay {
 
         // Restore the entity's lightmap coords
         int brightness = entity.getBrightnessForRender(entry.partialTick);
-        GLStateManager.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit,
+        GLSMCurrentAttribs.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit,
             brightness % 65536, (float) brightness / 65536);
 
         // Restore the saved modelview matrix
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glPushMatrix();
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glPushMatrix();
         boolean depthMaskDisabled = false;
         try {
             MATRIX_BUF.clear();
             MATRIX_BUF.put(entry.matrix);
             MATRIX_BUF.flip();
-            GLStateManager.glLoadMatrix(MATRIX_BUF);
+            GLSMMatrices.glLoadMatrix(MATRIX_BUF);
 
             // Replay shouldRenderPass pass 1
             replaying = true;
             int result = entry.shouldRenderPass.invoke(entity, 1, entry.partialTick);
             if (result > 0) {
                 // Disable depth writes so coplanar faces don't z-fight each other
-                GLStateManager.glDepthMask(false);
+                GLSMDepthStencilAlpha.glDepthMask(false);
                 depthMaskDisabled = true;
 
                 // Disable backface culling so both sides of the overlay shell are visible
-                GLStateManager.glDisable(GL11.GL_CULL_FACE);
+                GLSMEnable.glDisable(GL11.GL_CULL_FACE);
 
                 // Render using the model set by shouldRenderPass
                 entry.renderer.renderPassModel.setLivingAnimations(entity,
@@ -183,10 +186,10 @@ public class DeferredEntityOverlay {
         } finally {
             replaying = false;
             if (depthMaskDisabled) {
-                GLStateManager.glDepthMask(true);
-                GLStateManager.glEnable(GL11.GL_CULL_FACE);
+                GLSMDepthStencilAlpha.glDepthMask(true);
+                GLSMEnable.glEnable(GL11.GL_CULL_FACE);
             }
-            GLStateManager.glPopMatrix();
+            GLSMMatrices.glPopMatrix();
         }
     }
 

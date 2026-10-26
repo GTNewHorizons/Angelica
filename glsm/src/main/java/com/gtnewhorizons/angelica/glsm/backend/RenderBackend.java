@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.glsm.backend;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
 import com.gtnewhorizons.angelica.glsm.GLESFormatRemap;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.texture.TextureStaging;
@@ -249,7 +250,7 @@ public abstract class RenderBackend {
 
     public void onFrameBegin() {
         if (GLStateManager.takeStateSeedPending()) {
-            GLStateManager.replayStateToBackend();
+            GLSMAttribStack.replayStateToBackend();
         }
     }
 

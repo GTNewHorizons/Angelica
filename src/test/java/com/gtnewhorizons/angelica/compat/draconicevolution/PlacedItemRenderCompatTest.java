@@ -1,7 +1,9 @@
 package com.gtnewhorizons.angelica.compat.draconicevolution;
 
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import com.gtnewhorizons.angelica.rendering.tesr.BatchEligibility;
 import net.minecraft.client.renderer.entity.RenderItem;
 import org.joml.Matrix4f;
@@ -14,61 +16,61 @@ import static org.junit.jupiter.api.Assertions.*;
 class PlacedItemRenderCompatTest {
     @Test
     void customAnimationRunsEveryFrameAndRestoresEligibilityAfterFailure() {
-        final Matrix4f original = new Matrix4f(GLStateManager.getModelViewMatrix());
+        final Matrix4f original = new Matrix4f(GLSMMatrices.getModelViewMatrix());
         final int[] frames = { 0 };
-        BatchEligibility.begin(BatchEligibility.SAFE, GLStateManager.drawCalls);
+        BatchEligibility.begin(BatchEligibility.SAFE, GLSMDraws.drawCalls);
         try {
             BatchEligibility.onPartQueued();
             for (int frame = 0; frame < 3; frame++) {
                 assertEquals(BatchEligibility.DENIED, PlacedItemRenderCompat.renderWithBatchState(1, 2, 3,
                     BatchEligibility.DENIED, () -> {
                         assertFalse(BatchEligibility.batchingAllowed());
-                        GLStateManager.glRotatef(frames[0]++ * 30, 0, 1, 0);
-                        final long before = GLStateManager.drawCalls;
-                        GLStateManager.drawCalls += 2;
-                        BatchEligibility.onPartFallback(before, GLStateManager.drawCalls);
-                        GLStateManager.drawCalls++;
+                        GLSMMatrices.glRotatef(frames[0]++ * 30, 0, 1, 0);
+                        final long before = GLSMDraws.drawCalls;
+                        GLSMDraws.drawCalls += 2;
+                        BatchEligibility.onPartFallback(before, GLSMDraws.drawCalls);
+                        GLSMDraws.drawCalls++;
                     }));
                 assertTrue(BatchEligibility.batchingAllowed());
-                assertTrue(original.equals(GLStateManager.getModelViewMatrix(), 1e-5f));
+                assertTrue(original.equals(GLSMMatrices.getModelViewMatrix(), 1e-5f));
             }
             assertEquals(3, frames[0]);
             assertThrows(IllegalStateException.class, () -> PlacedItemRenderCompat.renderWithBatchState(1, 2, 3,
                 BatchEligibility.DENIED, () -> {
-                    GLStateManager.drawCalls++;
+                    GLSMDraws.drawCalls++;
                     throw new IllegalStateException("renderer failed");
                 }));
             assertTrue(BatchEligibility.batchingAllowed());
-            assertTrue(original.equals(GLStateManager.getModelViewMatrix(), 1e-5f));
+            assertTrue(original.equals(GLSMMatrices.getModelViewMatrix(), 1e-5f));
         } finally {
-            assertEquals(BatchEligibility.SAFE, BatchEligibility.end(BatchEligibility.SAFE, GLStateManager.drawCalls));
+            assertEquals(BatchEligibility.SAFE, BatchEligibility.end(BatchEligibility.SAFE, GLSMDraws.drawCalls));
         }
         assertFalse(BatchEligibility.batchingAllowed());
     }
 
     @Test
     void eachFrameRunsTheAnimationAndRestoresPlacementStateEvenOnFailure() {
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        final Matrix4f original = new Matrix4f(GLStateManager.getModelViewMatrix());
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        final Matrix4f original = new Matrix4f(GLSMMatrices.getModelViewMatrix());
         final boolean originalFrame = RenderItem.renderInFrame;
-        final boolean originalDepth = GLStateManager.getDepthTest().isEnabled();
+        final boolean originalDepth = GLSMDepthStencilAlpha.getDepthTest().isEnabled();
         final int[] calls = { 0 };
         try {
-            GLStateManager.glLoadIdentity();
-            GLStateManager.enableDepthTest();
+            GLSMMatrices.glLoadIdentity();
+            GLSMDepthStencilAlpha.enableDepthTest();
             RenderItem.renderInFrame = true;
             for (int frame = 0; frame < 3; frame++) {
                 final int tick = frame;
                 PlacedItemRenderCompat.render(1, 2, 3, () -> {
                     calls[0]++;
-                    GLStateManager.glRotatef(tick * 30, 0, 1, 0);
+                    GLSMMatrices.glRotatef(tick * 30, 0, 1, 0);
                     assertTrue(new Matrix4f().translation(1, 2, 3).rotateY((float) Math.toRadians(tick * 30))
-                        .equals(GLStateManager.getModelViewMatrix(), 1e-5f));
-                    GLStateManager.disableDepthTest();
+                        .equals(GLSMMatrices.getModelViewMatrix(), 1e-5f));
+                    GLSMDepthStencilAlpha.disableDepthTest();
                     RenderItem.renderInFrame = false;
                 });
                 assertEquals(frame + 1, calls[0]);
-                assertTrue(new Matrix4f().equals(GLStateManager.getModelViewMatrix(), 1e-5f));
+                assertTrue(new Matrix4f().equals(GLSMMatrices.getModelViewMatrix(), 1e-5f));
                 assertTrue(GL11.glIsEnabled(GL11.GL_DEPTH_TEST));
                 assertTrue(RenderItem.renderInFrame);
             }
@@ -76,11 +78,11 @@ class PlacedItemRenderCompatTest {
                 RenderItem.renderInFrame = false;
                 throw new IllegalStateException("renderer failed");
             }));
-            assertTrue(new Matrix4f().equals(GLStateManager.getModelViewMatrix(), 1e-5f));
+            assertTrue(new Matrix4f().equals(GLSMMatrices.getModelViewMatrix(), 1e-5f));
             assertTrue(RenderItem.renderInFrame);
         } finally {
-            GLStateManager.setModelViewMatrix(original);
-            GLStateManager.getDepthTest().setEnabled(originalDepth);
+            GLSMMatrices.setModelViewMatrix(original);
+            GLSMDepthStencilAlpha.getDepthTest().setEnabled(originalDepth);
             RenderItem.renderInFrame = originalFrame;
         }
     }

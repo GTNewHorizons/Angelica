@@ -3,7 +3,11 @@ package com.gtnewhorizons.angelica.profiling;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.glsm.CaptureGate;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMTextureLifetime;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.profiling.TracyBackend;
@@ -189,15 +193,15 @@ public final class TracyFramePlots {
             Tracy.plotInt(P_ENTITIES_TOTAL, mc.theWorld.loadedEntityList.size());
         }
 
-        P_GL_DRAW_CALLS.plot(GLStateManager.drawCalls);
-        P_GL_TEX_BIND_MISSES.plot(GLStateManager.texBindMisses);
-        P_GL_PROGRAM_SWITCHES.plot(GLStateManager.programSwitches);
-        Tracy.plotInt(P_GL_TEX_AWAITING_RELEASE, GLStateManager.deferredTexturesAwaitingRelease());
-        P_GLSM_BRACKETS.plot(GLStateManager.attribPushes);
-        P_GLSM_COW_SLOTS.plot(GLStateManager.attribSlotsSaved);
-        P_GLSM_POP_RESTORES.plot(GLStateManager.attribValueRestores);
-        P_GLSM_POP_GL_CALLS.plot(GLStateManager.attribBackendCalls);
-        P_GLSM_POP_DISCARDS.plot(GLStateManager.attribDiscards);
+        P_GL_DRAW_CALLS.plot(GLSMDraws.drawCalls);
+        P_GL_TEX_BIND_MISSES.plot(GLSMTextures.texBindMisses);
+        P_GL_PROGRAM_SWITCHES.plot(GLSMPrograms.programSwitches);
+        Tracy.plotInt(P_GL_TEX_AWAITING_RELEASE, GLSMTextureLifetime.deferredTexturesAwaitingRelease());
+        P_GLSM_BRACKETS.plot(GLSMAttribStack.attribPushes);
+        P_GLSM_COW_SLOTS.plot(GLSMAttribStack.attribSlotsSaved);
+        P_GLSM_POP_RESTORES.plot(GLSMAttribStack.attribValueRestores);
+        P_GLSM_POP_GL_CALLS.plot(GLSMAttribStack.attribBackendCalls);
+        P_GLSM_POP_DISCARDS.plot(GLSMAttribStack.attribDiscards);
         P_GL_LIST_PLAYBACKS.plot(DisplayListManager.listPlaybacks);
         P_GL_STREAMED_BYTES.plot(TessellatorStreamingDrawer.streamedBytes);
         P_GL_STREAM_DRAWS.plot(TessellatorStreamingDrawer.streamDraws);

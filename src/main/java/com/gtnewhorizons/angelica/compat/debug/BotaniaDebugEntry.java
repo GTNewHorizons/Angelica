@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.api.debug.DebugGroupHandle;
 import com.gtnewhorizons.angelica.api.debug.DebugScreenApi;
 import com.gtnewhorizons.angelica.api.debug.DebugScreenDisplayer;
 import com.gtnewhorizons.angelica.api.debug.DebugScreenEntry;
+import com.gtnewhorizons.angelica.glsm.GLSMQueries;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
@@ -59,9 +60,9 @@ public final class BotaniaDebugEntry implements DebugScreenEntry {
             return;
         }
         if (glVersion == null) {
-            glVersion = GLStateManager.glGetString(GL11.GL_VERSION);
-            glRenderer = GLStateManager.glGetString(GL11.GL_RENDERER);
-            glslVersion = GLStateManager.glGetString(GL20.GL_SHADING_LANGUAGE_VERSION);
+            glVersion = GLSMQueries.glGetString(GL11.GL_VERSION);
+            glRenderer = GLSMQueries.glGetString(GL11.GL_RENDERER);
+            glslVersion = GLSMQueries.glGetString(GL20.GL_SHADING_LANGUAGE_VERSION);
         }
         final ContextCapabilities caps = GLStateManager.capabilities;
         writeContext(displayer, group, ConfigHandler.useShaders, ConfigHandler.glSecondaryTextureUnit, glVersion, glRenderer, glslVersion, GLStateManager.MAX_TEXTURE_UNITS, caps.GL_ARB_multitexture, caps.GL_ARB_texture_non_power_of_two, caps.OpenGL13);

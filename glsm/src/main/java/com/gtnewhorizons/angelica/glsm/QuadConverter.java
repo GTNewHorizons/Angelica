@@ -114,7 +114,7 @@ public final class QuadConverter {
             uploadAndDraw(glCtx, dst, quadCount * 6, GL11.GL_UNSIGNED_INT, 4, primcount, instanced);
             return;
         }
-        GLStateManager.preDraw(glCtx, GL11.GL_TRIANGLES);
+        GLSMDraws.preDraw(glCtx, GL11.GL_TRIANGLES);
         final int prevEbo = glCtx.vaos.boundEBO;
         ensureCapacity(first / 4 + quadCount);
         RENDER_BACKEND.bindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
@@ -143,7 +143,7 @@ public final class QuadConverter {
     }
 
     private static void uploadAndDraw(GLContextState glCtx, ByteBuffer dst, int triIndexCount, int indexType, int bytesPerIndex, int primcount, boolean instanced) {
-        GLStateManager.preDraw(glCtx, GL11.GL_TRIANGLES);
+        GLSMDraws.preDraw(glCtx, GL11.GL_TRIANGLES);
         final int needed = triIndexCount * bytesPerIndex;
         final int prevEbo = glCtx.vaos.boundEBO;
 

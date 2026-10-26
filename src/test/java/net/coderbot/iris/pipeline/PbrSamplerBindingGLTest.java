@@ -1,7 +1,8 @@
 package net.coderbot.iris.pipeline;
 
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.GlTestSupport;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
@@ -72,7 +73,7 @@ class PbrSamplerBindingGLTest {
         BlockRenderingSettings.INSTANCE.setBreaksAnisotropy(false);
         program = GlTestSupport.program(GlTestSupport.TRIVIAL_VS,
             TestPaths.readString("src/test/resources/assets/angelica/shaders/pbrSamplerBindingTest.fsh"));
-        GLStateManager.glUseProgram(program);
+        GLSMPrograms.glUseProgram(program);
         normal = texture();
         specular = texture();
         custom = texture();
@@ -82,20 +83,20 @@ class PbrSamplerBindingGLTest {
     void tearDown() {
         ProgramSamplers.clearActiveSamplers();
         BlockRenderingSettings.INSTANCE.setBreaksAnisotropy(false);
-        GLStateManager.glUseProgram(0);
-        GLStateManager.glDeleteProgram(program);
-        GLStateManager.glDeleteTextures(normal);
-        GLStateManager.glDeleteTextures(specular);
-        GLStateManager.glDeleteTextures(custom);
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMPrograms.glUseProgram(0);
+        GLSMPrograms.glDeleteProgram(program);
+        GLSMTextures.glDeleteTextures(normal);
+        GLSMTextures.glDeleteTextures(specular);
+        GLSMTextures.glDeleteTextures(custom);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
     }
 
     private static int texture() {
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        final int texture = GLStateManager.glGenTextures();
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        final int texture = GLSMTextures.glGenTextures();
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
         return texture;
     }
 
@@ -116,7 +117,7 @@ class PbrSamplerBindingGLTest {
     }
 
     private static int boundSampler(int unit) {
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + unit);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0 + unit);
         return GL11.glGetInteger(GL33.GL_SAMPLER_BINDING);
     }
 
@@ -246,7 +247,7 @@ class PbrSamplerBindingGLTest {
         assertNotEquals(0, boundSampler(5));
         assertNotEquals(0, boundSampler(6));
 
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE2);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE2);
         switch (kind) {
             case GRAPHICS -> Program.unbind();
             case COMPUTE -> ComputeProgram.unbind();
@@ -268,7 +269,7 @@ class PbrSamplerBindingGLTest {
             () -> { throw new IllegalStateException("Failed sampler lookup"); }, "specular");
         final ProgramSamplers samplers = builder.build();
 
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE2);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE2);
         assertThrows(IllegalStateException.class, samplers::update);
         assertEquals(GL13.GL_TEXTURE2, GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE));
         assertEquals(0, boundSampler(NORMAL_UNIT));

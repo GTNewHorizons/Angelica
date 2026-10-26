@@ -5,7 +5,10 @@ import com.gtnewhorizons.angelica.debug.render.DebugGeometry;
 import com.gtnewhorizons.angelica.debug.render.DebugProgram;
 import com.gtnewhorizons.angelica.debug.render.DebugPrograms;
 import com.gtnewhorizons.angelica.debug.render.NativeScratch;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.states.ViewportState;
 import com.gtnewhorizons.angelica.glsm.streaming.LineQuads;
 import org.joml.Matrix4f;
@@ -63,10 +66,10 @@ final class DebugMesh {
 
         if (plainBytes > 0) {
             if (plainVao == 0) {
-                plainVbo = GLStateManager.glGenBuffers();
+                plainVbo = GLSMBuffers.glGenBuffers();
                 plainVao = DebugGeometry.createVao(plainVbo, DebugMeshData.PLAIN);
             } else {
-                GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, plainVbo);
+                GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, plainVbo);
             }
             scratch.ensure(plainBytes);
             long destination = scratch.address();
@@ -80,7 +83,7 @@ final class DebugMesh {
                 data.copySection(DebugMeshData.lineSection(b), destination);
                 destination += data.lineBytes(b);
             }
-            GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, scratch.window(plainBytes), GL15.GL_DYNAMIC_DRAW);
+            GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, scratch.window(plainBytes), GL15.GL_DYNAMIC_DRAW);
         }
 
         if (wideVertices > 0) {
@@ -91,12 +94,12 @@ final class DebugMesh {
                 LineQuads.expandWithOtherEnd(data.lineAddress(b), DebugMeshData.PLAIN, GL11.GL_LINES, data.lineVertexCount(b), scratch.address() + (long) lineFirst[b] * WIDE_STRIDE);
             }
             if (wideVao == 0) {
-                wideVbo = GLStateManager.glGenBuffers();
+                wideVbo = GLSMBuffers.glGenBuffers();
                 wideVao = DebugGeometry.createVao(wideVbo, WIDE);
             } else {
-                GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, wideVbo);
+                GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, wideVbo);
             }
-            GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, scratch.window(wideBytes), GL15.GL_DYNAMIC_DRAW);
+            GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, scratch.window(wideBytes), GL15.GL_DYNAMIC_DRAW);
         }
     }
 
@@ -109,7 +112,7 @@ final class DebugMesh {
     static DebugProgram useLines() {
         final DebugProgram lines = DebugPrograms.lines();
         lines.use();
-        final ViewportState viewport = GLStateManager.getViewportState();
+        final ViewportState viewport = GLSMRasterizer.getViewportState();
         lines.viewport(viewport.width, viewport.height);
         return lines;
     }
@@ -131,33 +134,33 @@ final class DebugMesh {
     void drawPlain(boolean onTop, DebugProgram color) {
         if (!has(false, onTop)) return;
         color.mvp(mvp);
-        GLStateManager.glBindVertexArray(plainVao);
+        GLSMVertexInput.glBindVertexArray(plainVao);
         if (!onTop && fillCount > 0) {
-            GLStateManager.enableCull();
+            GLSMRasterizer.enableCull();
             try {
-                GLStateManager.glDrawArrays(GL11.GL_QUADS, 0, fillCount);
+                GLSMDraws.glDrawArrays(GL11.GL_QUADS, 0, fillCount);
             } finally {
-                GLStateManager.disableCull();
+                GLSMRasterizer.disableCull();
             }
         }
         final int from = onTop ? DebugMeshData.WIDTH_COUNT : 0;
         final int to = from + DebugMeshData.WIDTH_COUNT;
         for (int b = from; b < to; b++) {
             if (lineWide[b] || lineCount[b] == 0) continue;
-            GLStateManager.glDrawArrays(GL11.GL_LINES, lineFirst[b], lineCount[b]);
+            GLSMDraws.glDrawArrays(GL11.GL_LINES, lineFirst[b], lineCount[b]);
         }
     }
 
     void drawWide(boolean onTop, DebugProgram lines) {
         if (!has(true, onTop)) return;
         lines.mvp(mvp);
-        GLStateManager.glBindVertexArray(wideVao);
+        GLSMVertexInput.glBindVertexArray(wideVao);
         final int from = onTop ? DebugMeshData.WIDTH_COUNT : 0;
         final int to = from + DebugMeshData.WIDTH_COUNT;
         for (int b = from; b < to; b++) {
             if (!lineWide[b] || lineCount[b] == 0) continue;
             lines.lineWidth(WIDTHS[b % DebugMeshData.WIDTH_COUNT].pixels);
-            GLStateManager.glDrawArrays(GL11.GL_TRIANGLES, lineFirst[b], lineCount[b]);
+            GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, lineFirst[b], lineCount[b]);
         }
     }
 
@@ -166,10 +169,10 @@ final class DebugMesh {
     }
 
     void delete() {
-        if (plainVbo != 0) GLStateManager.glDeleteBuffers(plainVbo);
-        if (plainVao != 0) GLStateManager.glDeleteVertexArrays(plainVao);
-        if (wideVbo != 0) GLStateManager.glDeleteBuffers(wideVbo);
-        if (wideVao != 0) GLStateManager.glDeleteVertexArrays(wideVao);
+        if (plainVbo != 0) GLSMBuffers.glDeleteBuffers(plainVbo);
+        if (plainVao != 0) GLSMVertexInput.glDeleteVertexArrays(plainVao);
+        if (wideVbo != 0) GLSMBuffers.glDeleteBuffers(wideVbo);
+        if (wideVao != 0) GLSMVertexInput.glDeleteVertexArrays(wideVao);
         plainVbo = 0;
         plainVao = 0;
         wideVbo = 0;

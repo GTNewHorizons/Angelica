@@ -2,7 +2,7 @@ package com.gtnewhorizons.angelica.textures.atlas;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.texture.TextureStaging;
 import com.gtnewhorizons.angelica.glsm.threading.AngelicaWorkers;
 import com.gtnewhorizons.angelica.rendering.celeritas.SpriteExtension;
@@ -89,7 +89,7 @@ public final class AtlasAssembler {
             discard(previous);
             discard(current);
         } finally {
-            GLStateManager.trimTextureStaging();
+            GLSMTextures.trimTextureStaging();
         }
 
         final TextureAtlasSprite last = sprites.getLast();
@@ -170,7 +170,7 @@ public final class AtlasAssembler {
                 final int rows = (y1 >> l) - ly0;
                 final int lw = atlasWidth >> l;
                 if (rows <= 0 || lw <= 0) continue;
-                final TextureStaging staging = GLStateManager.beginTextureStaging(l, 0, ly0, lw, rows);
+                final TextureStaging staging = GLSMTextures.beginTextureStaging(l, 0, ly0, lw, rows);
                 if (staging == null) {
                     abandon(band, 0);
                     return null;
@@ -237,7 +237,7 @@ public final class AtlasAssembler {
             band.stagings[l] = null;
             boolean committed = false;
             try {
-                committed = GLStateManager.commitTextureStaging(staging);
+                committed = GLSMTextures.commitTextureStaging(staging);
             } finally {
                 if (!committed) abandon(band, l + 1);
             }
@@ -260,7 +260,7 @@ public final class AtlasAssembler {
             final TextureStaging staging = band.stagings[l];
             if (staging == null) continue;
             band.stagings[l] = null;
-            GLStateManager.abandonTextureStaging(staging);
+            GLSMTextures.abandonTextureStaging(staging);
         }
     }
 

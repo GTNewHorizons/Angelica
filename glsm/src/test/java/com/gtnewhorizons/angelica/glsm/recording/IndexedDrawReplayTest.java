@@ -1,7 +1,9 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.recording.commands.AttribLayoutKey;
 import com.gtnewhorizons.angelica.glsm.recording.commands.BatchedIndexedDrawCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.IndexedDrawBatch;
@@ -46,12 +48,12 @@ class IndexedDrawReplayTest extends DisplayListTestFixture {
         GL15.glBeginQuery(GL15.GL_SAMPLES_PASSED, query);
 
         final int list = newList();
-        GLStateManager.glNewList(list, GL11.GL_COMPILE_AND_EXECUTE);
-        GLStateManager.glBindVertexArray(vao);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
-        GLStateManager.glDrawElements(GL11.GL_TRIANGLES, 6, GL11.GL_UNSIGNED_SHORT, 0L);
-        GLStateManager.glBindVertexArray(0);
-        GLStateManager.glEndList();
+        GLSMDraws.glNewList(list, GL11.GL_COMPILE_AND_EXECUTE);
+        GLSMVertexInput.glBindVertexArray(vao);
+        GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
+        GLSMDraws.glDrawElements(GL11.GL_TRIANGLES, 6, GL11.GL_UNSIGNED_SHORT, 0L);
+        GLSMVertexInput.glBindVertexArray(0);
+        GLSMDraws.glEndList();
 
         GL15.glEndQuery(GL15.GL_SAMPLES_PASSED);
         final int samples = GL15.glGetQueryObjecti(query, GL15.GL_QUERY_RESULT);
@@ -76,11 +78,11 @@ class IndexedDrawReplayTest extends DisplayListTestFixture {
         final IndexedDrawBatch batch = firstBatch(list);
 
         replay(list);
-        GLStateManager.glBindVertexArray(vaoOf(batch));
-        assertEquals(batch.getSharedEBO(), GLStateManager.getBoundEBO(),
+        GLSMVertexInput.glBindVertexArray(vaoOf(batch));
+        assertEquals(batch.getSharedEBO(), GLSMVertexInput.getBoundEBO(),
             "batched VAO's EBO binding corrupted");
         assertEquals(batch.getSharedEBO(), GL11.glGetInteger(GL15.GL_ELEMENT_ARRAY_BUFFER_BINDING));
-        GLStateManager.glBindVertexArray(0);
+        GLSMVertexInput.glBindVertexArray(0);
     }
 
     @Test
@@ -95,8 +97,8 @@ class IndexedDrawReplayTest extends DisplayListTestFixture {
 
         // Bind unrelated state so the baked command has to restore its own bindings.
         final int distractorVao = newVao();
-        GLStateManager.glBindVertexArray(distractorVao);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
+        GLSMVertexInput.glBindVertexArray(distractorVao);
+        GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
 
         drainErrors();
 
@@ -106,7 +108,7 @@ class IndexedDrawReplayTest extends DisplayListTestFixture {
         assertEquals(GL11.GL_NO_ERROR, err,
             () -> "replay produced GL error 0x" + Integer.toHexString(err));
 
-        GLStateManager.glBindVertexArray(0);
+        GLSMVertexInput.glBindVertexArray(0);
     }
 
     @Test
@@ -116,18 +118,18 @@ class IndexedDrawReplayTest extends DisplayListTestFixture {
         final int vao = setupPosColorVao(vbo);
 
         final int list = newList();
-        GLStateManager.glNewList(list, GL11.GL_COMPILE);
-        GLStateManager.glBindVertexArray(vao);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
-        GLStateManager.glDrawElements(GL11.GL_QUADS, 4, GL11.GL_UNSIGNED_SHORT, 0L);
-        GLStateManager.glDrawElements(GL11.GL_QUADS, 4, GL11.GL_UNSIGNED_SHORT, 0L);
-        GLStateManager.glEndList();
+        GLSMDraws.glNewList(list, GL11.GL_COMPILE);
+        GLSMVertexInput.glBindVertexArray(vao);
+        GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
+        GLSMDraws.glDrawElements(GL11.GL_QUADS, 4, GL11.GL_UNSIGNED_SHORT, 0L);
+        GLSMDraws.glDrawElements(GL11.GL_QUADS, 4, GL11.GL_UNSIGNED_SHORT, 0L);
+        GLSMDraws.glEndList();
 
         final List<BatchedIndexedDrawCmd> cmds = allBatchedCmds(list);
         assertEquals(2, cmds.size());
 
         final int distractor = newVao();
-        GLStateManager.glBindVertexArray(distractor);
+        GLSMVertexInput.glBindVertexArray(distractor);
         drainErrors();
 
         compiledOf(list).render();
@@ -135,8 +137,8 @@ class IndexedDrawReplayTest extends DisplayListTestFixture {
         assertSame(batchOf(cmds.getFirst()), batchOf(cmds.get(1)));
         final int sharedVAO = vaoOf(batchOf(cmds.getFirst()));
         assertNotEquals(0, sharedVAO);
-        assertEquals(sharedVAO, GLStateManager.getBoundVAO());
-        GLStateManager.glBindVertexArray(0);
+        assertEquals(sharedVAO, GLSMVertexInput.getBoundVAO());
+        GLSMVertexInput.glBindVertexArray(0);
     }
 
     @Test
@@ -144,8 +146,8 @@ class IndexedDrawReplayTest extends DisplayListTestFixture {
         final int vbo = defaultQuadVbo();
         final int ebo = uploadEbo(GL11.GL_UNSIGNED_SHORT, 0, 1, 2, 3);
         final int vao = setupPosColorVao(vbo);
-        GLStateManager.glBindVertexArray(vao);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
+        GLSMVertexInput.glBindVertexArray(vao);
+        GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
 
         final IndexedDrawCapture good = IndexedDrawCapture.create(GL11.GL_QUADS, 4, GL11.GL_UNSIGNED_SHORT, 0L, ebo);
         assertNotNull(good);
@@ -172,7 +174,7 @@ class IndexedDrawReplayTest extends DisplayListTestFixture {
             MemoryUtilities.memFree(tinyVtx);
             MemoryUtilities.memFree(tinyIdx);
             good.freeBuffers();
-            GLStateManager.glBindVertexArray(0);
+            GLSMVertexInput.glBindVertexArray(0);
         }
     }
 
@@ -201,11 +203,11 @@ class IndexedDrawReplayTest extends DisplayListTestFixture {
         final int vao = setupPosColorVao(vbo);
 
         final int list = newList();
-        GLStateManager.glNewList(list, GL11.GL_COMPILE);
-        GLStateManager.glBindVertexArray(vao);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
-        GLStateManager.glDrawElements(GL11.GL_QUADS, 4, GL11.GL_UNSIGNED_SHORT, 0L);
-        GLStateManager.glEndList();
+        GLSMDraws.glNewList(list, GL11.GL_COMPILE);
+        GLSMVertexInput.glBindVertexArray(vao);
+        GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
+        GLSMDraws.glDrawElements(GL11.GL_QUADS, 4, GL11.GL_UNSIGNED_SHORT, 0L);
+        GLSMDraws.glEndList();
 
         drainErrors();
 
@@ -216,6 +218,6 @@ class IndexedDrawReplayTest extends DisplayListTestFixture {
         assertEquals(GL11.GL_NO_ERROR, err,
             () -> "double replay produced GL error 0x" + Integer.toHexString(err));
 
-        GLStateManager.glBindVertexArray(0);
+        GLSMVertexInput.glBindVertexArray(0);
     }
 }

@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.recording.commands;
 
 import com.gtnewhorizons.angelica.glsm.GLDebug;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.GLTypes;
 import com.gtnewhorizons.angelica.glsm.states.PixelStoreState;
 import org.jetbrains.annotations.NotNull;
@@ -56,14 +56,14 @@ public record TexSubImage2DCmd(
     @Override
     public void execute() {
         if (pixels == null) {
-            GLStateManager.glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, (ByteBuffer) null);
+            GLSMTextures.glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, (ByteBuffer) null);
             return;
         }
-        GLStateManager.forcePixelUnpackState(unpack);
+        GLSMTextures.forcePixelUnpackState(unpack);
         try {
-            GLStateManager.glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
+            GLSMTextures.glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
         } finally {
-            GLStateManager.restorePixelUnpackState(unpack);
+            GLSMTextures.restorePixelUnpackState(unpack);
         }
     }
 

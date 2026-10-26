@@ -1,6 +1,7 @@
 package net.coderbot.iris.celeritas;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.mixins.interfaces.EntityRendererAccessor;
 import net.coderbot.iris.Iris;
@@ -106,22 +107,22 @@ public class IrisCeleritasChunkShaderInterface implements ChunkShaderInterface {
         bindFramebuffer(pass);
 
         if (ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
-            GLStateManager.disableCull();
+            GLSMRasterizer.disableCull();
         }
 
         // Explicitly set iris_LightmapTextureMatrix rather than relying on CompatUniformManager.
         // At high uniform locations in large UBOs, the compat manager's writes may not persist
         // through the per-program dirtyUniforms swap in non-GL backends.
         if (uniformLightmapTextureMatrix != null) {
-            uniformLightmapTextureMatrix.set(GLStateManager.getTextures().getTextureUnitMatrix(1));
+            uniformLightmapTextureMatrix.set(GLSMTextures.getTextures().getTextureUnitMatrix(1));
         }
 
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + IrisSamplers.ALBEDO_TEXTURE_UNIT);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, Minecraft.getMinecraft().getTextureMapBlocks().getGlTextureId());
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0 + IrisSamplers.ALBEDO_TEXTURE_UNIT);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, Minecraft.getMinecraft().getTextureMapBlocks().getGlTextureId());
 
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + IrisSamplers.LIGHTMAP_TEXTURE_UNIT);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0 + IrisSamplers.LIGHTMAP_TEXTURE_UNIT);
         final DynamicTexture lightmapTexture = ((EntityRendererAccessor) Minecraft.getMinecraft().entityRenderer).getLightmapTexture();
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, lightmapTexture.getGlTextureId());
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, lightmapTexture.getGlTextureId());
 
         if (blendModeOverride != null) {
             blendModeOverride.apply();

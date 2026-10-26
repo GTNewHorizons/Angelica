@@ -2,7 +2,7 @@ package com.gtnewhorizons.angelica.debug.screen;
 
 import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
 import com.gtnewhorizons.angelica.client.font.FormatCodes;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
 import net.minecraft.client.gui.FontRenderer;
 
 public abstract class DebugText {
@@ -156,8 +156,8 @@ public abstract class DebugText {
         }
 
         public void beginRects() {
-            depthWasEnabled = GLStateManager.getDepthTest().isEnabled();
-            GLStateManager.disableDepthTest();
+            depthWasEnabled = GLSMDepthStencilAlpha.getDepthTest().isEnabled();
+            GLSMDepthStencilAlpha.disableDepthTest();
         }
 
         @Override
@@ -166,7 +166,7 @@ public abstract class DebugText {
         }
 
         public void endRects() {
-            if (depthWasEnabled) GLStateManager.enableDepthTest();
+            if (depthWasEnabled) GLSMDepthStencilAlpha.enableDepthTest();
         }
     }
 }

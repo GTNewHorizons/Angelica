@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.shader;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.threading.AngelicaWorkers;
@@ -73,7 +73,7 @@ public final class ProgramBinaryCache {
     }
 
     public static void markRetrievable(int program) {
-        GLStateManager.glProgramParameteri(program, GL41.GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL11.GL_TRUE);
+        GLSMPrograms.glProgramParameteri(program, GL41.GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL11.GL_TRUE);
     }
 
     public static int load(Key key) {
@@ -87,16 +87,16 @@ public final class ProgramBinaryCache {
             ShaderDiskCache.remove(diskKey);
             return 0;
         }
-        final int program = GLStateManager.glCreateProgram();
+        final int program = GLSMPrograms.glCreateProgram();
         final ByteBuffer data = MemoryUtilities.memAlloc(blob.data().length);
         try {
             data.put(blob.data()).flip();
-            GLStateManager.glProgramBinary(program, format, data);
+            GLSMPrograms.glProgramBinary(program, format, data);
         } finally {
             MemoryUtilities.memFree(data);
         }
-        if (GLStateManager.glGetProgrami(program, GL20.GL_LINK_STATUS) != GL11.GL_TRUE) {
-            GLStateManager.glDeleteProgram(program);
+        if (GLSMPrograms.glGetProgrami(program, GL20.GL_LINK_STATUS) != GL11.GL_TRUE) {
+            GLSMPrograms.glDeleteProgram(program);
             ShaderDiskCache.remove(diskKey);
             if (rejectWarned.compareAndSet(false, true)) LOGGER.error("Driver rejected a saved shader program!! Recompiling rejected programs from source");
             return 0;
@@ -112,13 +112,13 @@ public final class ProgramBinaryCache {
     }
 
     private static boolean saveBinary(Key key, int program) {
-        final int length = GLStateManager.glGetProgrami(program, GL41.GL_PROGRAM_BINARY_LENGTH);
+        final int length = GLSMPrograms.glGetProgrami(program, GL41.GL_PROGRAM_BINARY_LENGTH);
         if (length <= 0) return false;
         final ByteBuffer data = MemoryUtilities.memAlloc(length);
         final IntBuffer written = MemoryUtilities.memAllocInt(1);
         final IntBuffer format = MemoryUtilities.memAllocInt(1);
         try {
-            GLStateManager.glGetProgramBinary(program, written, format, data);
+            GLSMPrograms.glGetProgramBinary(program, written, format, data);
             if (written.get(0) <= 0) return false;
             data.limit(written.get(0));
             final byte[] binary = ShaderCacheIO.toHeap(data);

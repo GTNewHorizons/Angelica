@@ -25,10 +25,10 @@ public final class LTWWorkaround {
             oneTexel = BufferUtils.createByteBuffer(4);
         }
         oneTexel.clear();
-        GLStateManager.forcePixelUnpackState(PixelStoreState.DEFAULT);
-        GLStateManager.suspendPixelUnpackBuffer();
+        GLSMTextures.forcePixelUnpackState(PixelStoreState.DEFAULT);
+        GLSMBuffers.suspendPixelUnpackBuffer();
         RENDER_BACKEND.texSubImage2D(target, level, 0, 0, 1, 1, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, oneTexel);
-        GLStateManager.restorePixelUnpackBuffer();
-        GLStateManager.restorePixelUnpackState(PixelStoreState.DEFAULT);
+        GLSMBuffers.restorePixelUnpackBuffer();
+        GLSMTextures.restorePixelUnpackState(PixelStoreState.DEFAULT);
     }
 }
