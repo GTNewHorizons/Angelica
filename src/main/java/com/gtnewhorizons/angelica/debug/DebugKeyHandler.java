@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.debug;
 
 import com.gtnewhorizon.gtnhlib.GTNHLib;
 import com.gtnewhorizons.angelica.debug.screen.DebugEntryDef;
+import com.gtnewhorizons.angelica.debug.screen.DebugOptionsScreen;
 import com.gtnewhorizons.angelica.debug.screen.DebugScreen;
 import com.gtnewhorizons.angelica.debug.screen.DebugScreenEntries;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
@@ -22,6 +23,10 @@ public class DebugKeyHandler {
         final Minecraft mc = Minecraft.getMinecraft();
 
         if (mc.currentScreen != null) {
+            if (mc.currentScreen instanceof DebugOptionsScreen && key == Keyboard.KEY_F6 && Keyboard.getEventKeyState()
+                && !Keyboard.isRepeatEvent() && Keyboard.isKeyDown(Keyboard.KEY_F3)) {
+                mc.displayGuiScreen(null);
+            }
             F3_TOGGLE.disarm();
             return;
         }
@@ -43,6 +48,7 @@ public class DebugKeyHandler {
         }
         if (!Keyboard.isRepeatEvent()) {
             switch (key) {
+                case Keyboard.KEY_F6 -> DebugOptionsScreen.open(mc);
                 case Keyboard.KEY_V -> toggleAndReport(DebugScreenEntries.ANGELICA_RENDERER_VERBOSE, "angelica.debug.verbose");
                 case Keyboard.KEY_B -> {
                     if (DebugScreen.ENTRIES != null) DebugScreen.ENTRIES.toggleStatus(DebugScreenEntries.ENTITY_HITBOXES);

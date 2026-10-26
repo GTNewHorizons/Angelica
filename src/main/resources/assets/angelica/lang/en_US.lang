@@ -406,10 +406,24 @@ angelica.debug.group.angelica=Angelica
 angelica.debug.group.shaders=Shaders
 angelica.debug.group.other=Other
 angelica.debug.group.help=Help
+angelica.debug.options.title=Debug Options
+angelica.debug.options.warning=These options are for testing purposes only. They may slow down your computer, crash the game, or eat your pet rock.
+angelica.debug.options.search=Search...
 angelica.debug.options.category.text=Debug Screen Text
 angelica.debug.options.category.renderer=Debug Renderers
+angelica.debug.options.category.layout=Layout
 angelica.debug.options.profile.default=Default profile
 angelica.debug.options.profile.performance=Performance profile
+angelica.debug.options.failed.tooltip=This entry threw an error and is disabled until restart. See the log.
+angelica.debug.options.flat_notice=Classic F3 layout is active (the grouped screen is turned off, or Angelica's font renderer is disabled): only these entries apply.
+angelica.debug.options.text_size=F3 Text Size
+angelica.debug.options.text_size.match=Match GUI
+angelica.debug.options.text_size.auto=Auto
+angelica.debug.options.text_size.tooltip=Match GUI: same size as your GUI Scale. Auto: half the largest size that fits the window. Never larger than your GUI Scale.
+angelica.debug.options.category.panels=Panels
+angelica.debug.options.panels.tooltip=Use group=%s in F3 line rules (Angelica compat config) to move a line into this panel.
+angelica.debug.options.status.overlay=In Overlay
+angelica.debug.options.status.always=Always
 angelica.debug.entry.minecraft.game_version=Game Version
 angelica.debug.entry.minecraft.fps=FPS
 angelica.debug.entry.minecraft.tps=Server Tick Time
@@ -470,6 +484,7 @@ angelica.debug.entry.angelica.help.tooltip=Reminder of the F3 key combinations, 
 angelica.debug.entry.minecraft.3d_crosshair.tooltip=Replaces the crosshair with colored X, Y and Z axis lines that follow your view
 angelica.debug.entry.minecraft.entity_hitboxes.tooltip=Shows entity hitboxes, like F3+B
 angelica.debug.entry.angelica.chunk_minimap.tooltip=Small map of chunk render states in the corner
+angelica.debug.help.options=F3 + F6 = Edit debug options
 angelica.debug.help.hitboxes=F3 + B = Show hitboxes
 angelica.debug.help.verbose=F3 + V = Verbose renderer info
 angelica.debug.help.graphs=Alt + F3 = FPS and TPS graphs

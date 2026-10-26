@@ -148,7 +148,7 @@ public final class DebugScreenOverlay {
 
     private void prepare(Mode mode, Minecraft mc, RenderGameOverlayEvent.Text event, FontRenderer font, int width, int height, DebugScreenEntryList entries) {
         final int gameScale = event.resolution.getScaleFactor();
-        final boolean even = mc.func_152349_b() && !AngelicaConfig.removeUnicodeEvenScaling;
+        final boolean even = DebugGuiScale.evenForUnicode(mc);
         final int scale = DebugGuiScale.resolve(AngelicaConfig.debugGuiScale, gameScale, mc.displayWidth, mc.displayHeight, even);
         final boolean scaled = scale > 0 && scale < gameScale;
         final int screenWidth = scaled ? width * gameScale / scale : width;

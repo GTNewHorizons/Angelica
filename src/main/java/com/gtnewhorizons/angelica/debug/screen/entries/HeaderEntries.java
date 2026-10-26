@@ -25,6 +25,7 @@ public final class HeaderEntries {
     public static final class Help implements DebugScreenEntry {
 
         private static final String[] KEYS = {
+            "angelica.debug.help.options",
             "angelica.debug.help.hitboxes",
             "angelica.debug.help.verbose",
             "angelica.debug.help.graphs"

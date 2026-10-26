@@ -1,11 +1,18 @@
 package com.gtnewhorizons.angelica.debug.screen;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import net.minecraft.client.Minecraft;
+
 public final class DebugGuiScale {
 
     public static final int UNCHANGED = -1;
     public static final int AUTO = 0;
 
     private DebugGuiScale() {}
+
+    public static boolean evenForUnicode(Minecraft mc) {
+        return mc.func_152349_b() && !AngelicaConfig.removeUnicodeEvenScaling;
+    }
 
     public static int maxScale(int displayWidth, int displayHeight, boolean evenForUnicode) {
         int scale = 1;
