@@ -186,23 +186,13 @@ public class IrisCeleritasChunkProgramOverrides {
             createShaders(celeritasPipeline, configuration);
         }
 
-        if (ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
+        final boolean isShadow = ShadowRenderingState.areShadowsCurrentlyBeingRendered();
+        if (isShadow) {
             if (celeritasPipeline != null && !celeritasPipeline.hasShadowPass()) {
                 throw new IllegalStateException("Shadow program requested, but shader pack has no shadow pass");
             }
-            if (pass.isReverseOrder()) {
-                return programs.get(IrisTerrainPass.SHADOW_TRANSLUCENT);
-            }
-            return programs.get(pass.supportsFragmentDiscard() ? IrisTerrainPass.SHADOW_CUTOUT : IrisTerrainPass.SHADOW);
-        } else {
-            if (pass.supportsFragmentDiscard()) {
-                return programs.get(IrisTerrainPass.GBUFFER_CUTOUT);
-            } else if (pass.isReverseOrder()) {
-                return programs.get(IrisTerrainPass.GBUFFER_TRANSLUCENT);
-            } else {
-                return programs.get(IrisTerrainPass.GBUFFER_SOLID);
-            }
         }
+        return programs.get(IrisTerrainPass.fromTerrainPass(pass, isShadow));
     }
 
     public void deleteShaders() {

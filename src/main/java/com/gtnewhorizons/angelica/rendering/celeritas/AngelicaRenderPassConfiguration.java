@@ -8,6 +8,7 @@ import com.gtnewhorizons.angelica.utils.SpritePadding;
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceOpenHashMap;
 import lombok.Getter;
 import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
+import me.jellysquid.mods.sodium.client.gui.options.named.MipmapGeneration;
 import org.embeddedt.embeddium.impl.render.chunk.RenderPassConfiguration;
 import org.embeddedt.embeddium.impl.render.chunk.compile.sorting.QuadPrimitiveType;
 import org.embeddedt.embeddium.impl.render.chunk.terrain.TerrainRenderPass;
@@ -27,9 +28,11 @@ public class AngelicaRenderPassConfiguration {
     @Getter
     private static boolean rgssEnabled;
 
-    private static TerrainRenderPass.TerrainRenderPassBuilder builderForRenderType(int pass, boolean disableAlphaTest, ChunkVertexType vertexType) {
+    private static TerrainRenderPass.TerrainRenderPassBuilder builderForRenderType(int pass, boolean disableAlphaTest,
+        AlphaCutoffParameter alphaCutoff, ChunkVertexType vertexType) {
         final TerrainRenderPass.TerrainRenderPassBuilder builder = TerrainRenderPass.builder()
-            .pipelineState(new AngelicaPipelineState(pass, disableAlphaTest))
+            .pipelineState(new AngelicaPipelineState(pass, disableAlphaTest, alphaCutoff))
+            .fragmentDiscard(!disableAlphaTest && alphaCutoff != AlphaCutoffParameter.ZERO)
             .vertexType(vertexType)
             .primitiveType(QuadPrimitiveType.TRIANGULATED);
 
@@ -61,27 +64,25 @@ public class AngelicaRenderPassConfiguration {
 
     public static RenderPassConfiguration<BlockRenderLayer> build(ChunkVertexType vertexType) {
         rgssEnabled = SodiumGameOptions.effectiveTextureFilterMode().usesRgss();
+        final AlphaCutoffParameter translucentCutoff = MipmapGeneration.alphaFloorCutoff();
 
-        SOLID_PASS = builderForRenderType(0, true, vertexType)
+        SOLID_PASS = builderForRenderType(0, true, AlphaCutoffParameter.HALF, vertexType)
             .name("solid")
-            .fragmentDiscard(false)
             .useReverseOrder(false)
             .build();
 
-        CUTOUT_MIPPED_PASS = builderForRenderType(0, false, vertexType)
+        CUTOUT_MIPPED_PASS = builderForRenderType(0, false, AlphaCutoffParameter.HALF, vertexType)
             .name("cutout_mipped")
-            .fragmentDiscard(true)
             .useReverseOrder(false)
             .build();
 
-        TRANSLUCENT_PASS = builderForRenderType(1, false, vertexType)
+        TRANSLUCENT_PASS = builderForRenderType(1, false, translucentCutoff, vertexType)
             .name("translucent")
-            .fragmentDiscard(false)
             .useReverseOrder(true)
             .useTranslucencySorting(ClientProxy.options().performance.translucencySorting)
             .build();
 
-        TRANSLUCENT_MATERIAL = new Material(TRANSLUCENT_PASS, AlphaCutoffParameter.ZERO, true);
+        TRANSLUCENT_MATERIAL = new Material(TRANSLUCENT_PASS, translucentCutoff, true);
         SOLID_MATERIAL = new Material(SOLID_PASS, AlphaCutoffParameter.ZERO, true);
         CUTOUT_MIPPED_MATERIAL = new Material(CUTOUT_MIPPED_PASS, AlphaCutoffParameter.HALF, true);
         CUTOUT_MATERIAL = new Material(CUTOUT_MIPPED_PASS, AlphaCutoffParameter.ONE_TENTH, false);
@@ -105,24 +106,29 @@ public class AngelicaRenderPassConfiguration {
     private static final class AngelicaPipelineState implements TerrainRenderPass.PipelineState {
         private final int pass;
         private final boolean disableAlphaTest;
+        private final float alphaCutoff;
         private int alphaStateDepth = -1;
 
-        private AngelicaPipelineState(int pass, boolean disableAlphaTest) {
+        private AngelicaPipelineState(int pass, boolean disableAlphaTest, AlphaCutoffParameter alphaCutoff) {
             this.pass = pass;
             this.disableAlphaTest = disableAlphaTest;
+            this.alphaCutoff = alphaCutoff.cutoff();
         }
 
         @Override
         public void setup() {
             GLStateManager.glDepthMask(true);
 
-            if (pass == 0) {
+            if (alphaCutoff > 0.0f) {
                 if (alphaStateDepth >= 0) {
                     GLStateManager.popStateTo(alphaStateDepth);
                     alphaStateDepth = -1;
                 }
                 alphaStateDepth = GLStateManager.pushState(StateSet.ALPHA);
-                GLStateManager.glAlphaFunc(GL11.GL_GREATER, AlphaCutoffParameter.HALF.cutoff());
+                GLStateManager.glAlphaFunc(GL11.GL_GREATER, alphaCutoff);
+                if (pass == 1) {
+                    GLStateManager.enableAlphaTest();
+                }
             }
             if (disableAlphaTest) {
                 GLStateManager.disableAlphaTest();

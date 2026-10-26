@@ -453,6 +453,7 @@ public enum Mixins implements IMixins {
             , "celeritas.frustum.MixinClippingHelperImpl"
             , "celeritas.frustum.MixinFrustrum"
             , "celeritas.features.culling.MixinEffectRenderer"
+            , "celeritas.features.mipmaps.MixinEffectRenderer"
             , "celeritas.features.mipmaps.MixinTextureAtlasSprite"
             , "celeritas.features.mipmaps.MixinTextureMetadataSection"
             , "celeritas.features.mipmaps.MixinTextureMetadataSectionSerializer"
@@ -885,6 +886,11 @@ public enum Mixins implements IMixins {
         .addRequiredMod(TargetedMod.DRAGON_API)
         .setApplyIf(() -> AngelicaConfig.enableIris)
         .addClientMixins("client.dragonapi.MixinThrottleableEffectRenderer")
+    ),
+    DRAGONAPI_PARTICLE_CUTOFF(new MixinBuilder("Modern 26.2 mipmap alpha cutoff for DragonAPI's terrain particles")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.DRAGON_API)
+        .addClientMixins("client.dragonapi.MixinThrottleableEffectRenderer_MipmapCutoff")
     ),
     DRAGONAPI_PARTICLE_BATCH(new MixinBuilder("Particle instancing for DragonAPI's replacement particle renderer")
         .setPhase(Phase.LATE)

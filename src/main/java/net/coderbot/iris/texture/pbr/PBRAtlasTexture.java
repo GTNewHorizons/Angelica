@@ -113,7 +113,7 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
     protected void uploadSprite(TextureAtlasSprite sprite) {
         final int gutter = ((SpriteExtension) sprite).angelica$getGutterWidth();
 
-		if (sprite.animationMetadata.getFrameCount() > 1) {
+		if (sprite.animationMetadata.getFrameCount() > 0) {
 			final AnimationMetadataSection metadata = sprite.animationMetadata;
 			final int frameCount = sprite.getFrameCount();
 			for (int frame = sprite.frameCounter; frame >= 0; frame--) {

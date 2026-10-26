@@ -11,6 +11,7 @@ import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import me.jellysquid.mods.sodium.client.gui.options.named.BiomeBlendMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsQuality;
+import me.jellysquid.mods.sodium.client.gui.options.named.MipmapGeneration;
 import me.jellysquid.mods.sodium.client.gui.options.named.MultiDrawMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.TexelSampling;
 import me.jellysquid.mods.sodium.client.gui.options.named.TextureFilterMode;
@@ -153,6 +154,10 @@ public class SodiumGameOptions {
             config.quality.texelSampling = TexelSampling.LINEAR;
         }
 
+        if (config.quality.mipmapGeneration == null) {
+            config.quality.mipmapGeneration = MipmapGeneration.MODERN_VANILLA;
+        }
+
         if (GLStateManager.capabilities != null) {
             if (!GLStateManager.capabilities.OpenGL32) {
                 config.performance.cpuRenderAheadLimit = 0;
@@ -251,6 +256,7 @@ public class SodiumGameOptions {
         public boolean useCeleritasSmoothLighting = true;
         public TextureFilterMode textureFilterMode = TextureFilterMode.RGSS_ANISOTROPIC;
         public TexelSampling texelSampling = TexelSampling.LINEAR;
+        public MipmapGeneration mipmapGeneration = MipmapGeneration.MODERN_VANILLA;
     }
 
     public static class ReducerSettings {

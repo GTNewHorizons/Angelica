@@ -12,6 +12,9 @@ public class MixinTextureMetadataSection implements TextureMetadataExtension {
     @Unique
     private MipmapStrategy angelica$mipmapStrategy;
 
+    @Unique
+    private float angelica$alphaCutoffBias;
+
     @Override
     public void angelica$setMipmapStrategy(MipmapStrategy strategy) {
         this.angelica$mipmapStrategy = strategy;
@@ -20,5 +23,15 @@ public class MixinTextureMetadataSection implements TextureMetadataExtension {
     @Override
     public MipmapStrategy angelica$getMipmapStrategy() {
         return this.angelica$mipmapStrategy;
+    }
+
+    @Override
+    public void angelica$setAlphaCutoffBias(float bias) {
+        this.angelica$alphaCutoffBias = bias;
+    }
+
+    @Override
+    public float angelica$getAlphaCutoffBias() {
+        return this.angelica$alphaCutoffBias;
     }
 }

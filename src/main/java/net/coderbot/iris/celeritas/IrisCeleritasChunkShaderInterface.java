@@ -241,20 +241,7 @@ public class IrisCeleritasChunkShaderInterface implements ChunkShaderInterface {
         }
 
         final boolean isShadow = ShadowRenderingState.areShadowsCurrentlyBeingRendered();
-        final IrisTerrainPass irisPass;
-        if (isShadow) {
-            if (pass.isReverseOrder()) {
-                irisPass = IrisTerrainPass.SHADOW_TRANSLUCENT;
-            } else {
-                irisPass = pass.supportsFragmentDiscard() ? IrisTerrainPass.SHADOW_CUTOUT : IrisTerrainPass.SHADOW;
-            }
-        } else if (pass.isReverseOrder()) {
-            irisPass = IrisTerrainPass.GBUFFER_TRANSLUCENT;
-        } else if (pass.supportsFragmentDiscard()) {
-            irisPass = IrisTerrainPass.GBUFFER_CUTOUT;
-        } else {
-            irisPass = IrisTerrainPass.GBUFFER_SOLID;
-        }
+        final IrisTerrainPass irisPass = IrisTerrainPass.fromTerrainPass(pass, isShadow);
 
         final GlFramebuffer framebuffer = pipeline.getPassInfo(irisPass).framebuffer();
         if (framebuffer != null) {

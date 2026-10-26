@@ -42,6 +42,7 @@ import me.jellysquid.mods.sodium.client.gui.options.named.BiomeBlendMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsQuality;
 import me.jellysquid.mods.sodium.client.gui.options.named.LightingQuality;
+import me.jellysquid.mods.sodium.client.gui.options.named.MipmapGeneration;
 import me.jellysquid.mods.sodium.client.gui.options.named.MultiDrawMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.ParticleMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.TexelSampling;
@@ -304,6 +305,14 @@ public class SodiumGameOptionPages {
 
         groups.add(OptionGroup.createBuilder()
                 .add(mipmapLevels)
+                .add(OptionImpl.createBuilder(MipmapGeneration.class, sodiumOpts)
+                    .setName(I18n.format("sodium.options.mipmap_generation.name"))
+                    .setTooltip(I18n.format("sodium.options.mipmap_generation.tooltip"))
+                    .setControl(option -> new CyclingControl<>(option, MipmapGeneration.class))
+                    .setBinding((opts, value) -> opts.quality.mipmapGeneration = value, opts -> opts.quality.mipmapGeneration)
+                    .setImpact(OptionImpact.LOW)
+                    .setFlags(OptionFlag.REQUIRES_ASSET_RELOAD)
+                    .build())
                 .build());
         groups.add(OptionGroup.createBuilder()
         .add(Settings.MODE_GLINT_INV.option)
