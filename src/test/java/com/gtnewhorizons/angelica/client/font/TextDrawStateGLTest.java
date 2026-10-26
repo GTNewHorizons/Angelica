@@ -59,7 +59,7 @@ class TextDrawStateGLTest {
 
     private static TextDrawState capture() {
         final TextDrawState state = new TextDrawState();
-        state.captureLive();
+        state.captureLive(GLStateManager.ctx());
         return state;
     }
 

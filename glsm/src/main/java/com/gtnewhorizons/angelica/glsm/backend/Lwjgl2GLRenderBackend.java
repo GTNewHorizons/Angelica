@@ -42,6 +42,9 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
 
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetAddress;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt;
+import static com.gtnewhorizon.gtnhlib.bytebuf.Pointer.POINTER_SIZE;
 import static org.taumc.celeritas.lwjgl.LWJGLServiceProvider.LWJGL;
 
 /**
@@ -380,7 +383,9 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
 
     @Override
     public void multiDrawElementsBaseVertex(int mode, long pCount, int type, long pIndices, int drawcount, long pBaseVertex) {
-        throw new UnsupportedOperationException("GLRenderBackend.multiDrawElementsBaseVertex should not be called — LWJGL service handles this");
+        for (int i = 0; i < drawcount; i++) {
+            GL32.glDrawElementsBaseVertex(mode, memGetInt(pCount + 4L * i), type, memGetAddress(pIndices + (long) i * POINTER_SIZE), memGetInt(pBaseVertex + 4L * i));
+        }
     }
 
     @Override

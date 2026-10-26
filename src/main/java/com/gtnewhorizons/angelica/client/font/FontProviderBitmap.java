@@ -31,15 +31,19 @@ public final class FontProviderBitmap implements FontProvider {
 
     private static final ResourceLocation DEFINITION = new ResourceLocation("angelica", "font/modern.json");
     private static final int DEFAULT_HEIGHT = 8;
-    private static final FontProviderBitmap[] NONE = new FontProviderBitmap[0];
+    static final FontProviderBitmap[] NONE = new FontProviderBitmap[0];
 
     private static volatile FontProviderBitmap[] loaded;
 
     public static void registerReloadListener() {
-        ((IReloadableResourceManager) Minecraft.getMinecraft().getResourceManager()).registerReloadListener(manager -> loaded = null);
+        ((IReloadableResourceManager) Minecraft.getMinecraft().getResourceManager()).registerReloadListener(manager -> {
+            loaded = null;
+            FontProviderCache.invalidate();
+        });
     }
 
     private final ResourceLocation sheet;
+    private int texture;
     private final int columns;
     private final float uSize;
     private final float vSize;
@@ -60,7 +64,7 @@ public final class FontProviderBitmap implements FontProvider {
         return null;
     }
 
-    private static FontProviderBitmap[] providers() {
+    static FontProviderBitmap[] providers() {
         FontProviderBitmap[] local = loaded;
         if (local == null) {
             final IResourceManager resources = Minecraft.getMinecraft().getResourceManager();
@@ -229,7 +233,12 @@ public final class FontProviderBitmap implements FontProvider {
 
     @Override
     public int getTexture(char chr) {
-        return FontStrategist.getIntFromResourceLocation(this.sheet);
+        int texture = this.texture;
+        if (texture == 0) {
+            texture = FontStrategist.getIntFromResourceLocation(this.sheet);
+            this.texture = texture;
+        }
+        return texture;
     }
 
     @Override

@@ -108,10 +108,6 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(true)
     public static boolean modernizeF3Screen;
 
-    @Config.Comment("Show block registry name and meta value in F3, similar to 1.8+. [From ArchaicFix]")
-    @Config.DefaultBoolean(true)
-    public static boolean showBlockDebugInfo;
-
     @Config.DefaultBoolean(true)
     @Config.Comment("Hide downloading terrain screen. [From ArchaicFix]")
     public static boolean hideDownloadingTerrainScreen;
@@ -460,13 +456,14 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(false)
     public static boolean useVanillaChunkTracking;
 
-    @Config.Comment("Disables additional F3 information added by Angelica.")
-    @Config.DefaultBoolean(false)
-    public static boolean disableF3Additions;
-
-    @Config.Comment("Shows developer counters (FFP, streaming, TESR, transfer) on the F3 screen. Toggle in game with F3+V.")
-    @Config.DefaultBoolean(false)
-    public static boolean verboseF3;
+    @Config.Comment({"Size of the F3 text.",
+        "-1 = same as your GUI Scale (default, the size vanilla F3 uses)",
+        "0 = Auto: half the largest size that fits the window",
+        "1-16 = that size",
+        "F3 is never drawn larger than your GUI Scale."})
+    @Config.DefaultInt(-1)
+    @Config.RangeInt(min = -1, max = 16)
+    public static int debugGuiScale;
 
     @Config.Comment("Replaces various FFP uploads with statically allocated VBO's.")
     @Config.DefaultBoolean(true)

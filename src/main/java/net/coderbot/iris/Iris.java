@@ -4,6 +4,7 @@ import com.google.common.base.Throwables;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.Tags;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.debug.screen.DebugScreen;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
@@ -251,7 +252,7 @@ public class Iris {
     public void keyUp(InputEvent.KeyInputEvent event) {
         final int key = Keyboard.getEventKey();
         final boolean released = !Keyboard.getEventKeyState();
-        if (Minecraft.getMinecraft().gameSettings.showDebugInfo && GuiScreen.isShiftKeyDown() && GuiScreen.isCtrlKeyDown() && released) {
+        if (DebugScreen.isOverlayVisible() && GuiScreen.isShiftKeyDown() && GuiScreen.isCtrlKeyDown() && released) {
             if (key == Keyboard.KEY_N) {
                 ClientProxy.animationsMode.next();
             }

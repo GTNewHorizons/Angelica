@@ -37,9 +37,7 @@ import static org.lwjgl.system.MemoryUtil.memUTF8;
 public final class Device {
     private static final Logger LOG = LogManager.getLogger("Angelica-SDLGPU");
 
-    public static final int MAX_FRAMES_IN_FLIGHT = 3;
-
-    private static final int FRAMES_IN_FLIGHT = Math.min(Math.max(SystemProperties.SDL_FRAMES_IN_FLIGHT, 1), MAX_FRAMES_IN_FLIGHT);
+    private static final int FRAMES_IN_FLIGHT = Math.min(Math.max(SystemProperties.SDL_FRAMES_IN_FLIGHT, 1), RenderBackend.MAX_FRAMES_IN_FLIGHT);
 
     public static int framesInFlight() { return FRAMES_IN_FLIGHT; }
 

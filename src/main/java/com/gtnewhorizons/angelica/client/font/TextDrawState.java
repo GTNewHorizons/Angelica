@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.client.font;
 
+import com.gtnewhorizons.angelica.glsm.GLContextState;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.ColorMask;
 import com.gtnewhorizons.angelica.glsm.states.PolygonState;
@@ -28,23 +29,23 @@ final class TextDrawState {
     float offsetUnits;
     float alphaRef;
 
-    void captureLive() {
-        depthTest = GLStateManager.getDepthTest().isEnabled();
-        depthFunc = GLStateManager.getDepthState().getFunc();
-        depthMask = GLStateManager.isEffectiveDepthMaskEnabled();
-        final ColorMask colorMask = GLStateManager.getEffectiveColorMask(colorMaskScratch);
+    void captureLive(GLContextState ctx) {
+        depthTest = ctx.depthTest.isEnabled();
+        depthFunc = ctx.depthState.getFunc();
+        depthMask = ctx.depthState.isEffectiveMaskEnabled();
+        final ColorMask colorMask = ctx.colorMask.readEffective(colorMaskScratch);
         colorRed = colorMask.red;
         colorGreen = colorMask.green;
         colorBlue = colorMask.blue;
         colorAlpha = colorMask.alpha;
-        final PolygonState polygon = GLStateManager.getPolygonState();
-        cull = GLStateManager.getCullState().isEnabled();
+        final PolygonState polygon = ctx.polygonState;
+        cull = ctx.cullState.isEnabled();
         cullFace = polygon.getCullFaceMode();
         frontFace = polygon.getFrontFace();
-        polygonOffset = GLStateManager.getPolygonOffsetFillState().isEnabled();
+        polygonOffset = ctx.polygonOffsetFillState.isEnabled();
         offsetFactor = polygon.getOffsetFactor();
         offsetUnits = polygon.getOffsetUnits();
-        alphaRef = GLStateManager.getAlphaState().getReference();
+        alphaRef = ctx.alphaState.getReference();
     }
 
     boolean sameAs(TextDrawState other) {

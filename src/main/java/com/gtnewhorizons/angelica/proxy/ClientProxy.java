@@ -1,12 +1,14 @@
 package com.gtnewhorizons.angelica.proxy;
 
 import com.gtnewhorizons.angelica.debug.DebugKeyHandler;
+import com.gtnewhorizons.angelica.debug.screen.DebugScreen;
+import com.gtnewhorizons.angelica.debug.screen.DebugScreenEntries;
+import com.gtnewhorizons.angelica.debug.screen.DebugScreenOverlay;
 import com.gtnewhorizons.angelica.rendering.culling.GpuCulling;
 import static com.gtnewhorizons.angelica.AngelicaMod.MOD_ID;
 
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
-import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 
 import net.minecraft.block.Block;
@@ -14,14 +16,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiVideoSettings;
-import net.minecraft.client.network.NetHandlerPlayClient;
 import net.minecraft.client.resources.IReloadableResourceManager;
 import net.minecraft.server.integrated.IntegratedServer;
-import net.minecraft.util.Direction;
-import net.minecraft.util.MathHelper;
-import net.minecraft.util.MovingObjectPosition;
-import net.minecraft.world.EnumSkyBlock;
-import net.minecraft.world.chunk.Chunk;
 import net.minecraftforge.client.ClientCommandHandler;
 import net.minecraftforge.client.event.EntityViewRenderEvent;
 import net.minecraftforge.client.event.FOVUpdateEvent;
@@ -35,7 +31,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import biomesoplenty.api.content.BOPCBlocks;
-import com.google.common.base.Objects;
 import com.gtnewhorizon.gtnhlib.client.model.loading.ModelRegistry;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VAOManager;
 import com.gtnewhorizons.angelica.client.font.DarkModeUtils;
@@ -46,7 +41,6 @@ import com.gtnewhorizons.angelica.common.BlockError;
 import com.gtnewhorizons.angelica.common.BlockIsbrhTest;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.bettercrashes.BetterCrashesCompat;
-import com.gtnewhorizons.angelica.compat.mojang.CompatMathHelper;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.rendering.TileEntityRenderBoundsRegistry;
 import com.gtnewhorizons.angelica.rendering.tesr.AngelicaTesrMeshCache;
@@ -80,7 +74,6 @@ import com.gtnewhorizons.angelica.rendering.FpsReducer;
 import com.gtnewhorizons.angelica.rendering.FramePacer;
 import com.gtnewhorizons.angelica.rendering.IsbrhTestRenderer;
 import com.gtnewhorizons.angelica.rendering.TextureSamplers;
-import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasDebugScreenHandler;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasSetup;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.ChunkTaskRegistry;
@@ -109,7 +102,6 @@ import me.flashyreese.mods.reeses_sodium_options.client.gui.ReeseSodiumVideoOpti
 import me.jellysquid.mods.sodium.client.gui.FrameRateOptions;
 import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
 import net.coderbot.iris.Iris;
-import net.coderbot.iris.client.IrisDebugScreenHandler;
 
 public final class ClientProxy extends CommonProxy {
 
@@ -182,10 +174,8 @@ public final class ClientProxy extends CommonProxy {
             final CeleritasWorldRenderer renderer = CeleritasWorldRenderer.getInstanceOrNull();
             if (renderer != null) renderer.runFrameIdleWork(deadlineNanos);
         });
-        MinecraftForge.EVENT_BUS.register(CeleritasDebugScreenHandler.INSTANCE);
         if (AngelicaConfig.enableIris) {
             IrisGLSMBridge.register();
-            MinecraftForge.EVENT_BUS.register(IrisDebugScreenHandler.INSTANCE);
 
             Iris.INSTANCE.fmlInitEvent();
             FMLCommonHandler.instance().bus().register(Iris.INSTANCE);
@@ -285,7 +275,11 @@ public final class ClientProxy extends CommonProxy {
         GpuCulling.onWorldUnload();
     }
 
-    float lastIntegratedTickTime;
+    private static float lastIntegratedTickTime;
+
+    public static float integratedTickTime() {
+        return lastIntegratedTickTime;
+    }
 
     @SubscribeEvent
     public void onTick(TickEvent.ServerTickEvent event) {
@@ -300,8 +294,7 @@ public final class ClientProxy extends CommonProxy {
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onRenderOverlay(RenderGameOverlayEvent.Pre event) {
-        if (!mc.gameSettings.showDebugInfo) return;
-        if (AngelicaConfig.modernizeF3Screen && event.type == RenderGameOverlayEvent.ElementType.CROSSHAIRS) {
+        if (AngelicaConfig.modernizeF3Screen && event.type == RenderGameOverlayEvent.ElementType.CROSSHAIRS && DebugScreenEntries.THREE_DIMENSIONAL_CROSSHAIR.isEnabled()) {
             F3Direction.renderWorldDirectionsEvent(mc, event);
             event.setCanceled(true);
         }
@@ -309,81 +302,13 @@ public final class ClientProxy extends CommonProxy {
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onRenderOverlay(RenderGameOverlayEvent.Text event) {
-        final Minecraft mc = Minecraft.getMinecraft();
-        if (event.isCanceled() || !mc.gameSettings.showDebugInfo || event.left.isEmpty()) return;
-
-        final NetHandlerPlayClient cl = mc.getNetHandler();
-        if (cl != null) {
-            final IntegratedServer srv = mc.getIntegratedServer();
-
-            if (srv != null) {
-                final String s = String.format("Integrated server @ %.0f ms ticks", lastIntegratedTickTime);
-                event.left.add(Math.min(event.left.size(), 1), s);
-            }
-        }
-
-        if (AngelicaConfig.showBlockDebugInfo && mc.objectMouseOver != null && mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
-            if (!event.right.isEmpty() && !Objects.firstNonNull(event.right.get(event.right.size() - 1), "").isEmpty()) event.right.add("");
-            final Block block = mc.theWorld.getBlock(mc.objectMouseOver.blockX, mc.objectMouseOver.blockY, mc.objectMouseOver.blockZ);
-            final int meta = mc.theWorld.getBlockMetadata(mc.objectMouseOver.blockX, mc.objectMouseOver.blockY, mc.objectMouseOver.blockZ);
-            event.right.add(Block.blockRegistry.getNameForObject(block));
-            event.right.add("meta: " + meta);
-        }
-
-        if (DynamicLights.isEnabled()) {
-            final var builder = new StringBuilder("Dynamic Light Sources: ");
-            final DynamicLights dl = DynamicLights.get();
-            builder.append(dl.getLightSourcesCount()).append(" (U: ").append(dl.getLastUpdateCount()).append(')');
-
-            event.right.add(builder.toString());
-        }
-
-        if (AngelicaConfig.modernizeF3Screen) {
-            boolean hasReplacedXYZ = false;
-            for (int i = 0; i < event.left.size() - 3; i++) {
-                /* These checks should not be inefficient as most of the time the first one will already fail */
-                if (!hasReplacedXYZ && Objects.firstNonNull(event.left.get(i), "").startsWith("x:") && Objects.firstNonNull(event.left.get(i + 1), "")
-                        .startsWith("y:") && Objects.firstNonNull(event.left.get(i + 2), "").startsWith("z:") && Objects.firstNonNull(event.left.get(i + 3), "")
-                        .startsWith("f:")) {
-                    hasReplacedXYZ = true;
-                    final int heading = MathHelper.floor_double((double) (mc.thePlayer.rotationYaw * 4.0F / 360.0F) + 0.5D) & 3;
-                    final String heading_str = switch (heading) {
-                        case 0 -> "Towards positive Z";
-                        case 1 -> "Towards negative X";
-                        case 2 -> "Towards negative Z";
-                        case 3 -> "Towards positive X";
-                        default -> throw new RuntimeException();
-                    };
-                    event.left.set(i, String.format("XYZ: %.3f / %.5f / %.3f", mc.thePlayer.posX, mc.thePlayer.boundingBox.minY, mc.thePlayer.posZ));
-                    final int bX = MathHelper.floor_double(mc.thePlayer.posX);
-                    final int bY = MathHelper.floor_double(mc.thePlayer.boundingBox.minY);
-                    final int bZ = MathHelper.floor_double(mc.thePlayer.posZ);
-                    event.left.set(i + 1, String.format("Block: %d %d %d [%d %d %d]", bX, bY, bZ, bX & 15, bY & 15, bZ & 15));
-                    event.left.set(i + 2, String.format("Chunk: %d %d %d", bX >> 4, bY >> 4, bZ >> 4));
-                    event.left.set(
-                            i + 3, String.format(
-                                    "Facing: %s (%s) (%.1f / %.1f)",
-                                    Direction.directions[heading].toLowerCase(Locale.ROOT),
-                                    heading_str,
-                                    MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw),
-                                    MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationPitch)));
-
-                    final Chunk chunk = this.mc.theWorld.getChunkFromBlockCoords(bX, bZ);
-                    event.left.set(i + 4, String.format(
-                        "lc: %d b: %s bl: %d sl: %d rl: %d",
-                        chunk.getTopFilledSegment() + 15,
-                        this.mc.theWorld.getBiomeGenForCoords(bX, bZ).biomeName,
-                        chunk.getSavedLightValue(EnumSkyBlock.Block, bX & 15, CompatMathHelper.clampHeight(bY), bZ & 15),
-                        chunk.getSavedLightValue(EnumSkyBlock.Sky, bX & 15, CompatMathHelper.clampHeight(bY), bZ & 15),
-                        chunk.getBlockLightValue(bX & 15, CompatMathHelper.clampHeight(bY), bZ & 15, 0)));
-                }
-            }
-            // Draw a frametime graph
-            if (((IGameSettingsExt) mc.gameSettings).angelica$showFpsGraph()) {
-                frametimeGraph.render();
-                if (Minecraft.getMinecraft().isSingleplayer()) {
-                    tpsGraph.render();
-                }
+        if (event.isCanceled() || !DebugScreen.isOverlayVisible() || !DebugScreenOverlay.INSTANCE.debugBlockRan()) return;
+        if (!DebugScreen.isGroupedActive()) DebugScreenOverlay.INSTANCE.addFlatLines(mc, event.left, event.right);
+        if (AngelicaConfig.modernizeF3Screen && ((IGameSettingsExt) mc.gameSettings).angelica$showFpsGraph()) {
+            final int tick = DebugScreen.clientTick();
+            frametimeGraph.render(event.resolution, tick);
+            if (mc.isSingleplayer()) {
+                tpsGraph.render(event.resolution, tick);
             }
         }
     }
@@ -423,11 +348,13 @@ public final class ClientProxy extends CommonProxy {
 
     @SubscribeEvent
     public void onTick(TickEvent.ClientTickEvent event) {
-        if (event.phase == TickEvent.Phase.END) {
-            TesrLightCache.onClientTick();
+        if (event.phase == TickEvent.Phase.START) {
+            DebugScreen.onClientTickStart();
+            return;
         }
-
-        if (event.phase == TickEvent.Phase.END && mc.theWorld != null) {
+        DebugScreen.onClientTickEnd();
+        TesrLightCache.onClientTick();
+        if (mc.theWorld != null) {
             CloudRenderer.getCloudRenderer().checkSettings();
         }
     }

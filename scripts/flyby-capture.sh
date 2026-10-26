@@ -22,6 +22,8 @@
 #   ALSO_JFR=1      - with a .tracy output, also record a JFR alongside it (timings inflated, correlation only).
 #   ASPROF_OPTS     - comma separated async-profiler agent opts, passed through when a JFR is recorded.
 #
+#   FLYBY_FULLSCREEN=0 - keep options.txt's window mode. Default: fullscreen:true for the run (avoids vsync pacing), restored on exit.
+#
 #   The output extension selects the profiler: .tracy for Tracy, .jfr for an in-process async-profiler
 #   JFR that starts near the end of warmup and stops when the measured run ends.
 #
@@ -31,6 +33,9 @@
 #   Ensure the chunks in the route have been generated before capturing
 
 set -euo pipefail
+
+# shellcheck source=flyby-lib.sh
+. "$(dirname "$0")/flyby-lib.sh"
 
 OUT="${1:?usage: flyby-capture.sh <output.tracy|output.jfr> [route] [length] [extra gradle args...]}"
 ROUTE="${2:-straight}"
@@ -148,11 +153,39 @@ if [ "$MODE" = "tracy" ]; then
         if kill -0 "$CAPTURE_PID" 2>/dev/null; then
             echo "==> stopping capture"
             kill -INT "$CAPTURE_PID" 2>/dev/null || true
+            local waited=0
+            while kill -0 "$CAPTURE_PID" 2>/dev/null && { { [ -e "$OUT" ] && [ "$waited" -lt 600 ]; } || [ "$waited" -lt 120 ]; }; do
+                sleep 1
+                waited=$((waited + 1))
+            done
+            if kill -0 "$CAPTURE_PID" 2>/dev/null; then
+                echo "==> capture did not stop after ${waited}s (limit 120s before output exists, 600s after), killing it" >&2
+                kill -9 "$CAPTURE_PID" 2>/dev/null || true
+            fi
             wait "$CAPTURE_PID" 2>/dev/null || true
         fi
     }
     trap cleanup EXIT
 fi
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+OPTIONS_TXT="$ROOT/run/client/options.txt"
+FS_DIR="$(mktemp -d)"
+
+on_exit() {
+    if [ -n "$CAPTURE_PID" ]; then
+        cleanup
+    fi
+    if [ "$FULLSCREEN" != 0 ]; then
+        flyby_fullscreen_restore "$OPTIONS_TXT" "$FS_DIR/options.txt.bak" || true
+    fi
+    rm -rf "$FS_DIR"
+}
+FULLSCREEN="${FLYBY_FULLSCREEN:-1}"
+if [ "$FULLSCREEN" != 0 ]; then
+    flyby_fullscreen_on "$OPTIONS_TXT" "$FS_DIR/options.txt.bak"
+fi
+trap on_exit EXIT
 
 echo "==> launching game (route=$ROUTE warmup=$WARMUP length=${LENGTH:-default} scene=${SCENE_ABS:-none})"
 if [ -n "$JFR_OUT" ]; then
@@ -178,7 +211,6 @@ fi
 echo "==> game exited, finalising capture"
 if [ "$MODE" = "tracy" ]; then
     cleanup
-    trap - EXIT
 fi
 
 if [ "$MODE" = "jfr" ]; then

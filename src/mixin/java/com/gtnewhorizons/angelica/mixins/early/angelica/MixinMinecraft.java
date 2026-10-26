@@ -2,6 +2,8 @@ package com.gtnewhorizons.angelica.mixins.early.angelica;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.debug.DebugKeyHandler;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
@@ -110,7 +112,18 @@ public abstract class MixinMinecraft {
 
     @Inject(method = "runTick", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiScreen;isShiftKeyDown()Z", shift = At.Shift.AFTER))
     private void angelica$setShowFpsGraph(CallbackInfo ci) {
+        if (AngelicaConfig.modernizeF3Screen && DebugKeyHandler.F3_TOGGLE.isArmed()) return;
         ((IGameSettingsExt) gameSettings).angelica$setShowFpsGraph(Keyboard.isKeyDown(Keyboard.KEY_LMENU) || Keyboard.isKeyDown(Keyboard.KEY_RMENU));
+    }
+
+    @Inject(method = "func_152348_aa", at = @At("HEAD"), cancellable = true, require = 1)
+    private void angelica$disableStreamKeys(CallbackInfo ci) {
+        if (!Keyboard.getEventKeyState() || !Keyboard.isKeyDown(Keyboard.KEY_F3)) return;
+        final int key = Keyboard.getEventKey();
+        if (key == gameSettings.field_152396_an.getKeyCode() || key == gameSettings.field_152397_ao.getKeyCode()
+            || key == gameSettings.field_152398_ap.getKeyCode() || key == gameSettings.field_152399_aq.getKeyCode()) {
+            ci.cancel();
+        }
     }
 
     @Inject(method = "runGameLoop", at = @At("RETURN"))

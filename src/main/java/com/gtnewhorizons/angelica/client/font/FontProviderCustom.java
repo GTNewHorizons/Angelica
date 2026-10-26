@@ -69,6 +69,7 @@ public final class FontProviderCustom implements FontProvider {
                 this.atlasTextures[i] = 0;
             }
         }
+        FontProviderCache.invalidate();
     }
 
     public void reloadFont(int fontID) {

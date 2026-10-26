@@ -96,6 +96,24 @@ public enum Mixins implements IMixins {
         .addClientMixins("client.railcraft.MixinRenderBlockLamp")
     ),
 
+    BOTANIA_DEBUG_SCREEN(new MixinBuilder("Move Botania's F3 text into its own debug screen group")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.BOTANIA)
+        .addClientMixins("client.botania.MixinDebugHandler")
+    ),
+
+    JOURNEYMAP_DEBUG_SCREEN(new MixinBuilder("Move JourneyMap's F3 text into its own debug screen group")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.JOURNEYMAP)
+        .addClientMixins("client.journeymap.MixinMiniMapOverlayHandler")
+    ),
+
+    HODGEPODGE_DEBUG_SCREEN(new MixinBuilder("Move Hodgepodge's ChunkGen F3 text into its own debug screen group")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.HODGEPODGE)
+        .addClientMixins("client.hodgepodge.MixinChunkGenDebugHandler")
+    ),
+
     ANGELICA_ENTITY_OVERLAYS(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.entityOverlayFixes)
@@ -399,6 +417,14 @@ public enum Mixins implements IMixins {
             , "angelica.archaic.MixinGuiIngameForge"
             , "angelica.archaic.MixinNetHandlerPlayClient"
             , "angelica.archaic.MixinThreadDownloadImageData"
+        )
+    ),
+
+    ANGELICA_DEBUG_KEY(new MixinBuilder()
+        .addExcludedMod(TargetedMod.ET_FUTURUM_REQUIEM)
+        .setPhase(Phase.EARLY)
+        .addClientMixins(
+            "angelica.debug.MixinMinecraft_DebugKey"
         )
     ),
 

@@ -222,8 +222,6 @@ sodium.options.use_render_pass_optimization.tooltip=分析贴图透明度，当�
 
 options.angelica.aggressiveChunkLoading=更激进地区块加载
 options.angelica.aggressiveChunkLoading.tooltip=区块加载后立即渲染，即使相邻区块尚未加载完毕。将提升最大渲染距离处区块的加载速度。在相邻区块加载后会自动重建。适用于渲染距离较低的服务器。
-options.angelica.disablef3=禁用F3附加信息显示
-options.angelica.disablef3.tooltip=禁用Angelica在F3调试界面的附加信息。
 
 sodium.options.multidraw_mode.name=批量绘制模式
 sodium.options.multidraw_mode.tooltip=控制地形渲染的绘制命令的调度方式。§l直接§r使用glMultiDrawElementsBaseVertex（默认，GL 3.2+）。§l间接§r使用GPU间接渲染（GL 4.3+），可能在某些硬件上减少CPU开销。§l单独§r发出单独的绘制调用。

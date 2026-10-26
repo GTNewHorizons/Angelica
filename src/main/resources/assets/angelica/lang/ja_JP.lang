@@ -387,10 +387,6 @@ sodium.options.use_render_pass_optimization.tooltip=スプライトの透明度�
 
 options.angelica.aggressiveChunkLoading=積極的チャンクロード
 options.angelica.aggressiveChunkLoading.tooltip=隣接するチャンクの準備がまだ整っていなくても、チャンクが読み込まれるとすぐに描画することで、描画距離の端での体感的なチャンクロード速度が向上します。描画距離の短いサーバーで役立ちます。
-options.angelica.disablef3=F3画面追加情報の無効化
-options.angelica.disablef3.tooltip=Angelicaに関するF3画面の情報の表示を無効にします。
-options.angelica.verbosef3=冗長なF3画面
-options.angelica.verbosef3.tooltip=F3画面に開発者用カウンター（固定機能シェーダー、ストリーミング、TESR同時処理、GPU転送）を表示します。F3+Vキーで切り替え可能です。
 angelica.debug.verbose.on=冗長なF3画面：表示する
 angelica.debug.verbose.off=冗長なF3画面：表示しない
 options.angelica.texteffects.rgb_colors=RGBカラー

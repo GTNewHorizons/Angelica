@@ -62,6 +62,7 @@ DependencyHandlerScope.of(dependencies).apply {
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:BetterLoadingScreen:1.7.9-GTNH:dev")
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:BetterQuesting:3.8.72-GTNH:dev")
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:BuildCraft:7.1.63:dev")
+    compileOnly("com.github.GTNewHorizons:Botania:1.13.32-GTNH:dev") { isTransitive = false }
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:Botania:1.13.32-GTNH:dev")
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:LogisticsPipes:1.5.32-GTNH:dev")
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:OpenComputers:1.12.64-GTNH:dev")

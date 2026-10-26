@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.config.SystemProperties.FlybyPacing;
 import com.gtnewhorizons.angelica.debug.profiling.AsprofRecorder;
 import com.gtnewhorizons.angelica.debug.profiling.AsprofRecorder.StopResult;
 import com.gtnewhorizons.angelica.debug.profiling.AsprofRecorder.StopStatus;
+import com.gtnewhorizons.angelica.debug.screen.DebugScreenOverlay;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
@@ -14,6 +15,7 @@ import com.gtnewhorizons.angelica.rendering.FramePacer;
 import com.gtnewhorizons.angelica.rendering.IsbrhTestRenderer;
 import com.sun.management.OperatingSystemMXBean;
 import com.sun.management.ThreadMXBean;
+import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import net.minecraft.client.Minecraft;
@@ -92,8 +94,7 @@ public final class FlybyRunner {
     private boolean pauseOnLostFocusSaved;
     private boolean pauseOnLostFocusOverridden;
     private boolean vsyncOverridden;
-    private boolean showDebugInfoSaved;
-    private boolean showDebugInfoOverridden;
+    private final FlybyDebugOverrides debugOverrides = new FlybyDebugOverrides();
     private int cameraSaved;
     private boolean cameraOverridden;
     private int shotEvery;
@@ -180,8 +181,8 @@ public final class FlybyRunner {
         this.fixedOrigin = origin;
         this.waitForTracy = SystemProperties.FLYBY_WAIT_FOR_TRACY;
         if (this.waitForTracy && !Tracy.ENABLED) {
-            LOGGER.warn("Flyby: waitForTracy requested but Tracy is disabled in this build");
-            this.waitForTracy = false;
+            LOGGER.error("Flyby: a Tracy capture was requested but Tracy is not available (native library missing or init failed, see the Tracy log lines above); exiting instead of running unprofiled");
+            FMLCommonHandler.instance().exitJava(1, false);
         }
         this.waitForFocus = SystemProperties.FLYBY_WAIT_FOR_FOCUS;
         this.exitWhenDone = SystemProperties.FLYBY_EXIT_WHEN_DONE;
@@ -339,6 +340,7 @@ public final class FlybyRunner {
             final Minecraft mc = Minecraft.getMinecraft();
             final IChatComponent result = ScreenShotHelper.saveScreenshot(mc.mcDataDir, "flyby-shot-" + this.shot + ".png", mc.displayWidth, mc.displayHeight, mc.getFramebuffer());
             LOGGER.info("Flyby screenshot {}", result.getUnformattedText());
+            if (SystemProperties.FLYBY_DEBUG_DUMP) DebugScreenOverlay.INSTANCE.describe(LOGGER, this.shot);
             this.shot++;
             this.nextShot += this.shotEvery;
         }
@@ -401,11 +403,7 @@ public final class FlybyRunner {
 
         this.buildPath();
         this.suppressPacing();
-        if (SystemProperties.FLYBY_DEBUG_HUD && !this.showDebugInfoOverridden) {
-            this.showDebugInfoSaved = mc.gameSettings.showDebugInfo;
-            this.showDebugInfoOverridden = true;
-            mc.gameSettings.showDebugInfo = true;
-        }
+        this.debugOverrides.apply(mc);
         if (!this.cameraOverridden) {
             this.cameraSaved = mc.gameSettings.thirdPersonView;
             this.cameraOverridden = true;
@@ -682,6 +680,7 @@ public final class FlybyRunner {
             ThreadedFileIOBase.threadedIOInstance.waitForFinish();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            LOGGER.error("Flyby: interrupted while draining chunk IO before discarding changes", e);
         }
 
         worldChangesDiscarded = true;
@@ -878,7 +877,7 @@ public final class FlybyRunner {
 
         this.returnToOrigin(player);
         this.restorePauseOnLostFocus(mc);
-        this.restoreShowDebugInfo(mc);
+        this.debugOverrides.restore(mc);
         this.restoreCamera(mc);
         this.armed = false;
         sceneGuarded = false;
@@ -904,12 +903,6 @@ public final class FlybyRunner {
         if (!this.pauseOnLostFocusOverridden) return;
         mc.gameSettings.pauseOnLostFocus = this.pauseOnLostFocusSaved;
         this.pauseOnLostFocusOverridden = false;
-    }
-
-    private void restoreShowDebugInfo(Minecraft mc) {
-        if (!this.showDebugInfoOverridden) return;
-        mc.gameSettings.showDebugInfo = this.showDebugInfoSaved;
-        this.showDebugInfoOverridden = false;
     }
 
     private void restoreCamera(Minecraft mc) {
@@ -1067,7 +1060,7 @@ public final class FlybyRunner {
             FramePacer.endStats();
             final Minecraft mc = Minecraft.getMinecraft();
             this.restorePauseOnLostFocus(mc);
-            this.restoreShowDebugInfo(mc);
+            this.debugOverrides.restore(mc);
             this.restoreCamera(mc);
             this.armed = false;
             this.stopRecording(mc);

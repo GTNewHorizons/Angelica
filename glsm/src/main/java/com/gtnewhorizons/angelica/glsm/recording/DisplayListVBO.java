@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
-import com.gtnewhorizons.angelica.glsm.GLContextState;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
 import com.gtnewhorizons.angelica.glsm.streaming.LineQuads;
@@ -122,18 +121,14 @@ public final class DisplayListVBO {
         }
 
         private void renderLineQuads() {
-            final GLContextState glCtx = GLStateManager.ctx();
             lineQuads.bind();
-            VAOManager.setCurrentVertexFlags(lineQuadFlags);
-            final boolean culled = LineQuads.disableCulling();
-            glCtx.lineQuadsActive = true;
+            final boolean culled = LineQuads.beginDraw(lineQuadFlags);
             FfpExtendedAttribs.beginInternalDraw();
             try {
                 lineQuads.draw(GL11.GL_TRIANGLES, lineQuadStart, lineQuadCount);
             } finally {
                 FfpExtendedAttribs.endInternalDraw();
-                glCtx.lineQuadsActive = false;
-                LineQuads.restoreCulling(culled);
+                LineQuads.endDraw(culled);
             }
             lineQuads.unbind();
         }

@@ -26,6 +26,8 @@ import java.util.function.Predicate;
  */
 public abstract class RenderBackend {
 
+    public static final int MAX_FRAMES_IN_FLIGHT = 3;
+
     public void onPostWindowCreate(long window) {}
 
     public abstract void init();

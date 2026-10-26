@@ -1,21 +1,31 @@
 package com.gtnewhorizons.angelica.debug;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
-import com.gtnewhorizon.gtnhlib.client.renderer.shader.ShaderProgram;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement;
+import com.gtnewhorizons.angelica.debug.render.DebugDrawScope;
+import com.gtnewhorizons.angelica.debug.render.DebugGeometry;
+import com.gtnewhorizons.angelica.debug.render.DebugPrograms;
+import com.gtnewhorizons.angelica.debug.render.NativeScratch;
+import com.gtnewhorizons.angelica.debug.screen.DebugNumbers;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.ScaledResolution;
-import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.util.ResourceLocation;
+import org.embeddedt.embeddium.impl.gl.shader.ShaderConstants;
+import org.joml.Matrix4f;
 import org.lwjgl.BufferUtils;
+import org.lwjgl.opengl.GL11;
 
 import java.nio.FloatBuffer;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack.stackPush;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutFloat;
 import static org.lwjgl.opengl.GL11.GL_FLOAT;
-import static org.lwjgl.opengl.GL11.GL_ONE_MINUS_SRC_ALPHA;
-import static org.lwjgl.opengl.GL11.GL_SRC_ALPHA;
 import static org.lwjgl.opengl.GL11.GL_TRIANGLE_STRIP;
 import static org.lwjgl.opengl.GL15.GL_ARRAY_BUFFER;
 import static org.lwjgl.opengl.GL15.GL_STATIC_DRAW;
@@ -29,14 +39,25 @@ public abstract class F3Graph {
     private static final int HEIGHT = 60;
     private static final int WIDTH = NUM_SAMPLES;
     private static final int FONT_COLOR = 0xFFE0E0E0;
+    private static final int BACKGROUND_ARGB = 0x90505050;
+    private static final int FOREGROUND_ARGB = 0xFFFFFFFF;
+    private static final int COLOR_FLAGS = VertexFlags.COLOR_BIT;
+    private static final int TEXTURED_FLAGS = VertexFlags.TEXTURE_BIT | VertexFlags.COLOR_BIT;
+    private static final VertexFormat COLOR_FORMAT = DefaultVertexFormat.ALL_FORMATS[COLOR_FLAGS];
+    private static final VertexFormat TEXTURED_FORMAT = DefaultVertexFormat.ALL_FORMATS[TEXTURED_FLAGS];
+    private static final int COLOR_STRIDE = COLOR_FORMAT.getVertexSize();
+    private static final int TEXTURED_STRIDE = TEXTURED_FORMAT.getVertexSize();
+    private static final int TEXTURED_UV_OFFSET = DebugGeometry.offsetOf(TEXTURED_FORMAT, VertexFormatElement.Usage.PRIMARY_UV);
+    private static final int TEXTURED_COLOR_OFFSET = DebugGeometry.offsetOf(TEXTURED_FORMAT, VertexFormatElement.Usage.COLOR);
+    private static final int COLOR_COLOR_OFFSET = DebugGeometry.offsetOf(COLOR_FORMAT, VertexFormatElement.Usage.COLOR);
+    private static final int QUAD_BYTES = 4 * Math.max(COLOR_STRIDE, TEXTURED_STRIDE);
     // Due to GLSL 120 limitations, it's just easier to use floats
     private final FloatBuffer sampleBuf = BufferUtils.createFloatBuffer(NUM_SAMPLES);
     private final long[] samples = new long[NUM_SAMPLES]; // long version for calculations
     // Circular buffer holding the last 240 samples, in nanoseconds
     private int samplesHead = 0; // one ahead of the position of the last sample
     private boolean initialized = false;
-    private ShaderProgram shader;
-    private int aPos;
+    private int program;
     private int uFBWidth;
     private int uFBHeight;
     private int uScaleFactor;
@@ -44,10 +65,20 @@ public abstract class F3Graph {
     private int uSamples;
     private int vertBuf;
     private int vao;
+    private final DebugDrawScope scope = new DebugDrawScope();
+    private final NativeScratch scratch = new NativeScratch(QUAD_BYTES);
+    private final Matrix4f mvp = new Matrix4f();
     private final ResourceLocation texture;
     private final float pxPerNs;
     private final boolean left;
     private long sum;
+    private final StringBuilder label = new StringBuilder(16);
+    private String minString;
+    private String avgString;
+    private String maxString;
+    private int labelTick = Integer.MIN_VALUE;
+    private int avgWidth;
+    private int maxWidth;
 
     protected F3Graph(ResourceLocation texture, float pxPerNs, boolean left) {
         this.texture = texture;
@@ -63,6 +94,10 @@ public abstract class F3Graph {
 
         sampleBuf.put(samplesHead, (float) time);
         samplesHead = (samplesHead + 1) % NUM_SAMPLES;
+    }
+
+    public static int reservedHeight(FontRenderer fontRenderer) {
+        return HEIGHT + BORDER * 2 + fontRenderer.FONT_HEIGHT;
     }
 
     private int getVertX(ScaledResolution sres, int idx) {
@@ -92,23 +127,17 @@ public abstract class F3Graph {
     }
 
     private void init() {
-        shader = new ShaderProgram(
-            "angelica",
-            "shaders/debug_graph.vert.glsl",
-            "shaders/debug_graph.frag.glsl");
-        shader.use();
+        final int handle = DebugPrograms.link("angelica:debug_graph", "angelica:debug_graph.vert.glsl", "angelica:debug_graph.frag.glsl", ShaderConstants.EMPTY, new String[]{"pos"}, new int[]{0});
+        program = handle;
+        GLStateManager.glUseProgram(handle);
 
-        // Attribute location is declared in shader via layout(location = 0)
-        aPos = 0;
-
-        // Register uniforms
-        uFBWidth = shader.getUniformLocation("fbWidth");
-        uFBHeight = shader.getUniformLocation("fbHeight");
-        uScaleFactor = shader.getUniformLocation("scaleFactor");
-        uSamples = shader.getUniformLocation("samples");
-        uHeadIdx = shader.getUniformLocation("headIdx");
-        final int uPxPerNs = shader.getUniformLocation("pxPerNs");
-        final int uLeft = shader.getUniformLocation("left");
+        uFBWidth = GLStateManager.glGetUniformLocation(handle, "fbWidth");
+        uFBHeight = GLStateManager.glGetUniformLocation(handle, "fbHeight");
+        uScaleFactor = GLStateManager.glGetUniformLocation(handle, "scaleFactor");
+        uSamples = GLStateManager.glGetUniformLocation(handle, "samples");
+        uHeadIdx = GLStateManager.glGetUniformLocation(handle, "headIdx");
+        final int uPxPerNs = GLStateManager.glGetUniformLocation(handle, "pxPerNs");
+        final int uLeft = GLStateManager.glGetUniformLocation(handle, "left");
 
         vao = GLStateManager.glGenVertexArrays();
         GLStateManager.glBindVertexArray(vao);
@@ -131,33 +160,17 @@ public abstract class F3Graph {
         }
 
         // Configure vertex attribute in the VAO
-        GLStateManager.glVertexAttribPointer(aPos, VERT_FLOATS, GL_FLOAT, false, VERT_FLOATS * 4, 0);
-        GLStateManager.glEnableVertexAttribArray(aPos);
+        GLStateManager.glVertexAttribPointer(0, VERT_FLOATS, GL_FLOAT, false, VERT_FLOATS * 4, 0);
+        GLStateManager.glEnableVertexAttribArray(0);
 
         GLStateManager.glBindBuffer(GL_ARRAY_BUFFER, 0);
         GLStateManager.glBindVertexArray(0);
 
-        final Minecraft mc = Minecraft.getMinecraft();
-        final ScaledResolution sr = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
-
-        // Load initial value for uniforms
-        GLStateManager.glUniform1f(uFBWidth, mc.displayWidth);
-        GLStateManager.glUniform1f(uFBHeight, mc.displayHeight);
-        GLStateManager.glUniform1f(uScaleFactor, sr.getScaleFactor());
-        GLStateManager.glUniform1i(uHeadIdx, samplesHead);
-        GLStateManager.glUniform1(uSamples, sampleBuf);
         GLStateManager.glUniform1f(uPxPerNs, pxPerNs);
-        GLStateManager.glUniform1i(uLeft, left ? 1 : 0); // this is how you load bool uniforms
-
-        ShaderProgram.clear();
+        GLStateManager.glUniform1i(uLeft, left ? 1 : 0);
     }
 
-    public void render() {
-        if (!initialized) {
-            init();
-            initialized = true;
-        }
-
+    public void render(ScaledResolution sr, int tick) {
         /*
          * We try to copy modern vanilla's tracker.
          * It is 240 (FRAME_TIMES) wide by 60 tall, including the 1px borders.
@@ -171,88 +184,98 @@ public abstract class F3Graph {
          */
 
         final Minecraft mc = Minecraft.getMinecraft();
-        final ScaledResolution sr = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
 
-        // Setup GL state
-        final Tessellator tess = Tessellator.instance;
-        GLStateManager.disableDepthTest();
-        GLStateManager.enableAlphaTest();
-        GLStateManager.enableBlend();
-        GLStateManager.glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        GLStateManager.getProjectionMatrix().mul(GLStateManager.getModelViewMatrix(), mvp);
 
-        // Draw background
-        GLStateManager.disableTexture();
-        GLStateManager.glColor4f(0x50 / 255.0F, 0x50 / 255.0F, 0x50 / 255.0F, 0x90 / 255.0F);
-        tess.startDrawingQuads();
-        for (int i = 0; i < 4; ++i) {
-            tess.addVertex(getVertX(sr, i), getVertY(sr, i), 0);
+        scope.beginHud();
+        try {
+            if (!initialized) {
+                init();
+                initialized = true;
+            }
+            drawGraph(mc, sr);
+        } finally {
+            scope.end();
         }
-        tess.draw();
-        GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
-        GLStateManager.enableTexture();
 
 
-        // Draw samples
-        shader.use();
+        // Draw text
+        final FontRenderer fr = mc.fontRenderer;
+        if (tick != labelTick) {
+            labelTick = tick;
+            updateLabels(fr);
+        }
+        final int top = sr.getScaledHeight() - reservedHeight(fr);
+        final int scaledWidth = sr.getScaledWidth();
+        final int minX;
+        final int avgX;
+        final int maxX;
+        if (left) {
+            minX = BORDER * 2;
+            avgX = BORDER + WIDTH / 2 - avgWidth / 2;
+            maxX = BORDER * 2 + WIDTH - maxWidth;
+        } else {
+            minX = scaledWidth - (BORDER * 2 + WIDTH);
+            avgX = scaledWidth - (BORDER + WIDTH / 2 + avgWidth / 2);
+            maxX = scaledWidth - (BORDER * 2 + maxWidth);
+        }
+        fr.drawString(minString, minX, top, FONT_COLOR, true);
+        fr.drawString(avgString, avgX, top, FONT_COLOR, true);
+        fr.drawString(maxString, maxX, top, FONT_COLOR, true);
+    }
 
-        // Load uniforms
+    private void drawGraph(Minecraft mc, ScaledResolution sr) {
+        scratch.ensure(QUAD_BYTES);
+        long p = scratch.address();
+        for (int i = 0; i < 4; ++i, p += COLOR_STRIDE) {
+            DebugGeometry.putPosition(p, getVertX(sr, i), getVertY(sr, i), 0.0F);
+            DebugGeometry.putColor(p + COLOR_COLOR_OFFSET, BACKGROUND_ARGB);
+        }
+        final var color = DebugPrograms.color();
+        color.use();
+        color.mvp(mvp);
+        TessellatorStreamingDrawer.drawPacked(scratch.window(4 * COLOR_STRIDE), GL11.GL_QUADS, COLOR_FLAGS, 4);
+
+        GLStateManager.glUseProgram(program);
         GLStateManager.glUniform1f(uFBWidth, mc.displayWidth);
         GLStateManager.glUniform1f(uFBHeight, mc.displayHeight);
         GLStateManager.glUniform1f(uScaleFactor, sr.getScaleFactor());
         GLStateManager.glUniform1i(uHeadIdx, samplesHead);
         GLStateManager.glUniform1(uSamples, sampleBuf);
-
         GLStateManager.glBindVertexArray(vao);
-
-        // Left side graphs are inverted, so temporarily disable culling
-        if (!left) GLStateManager.disableCull();
-
         GLStateManager.glDrawArrays(GL_TRIANGLE_STRIP, 0, VERT_COUNT);
 
-        if (!left) GLStateManager.enableCull();
-
-        GLStateManager.glBindVertexArray(0);
-
-        ShaderProgram.clear();
-
-        // Draw foreground
-
         mc.getTextureManager().bindTexture(texture);
-        tess.startDrawingQuads();
-        tess.addVertexWithUV(getVertX(sr, 0), getVertY(sr, 0), 0.0D, 1, 0);
-        tess.addVertexWithUV(getVertX(sr, 1), getVertY(sr, 1), 0.0D, 0, 0);
-        tess.addVertexWithUV(getVertX(sr, 2), getVertY(sr, 2), 0.0D, 0, 1);
-        tess.addVertexWithUV(getVertX(sr, 3), getVertY(sr, 3), 0.0D, 1, 1);
-        tess.draw();
+        p = scratch.address();
+        for (int i = 0; i < 4; ++i, p += TEXTURED_STRIDE) {
+            DebugGeometry.putPosition(p, getVertX(sr, i), getVertY(sr, i), 0.0F);
+            memPutFloat(p + TEXTURED_UV_OFFSET, (i == 0 || i == 3) ? 1.0F : 0.0F);
+            memPutFloat(p + TEXTURED_UV_OFFSET + 4, i >= 2 ? 1.0F : 0.0F);
+            DebugGeometry.putColor(p + TEXTURED_COLOR_OFFSET, FOREGROUND_ARGB);
+        }
+        final var textured = DebugPrograms.textured();
+        textured.use();
+        textured.mvp(mvp);
+        TessellatorStreamingDrawer.drawPacked(scratch.window(4 * TEXTURED_STRIDE), GL11.GL_QUADS, TEXTURED_FLAGS, 4);
+    }
 
-        // Reset GL state
-        GLStateManager.enableDepthTest();
-        GLStateManager.disableAlphaTest();
-        GLStateManager.disableBlend();
-
-        // Draw text
-        // Ensure running counters are reset on first sample
+    private void updateLabels(FontRenderer fr) {
         long min = Long.MAX_VALUE;
         long max = Long.MIN_VALUE;
         for (int i = 0; i < NUM_SAMPLES; ++i) {
             min = Math.min(min, samples[i]);
             max = Math.max(max, samples[i]);
         }
-        String minStr = String.format("%.1f ms min", min / 1_000_000D);
-        String avgStr = String.format("%.1f ms avg", sum / 1_000_000 / (double) NUM_SAMPLES);
-        String maxStr = String.format("%.1f ms max", max / 1_000_000D);
-        final FontRenderer fr = mc.fontRenderer;
-        final int top = sr.getScaledHeight() - HEIGHT - BORDER * 2 - fr.FONT_HEIGHT;
-        final int scaledWidth = sr.getScaledWidth();
+        minString = label(min / 1_000_000D, " ms min");
+        avgString = label(sum / 1_000_000 / (double) NUM_SAMPLES, " ms avg");
+        maxString = label(max / 1_000_000D, " ms max");
+        avgWidth = fr.getStringWidth(avgString);
+        maxWidth = fr.getStringWidth(maxString);
+    }
 
-        if (left) {
-            fr.drawString(minStr, BORDER * 2, top, FONT_COLOR, true);
-            fr.drawString(avgStr, BORDER + WIDTH / 2 - fr.getStringWidth(avgStr) / 2, top, FONT_COLOR, true);
-            fr.drawString(maxStr, BORDER * 2 + WIDTH - fr.getStringWidth(maxStr), top, FONT_COLOR, true);
-        } else {
-            fr.drawString(minStr, scaledWidth - (BORDER * 2 + WIDTH), top, FONT_COLOR, true);
-            fr.drawString(avgStr, scaledWidth - (BORDER + WIDTH / 2 + fr.getStringWidth(avgStr) / 2), top, FONT_COLOR, true);
-            fr.drawString(maxStr, scaledWidth - (BORDER * 2 + fr.getStringWidth(maxStr)), top, FONT_COLOR, true);
-        }
+    private String label(double millis, String suffix) {
+        label.setLength(0);
+        DebugNumbers.appendFixed(label, millis, 1);
+        return label.append(suffix).toString();
     }
 }
