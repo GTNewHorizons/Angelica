@@ -1,5 +1,15 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMFog;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.GlsmRedirectAgent;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
@@ -81,21 +91,21 @@ public final class GlsmSdlHeadlessRig {
 
     private static void createTarget() {
         beginFrame();
-        colorTexture = GLStateManager.glGenTextures();
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, colorTexture);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, SIZE, SIZE, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+        colorTexture = GLSMTextures.glGenTextures();
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, colorTexture);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, SIZE, SIZE, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
 
-        depthRenderbuffer = GLStateManager.glGenRenderbuffers();
-        GLStateManager.glBindRenderbuffer(GL30.GL_RENDERBUFFER, depthRenderbuffer);
-        GLStateManager.glRenderbufferStorage(GL30.GL_RENDERBUFFER, GL30.GL_DEPTH24_STENCIL8, SIZE, SIZE);
+        depthRenderbuffer = GLSMFramebuffer.glGenRenderbuffers();
+        GLSMFramebuffer.glBindRenderbuffer(GL30.GL_RENDERBUFFER, depthRenderbuffer);
+        GLSMFramebuffer.glRenderbufferStorage(GL30.GL_RENDERBUFFER, GL30.GL_DEPTH24_STENCIL8, SIZE, SIZE);
 
-        fbo = GLStateManager.glGenFramebuffers();
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
-        GLStateManager.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, colorTexture, 0);
-        GLStateManager.glFramebufferRenderbuffer(GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_STENCIL_ATTACHMENT, GL30.GL_RENDERBUFFER, depthRenderbuffer);
-        GLStateManager.glViewport(0, 0, SIZE, SIZE);
+        fbo = GLSMFramebuffer.glGenFramebuffers();
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
+        GLSMFramebuffer.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, colorTexture, 0);
+        GLSMFramebuffer.glFramebufferRenderbuffer(GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_STENCIL_ATTACHMENT, GL30.GL_RENDERBUFFER, depthRenderbuffer);
+        GLSMRasterizer.glViewport(0, 0, SIZE, SIZE);
 
         PipelineCache.setSwapchainFormats(new int[]{ colorTargetSdlFormat() });
         endFrame();
@@ -149,51 +159,51 @@ public final class GlsmSdlHeadlessRig {
     }
 
     public static void bindTarget() {
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
-        GLStateManager.glViewport(0, 0, SIZE, SIZE);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
+        GLSMRasterizer.glViewport(0, 0, SIZE, SIZE);
     }
 
     public static int createDepthStencilFbo() {
-        final int color = GLStateManager.glGenTextures();
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, color);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, SIZE, SIZE, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+        final int color = GLSMTextures.glGenTextures();
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, color);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, SIZE, SIZE, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
 
-        final int depth = GLStateManager.glGenRenderbuffers();
-        GLStateManager.glBindRenderbuffer(GL30.GL_RENDERBUFFER, depth);
-        GLStateManager.glRenderbufferStorage(GL30.GL_RENDERBUFFER, GL30.GL_DEPTH24_STENCIL8, SIZE, SIZE);
+        final int depth = GLSMFramebuffer.glGenRenderbuffers();
+        GLSMFramebuffer.glBindRenderbuffer(GL30.GL_RENDERBUFFER, depth);
+        GLSMFramebuffer.glRenderbufferStorage(GL30.GL_RENDERBUFFER, GL30.GL_DEPTH24_STENCIL8, SIZE, SIZE);
 
-        final int fbo = GLStateManager.glGenFramebuffers();
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
-        GLStateManager.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, color, 0);
-        GLStateManager.glFramebufferRenderbuffer(GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_STENCIL_ATTACHMENT, GL30.GL_RENDERBUFFER, depth);
+        final int fbo = GLSMFramebuffer.glGenFramebuffers();
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
+        GLSMFramebuffer.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, color, 0);
+        GLSMFramebuffer.glFramebufferRenderbuffer(GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_STENCIL_ATTACHMENT, GL30.GL_RENDERBUFFER, depth);
         return fbo;
     }
 
     public static void writeStencilOneInBottomHalf() {
-        GLStateManager.glClearStencil(0);
-        GLStateManager.glStencilMask(0xFF);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT);
-        GLStateManager.glEnable(GL11.GL_STENCIL_TEST);
-        GLStateManager.glStencilFunc(GL11.GL_ALWAYS, 1, 0xFF);
-        GLStateManager.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_REPLACE);
+        GLSMDepthStencilAlpha.glClearStencil(0);
+        GLSMDepthStencilAlpha.glStencilMask(0xFF);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT);
+        GLSMEnable.glEnable(GL11.GL_STENCIL_TEST);
+        GLSMDepthStencilAlpha.glStencilFunc(GL11.GL_ALWAYS, 1, 0xFF);
+        GLSMDepthStencilAlpha.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_REPLACE);
         halfQuad(-1.0f, 0.0f, 0.0f, 1.0f, 0.0f);
-        GLStateManager.glDisable(GL11.GL_STENCIL_TEST);
+        GLSMEnable.glDisable(GL11.GL_STENCIL_TEST);
     }
 
     public static void drawRedWhereStencilIsOne() {
-        GLStateManager.glEnable(GL11.GL_STENCIL_TEST);
-        GLStateManager.glStencilFunc(GL11.GL_EQUAL, 1, 0xFF);
-        GLStateManager.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_KEEP);
+        GLSMEnable.glEnable(GL11.GL_STENCIL_TEST);
+        GLSMDepthStencilAlpha.glStencilFunc(GL11.GL_EQUAL, 1, 0xFF);
+        GLSMDepthStencilAlpha.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_KEEP);
         solidQuad(1.0f, 0.0f, 0.0f);
-        GLStateManager.glDisable(GL11.GL_STENCIL_TEST);
+        GLSMEnable.glDisable(GL11.GL_STENCIL_TEST);
     }
 
     public static void clearTo(float r, float g, float b, float a) {
-        GLStateManager.glClearColor(r, g, b, a);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
+        GLSMBlend.glClearColor(r, g, b, a);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
     }
 
     public static void beginFrameAndClear() {
@@ -210,59 +220,59 @@ public final class GlsmSdlHeadlessRig {
     }
 
     public static void resetState() {
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-        GLStateManager.glDisable(GL11.GL_TEXTURE_2D);
-        GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glDisable(GL11.GL_TEXTURE_2D);
-        GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
-        GLStateManager.glLoadIdentity();
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
+        GLSMEnable.glDisable(GL11.GL_TEXTURE_2D);
+        GLSMMatrices.glMatrixMode(GL11.GL_TEXTURE);
+        GLSMMatrices.glLoadIdentity();
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMEnable.glDisable(GL11.GL_TEXTURE_2D);
+        GLSMMatrices.glMatrixMode(GL11.GL_TEXTURE);
+        GLSMMatrices.glLoadIdentity();
 
-        GLStateManager.glDisable(GL11.GL_ALPHA_TEST);
-        GLStateManager.glDisable(GL11.GL_FOG);
-        GLStateManager.glDisable(GL11.GL_LIGHTING);
-        GLStateManager.glDisable(GL11.GL_LIGHT0);
-        GLStateManager.glDisable(GL11.GL_LIGHT1);
-        GLStateManager.glDisable(GL11.GL_COLOR_MATERIAL);
-        GLStateManager.glDisable(GL12.GL_RESCALE_NORMAL);
-        GLStateManager.glDisable(GL11.GL_DEPTH_TEST);
-        GLStateManager.glDisable(GL11.GL_BLEND);
-        GLStateManager.glDisable(GL11.GL_CULL_FACE);
-        GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
-        GLStateManager.glCullFace(GL11.GL_BACK);
-        GLStateManager.glShadeModel(GL11.GL_SMOOTH);
-        GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-        GLStateManager.glNormal3f(0.0f, 0.0f, 1.0f);
+        GLSMEnable.glDisable(GL11.GL_ALPHA_TEST);
+        GLSMEnable.glDisable(GL11.GL_FOG);
+        GLSMEnable.glDisable(GL11.GL_LIGHTING);
+        GLSMEnable.glDisable(GL11.GL_LIGHT0);
+        GLSMEnable.glDisable(GL11.GL_LIGHT1);
+        GLSMEnable.glDisable(GL11.GL_COLOR_MATERIAL);
+        GLSMEnable.glDisable(GL12.GL_RESCALE_NORMAL);
+        GLSMEnable.glDisable(GL11.GL_DEPTH_TEST);
+        GLSMEnable.glDisable(GL11.GL_BLEND);
+        GLSMEnable.glDisable(GL11.GL_CULL_FACE);
+        GLSMEnable.glDisable(GL11.GL_SCISSOR_TEST);
+        GLSMRasterizer.glCullFace(GL11.GL_BACK);
+        GLSMRasterizer.glShadeModel(GL11.GL_SMOOTH);
+        GLSMCurrentAttribs.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        GLSMCurrentAttribs.glNormal3f(0.0f, 0.0f, 1.0f);
 
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glLoadIdentity();
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glLoadIdentity();
     }
 
     public static void terrainRenderState() {
-        GLStateManager.glEnable(GL11.GL_ALPHA_TEST);
-        GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.1f);
-        GLStateManager.glEnable(GL11.GL_FOG);
-        GLStateManager.glFogi(GL11.GL_FOG_MODE, GL11.GL_LINEAR);
-        GLStateManager.glFogf(GL11.GL_FOG_START, 1.0e6f);
-        GLStateManager.glFogf(GL11.GL_FOG_END, 1.0e7f);
+        GLSMEnable.glEnable(GL11.GL_ALPHA_TEST);
+        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, 0.1f);
+        GLSMEnable.glEnable(GL11.GL_FOG);
+        GLSMFog.glFogi(GL11.GL_FOG_MODE, GL11.GL_LINEAR);
+        GLSMFog.glFogf(GL11.GL_FOG_START, 1.0e6f);
+        GLSMFog.glFogf(GL11.GL_FOG_END, 1.0e7f);
     }
 
     public static int newNearestTexture() {
-        final int id = GLStateManager.glGenTextures();
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, id);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        final int id = GLSMTextures.glGenTextures();
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, id);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
         return id;
     }
 
     public static int fboWithColor(int texture, int level) {
-        final int fbo = GLStateManager.glGenFramebuffers();
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
-        GLStateManager.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, texture, level);
+        final int fbo = GLSMFramebuffer.glGenFramebuffers();
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
+        GLSMFramebuffer.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, texture, level);
         return fbo;
     }
 
@@ -278,7 +288,7 @@ public final class GlsmSdlHeadlessRig {
         final ByteBuffer texels = MemoryUtil.memAlloc(size * size * 4);
         try {
             for (int i = 0; i < size * size; i++) putArgb(texels, i, argb);
-            GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, level, GL11.GL_RGBA8, size, size, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels);
+            GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, level, GL11.GL_RGBA8, size, size, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels);
         } finally {
             MemoryUtil.memFree(texels);
         }
@@ -291,12 +301,12 @@ public final class GlsmSdlHeadlessRig {
     }
 
     public static int createLightmapTexture(boolean brightCornersOnly) {
-        final int id = GLStateManager.glGenTextures();
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, id);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, LIGHTMAP_SIZE, LIGHTMAP_SIZE, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+        final int id = GLSMTextures.glGenTextures();
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, id);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, LIGHTMAP_SIZE, LIGHTMAP_SIZE, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
         final ByteBuffer texels = MemoryUtil.memAlloc(LIGHTMAP_SIZE * LIGHTMAP_SIZE * 4);
         try {
             final int last = LIGHTMAP_SIZE - 1;
@@ -306,74 +316,74 @@ public final class GlsmSdlHeadlessRig {
                     putArgb(texels, y * LIGHTMAP_SIZE + x, bright ? 0xFFFFFFFF : GREEN);
                 }
             }
-            GLStateManager.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, LIGHTMAP_SIZE, LIGHTMAP_SIZE, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels);
+            GLSMTextures.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, LIGHTMAP_SIZE, LIGHTMAP_SIZE, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels);
         } finally {
             MemoryUtil.memFree(texels);
         }
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
         return id;
     }
 
     public static void bindBaseTexture(int texture) {
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-        GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        GLSMEnable.glEnable(GL11.GL_TEXTURE_2D);
     }
 
     public static void quadTwoUnits(short brightness) {
-        GLStateManager.glBegin(GL11.GL_QUADS);
+        GLSMDraws.glBegin(GL11.GL_QUADS);
         emitVertex(-1.0f, -1.0f, 0.0f, 0.0f, true, brightness);
         emitVertex(1.0f, -1.0f, 1.0f, 0.0f, true, brightness);
         emitVertex(1.0f, 1.0f, 1.0f, 1.0f, true, brightness);
         emitVertex(-1.0f, 1.0f, 0.0f, 1.0f, true, brightness);
-        GLStateManager.glEnd();
+        GLSMDraws.glEnd();
     }
 
     public static void enableLightmapUnit(int lightmapTexture, boolean vanillaTextureMatrix) {
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, lightmapTexture);
-        GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
-        GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
-        GLStateManager.glLoadIdentity();
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, lightmapTexture);
+        GLSMEnable.glEnable(GL11.GL_TEXTURE_2D);
+        GLSMMatrices.glMatrixMode(GL11.GL_TEXTURE);
+        GLSMMatrices.glLoadIdentity();
         if (vanillaTextureMatrix) {
             final float scale = 0.00390625f;
-            GLStateManager.glScalef(scale, scale, scale);
-            GLStateManager.glTranslatef(8.0f, 8.0f, 8.0f);
+            GLSMMatrices.glScalef(scale, scale, scale);
+            GLSMMatrices.glTranslatef(8.0f, 8.0f, 8.0f);
         }
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
     }
 
     public static void emitVertex(float x, float y, float u, float v, boolean lightmap, short brightness) {
-        GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-        GLStateManager.glNormal3f(0.0f, 0.0f, 1.0f);
-        GLStateManager.glTexCoord2f(u, v);
+        GLSMCurrentAttribs.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        GLSMCurrentAttribs.glNormal3f(0.0f, 0.0f, 1.0f);
+        GLSMCurrentAttribs.glTexCoord2f(u, v);
         if (lightmap) {
-            GLStateManager.glMultiTexCoord2s(GL13.GL_TEXTURE1, brightness, brightness);
+            GLSMCurrentAttribs.glMultiTexCoord2s(GL13.GL_TEXTURE1, brightness, brightness);
         }
-        GLStateManager.glVertex3f(x, y, 0.0f);
+        GLSMDraws.glVertex3f(x, y, 0.0f);
     }
 
     private static void vertex(float x, float y, float r, float g, float b) {
-        GLStateManager.glColor4f(r, g, b, 1.0f);
-        GLStateManager.glNormal3f(0.0f, 0.0f, 1.0f);
-        GLStateManager.glVertex3f(x, y, 0.0f);
+        GLSMCurrentAttribs.glColor4f(r, g, b, 1.0f);
+        GLSMCurrentAttribs.glNormal3f(0.0f, 0.0f, 1.0f);
+        GLSMDraws.glVertex3f(x, y, 0.0f);
     }
 
     private static void texVertex(float x, float y, float u, float v) {
-        GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-        GLStateManager.glNormal3f(0.0f, 0.0f, 1.0f);
-        GLStateManager.glTexCoord2f(u, v);
-        GLStateManager.glVertex3f(x, y, 0.0f);
+        GLSMCurrentAttribs.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        GLSMCurrentAttribs.glNormal3f(0.0f, 0.0f, 1.0f);
+        GLSMCurrentAttribs.glTexCoord2f(u, v);
+        GLSMDraws.glVertex3f(x, y, 0.0f);
     }
 
     public static void halfQuad(float y0, float y1, float r, float g, float b) {
-        GLStateManager.glBegin(GL11.GL_QUADS);
+        GLSMDraws.glBegin(GL11.GL_QUADS);
         vertex(-1.0f, y0, r, g, b);
         vertex(1.0f, y0, r, g, b);
         vertex(1.0f, y1, r, g, b);
         vertex(-1.0f, y1, r, g, b);
-        GLStateManager.glEnd();
+        GLSMDraws.glEnd();
     }
 
     public static void solidQuad(float r, float g, float b) {
@@ -381,16 +391,16 @@ public final class GlsmSdlHeadlessRig {
     }
 
     public static void texturedQuad(int texture, float extent) {
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-        GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
-        GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-        GLStateManager.glBegin(GL11.GL_QUADS);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        GLSMEnable.glEnable(GL11.GL_TEXTURE_2D);
+        GLSMCurrentAttribs.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        GLSMDraws.glBegin(GL11.GL_QUADS);
         texVertex(-extent, -extent, 0.0f, 0.0f);
         texVertex(extent, -extent, 1.0f, 0.0f);
         texVertex(extent, extent, 1.0f, 1.0f);
         texVertex(-extent, extent, 0.0f, 1.0f);
-        GLStateManager.glEnd();
+        GLSMDraws.glEnd();
     }
 
     public static int[] readTarget() {
@@ -406,7 +416,7 @@ public final class GlsmSdlHeadlessRig {
         final ByteBuffer pixels = MemoryUtil.memAlloc(w * h * 4);
         try {
             for (int i = 0; i < w * h * 4; i++) pixels.put(i, fill);
-            GLStateManager.glReadPixels(x, y, w, h, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
+            GLSMFramebuffer.glReadPixels(x, y, w, h, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
             return toArgb(pixels, w * h);
         } finally {
             MemoryUtil.memFree(pixels);
@@ -414,12 +424,12 @@ public final class GlsmSdlHeadlessRig {
     }
 
     public static int createSolidMipTexture(int size, int maxLevel, int argb) {
-        final int id = GLStateManager.glGenTextures();
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, id);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST_MIPMAP_NEAREST);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, maxLevel);
+        final int id = GLSMTextures.glGenTextures();
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, id);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST_MIPMAP_NEAREST);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, maxLevel);
         for (int level = 0; level <= maxLevel; level++) {
             uploadSolidLevel(level, Math.max(1, size >> level), argb);
         }
@@ -427,13 +437,13 @@ public final class GlsmSdlHeadlessRig {
     }
 
     public static int[] readTextureLevel(int texture, int level) {
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-        final int w = GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, level, GL11.GL_TEXTURE_WIDTH);
-        final int h = GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, level, GL11.GL_TEXTURE_HEIGHT);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        final int w = GLSMTextures.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, level, GL11.GL_TEXTURE_WIDTH);
+        final int h = GLSMTextures.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, level, GL11.GL_TEXTURE_HEIGHT);
         final ByteBuffer pixels = MemoryUtil.memAlloc(w * h * 4);
         try {
-            GLStateManager.glGetTexImage(GL11.GL_TEXTURE_2D, level, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
+            GLSMTextures.glGetTexImage(GL11.GL_TEXTURE_2D, level, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
             return toArgb(pixels, w * h);
         } finally {
             MemoryUtil.memFree(pixels);

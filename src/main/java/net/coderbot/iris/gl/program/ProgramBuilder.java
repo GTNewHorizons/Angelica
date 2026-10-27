@@ -2,7 +2,7 @@ package net.coderbot.iris.gl.program;
 
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.recording.CommandRecorder;
 import com.gtnewhorizons.angelica.glsm.shader.ProgramBinaryCache;
@@ -61,7 +61,7 @@ public class ProgramBuilder extends ProgramUniforms.Builder implements SamplerHo
 				initializeFallbackUniforms(retained);
 				return new ProgramBuilder(name, retained, reservedTextureUnits).retainAs(sources);
 			}
-			GLStateManager.glDeleteProgram(retained);
+			GLSMPrograms.glDeleteProgram(retained);
 		}
 
 		if (cacheKey != null) {
@@ -97,14 +97,14 @@ public class ProgramBuilder extends ProgramUniforms.Builder implements SamplerHo
 
 	/** Initialize alpha and color uniforms to neutral values until the first pass update. */
 	private static void initializeFallbackUniforms(int programId) {
-		final int previous = GLStateManager.getActiveProgram();
+		final int previous = GLSMPrograms.getActiveProgram();
 		final CommandRecorder recorder = DisplayListManager.isRecording() ? DisplayListManager.pauseRecording() : null;
 		try {
 			Program.bindManaged(programId);
 			seedUniform1i(programId, "iris_currentAlphaFunc", 7);
 			seedUniform1f(programId, "iris_currentAlphaTest", -1.0f);
 			seedUniform1f(programId, "alphaTestRef", -1.0f);
-			final int modulator = GLStateManager.glGetUniformLocation(programId, "iris_ColorModulator");
+			final int modulator = GLSMPrograms.glGetUniformLocation(programId, "iris_ColorModulator");
 			if (modulator != -1) {
 				RenderSystem.uniform4f(modulator, 1.0f, 1.0f, 1.0f, 1.0f);
 			}
@@ -118,14 +118,14 @@ public class ProgramBuilder extends ProgramUniforms.Builder implements SamplerHo
 	}
 
 	private static void seedUniform1i(int programId, String name, int value) {
-		final int location = GLStateManager.glGetUniformLocation(programId, name);
+		final int location = GLSMPrograms.glGetUniformLocation(programId, name);
 		if (location != -1) {
 			RenderSystem.uniform1i(location, value);
 		}
 	}
 
 	private static void seedUniform1f(int programId, String name, float value) {
-		final int location = GLStateManager.glGetUniformLocation(programId, name);
+		final int location = GLSMPrograms.glGetUniformLocation(programId, name);
 		if (location != -1) {
 			RenderSystem.uniform1f(location, value);
 		}
@@ -146,7 +146,7 @@ public class ProgramBuilder extends ProgramUniforms.Builder implements SamplerHo
 			if (cacheKey == null || ProgramBinaryCache.saveRetained(cacheKey, retained)) {
 				return new ProgramBuilder(name, retained, reservedTextureUnits).retainAs(sources);
 			}
-			GLStateManager.glDeleteProgram(retained);
+			GLSMPrograms.glDeleteProgram(retained);
 		}
 
 		if (cacheKey != null) {

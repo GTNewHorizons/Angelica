@@ -1,6 +1,6 @@
 package net.coderbot.iris.uniforms;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMFog;
 import net.coderbot.iris.gl.state.FogMode;
 import net.coderbot.iris.gl.state.StateUpdateNotifiers;
 import net.coderbot.iris.gl.state.ValueUpdateNotifier;
@@ -18,14 +18,14 @@ public class FogUniforms {
 			uniforms.uniform1i(UniformUpdateFrequency.ONCE, "fogShape", () -> -1);
 		} else {
 			uniforms.uniform1i("fogMode", () -> {
-				if (!GLStateManager.getFogMode().isEnabled()) return 0;
-				return GLStateManager.getFogState().getFogMode();
+				if (!GLSMFog.getFogMode().isEnabled()) return 0;
+				return GLSMFog.getFogState().getFogMode();
 			}, StateUpdateNotifiers.fogModeNotifier);
 			uniforms.uniform1i("fogShape", () -> 0, ValueUpdateNotifier.NONE);
 		}
 
-		uniforms.uniform1f("fogDensity", () -> GLStateManager.getFogState().getDensity(), StateUpdateNotifiers.fogDensityNotifier);
-		uniforms.uniform1f("fogStart", () -> GLStateManager.getFogState().getStart(), StateUpdateNotifiers.fogStartNotifier);
-		uniforms.uniform1f("fogEnd", () -> GLStateManager.getFogState().getEnd(), StateUpdateNotifiers.fogEndNotifier);
+		uniforms.uniform1f("fogDensity", () -> GLSMFog.getFogState().getDensity(), StateUpdateNotifiers.fogDensityNotifier);
+		uniforms.uniform1f("fogStart", () -> GLSMFog.getFogState().getStart(), StateUpdateNotifiers.fogStartNotifier);
+		uniforms.uniform1f("fogEnd", () -> GLSMFog.getFogState().getEnd(), StateUpdateNotifiers.fogEndNotifier);
 	}
 }

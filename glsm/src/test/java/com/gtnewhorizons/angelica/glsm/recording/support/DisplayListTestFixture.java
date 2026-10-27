@@ -3,7 +3,9 @@ package com.gtnewhorizons.angelica.glsm.recording.support;
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLCompatTest;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.GLTypes;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
 import com.gtnewhorizons.angelica.glsm.recording.commands.BatchedIndexedDrawCmd;
@@ -37,12 +39,12 @@ public abstract class DisplayListTestFixture {
 
     @AfterEach
     void cleanupFixtureResources() {
-        for (int list : listsToCleanup) GLStateManager.glDeleteLists(list, 1);
+        for (int list : listsToCleanup) GLSMDraws.glDeleteLists(list, 1);
         for (int buf : buffersToCleanup) {
             if (GL15.glIsBuffer(buf)) GL15.glDeleteBuffers(buf);
         }
         for (int vao : vaosToCleanup) {
-            if (GL30.glIsVertexArray(vao)) GLStateManager.glDeleteVertexArrays(vao);
+            if (GL30.glIsVertexArray(vao)) GLSMVertexInput.glDeleteVertexArrays(vao);
         }
         listsToCleanup.clear();
         buffersToCleanup.clear();
@@ -88,9 +90,9 @@ public abstract class DisplayListTestFixture {
             data.put(colors[i][3]);
         }
         data.flip();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
         GL15.glBufferData(GL15.GL_ARRAY_BUFFER, data, GL15.GL_STATIC_DRAW);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         MemoryUtilities.memFree(data);
         return vbo;
     }
@@ -112,9 +114,9 @@ public abstract class DisplayListTestFixture {
             }
         }
         data.flip();
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
+        GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
         GL15.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, data, GL15.GL_STATIC_DRAW);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
         MemoryUtilities.memFree(data);
         return ebo;
     }
@@ -122,14 +124,14 @@ public abstract class DisplayListTestFixture {
     /** VAO with loc0 = 2*FLOAT pos, loc1 = 4*UNSIGNED_BYTE norm color, stride 12. */
     protected final int setupPosColorVao(int vbo) {
         final int vao = newVao();
-        GLStateManager.glBindVertexArray(vao);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-        GLStateManager.glVertexAttribPointer(0, 2, GL11.GL_FLOAT, false, POS_COLOR_STRIDE, 0);
-        GLStateManager.glEnableVertexAttribArray(0);
-        GLStateManager.glVertexAttribPointer(1, 4, GL11.GL_UNSIGNED_BYTE, true, POS_COLOR_STRIDE, 8);
-        GLStateManager.glEnableVertexAttribArray(1);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-        GLStateManager.glBindVertexArray(0);
+        GLSMVertexInput.glBindVertexArray(vao);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        GLSMVertexInput.glVertexAttribPointer(0, 2, GL11.GL_FLOAT, false, POS_COLOR_STRIDE, 0);
+        GLSMVertexInput.glEnableVertexAttribArray(0);
+        GLSMVertexInput.glVertexAttribPointer(1, 4, GL11.GL_UNSIGNED_BYTE, true, POS_COLOR_STRIDE, 8);
+        GLSMVertexInput.glEnableVertexAttribArray(1);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLSMVertexInput.glBindVertexArray(0);
         return vao;
     }
 
@@ -139,25 +141,25 @@ public abstract class DisplayListTestFixture {
      */
     protected final int recordSingleIndexedDraw(int vao, int ebo, int drawMode, int indexCount, int indexType) {
         final int list = newList();
-        GLStateManager.glNewList(list, GL11.GL_COMPILE);
-        GLStateManager.glBindVertexArray(vao);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
-        GLStateManager.glDrawElements(drawMode, indexCount, indexType, 0L);
-        GLStateManager.glBindVertexArray(0);
-        GLStateManager.glEndList();
+        GLSMDraws.glNewList(list, GL11.GL_COMPILE);
+        GLSMVertexInput.glBindVertexArray(vao);
+        GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
+        GLSMDraws.glDrawElements(drawMode, indexCount, indexType, 0L);
+        GLSMVertexInput.glBindVertexArray(0);
+        GLSMDraws.glEndList();
         return list;
     }
 
     protected final int recordTwoVaoDraws(int firstVao, int secondVao, int ebo) {
         final int list = newList();
-        GLStateManager.glNewList(list, GL11.GL_COMPILE);
+        GLSMDraws.glNewList(list, GL11.GL_COMPILE);
         for (int vao : new int[] { firstVao, secondVao }) {
-            GLStateManager.glBindVertexArray(vao);
-            GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
-            GLStateManager.glDrawElements(GL11.GL_TRIANGLES, 3, GL11.GL_UNSIGNED_SHORT, 0L);
+            GLSMVertexInput.glBindVertexArray(vao);
+            GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
+            GLSMDraws.glDrawElements(GL11.GL_TRIANGLES, 3, GL11.GL_UNSIGNED_SHORT, 0L);
         }
-        GLStateManager.glBindVertexArray(0);
-        GLStateManager.glEndList();
+        GLSMVertexInput.glBindVertexArray(0);
+        GLSMDraws.glEndList();
         return list;
     }
 
@@ -192,7 +194,7 @@ public abstract class DisplayListTestFixture {
 
     protected static void replay(int listId) {
         compiledOf(listId).render();
-        GLStateManager.glBindVertexArray(0);
+        GLSMVertexInput.glBindVertexArray(0);
     }
 
     protected static IndexedDrawBatch batchOf(BatchedIndexedDrawCmd cmd) {
@@ -205,23 +207,23 @@ public abstract class DisplayListTestFixture {
 
     protected static ByteBuffer readBufferBytes(int target, int bufferId, int size) {
         final int prev;
-        if (target == GL15.GL_ARRAY_BUFFER) prev = GLStateManager.getBoundVBO();
-        else if (target == GL15.GL_ELEMENT_ARRAY_BUFFER) prev = GLStateManager.getBoundEBO();
+        if (target == GL15.GL_ARRAY_BUFFER) prev = GLSMBuffers.getBoundVBO();
+        else if (target == GL15.GL_ELEMENT_ARRAY_BUFFER) prev = GLSMVertexInput.getBoundEBO();
         else prev = 0;
 
-        GLStateManager.glBindBuffer(target, bufferId);
+        GLSMBuffers.glBindBuffer(target, bufferId);
         final ByteBuffer buf = MemoryUtilities.memAlloc(size).order(ByteOrder.nativeOrder());
         GL15.glGetBufferSubData(target, 0, buf);
-        GLStateManager.glBindBuffer(target, prev);
+        GLSMBuffers.glBindBuffer(target, prev);
         return buf;
     }
 
     protected static void overwriteBufferWithGarbage(int target, int bufferId, int size) {
         final ByteBuffer garbage = MemoryUtilities.memAlloc(size);
         for (int i = 0; i < garbage.capacity(); i++) garbage.put(i, (byte) 0xAA);
-        GLStateManager.glBindBuffer(target, bufferId);
+        GLSMBuffers.glBindBuffer(target, bufferId);
         GL15.glBufferData(target, garbage, GL15.GL_STATIC_DRAW);
-        GLStateManager.glBindBuffer(target, 0);
+        GLSMBuffers.glBindBuffer(target, 0);
         MemoryUtilities.memFree(garbage);
     }
 }

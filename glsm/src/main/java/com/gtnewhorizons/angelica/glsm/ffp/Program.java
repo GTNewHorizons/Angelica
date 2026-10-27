@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.glsm.ffp;
 import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.CompatShaderTransformer;
 import com.gtnewhorizons.angelica.glsm.GLDebug;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
@@ -45,7 +46,7 @@ public class Program {
     }
 
     public void destroy() {
-        GLStateManager.glDeleteProgram(programId);
+        GLSMPrograms.glDeleteProgram(programId);
     }
 
     /**
@@ -93,7 +94,7 @@ public class Program {
                 backend.uniformBlockBinding(program, blockIndex, FFPUniformBlock.BINDING_POINT);
             }
 
-            final int previousProgram = GLStateManager.getActiveProgram();
+            final int previousProgram = GLSMPrograms.getActiveProgram();
             backend.useProgram(program);
             for (int i = 0; i < 4; i++) {
                 if (ffpProgram.locSampler[i] != -1) backend.uniform1i(ffpProgram.locSampler[i], i);

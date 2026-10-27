@@ -23,24 +23,24 @@ public final class GlTestSupport {
     }
 
     public static int compile(int type, String source) {
-        final int shader = GLStateManager.glCreateShader(type);
-        GLStateManager.glShaderSource(shader, source);
-        GLStateManager.glCompileShader(shader);
-        if (GLStateManager.glGetShaderi(shader, GL20.GL_COMPILE_STATUS) == 0) {
-            fail("test shader failed to compile:\n" + GLStateManager.glGetShaderInfoLog(shader, 4096) + "\n\n" + source);
+        final int shader = GLSMPrograms.glCreateShader(type);
+        GLSMPrograms.glShaderSource(shader, source);
+        GLSMPrograms.glCompileShader(shader);
+        if (GLSMPrograms.glGetShaderi(shader, GL20.GL_COMPILE_STATUS) == 0) {
+            fail("test shader failed to compile:\n" + GLSMPrograms.glGetShaderInfoLog(shader, 4096) + "\n\n" + source);
         }
         return shader;
     }
 
     /** Links and deletes the two shaders. */
     public static int link(int vs, int fs) {
-        final int p = GLStateManager.glCreateProgram();
-        GLStateManager.glAttachShader(p, vs);
-        GLStateManager.glAttachShader(p, fs);
-        GLStateManager.glLinkProgram(p);
-        assertNotEquals(0, GLStateManager.glGetProgrami(p, GL20.GL_LINK_STATUS), () -> "test program must link: " + GLStateManager.glGetProgramInfoLog(p, 4096));
-        GLStateManager.glDeleteShader(vs);
-        GLStateManager.glDeleteShader(fs);
+        final int p = GLSMPrograms.glCreateProgram();
+        GLSMPrograms.glAttachShader(p, vs);
+        GLSMPrograms.glAttachShader(p, fs);
+        GLSMPrograms.glLinkProgram(p);
+        assertNotEquals(0, GLSMPrograms.glGetProgrami(p, GL20.GL_LINK_STATUS), () -> "test program must link: " + GLSMPrograms.glGetProgramInfoLog(p, 4096));
+        GLSMPrograms.glDeleteShader(vs);
+        GLSMPrograms.glDeleteShader(fs);
         return p;
     }
 
@@ -66,7 +66,7 @@ public final class GlTestSupport {
     /** GLSM's answer for a 16-float matrix pname. */
     public static FloatBuffer matrix(int pname) {
         final FloatBuffer buf = BufferUtils.createFloatBuffer(16);
-        GLStateManager.glGetFloat(pname, buf);
+        GLSMQueries.glGetFloat(pname, buf);
         return buf;
     }
 

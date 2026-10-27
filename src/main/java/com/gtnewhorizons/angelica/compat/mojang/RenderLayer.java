@@ -4,7 +4,7 @@ import com.gtnewhorizons.angelica.rendering.RenderFailures;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
 import com.gtnewhorizons.angelica.api.tesr.TesrShader;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.hooks.TextureUtilHooks;
 import com.gtnewhorizons.angelica.rendering.tesr.DrawState;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrShaderPrograms;
@@ -226,14 +226,14 @@ public final class RenderLayer implements BlendingStateHolder {
         try {
             state.apply();
             if (textureId != null) {
-                GLStateManager.enableTexture();
+                GLSMTextures.enableTexture();
                 Minecraft.getMinecraft().getTextureManager().bindTexture(textureId);
                 if (unfilteredAtlas) {
                     filtering = true;
                     TextureUtilHooks.forceNearestFilter();
                 }
             } else {
-                GLStateManager.disableTexture();
+                GLSMTextures.disableTexture();
             }
             if (hook != null) {
                 hookActive = true;

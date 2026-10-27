@@ -1,5 +1,8 @@
 package com.gtnewhorizons.angelica.glsm.dsa;
 
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import org.lwjgl.opengl.GL11;
@@ -42,23 +45,23 @@ public class DSAARB extends DSAUnsupported {
 
     @Override
     public void texParameteri(int texture, int target, int pname, int param) {
-        param = GLStateManager.remapTexClamp(pname, param);
-        if(!GLStateManager.updateTexParameteriCache(target, texture, pname, param)) return;
+        param = GLSMTextures.remapTexClamp(pname, param);
+        if(!GLSMTextures.updateTexParameteriCache(target, texture, pname, param)) return;
 
         RENDER_BACKEND.textureParameteri(texture, target, pname, param);
     }
 
     @Override
     public void texParameterf(int texture, int target, int pname, float param) {
-        param = GLStateManager.remapTexClamp(pname, param);
-        if(!GLStateManager.updateTexParameterfCache(target, texture, pname, param)) return;
+        param = GLSMTextures.remapTexClamp(pname, param);
+        if(!GLSMTextures.updateTexParameterfCache(target, texture, pname, param)) return;
 
         RENDER_BACKEND.textureParameterf(texture, target, pname, param);
     }
 
     @Override
     public void texParameteriv(int texture, int target, int pname, IntBuffer params) {
-        GLStateManager.remapTexClampBuffer(pname, params);
+        GLSMTextures.remapTexClampBuffer(pname, params);
         RENDER_BACKEND.textureParameteriv(texture, target, pname, params);
     }
 
@@ -74,8 +77,8 @@ public class DSAARB extends DSAUnsupported {
 
     @Override
     public int getTexParameteri(int texture, int target, int pname) {
-        final long v = GLStateManager.lookupTexParameteri(TextureInfoCache.INSTANCE.getInfo(texture), pname);
-        return v != GLStateManager.TEX_PARAM_MISS ? (int) v : RENDER_BACKEND.getTextureParameteri(texture, target, pname);
+        final long v = GLSMTextures.lookupTexParameteri(TextureInfoCache.INSTANCE.getInfo(texture), pname);
+        return v != GLSMTextures.TEX_PARAM_MISS ? (int) v : RENDER_BACKEND.getTextureParameteri(texture, target, pname);
     }
 
     @Override
@@ -100,23 +103,23 @@ public class DSAARB extends DSAUnsupported {
 
     @Override
     public void bindTextureToUnit(int target, int unit, int texture) {
-        if(GLStateManager.getBoundTextureForServerState(unit) == texture) return;
+        if(GLSMTextures.getBoundTextureForServerState(unit) == texture) return;
 
         if (texture == 0) {
             super.bindTextureToUnit(target != 0 ? target : GL11.GL_TEXTURE_2D, unit, texture);
         } else {
             RENDER_BACKEND.bindTextureUnit(unit, texture);
-            final var binding = GLStateManager.getTextures().getTextureUnitBindings(unit);
+            final var binding = GLSMTextures.getTextures().getTextureUnitBindings(unit);
             binding.beforeModify();
             binding.setBinding(texture, target);
-            GLStateManager.trackMaxBoundTextureUnit(unit);
+            GLSMTextures.trackMaxBoundTextureUnit(unit);
         }
     }
 
     @Override
     public int bufferStorage(int target, FloatBuffer data, int usage) {
-        final int buffer = GLStateManager.glCreateBuffers();
-        GLStateManager.glNamedBufferData(buffer, data, usage);
+        final int buffer = GLSMBuffers.glCreateBuffers();
+        GLSMBuffers.glNamedBufferData(buffer, data, usage);
         return buffer;
     }
 
@@ -128,7 +131,7 @@ public class DSAARB extends DSAUnsupported {
 
     @Override
     public void framebufferTexture2D(int fb, int fbtarget, int attachment, int target, int texture, int levels) {
-        GLStateManager.glNamedFramebufferTexture(fb, attachment, texture, levels);
+        GLSMFramebuffer.glNamedFramebufferTexture(fb, attachment, texture, levels);
     }
 
     @Override
@@ -139,6 +142,6 @@ public class DSAARB extends DSAUnsupported {
 
     @Override
     public int createTexture(int target) {
-        return GLStateManager.glCreateTextures(target);
+        return GLSMTextures.glCreateTextures(target);
     }
 }

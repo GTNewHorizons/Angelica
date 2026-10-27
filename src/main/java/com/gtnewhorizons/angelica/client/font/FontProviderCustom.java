@@ -4,7 +4,7 @@ import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAllocInt;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memFree;
 
 import com.gtnewhorizons.angelica.config.FontConfig;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import jss.util.RandomXoshiro256StarStar;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -65,7 +65,7 @@ public final class FontProviderCustom implements FontProvider {
 
         for (int i = 0; i < ATLAS_COUNT; i++) {
             if (this.atlasTextures[i] != 0) {
-                GLStateManager.glDeleteTextures(this.atlasTextures[i]);
+                GLSMTextures.glDeleteTextures(this.atlasTextures[i]);
                 this.atlasTextures[i] = 0;
             }
         }
@@ -236,18 +236,18 @@ public final class FontProviderCustom implements FontProvider {
         final BufferedImage image = rasterize(id);
         if (image == null) { return 0; }
 
-        final int texture = GLStateManager.glGenTextures();
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
+        final int texture = GLSMTextures.glGenTextures();
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
 
         final int[] pixels = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
         final IntBuffer pixelBuffer = memAllocInt(pixels.length);
         pixelBuffer.put(pixels);
         pixelBuffer.flip();
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, image.getWidth(), image.getHeight(), 0, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, pixelBuffer);
+        GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, image.getWidth(), image.getHeight(), 0, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, pixelBuffer);
         memFree(pixelBuffer);
 
         this.atlasTextures[id] = texture;

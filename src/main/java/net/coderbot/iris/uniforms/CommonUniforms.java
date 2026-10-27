@@ -1,6 +1,8 @@
 package net.coderbot.iris.uniforms;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMFog;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
@@ -78,7 +80,7 @@ public final class CommonUniforms {
 		IrisInternalUniforms.addWeatherUniforms(uniforms);
 
 		uniforms.uniform2i("atlasSize", () -> {
-			final int glId = GLStateManager.getBoundTextureForServerState(0);
+			final int glId = GLSMTextures.getBoundTextureForServerState(0);
 
 			final AbstractTexture texture = TextureTracker.INSTANCE.getTexture(glId);
 			if (texture instanceof TextureMap) {
@@ -90,22 +92,22 @@ public final class CommonUniforms {
 		}, StateUpdateNotifiers.bindTextureNotifier);
 
 		uniforms.uniform2i("gtextureSize", () -> {
-			final int glId = GLStateManager.getBoundTextureForServerState(0);
+			final int glId = GLSMTextures.getBoundTextureForServerState(0);
 
 			final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(glId);
 			return scratch2i.set(info.getWidth(), info.getHeight());
 
 		}, StateUpdateNotifiers.bindTextureNotifier);
 
-		uniforms.uniform1i("gtextureId", () -> GLStateManager.getBoundTextureForServerState(0),
+		uniforms.uniform1i("gtextureId", () -> GLSMTextures.getBoundTextureForServerState(0),
 			StateUpdateNotifiers.bindTextureNotifier);
 
 		uniforms.uniform1i("textureReloadCount", CapturedRenderingState.INSTANCE::getTextureReloadCount,
 			CapturedRenderingState.INSTANCE.getTextureReloadNotifier());
 
 		uniforms.uniform4i("blendFunc", () -> {
-            if(GLStateManager.getBlendMode().isEnabled()) {
-                final BlendState blend = GLStateManager.getBlendState();
+            if(GLSMBlend.getBlendMode().isEnabled()) {
+                final BlendState blend = GLSMBlend.getBlendState();
                 return scratch4i.set(blend.getSrcRgb(), blend.getDstRgb(), blend.getSrcAlpha(), blend.getDstAlpha());
             }
             return scratch4i.set(0, 0, 0, 0);
@@ -150,7 +152,7 @@ public final class CommonUniforms {
 			.uniform1f(PER_TICK, "rainStrength", CommonUniforms::getRainStrength)
 			.uniform1f(PER_TICK, "wetness", new SmoothedFloat(directives.getWetnessHalfLife(), directives.getDrynessHalfLife(), CommonUniforms::getRainStrength, updateNotifier))
 			.uniform3d(PER_FRAME, "skyColor", CommonUniforms::getSkyColor)
-			.uniform3d(PER_FRAME, "fogColor", GLStateManager::getFogColor)
+			.uniform3d(PER_FRAME, "fogColor", GLSMFog::getFogColor)
 			.uniform1f(PER_FRAME, "dhFarPlane", DHCompat::getFarPlane)
 			.uniform1f(PER_FRAME, "dhNearPlane", DHCompat::getNearPlane)
 			.uniform1i(PER_FRAME, "dhRenderDistance", DHCompat::getRenderDistance);

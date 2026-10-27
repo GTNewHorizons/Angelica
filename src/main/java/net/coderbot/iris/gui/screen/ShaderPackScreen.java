@@ -1,7 +1,7 @@
 package net.coderbot.iris.gui.screen;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.shader.ProgramBinaryCache;
@@ -132,7 +132,7 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float delta) {
-        GLStateManager.glPushAttrib(GL11.GL_COLOR_BUFFER_BIT);
+        GLSMAttribStack.glPushAttrib(GL11.GL_COLOR_BUFFER_BIT);
         try {
             if(dirty) {
                 dirty = false;
@@ -215,7 +215,7 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
                 this.fontRendererObj.drawStringWithShadow(irisTextComponent, 2, this.height - 10, 0xFFFFFF);
             }
         } finally {
-            GLStateManager.glPopAttrib();
+            GLSMAttribStack.glPopAttrib();
         }
     }
 

@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.entity;
 
 import com.gtnewhorizons.angelica.experimental.surround.Surround;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
 import com.gtnewhorizons.angelica.rendering.tesr.BatchEligibility;
 import net.minecraft.client.renderer.entity.RendererLivingEntity;
 import org.spongepowered.asm.mixin.Mixin;
@@ -15,11 +15,11 @@ public abstract class MixinRendererLivingEntity_ModelPassDraws {
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/model/ModelBase;render(Lnet/minecraft/entity/Entity;FFFFFF)V")
     )
     private void angelica$countModelPassDraws() {
-        BatchEligibility.beginExpectedDraws(GLStateManager.drawCalls);
+        BatchEligibility.beginExpectedDraws(GLSMDraws.drawCalls);
     }
 
     @Surround.Finally
     private void angelica$endModelPassDraws() {
-        BatchEligibility.endExpectedDraws(GLStateManager.drawCalls);
+        BatchEligibility.endExpectedDraws(GLSMDraws.drawCalls);
     }
 }

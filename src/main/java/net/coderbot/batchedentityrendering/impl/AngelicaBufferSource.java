@@ -3,7 +3,10 @@ package net.coderbot.batchedentityrendering.impl;
 import com.gtnewhorizons.angelica.rendering.RenderFailures;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.rendering.tesr.BatchDrawDefaults;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.GLSMLighting;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.LightingSnapshot;
 import com.gtnewhorizons.angelica.glsm.StateSet;
 import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
@@ -59,7 +62,7 @@ public class AngelicaBufferSource implements Groupable {
 
     public void capturePassLighting() {
         if (passLighting == null) passLighting = new LightingSnapshot();
-        GLStateManager.captureLighting(passLighting);
+        GLSMLighting.captureLighting(passLighting);
     }
 
     public SegmentedBufferBuilder getBuffer(RenderLayer type, int blockEntityId) {
@@ -198,7 +201,7 @@ public class AngelicaBufferSource implements Groupable {
     private void restoreDrawState() {
         if (drawStateDepth >= 0) {
             drawDefaults.restore();
-            GLStateManager.popStateTo(drawStateDepth);
+            GLSMAttribStack.popStateTo(drawStateDepth);
             drawStateDepth = -1;
         }
     }
@@ -225,9 +228,9 @@ public class AngelicaBufferSource implements Groupable {
         final boolean hasRetained = hook != null && hook.hasDraws(layer);
         if (!hasDynamic && !hasRetained) return;
         if (drawStateDepth < 0) {
-            drawStateDepth = GLStateManager.pushState(StateSet.BATCH);
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-            if (passLighting != null) GLStateManager.applyLighting(passLighting);
+            drawStateDepth = GLSMAttribStack.pushState(StateSet.BATCH);
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+            if (passLighting != null) GLSMLighting.applyLighting(passLighting);
             drawDefaults.apply();
         }
         saveIrisState();
@@ -258,9 +261,9 @@ public class AngelicaBufferSource implements Groupable {
         boolean boundSetup = false;
         Throwable failure = null;
         try {
-            GLStateManager.glPushMatrix();
+            GLSMMatrices.glPushMatrix();
             matrixPushed = true;
-            GLStateManager.glLoadIdentity();
+            GLSMMatrices.glLoadIdentity();
             int currentEntity = Integer.MIN_VALUE;
             int currentBlock = Integer.MIN_VALUE;
             int currentItem = Integer.MIN_VALUE;
@@ -306,7 +309,7 @@ public class AngelicaBufferSource implements Groupable {
             }
             if (matrixPushed) {
                 try {
-                    GLStateManager.glPopMatrix();
+                    GLSMMatrices.glPopMatrix();
                 } catch (Throwable cleanup) {
                     failure = RenderFailures.suppress(failure, cleanup);
                 }

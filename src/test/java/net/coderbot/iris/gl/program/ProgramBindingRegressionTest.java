@@ -3,7 +3,8 @@ package net.coderbot.iris.gl.program;
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
 import com.gtnewhorizons.angelica.glsm.GlTestSupport;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
@@ -35,55 +36,55 @@ class ProgramBindingRegressionTest {
         final int caller = linkedProgram();
         try {
             for (int mode : new int[] { GL11.GL_COMPILE, GL11.GL_COMPILE_AND_EXECUTE }) {
-                final int list = GLStateManager.glGenLists(1);
+                final int list = GLSMDraws.glGenLists(1);
                 Program initialized = null;
-                GLStateManager.glUseProgram(caller);
+                GLSMPrograms.glUseProgram(caller);
                 try {
-                    GLStateManager.glNewList(list, mode);
+                    GLSMDraws.glNewList(list, mode);
                     initialized = ProgramBuilder.begin("fallback-test", vertex, null, fragment, ImmutableSet.of(0)).build();
                     assertEquals(mode == GL11.GL_COMPILE ? DisplayListManager.RecordMode.COMPILE
                         : DisplayListManager.RecordMode.COMPILE_AND_EXECUTE, DisplayListManager.getRecordMode());
-                    assertEquals(caller, GLStateManager.getActiveProgram());
+                    assertEquals(caller, GLSMPrograms.getActiveProgram());
                     assertEquals(caller, GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM));
-                    GLStateManager.glEndList();
-                    final int location = GLStateManager.glGetUniformLocation(initialized.getProgramId(), "alphaTestRef");
+                    GLSMDraws.glEndList();
+                    final int location = GLSMPrograms.glGetUniformLocation(initialized.getProgramId(), "alphaTestRef");
                     assertNotEquals(-1, location);
                     final FloatBuffer value = BufferUtils.createFloatBuffer(4);
-                    GLStateManager.glGetUniform(initialized.getProgramId(), location, value);
+                    GLSMPrograms.glGetUniform(initialized.getProgramId(), location, value);
                     assertEquals(-1f, value.get(0));
                     assertEquals(0, DisplayListManager.getDisplayList(list).getCommandCounts().get(GLCommand.USE_PROGRAM));
-                    GLStateManager.glCallList(list);
-                    assertEquals(caller, GLStateManager.getActiveProgram());
+                    GLSMDraws.glCallList(list);
+                    assertEquals(caller, GLSMPrograms.getActiveProgram());
                 } finally {
-                    if (DisplayListManager.isRecording()) GLStateManager.glEndList();
-                    GLStateManager.glDeleteLists(list, 1);
+                    if (DisplayListManager.isRecording()) GLSMDraws.glEndList();
+                    GLSMDraws.glDeleteLists(list, 1);
                     if (initialized != null) initialized.destroy();
                 }
             }
         } finally {
-            GLStateManager.glUseProgram(0);
-            GLStateManager.glDeleteProgram(caller);
+            GLSMPrograms.glUseProgram(0);
+            GLSMPrograms.glDeleteProgram(caller);
         }
     }
 
     @Test
     void deletionBookkeepingRetainsOnlyDeferredDeletes() {
         final int bound = linkedProgram();
-        GLStateManager.glUseProgram(bound);
-        GLStateManager.glDeleteProgram(bound);
-        assertTrue(GLStateManager.isProgramPendingDeletion(bound));
+        GLSMPrograms.glUseProgram(bound);
+        GLSMPrograms.glDeleteProgram(bound);
+        assertTrue(GLSMPrograms.isProgramPendingDeletion(bound));
         assertTrue(GL20.glIsProgram(bound), "driver keeps the bound program alive");
         final int other = linkedProgram();
-        GLStateManager.glUseProgram(other);
+        GLSMPrograms.glUseProgram(other);
         for (int i = 0; i < 8; i++) {
-            final int unused = GLStateManager.glCreateProgram();
-            GLStateManager.glDeleteProgram(unused);
-            assertFalse(GLStateManager.isProgramPendingDeletion(unused));
+            final int unused = GLSMPrograms.glCreateProgram();
+            GLSMPrograms.glDeleteProgram(unused);
+            assertFalse(GLSMPrograms.isProgramPendingDeletion(unused));
             assertFalse(GL20.glIsProgram(unused), "driver deletes an unbound program immediately");
-            assertFalse(GLStateManager.isProgramPendingDeletion(bound));
+            assertFalse(GLSMPrograms.isProgramPendingDeletion(bound));
         }
-        GLStateManager.glUseProgram(0);
-        GLStateManager.glDeleteProgram(other);
+        GLSMPrograms.glUseProgram(0);
+        GLSMPrograms.glDeleteProgram(other);
     }
 
     private static int linkedProgram() {
@@ -108,22 +109,22 @@ class ProgramBindingRegressionTest {
         Reflect.setStaticFinal(Iris.class, "enabled", boolean.class, true);
         try {
             for (int i = 0; i < 3; i++) {
-                GLStateManager.glUseProgram(other);
+                GLSMPrograms.glUseProgram(other);
                 program.use();
                 verify(uniforms, times(i + 1)).update();
                 assertFalse(Program.isManagedBind(id));
             }
             program.use(); // Cached binds must still update dynamic uniforms.
             verify(uniforms, times(4)).update();
-            GLStateManager.glUseProgram(other);
-            GLStateManager.glUseProgram(id);
+            GLSMPrograms.glUseProgram(other);
+            GLSMPrograms.glUseProgram(id);
             verify(uniforms, times(5)).update();
         } finally {
             Reflect.setStaticFinal(Iris.class, "enabled", boolean.class, enabled);
             Reflect.set(manager, "pipeline", previous);
-            GLStateManager.glUseProgram(0);
+            GLSMPrograms.glUseProgram(0);
             program.destroy();
-            GLStateManager.glDeleteProgram(other);
+            GLSMPrograms.glDeleteProgram(other);
         }
     }
 
@@ -131,44 +132,44 @@ class ProgramBindingRegressionTest {
     void replayCachesValidityAndRevalidatesDeletionIncludingBoundPrograms() {
         int id = linkedProgram();
         int other = linkedProgram();
-        int list = GLStateManager.glGenLists(1);
-        GLStateManager.glNewList(list, GL11.GL_COMPILE);
-        GLStateManager.glUseProgram(id);
-        GLStateManager.glEndList();
+        int list = GLSMDraws.glGenLists(1);
+        GLSMDraws.glNewList(list, GL11.GL_COMPILE);
+        GLSMPrograms.glUseProgram(id);
+        GLSMDraws.glEndList();
         RenderBackend original = BackendManager.RENDER_BACKEND;
         RenderBackend backend = mock(RenderBackend.class, delegatesTo(original));
         Reflect.setStaticFinal(BackendManager.class, "RENDER_BACKEND", RenderBackend.class, backend);
         boolean idDeleted = false;
         boolean otherDeleted = false;
         try {
-            for (int i = 0; i < 5; i++) GLStateManager.glCallList(list);
+            for (int i = 0; i < 5; i++) GLSMDraws.glCallList(list);
             verify(backend, times(1)).isProgram(id);
-            assertEquals(id, GLStateManager.getActiveProgram());
+            assertEquals(id, GLSMPrograms.getActiveProgram());
             assertEquals(id, GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM));
 
-            GLStateManager.glDeleteProgram(id);
+            GLSMPrograms.glDeleteProgram(id);
             idDeleted = true;
-            GLStateManager.glCallList(list); // Still valid while bound, but must not be cached.
-            assertEquals(id, GLStateManager.getActiveProgram());
+            GLSMDraws.glCallList(list); // Still valid while bound, but must not be cached.
+            assertEquals(id, GLSMPrograms.getActiveProgram());
             assertEquals(id, GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM));
-            GLStateManager.glUseProgram(other); // Completes deferred deletion.
-            GLStateManager.glCallList(list);
-            assertEquals(0, GLStateManager.getActiveProgram());
+            GLSMPrograms.glUseProgram(other); // Completes deferred deletion.
+            GLSMDraws.glCallList(list);
+            assertEquals(0, GLSMPrograms.getActiveProgram());
             verify(backend, times(4)).isProgram(id);
-            GLStateManager.glCallList(list);
+            GLSMDraws.glCallList(list);
             verify(backend, times(4)).isProgram(id);
 
-            GLStateManager.glDeleteProgram(other);
+            GLSMPrograms.glDeleteProgram(other);
             otherDeleted = true;
-            GLStateManager.glCallList(list);
+            GLSMDraws.glCallList(list);
             verify(backend, times(5)).isProgram(id);
         } finally {
             Reflect.setStaticFinal(BackendManager.class, "RENDER_BACKEND", RenderBackend.class, original);
-            GLStateManager.glUseProgram(0);
-            GLStateManager.glDeleteLists(list, 1);
+            GLSMPrograms.glUseProgram(0);
+            GLSMDraws.glDeleteLists(list, 1);
             // FFP's glUseProgram(0) is lazy, so other stays current; deleting it again is GL_INVALID_OPERATION on macOS
-            if (!idDeleted) GLStateManager.glDeleteProgram(id);
-            if (!otherDeleted) GLStateManager.glDeleteProgram(other);
+            if (!idDeleted) GLSMPrograms.glDeleteProgram(id);
+            if (!otherDeleted) GLSMPrograms.glDeleteProgram(other);
         }
     }
 }

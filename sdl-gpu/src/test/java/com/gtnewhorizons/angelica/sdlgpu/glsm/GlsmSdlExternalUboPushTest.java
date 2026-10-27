@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
 import com.gtnewhorizons.angelica.glsm.GlTestSupport;
 import com.gtnewhorizons.angelica.glsm.ffp.LogicOpFixture;
 import org.junit.jupiter.api.AfterEach;
@@ -49,28 +50,28 @@ class GlsmSdlExternalUboPushTest {
 
     @AfterEach
     void cleanup() {
-        GLStateManager.glUseProgram(0);
-        GLStateManager.glBindBufferBase(GL31.GL_UNIFORM_BUFFER, BINDING, 0);
-        if (ubo != 0) GLStateManager.glDeleteBuffers(ubo);
-        if (program != 0) GLStateManager.glDeleteProgram(program);
+        GLSMPrograms.glUseProgram(0);
+        GLSMBuffers.glBindBufferBase(GL31.GL_UNIFORM_BUFFER, BINDING, 0);
+        if (ubo != 0) GLSMBuffers.glDeleteBuffers(ubo);
+        if (program != 0) GLSMPrograms.glDeleteProgram(program);
         LogicOpFixture.deleteResources();
     }
 
     @Test
     void subDataBetweenDrawsReachesTheSecondDraw() {
         program = GlTestSupport.program(VERT, FRAG);
-        GLStateManager.glUniformBlockBinding(program, GLStateManager.glGetUniformBlockIndex(program, "Tint"), BINDING);
+        GLSMPrograms.glUniformBlockBinding(program, GLSMPrograms.glGetUniformBlockIndex(program, "Tint"), BINDING);
 
-        ubo = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL31.GL_UNIFORM_BUFFER, ubo);
-        GLStateManager.glBufferData(GL31.GL_UNIFORM_BUFFER, color(1f, 0f, 0f), GL15.GL_DYNAMIC_DRAW);
-        GLStateManager.glBindBufferBase(GL31.GL_UNIFORM_BUFFER, BINDING, ubo);
+        ubo = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL31.GL_UNIFORM_BUFFER, ubo);
+        GLSMBuffers.glBufferData(GL31.GL_UNIFORM_BUFFER, color(1f, 0f, 0f), GL15.GL_DYNAMIC_DRAW);
+        GLSMBuffers.glBindBufferBase(GL31.GL_UNIFORM_BUFFER, BINDING, ubo);
 
-        GLStateManager.glUseProgram(program);
+        GLSMPrograms.glUseProgram(program);
         LogicOpFixture.quad(UNUSED_COLOR);
 
-        GLStateManager.glBindBuffer(GL31.GL_UNIFORM_BUFFER, ubo);
-        GLStateManager.glBufferSubData(GL31.GL_UNIFORM_BUFFER, 0, color(0f, 1f, 0f));
+        GLSMBuffers.glBindBuffer(GL31.GL_UNIFORM_BUFFER, ubo);
+        GLSMBuffers.glBufferSubData(GL31.GL_UNIFORM_BUFFER, 0, color(0f, 1f, 0f));
         LogicOpFixture.quad(UNUSED_COLOR);
 
         final int got = pixelAt(GlsmSdlHeadlessRig.readTarget(), SIZE, SIZE / 2, SIZE / 2);

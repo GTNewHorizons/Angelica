@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.client.font;
 
 import com.gtnewhorizons.angelica.glsm.FeedbackManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -108,10 +109,10 @@ final class RetainedTextStore {
 
     private static void create(int capacity) {
         final int previous = GLStateManager.ctx().boundVBO;
-        buffer = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, buffer);
-        GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, (long) capacity * BatchingFontRenderer.QUAD_BYTES, GL15.GL_DYNAMIC_DRAW);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, previous);
+        buffer = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, buffer);
+        GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, (long) capacity * BatchingFontRenderer.QUAD_BYTES, GL15.GL_DYNAMIC_DRAW);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, previous);
         capacityQuads = capacity;
         allocator.reset(capacity);
         resident.clear();
@@ -123,9 +124,9 @@ final class RetainedTextStore {
         final ByteBuffer vertices = mesh.vertices;
         vertices.position(0);
         vertices.limit(mesh.quadCount * BatchingFontRenderer.QUAD_BYTES);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, buffer);
-        GLStateManager.glBufferSubData(GL15.GL_ARRAY_BUFFER, (long) start * BatchingFontRenderer.QUAD_BYTES, vertices);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, previous);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, buffer);
+        GLSMBuffers.glBufferSubData(GL15.GL_ARRAY_BUFFER, (long) start * BatchingFontRenderer.QUAD_BYTES, vertices);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, previous);
         vertices.clear();
     }
 
@@ -150,7 +151,7 @@ final class RetainedTextStore {
             final int id = retiredBuffers[i];
             if (retiredBufferFrames[i] <= deletableUpTo) {
                 BatchingFontRenderer.forgetVertexSource(id);
-                GLStateManager.glDeleteBuffers(id);
+                GLSMBuffers.glDeleteBuffers(id);
             } else {
                 retiredBuffers[kept] = id;
                 retiredBufferFrames[kept] = retiredBufferFrames[i];

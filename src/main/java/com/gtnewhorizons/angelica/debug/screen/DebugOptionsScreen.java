@@ -5,7 +5,7 @@ import com.gtnewhorizons.angelica.api.debug.DebugEntryCategory;
 import com.gtnewhorizons.angelica.api.debug.DebugScreenEntryStatus;
 import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.PositionedSoundRecord;
@@ -724,7 +724,7 @@ public class DebugOptionsScreen extends GuiScreen {
 
     private void beginLayer() {
         if (painter == null) return;
-        GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        GLSMCurrentAttribs.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
         batcher.beginBatch();
         painter.beginRects();
     }

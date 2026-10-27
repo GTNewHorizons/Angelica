@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.api.tesr;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import net.minecraft.tileentity.TileEntity;
 
 /**
@@ -21,7 +21,7 @@ public interface TesrMeshProvider {
 
     /** Per-instance transform, defaults to TE position */
     default void angelica$transform(TileEntity te, double x, double y, double z) {
-        GLStateManager.glTranslated(x, y, z);
+        GLSMMatrices.glTranslated(x, y, z);
     }
 
     /** Build and cache the mesh */

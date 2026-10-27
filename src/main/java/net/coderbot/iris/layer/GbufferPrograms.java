@@ -5,7 +5,9 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
 import com.gtnewhorizons.angelica.iris.IrisDisplayListState;
 import net.coderbot.iris.gl.shader.ProgramCreator;
@@ -148,23 +150,23 @@ public class GbufferPrograms {
 	}
 
 	public static void setCutoutDefaults() {
-		GLStateManager.enableAlphaTest();
-		GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.1F);
+		GLSMDepthStencilAlpha.enableAlphaTest();
+		GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, 0.1F);
 
 		if (DisplayListManager.getRecordMode() == DisplayListManager.RecordMode.NONE) {
-			GLStateManager.getTextures().getTextureUnitStates(1).enable();
+			GLSMTextures.getTextures().getTextureUnitStates(1).enable();
 			return;
 		}
-		final int previousUnit = GLStateManager.getActiveTextureUnitForServerState();
-		GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-		GLStateManager.enableTexture();
-		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + previousUnit);
+		final int previousUnit = GLSMTextures.getActiveTextureUnitForServerState();
+		GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
+		GLSMTextures.enableTexture();
+		GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0 + previousUnit);
 	}
 
 	public static void setBlockEntityDefaults() {
-		GLStateManager.glVertexAttrib2s(ProgramCreator.MC_ENTITY, (short)-1, (short)-1);
+		GLSMCurrentAttribs.glVertexAttrib2s(ProgramCreator.MC_ENTITY, (short)-1, (short)-1);
 		FfpExtendedAttribs.setNeutralCurrentValues();
-		GLStateManager.glVertexAttrib4f(ProgramCreator.AT_MIDBLOCK, 0.0f, 0.0f, 0.0f, 0.0f);
+		GLSMCurrentAttribs.glVertexAttrib4f(ProgramCreator.AT_MIDBLOCK, 0.0f, 0.0f, 0.0f, 0.0f);
 	}
 
 	public static WorldRenderingPhase getCurrentPhase() {

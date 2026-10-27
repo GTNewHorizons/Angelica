@@ -5,7 +5,10 @@ import com.gtnewhorizons.angelica.client.font.FontTestFixture;
 import com.gtnewhorizons.angelica.client.font.TextMesh;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import net.minecraft.client.gui.FontRenderer;
@@ -114,14 +117,14 @@ class DebugOverlayFallbackGLTest {
     }
 
     private static boolean anyLitAfterDirectDraw() {
-        GLStateManager.glViewport(0, 0, 128, 32);
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glOrtho(0.0, 128, 32, 0.0, -1.0, 1.0);
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        GLSMRasterizer.glViewport(0, 0, 128, 32);
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glOrtho(0.0, 128, 32, 0.0, -1.0, 1.0);
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glLoadIdentity();
+        GLSMBlend.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
         batcher.drawString(2.0f, 2.0f, 0xFFFFFFFF, false, false, "balanced", 0, 8);
         final ByteBuffer pixels = BufferUtils.createByteBuffer(128 * 32 * 4);
         GL11.glReadPixels(0, 0, 128, 32, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);

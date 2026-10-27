@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
@@ -41,8 +41,8 @@ class GlsmSdlProxyTextureProbeTest {
 
     @Test
     void vanillaMaximumTextureSizeProbeLeavesTheBoundLightmapIntact() {
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, lightmapTexture);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, lightmapTexture);
 
         final ResourceManager rm = GlsmSdlHeadlessRig.resourceManager();
         final long handleBefore = rm.getTextureHandle(lightmapTexture);
@@ -54,15 +54,15 @@ class GlsmSdlProxyTextureProbeTest {
         assertEquals(LIGHTMAP_SIZE, meta.width(), "lightmap width after probe");
         assertEquals(LIGHTMAP_SIZE, meta.height(), "lightmap height after probe");
         assertEquals(handleBefore, rm.getTextureHandle(lightmapTexture), "lightmap handle after probe");
-        assertEquals(LIGHTMAP_SIZE, GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH));
+        assertEquals(LIGHTMAP_SIZE, GLSMTextures.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH));
 
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
     }
 
     @Test
     void proxyTargetCallsLeaveTheBoundTextureIntact() {
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, lightmapTexture);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, lightmapTexture);
 
         final ResourceManager rm = GlsmSdlHeadlessRig.resourceManager();
         final long handleBefore = rm.getTextureHandle(lightmapTexture);
@@ -71,12 +71,12 @@ class GlsmSdlProxyTextureProbeTest {
 
         for (int target : PROXY_TARGETS) {
             final String where = "0x" + Integer.toHexString(target);
-            GLStateManager.glTexParameteri(target, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
-            GLStateManager.glTexParameterf(target, GL12.GL_TEXTURE_MIN_LOD, 4.0f);
-            GLStateManager.glTexSubImage2D(target, 0, 0, 0, 1, 1, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
-            GLStateManager.glCopyTexSubImage2D(target, 0, 0, 0, 0, 0, 1, 1);
-            GLStateManager.glCopyTexImage2D(target, 0, GL11.GL_RGBA, 0, 0, 4, 4, 0);
-            GLStateManager.glGenerateMipmap(target);
+            GLSMTextures.glTexParameteri(target, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+            GLSMTextures.glTexParameterf(target, GL12.GL_TEXTURE_MIN_LOD, 4.0f);
+            GLSMTextures.glTexSubImage2D(target, 0, 0, 0, 1, 1, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+            GLSMTextures.glCopyTexSubImage2D(target, 0, 0, 0, 0, 0, 1, 1);
+            GLSMTextures.glCopyTexImage2D(target, 0, GL11.GL_RGBA, 0, 0, 4, 4, 0);
+            GLSMTextures.glGenerateMipmap(target);
 
             final ResourceManager.TextureMeta after = rm.getTextureMeta(lightmapTexture);
             assertNotNull(after, where);
@@ -87,7 +87,7 @@ class GlsmSdlProxyTextureProbeTest {
             assertEquals(handleBefore, rm.getTextureHandle(lightmapTexture), where);
         }
 
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
     }
 
     @Test
@@ -95,9 +95,9 @@ class GlsmSdlProxyTextureProbeTest {
         GlsmSdlHeadlessRig.bindBaseTexture(baseTexture);
         GlsmSdlHeadlessRig.enableLightmapUnit(lightmapTexture, true);
 
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
         assertEquals(16384, vanillaGetGLMaximumTextureSize());
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
 
         GlsmSdlHeadlessRig.terrainRenderState();
         GlsmSdlHeadlessRig.quadTwoUnits((short) 240);
@@ -111,8 +111,8 @@ class GlsmSdlProxyTextureProbeTest {
 
     private static int vanillaGetGLMaximumTextureSize() {
         for (int i = 16384; i > 0; i >>= 1) {
-            GLStateManager.glTexImage2D(GL11.GL_PROXY_TEXTURE_2D, 0, GL11.GL_RGBA, i, i, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
-            final int j = GLStateManager.glGetTexLevelParameteri(GL11.GL_PROXY_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
+            GLSMTextures.glTexImage2D(GL11.GL_PROXY_TEXTURE_2D, 0, GL11.GL_RGBA, i, i, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+            final int j = GLSMTextures.glGetTexLevelParameteri(GL11.GL_PROXY_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
             if (j != 0) {
                 return i;
             }

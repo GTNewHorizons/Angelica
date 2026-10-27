@@ -1,6 +1,11 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMLighting;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
 import com.gtnewhorizons.angelica.glsm.ffp.CubeParityFixture;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpFixture;
 import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
@@ -43,7 +48,7 @@ class GlsmSdlFfpTest {
 
     @AfterEach
     void cleanupInstancing() {
-        GLStateManager.setFfpInstancing(Instancing.NONE);
+        GLSMPrograms.setFfpInstancing(Instancing.NONE);
         CubeParityFixture.deleteResources();
         ParticleParityFixture.deleteResources();
         FfpFixture.EntityIdInstances.delete();
@@ -58,12 +63,12 @@ class GlsmSdlFfpTest {
     }
 
     private static void quadUnit0Only() {
-        GLStateManager.glBegin(GL11.GL_QUADS);
+        GLSMDraws.glBegin(GL11.GL_QUADS);
         GlsmSdlHeadlessRig.emitVertex(-1.0f, -1.0f, 0.0f, 0.0f, false, (short) 0);
         GlsmSdlHeadlessRig.emitVertex(1.0f, -1.0f, 1.0f, 0.0f, false, (short) 0);
         GlsmSdlHeadlessRig.emitVertex(1.0f, 1.0f, 1.0f, 1.0f, false, (short) 0);
         GlsmSdlHeadlessRig.emitVertex(-1.0f, 1.0f, 0.0f, 1.0f, false, (short) 0);
-        GLStateManager.glEnd();
+        GLSMDraws.glEnd();
     }
 
     private static void quadTwoUnits(boolean vanillaBrightness) {
@@ -102,15 +107,15 @@ class GlsmSdlFfpTest {
         enableLightmapUnit(true);
         GlsmSdlHeadlessRig.terrainRenderState();
 
-        final int list = GLStateManager.glGenLists(1);
-        GLStateManager.glNewList(list, GL11.GL_COMPILE);
-        GLStateManager.glPushMatrix();
-        GLStateManager.glTranslatef(0.0f, 0.0f, 0.0f);
+        final int list = GLSMDraws.glGenLists(1);
+        GLSMDraws.glNewList(list, GL11.GL_COMPILE);
+        GLSMMatrices.glPushMatrix();
+        GLSMMatrices.glTranslatef(0.0f, 0.0f, 0.0f);
         quadTwoUnits(true);
-        GLStateManager.glPopMatrix();
-        GLStateManager.glEndList();
+        GLSMMatrices.glPopMatrix();
+        GLSMDraws.glEndList();
 
-        GLStateManager.glCallList(list);
+        GLSMDraws.glCallList(list);
         assertTexelEverywhere("two units, glCallList");
 
         GlsmSdlHeadlessRig.beginFrameAndClear();
@@ -118,7 +123,7 @@ class GlsmSdlFfpTest {
         final IntBuffer lists = BufferUtils.createIntBuffer(1);
         lists.put(0, list);
         lists.position(0);
-        GLStateManager.glCallLists(lists);
+        GLSMDraws.glCallLists(lists);
         assertTexelEverywhere("two units, glCallLists");
     }
 
@@ -126,7 +131,7 @@ class GlsmSdlFfpTest {
     void litTexturedQuadIsShaded() {
         bindBaseTexture();
         enableGuiStandardItemLighting();
-        GLStateManager.glEnable(GL12.GL_RESCALE_NORMAL);
+        GLSMEnable.glEnable(GL12.GL_RESCALE_NORMAL);
         quadUnit0Only();
 
         final int[] pixels = GlsmSdlHeadlessRig.readTarget();
@@ -186,30 +191,30 @@ class GlsmSdlFfpTest {
     }
 
     private static void enableGuiStandardItemLighting() {
-        GLStateManager.glPushMatrix();
-        GLStateManager.glRotatef(-30.0f, 0.0f, 1.0f, 0.0f);
-        GLStateManager.glRotatef(165.0f, 1.0f, 0.0f, 0.0f);
+        GLSMMatrices.glPushMatrix();
+        GLSMMatrices.glRotatef(-30.0f, 0.0f, 1.0f, 0.0f);
+        GLSMMatrices.glRotatef(165.0f, 1.0f, 0.0f, 0.0f);
 
-        GLStateManager.glEnable(GL11.GL_LIGHTING);
-        GLStateManager.glEnable(GL11.GL_LIGHT0);
-        GLStateManager.glEnable(GL11.GL_LIGHT1);
-        GLStateManager.glEnable(GL11.GL_COLOR_MATERIAL);
-        GLStateManager.glColorMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_AMBIENT_AND_DIFFUSE);
+        GLSMEnable.glEnable(GL11.GL_LIGHTING);
+        GLSMEnable.glEnable(GL11.GL_LIGHT0);
+        GLSMEnable.glEnable(GL11.GL_LIGHT1);
+        GLSMEnable.glEnable(GL11.GL_COLOR_MATERIAL);
+        GLSMLighting.glColorMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_AMBIENT_AND_DIFFUSE);
 
         final float[] first = normalize(0.2f, 1.0f, -0.7f);
         final float[] second = normalize(-0.2f, 1.0f, 0.7f);
-        GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_POSITION, floats(first[0], first[1], first[2], 0.0f));
-        GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_DIFFUSE, floats(0.6f, 0.6f, 0.6f, 1.0f));
-        GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_AMBIENT, floats(0.0f, 0.0f, 0.0f, 1.0f));
-        GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_SPECULAR, floats(0.0f, 0.0f, 0.0f, 1.0f));
-        GLStateManager.glLight(GL11.GL_LIGHT1, GL11.GL_POSITION, floats(second[0], second[1], second[2], 0.0f));
-        GLStateManager.glLight(GL11.GL_LIGHT1, GL11.GL_DIFFUSE, floats(0.6f, 0.6f, 0.6f, 1.0f));
-        GLStateManager.glLight(GL11.GL_LIGHT1, GL11.GL_AMBIENT, floats(0.0f, 0.0f, 0.0f, 1.0f));
-        GLStateManager.glLight(GL11.GL_LIGHT1, GL11.GL_SPECULAR, floats(0.0f, 0.0f, 0.0f, 1.0f));
-        GLStateManager.glShadeModel(GL11.GL_FLAT);
-        GLStateManager.glLightModel(GL11.GL_LIGHT_MODEL_AMBIENT, floats(0.4f, 0.4f, 0.4f, 1.0f));
+        GLSMLighting.glLight(GL11.GL_LIGHT0, GL11.GL_POSITION, floats(first[0], first[1], first[2], 0.0f));
+        GLSMLighting.glLight(GL11.GL_LIGHT0, GL11.GL_DIFFUSE, floats(0.6f, 0.6f, 0.6f, 1.0f));
+        GLSMLighting.glLight(GL11.GL_LIGHT0, GL11.GL_AMBIENT, floats(0.0f, 0.0f, 0.0f, 1.0f));
+        GLSMLighting.glLight(GL11.GL_LIGHT0, GL11.GL_SPECULAR, floats(0.0f, 0.0f, 0.0f, 1.0f));
+        GLSMLighting.glLight(GL11.GL_LIGHT1, GL11.GL_POSITION, floats(second[0], second[1], second[2], 0.0f));
+        GLSMLighting.glLight(GL11.GL_LIGHT1, GL11.GL_DIFFUSE, floats(0.6f, 0.6f, 0.6f, 1.0f));
+        GLSMLighting.glLight(GL11.GL_LIGHT1, GL11.GL_AMBIENT, floats(0.0f, 0.0f, 0.0f, 1.0f));
+        GLSMLighting.glLight(GL11.GL_LIGHT1, GL11.GL_SPECULAR, floats(0.0f, 0.0f, 0.0f, 1.0f));
+        GLSMRasterizer.glShadeModel(GL11.GL_FLAT);
+        GLSMLighting.glLightModel(GL11.GL_LIGHT_MODEL_AMBIENT, floats(0.4f, 0.4f, 0.4f, 1.0f));
 
-        GLStateManager.glPopMatrix();
+        GLSMMatrices.glPopMatrix();
     }
 
     private static float[] normalize(float x, float y, float z) {

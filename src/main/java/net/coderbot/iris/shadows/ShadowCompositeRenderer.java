@@ -4,7 +4,10 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.glsm.GLDebug;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
@@ -179,7 +182,7 @@ public class ShadowCompositeRenderer {
         this.passes = passes.build();
         this.flippedAtLeastOnceFinal = flippedAtLeastOnce.build();
 
-        GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, 0);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, 0);
     }
 
     private static void setupMipmapping(RenderTarget target, boolean readFromAlt) {
@@ -230,7 +233,7 @@ public class ShadowCompositeRenderer {
     }
 
     public void renderAll() {
-        GLStateManager.disableBlend();
+        GLSMBlend.disableBlend();
 
         FullScreenQuadRenderer.INSTANCE.begin();
 
@@ -264,7 +267,7 @@ public class ShadowCompositeRenderer {
             }
 
             if (!renderPass.mipmappedBuffers.isEmpty()) {
-                GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+                GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
 
                 for (int index : renderPass.mipmappedBuffers) {
                     setupMipmapping(renderTargets.get(index), renderPass.stageReadsFromAlt.contains(index));
@@ -275,7 +278,7 @@ public class ShadowCompositeRenderer {
             float scaledHeight = renderTargets.getResolution() * renderPass.viewportScale.scale();
             int beginWidth = (int) (renderTargets.getResolution() * renderPass.viewportScale.viewportX());
             int beginHeight = (int) (renderTargets.getResolution() * renderPass.viewportScale.viewportY());
-            GLStateManager.glViewport(beginWidth, beginHeight, (int) scaledWidth, (int) scaledHeight);
+            GLSMRasterizer.glViewport(beginWidth, beginHeight, (int) scaledWidth, (int) scaledHeight);
 
             if (renderPass.preRasterCompute != null && renderPass.preRasterMode != null) {
                 dispatchPreRasterCompute(renderPass, (int) scaledWidth, (int) scaledHeight);
@@ -303,7 +306,7 @@ public class ShadowCompositeRenderer {
             }
         }
 
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
     }
 
     // TODO: Don't just copy this from DeferredWorldRenderingPipeline

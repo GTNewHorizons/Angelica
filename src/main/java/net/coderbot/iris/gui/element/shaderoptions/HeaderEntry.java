@@ -1,6 +1,6 @@
 package net.coderbot.iris.gui.element.shaderoptions;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gui.GuiUtil;
 import net.coderbot.iris.gui.NavigationController;
@@ -91,7 +91,7 @@ public class HeaderEntry extends BaseEntry {
     public void drawEntry(ShaderPackScreen screen, int index, int x, int y, int slotWidth, int slotHeight, Tessellator tessellator, int mouseX, int mouseY, boolean isMouseOver) {
         Gui.drawRect(x - 3, (y + slotHeight) - 3, x + slotWidth, (y + slotHeight) - 2, 0x66BEBEBE);
         // Gui.drawRect leaves GL color set to the rect's color; reset to white so button textures aren't tinted.
-        GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        GLSMCurrentAttribs.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
         final int tickDelta = 0;
         final FontRenderer font = Minecraft.getMinecraft().fontRenderer;
 

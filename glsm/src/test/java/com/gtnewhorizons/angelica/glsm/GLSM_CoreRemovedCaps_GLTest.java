@@ -52,7 +52,7 @@ public class GLSM_CoreRemovedCaps_GLTest {
 
     private static void assertSecondaryColor(float red, float green, float blue) {
         final FloatBuffer params = BufferUtils.createFloatBuffer(4);
-        GLStateManager.glGetFloat(GL14.GL_CURRENT_SECONDARY_COLOR, params);
+        GLSMQueries.glGetFloat(GL14.GL_CURRENT_SECONDARY_COLOR, params);
         assertEquals(red, params.get(0), "red must round-trip through the cache");
         assertEquals(green, params.get(1), "green must round-trip through the cache");
         assertEquals(blue, params.get(2), "blue must round-trip through the cache");
@@ -67,15 +67,15 @@ public class GLSM_CoreRemovedCaps_GLTest {
     @MethodSource("removedCaps")
     void enableDisableIsCacheOnly(String name, int cap) {
         try {
-            GLStateManager.glEnable(cap);
+            GLSMEnable.glEnable(cap);
             assertNoGlError("glEnable(" + name + ")");
-            assertTrue(GLStateManager.glIsEnabled(cap), name + " must still round-trip through the cache");
+            assertTrue(GLSMEnable.glIsEnabled(cap), name + " must still round-trip through the cache");
 
-            GLStateManager.glDisable(cap);
+            GLSMEnable.glDisable(cap);
             assertNoGlError("glDisable(" + name + ")");
-            assertFalse(GLStateManager.glIsEnabled(cap));
+            assertFalse(GLSMEnable.glIsEnabled(cap));
         } finally {
-            GLStateManager.glDisable(cap);
+            GLSMEnable.glDisable(cap);
         }
     }
 
@@ -83,80 +83,80 @@ public class GLSM_CoreRemovedCaps_GLTest {
     @MethodSource("removedCaps")
     void pushPopAttribIsCacheOnly(String name, int cap) {
         try {
-            GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
-            GLStateManager.glEnable(cap);
-            GLStateManager.glPopAttrib();
+            GLSMAttribStack.glPushAttrib(GL11.GL_ENABLE_BIT);
+            GLSMEnable.glEnable(cap);
+            GLSMAttribStack.glPopAttrib();
             assertNoGlError("glPushAttrib/glEnable(" + name + ")/glPopAttrib");
-            assertFalse(GLStateManager.glIsEnabled(cap));
+            assertFalse(GLSMEnable.glIsEnabled(cap));
         } finally {
-            GLStateManager.glDisable(cap);
+            GLSMEnable.glDisable(cap);
         }
     }
 
     @Test
     void secondaryColorIsRestoredByPopAttrib() {
         try {
-            GLStateManager.glSecondaryColor3f(0.125F, 0.25F, 0.375F);
-            GLStateManager.glPushAttrib(GL11.GL_CURRENT_BIT);
-            GLStateManager.glSecondaryColor3f(1.0F, 1.0F, 1.0F);
-            GLStateManager.glPopAttrib();
+            GLSMCurrentAttribs.glSecondaryColor3f(0.125F, 0.25F, 0.375F);
+            GLSMAttribStack.glPushAttrib(GL11.GL_CURRENT_BIT);
+            GLSMCurrentAttribs.glSecondaryColor3f(1.0F, 1.0F, 1.0F);
+            GLSMAttribStack.glPopAttrib();
             assertNoGlError("glPushAttrib/glSecondaryColor3f/glPopAttrib");
 
             assertSecondaryColor(0.125F, 0.25F, 0.375F);
         } finally {
-            GLStateManager.glSecondaryColor3f(0.0F, 0.0F, 0.0F);
+            GLSMCurrentAttribs.glSecondaryColor3f(0.0F, 0.0F, 0.0F);
         }
     }
 
     @Test
     void colorSumIsRestoredByFogBitPopAttrib() {
         try {
-            GLStateManager.glPushAttrib(GL11.GL_FOG_BIT);
-            GLStateManager.glEnable(GL14.GL_COLOR_SUM);
-            GLStateManager.glPopAttrib();
+            GLSMAttribStack.glPushAttrib(GL11.GL_FOG_BIT);
+            GLSMEnable.glEnable(GL14.GL_COLOR_SUM);
+            GLSMAttribStack.glPopAttrib();
             assertNoGlError("glPushAttrib(GL_FOG_BIT)/glEnable(GL_COLOR_SUM)/glPopAttrib");
-            assertFalse(GLStateManager.glIsEnabled(GL14.GL_COLOR_SUM));
+            assertFalse(GLSMEnable.glIsEnabled(GL14.GL_COLOR_SUM));
         } finally {
-            GLStateManager.glDisable(GL14.GL_COLOR_SUM);
+            GLSMEnable.glDisable(GL14.GL_COLOR_SUM);
         }
     }
 
     @Test
     void secondaryColorReplaysFromDisplayList() {
-        final int list = GLStateManager.glGenLists(1);
+        final int list = GLSMDraws.glGenLists(1);
         try {
-            GLStateManager.glNewList(list, GL11.GL_COMPILE);
-            GLStateManager.glSecondaryColor3f(0.5F, 0.625F, 0.75F);
-            GLStateManager.glEndList();
+            GLSMDraws.glNewList(list, GL11.GL_COMPILE);
+            GLSMCurrentAttribs.glSecondaryColor3f(0.5F, 0.625F, 0.75F);
+            GLSMDraws.glEndList();
             assertNoGlError("glSecondaryColor3f display list compile");
 
-            GLStateManager.glSecondaryColor3f(0.0F, 0.0F, 0.0F);
-            GLStateManager.glCallList(list);
+            GLSMCurrentAttribs.glSecondaryColor3f(0.0F, 0.0F, 0.0F);
+            GLSMDraws.glCallList(list);
             assertNoGlError("glSecondaryColor3f display list replay");
 
             assertSecondaryColor(0.5F, 0.625F, 0.75F);
         } finally {
-            GLStateManager.glDeleteLists(list, 1);
-            GLStateManager.glSecondaryColor3f(0.0F, 0.0F, 0.0F);
+            GLSMDraws.glDeleteLists(list, 1);
+            GLSMCurrentAttribs.glSecondaryColor3f(0.0F, 0.0F, 0.0F);
         }
     }
 
     @Test
     void displayListReplayIsCacheOnly() {
-        final int list = GLStateManager.glGenLists(1);
+        final int list = GLSMDraws.glGenLists(1);
         try {
-            GLStateManager.glNewList(list, GL11.GL_COMPILE);
-            GLStateManager.glEnable(GL11.GL_LINE_STIPPLE);
-            GLStateManager.glLineStipple(2, (short) 0xF0F0);
-            GLStateManager.glDisable(GL11.GL_LINE_STIPPLE);
-            GLStateManager.glEndList();
+            GLSMDraws.glNewList(list, GL11.GL_COMPILE);
+            GLSMEnable.glEnable(GL11.GL_LINE_STIPPLE);
+            GLSMRasterizer.glLineStipple(2, (short) 0xF0F0);
+            GLSMEnable.glDisable(GL11.GL_LINE_STIPPLE);
+            GLSMDraws.glEndList();
             assertNoGlError("display list compile");
 
-            GLStateManager.glCallList(list);
+            GLSMDraws.glCallList(list);
             assertNoGlError("display list replay");
         } finally {
-            GLStateManager.glDeleteLists(list, 1);
-            GLStateManager.glDisable(GL11.GL_LINE_STIPPLE);
+            GLSMDraws.glDeleteLists(list, 1);
+            GLSMEnable.glDisable(GL11.GL_LINE_STIPPLE);
         }
     }
 }

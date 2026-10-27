@@ -88,7 +88,7 @@ final class LegacyQueries {
     private static FloatBuffer fillScratch(GLContextState glCtx, int pname) {
         final FloatBuffer scratch = glCtx.queryScratch;
         scratch.clear();
-        GLStateManager.glGetFloat(pname, scratch);
+        GLSMQueries.glGetFloat(pname, scratch);
         return scratch;
     }
 
@@ -102,9 +102,9 @@ final class LegacyQueries {
             return toInt(type, fillScratch(glCtx, pname).get(0));
         }
         return switch (type) {
-            case BOOL -> GLStateManager.glGetBoolean(glCtx, pname) ? GL11.GL_TRUE : GL11.GL_FALSE;
-            case FLOAT -> lround(GLStateManager.glGetFloat(glCtx, pname));
-            case FLOATN -> floatToInt(GLStateManager.glGetFloat(glCtx, pname));
+            case BOOL -> GLSMQueries.glGetBoolean(glCtx, pname) ? GL11.GL_TRUE : GL11.GL_FALSE;
+            case FLOAT -> lround(GLSMQueries.glGetFloat(glCtx, pname));
+            case FLOATN -> floatToInt(GLSMQueries.glGetFloat(glCtx, pname));
             default -> throw uncached(pname);
         };
     }
@@ -114,8 +114,8 @@ final class LegacyQueries {
             return fillScratch(glCtx, pname).get(0);
         }
         return switch (type(desc)) {
-            case BOOL -> GLStateManager.glGetBoolean(glCtx, pname) ? 1.0f : 0.0f;
-            case INT -> (float) GLStateManager.glGetInteger(glCtx, pname);
+            case BOOL -> GLSMQueries.glGetBoolean(glCtx, pname) ? 1.0f : 0.0f;
+            case INT -> (float) GLSMQueries.glGetInteger(glCtx, pname);
             default -> throw uncached(pname);
         };
     }
@@ -125,8 +125,8 @@ final class LegacyQueries {
             return fillScratch(glCtx, pname).get(0) != 0.0f;
         }
         return switch (type(desc)) {
-            case INT -> GLStateManager.glGetInteger(glCtx, pname) != 0;
-            case FLOAT, FLOATN -> GLStateManager.glGetFloat(glCtx, pname) != 0.0f;
+            case INT -> GLSMQueries.glGetInteger(glCtx, pname) != 0;
+            case FLOAT, FLOATN -> GLSMQueries.glGetFloat(glCtx, pname) != 0.0f;
             default -> throw uncached(pname);
         };
     }

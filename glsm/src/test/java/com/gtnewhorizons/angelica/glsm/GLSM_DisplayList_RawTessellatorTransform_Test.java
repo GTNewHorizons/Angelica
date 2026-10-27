@@ -21,18 +21,18 @@ class GLSM_DisplayList_RawTessellatorTransform_Test {
     @AfterEach
     void cleanup() {
         if (testList > 0) {
-            GLStateManager.glDeleteLists(testList, 1);
+            GLSMDraws.glDeleteLists(testList, 1);
             testList = -1;
         }
-        GLStateManager.glLoadIdentity();
+        GLSMMatrices.glLoadIdentity();
     }
 
     private CompiledDisplayList compileHalfScaled(Runnable body) {
-        testList = GLStateManager.glGenLists(1);
-        GLStateManager.glNewList(testList, GL11.GL_COMPILE);
-        GLStateManager.glScalef(0.5f, 0.5f, 0.5f);
+        testList = GLSMDraws.glGenLists(1);
+        GLSMDraws.glNewList(testList, GL11.GL_COMPILE);
+        GLSMMatrices.glScalef(0.5f, 0.5f, 0.5f);
         body.run();
-        GLStateManager.glEndList();
+        GLSMDraws.glEndList();
 
         final CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
         assertNotNull(compiled);
@@ -85,15 +85,15 @@ class GLSM_DisplayList_RawTessellatorTransform_Test {
     @Test
     void aRawDrawDoesNotFlushWhileBakedGeometryIsPending() {
         final CompiledDisplayList compiled = compileHalfScaled(() -> {
-            GLStateManager.glBegin(GL11.GL_QUADS);
-            GLStateManager.glVertex3f(0.0f, 0.0f, 0.0f);
-            GLStateManager.glVertex3f(1.0f, 0.0f, 0.0f);
-            GLStateManager.glVertex3f(1.0f, 1.0f, 0.0f);
-            GLStateManager.glVertex3f(0.0f, 1.0f, 0.0f);
+            GLSMDraws.glBegin(GL11.GL_QUADS);
+            GLSMDraws.glVertex3f(0.0f, 0.0f, 0.0f);
+            GLSMDraws.glVertex3f(1.0f, 0.0f, 0.0f);
+            GLSMDraws.glVertex3f(1.0f, 1.0f, 0.0f);
+            GLSMDraws.glVertex3f(0.0f, 1.0f, 0.0f);
 
             rawQuad(1.0f);
 
-            GLStateManager.glEnd();
+            GLSMDraws.glEnd();
         });
 
         final IntList opcodes = compiled.getCommandOpcodes();

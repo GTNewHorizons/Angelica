@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.sdlgpu.SdlAsserts;
 import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
@@ -25,7 +25,7 @@ class GlsmSdlIndexedBlendRestoreTest {
     }
 
     private static void vanillaBlendFunc() {
-        GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GLSMBlend.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
     }
 
     @Test
@@ -43,9 +43,9 @@ class GlsmSdlIndexedBlendRestoreTest {
             for (int i = 0; i < ContextState.MAX_COLOR_ATTACHMENTS; i++) {
                 SdlAsserts.assertBlendFactors(p, i, SDL_GPU_BLENDFACTOR_SRC_ALPHA, SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA, SDL_GPU_BLENDFACTOR_ONE, SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA, "restore");
             }
-            assertFalse(GLStateManager.getBlendState().isFuncUnknown(), "restore forward must clear the unknown flag");
+            assertFalse(GLSMBlend.getBlendState().isFuncUnknown(), "restore forward must clear the unknown flag");
         } finally {
-            GLStateManager.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE, GL11.GL_ZERO);
+            GLSMBlend.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE, GL11.GL_ZERO);
         }
     }
 }

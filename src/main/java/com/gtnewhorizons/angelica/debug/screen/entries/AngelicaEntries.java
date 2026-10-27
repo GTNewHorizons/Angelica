@@ -6,7 +6,7 @@ import com.gtnewhorizons.angelica.api.debug.DebugScreenDisplayer;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.debug.screen.DebugGroup;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMFog;
 import com.gtnewhorizons.angelica.glsm.states.FogState;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import org.joml.Vector3d;
@@ -36,10 +36,10 @@ public final class AngelicaEntries {
     }
 
     public static void writeFog(DebugFact fact) {
-        final FogState fog = GLStateManager.getFogState();
+        final FogState fog = GLSMFog.getFogState();
         final Vector3d color = fog.getFogColor();
         fact
-            .value(GLStateManager.getFogMode().isEnabled() ? "ON" : "OFF")
+            .value(GLSMFog.getFogMode().isEnabled() ? "ON" : "OFF")
             .text(' ')
             .value(fogModeName(fog.getFogMode()))
             .text(' ')

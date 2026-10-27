@@ -2,7 +2,7 @@ package com.gtnewhorizons.angelica.rendering.tesr;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import org.lwjgl.BufferUtils;
 
 import java.nio.ByteBuffer;
@@ -35,9 +35,9 @@ public final class MeshBuffer {
 
     public void bind() {
         if (vao == 0) {
-            vao = GLStateManager.glGenVertexArrays();
+            vao = GLSMVertexInput.glGenVertexArrays();
         }
-        GLStateManager.glBindVertexArray(vao);
+        GLSMVertexInput.glBindVertexArray(vao);
         vbo.setupState();
     }
 
@@ -47,7 +47,7 @@ public final class MeshBuffer {
 
     public void unbind() {
         vbo.cleanupState();
-        GLStateManager.glBindVertexArray(0);
+        GLSMVertexInput.glBindVertexArray(0);
     }
 
     public void render() {
@@ -62,7 +62,7 @@ public final class MeshBuffer {
             vbo = null;
         }
         if (vao != 0) {
-            GLStateManager.glDeleteVertexArrays(vao);
+            GLSMVertexInput.glDeleteVertexArrays(vao);
             vao = 0;
         }
     }

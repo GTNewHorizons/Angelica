@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.rendering.voxelization;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
@@ -81,15 +81,15 @@ public final class SdlShadowVoxelizationSink implements ShadowVoxelizer.Sink {
     private void upload() {
         final ByteBuffer data = table.entries();
         final int bytes = data.remaining();
-        if (rangesBuf == 0) rangesBuf = GLStateManager.glGenBuffers();
+        if (rangesBuf == 0) rangesBuf = GLSMBuffers.glGenBuffers();
         RenderSystem.bindBufferBase(GL43.GL_SHADER_STORAGE_BUFFER, RANGES_BINDING, rangesBuf);
         if (rangesCapacityBytes < bytes) {
             long cap = Math.max(rangesCapacityBytes, 4096L);
             while (cap < bytes) cap <<= 1;
             rangesCapacityBytes = cap;
-            GLStateManager.glBufferData(GL43.GL_SHADER_STORAGE_BUFFER, rangesCapacityBytes, GL15.GL_STREAM_DRAW);
+            GLSMBuffers.glBufferData(GL43.GL_SHADER_STORAGE_BUFFER, rangesCapacityBytes, GL15.GL_STREAM_DRAW);
         }
-        GLStateManager.glBufferSubData(GL43.GL_SHADER_STORAGE_BUFFER, 0L, data);
+        GLSMBuffers.glBufferSubData(GL43.GL_SHADER_STORAGE_BUFFER, 0L, data);
     }
 
     public void discard() {
@@ -98,7 +98,7 @@ public final class SdlShadowVoxelizationSink implements ShadowVoxelizer.Sink {
 
     public void delete() {
         if (rangesBuf != 0) {
-            GLStateManager.glDeleteBuffers(rangesBuf);
+            GLSMBuffers.glDeleteBuffers(rangesBuf);
             rangesBuf = 0;
             rangesCapacityBytes = 0;
         }

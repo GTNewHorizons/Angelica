@@ -1,7 +1,16 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMLighting;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -53,66 +62,66 @@ public final class CubeParityFixture {
 
     private static void setupCamera(boolean conformal) {
         modelView = conformal ? MODELVIEW_CONFORMAL : MODELVIEW;
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
         final FloatBuffer mv = BufferUtils.createFloatBuffer(16);
         mv.put(modelView).flip();
-        GLStateManager.glLoadMatrix(mv);
+        GLSMMatrices.glLoadMatrix(mv);
     }
 
     public static void setupScene(boolean lightmap, boolean lit) {
-        GLStateManager.glDisable(GL11.GL_FOG);
-        GLStateManager.glDisable(GL11.GL_BLEND);
-        GLStateManager.glDisable(GL11.GL_ALPHA_TEST);
-        GLStateManager.glEnable(GL11.GL_DEPTH_TEST);
-        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
-        GLStateManager.glDepthMask(true);
-        GLStateManager.glEnable(GL11.GL_CULL_FACE);
-        GLStateManager.glCullFace(GL11.GL_BACK);
+        GLSMEnable.glDisable(GL11.GL_FOG);
+        GLSMEnable.glDisable(GL11.GL_BLEND);
+        GLSMEnable.glDisable(GL11.GL_ALPHA_TEST);
+        GLSMEnable.glEnable(GL11.GL_DEPTH_TEST);
+        GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_LEQUAL);
+        GLSMDepthStencilAlpha.glDepthMask(true);
+        GLSMEnable.glEnable(GL11.GL_CULL_FACE);
+        GLSMRasterizer.glCullFace(GL11.GL_BACK);
         setupCamera(lit);
         if (lit) {
             enableDirectionalLight();
         } else {
-            GLStateManager.glDisable(GL11.GL_LIGHTING);
+            GLSMEnable.glDisable(GL11.GL_LIGHTING);
         }
 
         netTexture = createNetTexture();
         if (lightmap) {
             lightmapTexture = createNetTexture();
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, lightmapTexture);
-            GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
-            GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
-            GLStateManager.glLoadIdentity();
-            GLStateManager.glScalef(0.00390625f, 0.00390625f, 0.00390625f);
-            GLStateManager.glTranslatef(8.0f, 8.0f, 8.0f);
-            GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, netTexture);
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, lightmapTexture);
+            GLSMEnable.glEnable(GL11.GL_TEXTURE_2D);
+            GLSMMatrices.glMatrixMode(GL11.GL_TEXTURE);
+            GLSMMatrices.glLoadIdentity();
+            GLSMMatrices.glScalef(0.00390625f, 0.00390625f, 0.00390625f);
+            GLSMMatrices.glTranslatef(8.0f, 8.0f, 8.0f);
+            GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, netTexture);
         }
     }
 
     private static void enableDirectionalLight() {
         final FloatBuffer buf = BufferUtils.createFloatBuffer(4);
-        GLStateManager.glEnable(GL11.GL_LIGHTING);
-        GLStateManager.glEnable(GL11.GL_NORMALIZE);
-        GLStateManager.glEnable(GL11.GL_LIGHT0);
-        GLStateManager.glDisable(GL11.GL_LIGHT1);
-        GLStateManager.glLightModel(GL11.GL_LIGHT_MODEL_AMBIENT, fill(buf, 0.2f, 0.2f, 0.2f, 1.0f));
-        GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_POSITION, fill(buf, 0.375f, 0.75f, 0.5f, 0.0f));
-        GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_DIFFUSE, fill(buf, 1.0f, 1.0f, 1.0f, 1.0f));
-        GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_AMBIENT, fill(buf, 0.0f, 0.0f, 0.0f, 1.0f));
-        GLStateManager.glLight(GL11.GL_LIGHT0, GL11.GL_SPECULAR, fill(buf, 0.0f, 0.0f, 0.0f, 1.0f));
-        GLStateManager.glEnable(GL11.GL_COLOR_MATERIAL);
-        GLStateManager.glColorMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_AMBIENT_AND_DIFFUSE);
+        GLSMEnable.glEnable(GL11.GL_LIGHTING);
+        GLSMEnable.glEnable(GL11.GL_NORMALIZE);
+        GLSMEnable.glEnable(GL11.GL_LIGHT0);
+        GLSMEnable.glDisable(GL11.GL_LIGHT1);
+        GLSMLighting.glLightModel(GL11.GL_LIGHT_MODEL_AMBIENT, fill(buf, 0.2f, 0.2f, 0.2f, 1.0f));
+        GLSMLighting.glLight(GL11.GL_LIGHT0, GL11.GL_POSITION, fill(buf, 0.375f, 0.75f, 0.5f, 0.0f));
+        GLSMLighting.glLight(GL11.GL_LIGHT0, GL11.GL_DIFFUSE, fill(buf, 1.0f, 1.0f, 1.0f, 1.0f));
+        GLSMLighting.glLight(GL11.GL_LIGHT0, GL11.GL_AMBIENT, fill(buf, 0.0f, 0.0f, 0.0f, 1.0f));
+        GLSMLighting.glLight(GL11.GL_LIGHT0, GL11.GL_SPECULAR, fill(buf, 0.0f, 0.0f, 0.0f, 1.0f));
+        GLSMEnable.glEnable(GL11.GL_COLOR_MATERIAL);
+        GLSMLighting.glColorMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_AMBIENT_AND_DIFFUSE);
     }
 
     public static void disableDirectionalLight() {
-        GLStateManager.glDisable(GL11.GL_COLOR_MATERIAL);
-        GLStateManager.glDisable(GL11.GL_LIGHT0);
-        GLStateManager.glDisable(GL11.GL_NORMALIZE);
-        GLStateManager.glDisable(GL11.GL_LIGHTING);
+        GLSMEnable.glDisable(GL11.GL_COLOR_MATERIAL);
+        GLSMEnable.glDisable(GL11.GL_LIGHT0);
+        GLSMEnable.glDisable(GL11.GL_NORMALIZE);
+        GLSMEnable.glDisable(GL11.GL_LIGHTING);
     }
 
     private static FloatBuffer fill(FloatBuffer buf, float x, float y, float z, float w) {
@@ -122,11 +131,11 @@ public final class CubeParityFixture {
     }
 
     private static int createNetTexture() {
-        final int id = GLStateManager.glGenTextures();
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, id);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+        final int id = GLSMTextures.glGenTextures();
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, id);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
         final ByteBuffer texels = BufferUtils.createByteBuffer(TEX_WIDTH * TEX_HEIGHT * 4);
         for (int y = 0; y < TEX_HEIGHT; y++) {
             for (int x = 0; x < TEX_WIDTH; x++) {
@@ -137,8 +146,8 @@ public final class CubeParityFixture {
             }
         }
         texels.flip();
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, TEX_WIDTH, TEX_HEIGHT, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels);
-        GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+        GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, TEX_WIDTH, TEX_HEIGHT, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels);
+        GLSMEnable.glEnable(GL11.GL_TEXTURE_2D);
         return id;
     }
 
@@ -179,30 +188,30 @@ public final class CubeParityFixture {
 
     private static int uploadQuads(int vbo, Spec[] specs, boolean lightmap) {
         final ByteBuffer data = buildQuadData(specs);
-        if (vbo == 0) vbo = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-        GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, data, GL15.GL_STREAM_DRAW);
+        if (vbo == 0) vbo = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, data, GL15.GL_STREAM_DRAW);
         FfpFixture.attrib(0, 3, GL11.GL_FLOAT, false, REF_STRIDE, 0);
         FfpFixture.attrib(1, 4, GL11.GL_UNSIGNED_BYTE, true, REF_STRIDE, 12);
         FfpFixture.attrib(2, 2, GL11.GL_FLOAT, false, REF_STRIDE, 16);
         if (lightmap) {
             FfpFixture.attrib(3, 2, GL11.GL_FLOAT, false, REF_STRIDE, 24);
         } else {
-            GLStateManager.glDisableVertexAttribArray(3);
+            GLSMVertexInput.glDisableVertexAttribArray(3);
         }
         FfpFixture.attrib(4, 3, GL11.GL_FLOAT, false, REF_STRIDE, 32);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         return vbo;
     }
 
     public static void drawReference(Spec[] specs, boolean lightmap) {
-        if (referenceVao == 0) referenceVao = GLStateManager.glGenVertexArrays();
-        GLStateManager.glBindVertexArray(referenceVao);
+        if (referenceVao == 0) referenceVao = GLSMVertexInput.glGenVertexArrays();
+        GLSMVertexInput.glBindVertexArray(referenceVao);
         referenceVbo = uploadQuads(referenceVbo, specs, lightmap);
         VAOManager.setCurrentVertexFlags(UnitCubeMesh.VERTEX_FLAGS | (lightmap ? VertexFlags.BRIGHTNESS_BIT : 0));
 
-        GLStateManager.glDrawArrays(GL11.GL_QUADS, 0, specs.length * 24);
-        GLStateManager.glBindVertexArray(0);
+        GLSMDraws.glDrawArrays(GL11.GL_QUADS, 0, specs.length * 24);
+        GLSMVertexInput.glBindVertexArray(0);
     }
 
     private static float[] corners(Spec spec) {
@@ -264,18 +273,18 @@ public final class CubeParityFixture {
         }
         records.position(0).limit(specs.length * CubeInstancedAttribs.STRIDE);
 
-        GLStateManager.glBindVertexArray(UnitCubeMesh.vao());
+        GLSMVertexInput.glBindVertexArray(UnitCubeMesh.vao());
         VAOManager.setCurrentVertexFlags(UnitCubeMesh.VERTEX_FLAGS);
-        if (instanceVbo == 0) instanceVbo = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, instanceVbo);
-        GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, records, GL15.GL_STREAM_DRAW);
+        if (instanceVbo == 0) instanceVbo = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, instanceVbo);
+        GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, records, GL15.GL_STREAM_DRAW);
         CubeInstancedAttribs.pointInstanceAttribs(0L);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
 
-        GLStateManager.setFfpInstancing(Instancing.CUBE);
-        GLStateManager.glDrawArraysInstanced(GL11.GL_QUADS, 0, UnitCubeMesh.VERTEX_COUNT, specs.length);
-        GLStateManager.setFfpInstancing(Instancing.NONE);
-        GLStateManager.glBindVertexArray(0);
+        GLSMPrograms.setFfpInstancing(Instancing.CUBE);
+        GLSMDraws.glDrawArraysInstanced(GL11.GL_QUADS, 0, UnitCubeMesh.VERTEX_COUNT, specs.length);
+        GLSMPrograms.setFfpInstancing(Instancing.NONE);
+        GLSMVertexInput.glBindVertexArray(0);
     }
 
     public static void assertPixelParity(int[] reference, int[] instanced, int size, int background, IntFunction<String> describe) {
@@ -284,23 +293,23 @@ public final class CubeParityFixture {
 
     public static void deleteResources() {
         if (instanceVbo != 0) {
-            GLStateManager.glDeleteBuffers(instanceVbo);
+            GLSMBuffers.glDeleteBuffers(instanceVbo);
             instanceVbo = 0;
         }
         if (referenceVbo != 0) {
-            GLStateManager.glDeleteBuffers(referenceVbo);
+            GLSMBuffers.glDeleteBuffers(referenceVbo);
             referenceVbo = 0;
         }
         if (referenceVao != 0) {
-            GLStateManager.glDeleteVertexArrays(referenceVao);
+            GLSMVertexInput.glDeleteVertexArrays(referenceVao);
             referenceVao = 0;
         }
         if (netTexture != 0) {
-            GLStateManager.glDeleteTextures(netTexture);
+            GLSMTextures.glDeleteTextures(netTexture);
             netTexture = 0;
         }
         if (lightmapTexture != 0) {
-            GLStateManager.glDeleteTextures(lightmapTexture);
+            GLSMTextures.glDeleteTextures(lightmapTexture);
             lightmapTexture = 0;
         }
         UnitCubeMesh.delete();

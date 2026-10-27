@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.client.font;
 import com.google.common.collect.HashMultiset;
 import com.gtnewhorizon.gtnhlib.util.font.GlyphReplacements;
 import com.gtnewhorizons.angelica.config.FontConfig;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import cpw.mods.fml.client.SplashProgress;
@@ -260,7 +261,7 @@ public class FontStrategist {
 
     static void bindIntTexture(BatchingFontRenderer owner, int texture) {
         if (texture > 0) {
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texture);
         } else if (texture < 0) {
             final ResourceLocation location;
             synchronized (RESOURCE_LOCK) {

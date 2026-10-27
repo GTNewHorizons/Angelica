@@ -2,7 +2,12 @@ package com.gtnewhorizons.angelica.rendering.particles;
 
 import com.gtnewhorizons.angelica.rendering.RenderFailures;
 import com.gtnewhorizons.angelica.client.rendering.DeferredDrawBatcher;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
@@ -105,7 +110,7 @@ public final class ParticleInstancer {
         if (available()) {
             layerActive = true;
             groupCount = 0;
-            LAYER_MV.set(GLStateManager.getModelViewMatrix());
+            LAYER_MV.set(GLSMMatrices.getModelViewMatrix());
         } else {
             deferred = null;
             DeferredDrawBatcher.enter();
@@ -181,7 +186,7 @@ public final class ParticleInstancer {
         Throwable failure = null;
         try {
             if (groupCount > 0) {
-                restoreDepth = GLStateManager.pushState(StateSet.BATCH);
+                restoreDepth = GLSMAttribStack.pushState(StateSet.BATCH);
                 for (int i = 0; i < groupCount; i++) {
                     final Group group = GROUP_POOL.get(i);
                     if (!group.translucent) flush(group);
@@ -196,7 +201,7 @@ public final class ParticleInstancer {
         } finally {
             if (restoreDepth >= 0) {
                 try {
-                    GLStateManager.popStateTo(restoreDepth);
+                    GLSMAttribStack.popStateTo(restoreDepth);
                 } catch (Throwable t) {
                     failure = RenderFailures.suppress(failure, t);
                 } finally {
@@ -304,28 +309,28 @@ public final class ParticleInstancer {
         if (extHandler != null && extHandler.wantsExtended()) {
             FfpExtendedAttribs.setNeutralCurrentValues();
         }
-        GLStateManager.glBindVertexArray(ParticleQuadMesh.vao());
+        GLSMVertexInput.glBindVertexArray(ParticleQuadMesh.vao());
         VAOManager.setCurrentVertexFlags(ParticleQuadMesh.VERTEX_FLAGS);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, ring().bufferId());
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, ring().bufferId());
         ParticleInstancedAttribs.pointInstanceAttribs(base);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         try {
-            if (ffp) GLStateManager.setFfpInstancing(Instancing.PARTICLE);
-            GLStateManager.glDrawArraysInstanced(GL11.GL_QUADS, 0, ParticleQuadMesh.VERTEX_COUNT, count);
+            if (ffp) GLSMPrograms.setFfpInstancing(Instancing.PARTICLE);
+            GLSMDraws.glDrawArraysInstanced(GL11.GL_QUADS, 0, ParticleQuadMesh.VERTEX_COUNT, count);
             draws++;
         } finally {
-            GLStateManager.setFfpInstancing(Instancing.NONE);
-            GLStateManager.glBindVertexArray(0);
+            GLSMPrograms.setFfpInstancing(Instancing.NONE);
+            GLSMVertexInput.glBindVertexArray(0);
         }
     }
 
     private static void drawInstancesCpu(ParticleRenderState state, ByteBuffer list, int count, boolean listTranslucent) {
         final Tessellator t = run;
-        GLStateManager.popStateTo(restoreDepth);
+        GLSMAttribStack.popStateTo(restoreDepth);
         GbufferPrograms.setTranslucencyDeclaration(ParticleRunSplitter.currentRunTranslucent());
         t.draw();
         t.startDrawingQuads();
-        restoreDepth = GLStateManager.pushState(StateSet.BATCH);
+        restoreDepth = GLSMAttribStack.pushState(StateSet.BATCH);
         GbufferPrograms.setTranslucencyDeclaration(listTranslucent);
         state.apply();
         for (int i = 0; i < count; i++) {

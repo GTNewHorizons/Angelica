@@ -3,7 +3,7 @@ package com.gtnewhorizons.angelica.glsm.streaming;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizons.angelica.glsm.GLCompatTest;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMQueries;
 import net.minecraft.client.renderer.Tessellator;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL11;
@@ -35,12 +35,12 @@ public class StreamingDrawVAOBindingTest {
         final ByteBuffer data = triangle();
         try {
             TessellatorStreamingDrawer.drawPacked(data, GL11.GL_TRIANGLES, FLAGS, 3);
-            final int afterFirst = GLStateManager.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
+            final int afterFirst = GLSMQueries.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
             assertNotEquals(0, afterFirst, "a streaming draw must leave its own VAO bound, not VAO 0");
 
             data.position(0).limit(data.capacity());
             TessellatorStreamingDrawer.drawPacked(data, GL11.GL_TRIANGLES, FLAGS, 3);
-            final int afterSecond = GLStateManager.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
+            final int afterSecond = GLSMQueries.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
             assertEquals(afterFirst, afterSecond, "the same format must reuse the same VAO across draws");
 
             assertEquals(afterSecond, GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING), "GLSM's cached binding must match the driver's");

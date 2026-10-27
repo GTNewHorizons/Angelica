@@ -1,7 +1,7 @@
 package net.coderbot.iris.pipeline;
 
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
 import com.gtnewhorizons.angelica.glsm.shader.ShaderType;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.gl.shader.GlShader;
@@ -102,10 +102,10 @@ class AttributeTransformerLinkGLTest {
         final Map<PatchShaderType, String> result = TransformPatcher.patchAttributesWideLines(COMPAT_VERTEX, null, null, null, COMPAT_FRAGMENT, InputAvailability.NONE);
         final int program = link("wideLines", result);
         try {
-            assertNotEquals(-1, GLStateManager.glGetUniformLocation(program, "iris_LineWidth"), () -> result.get(PatchShaderType.VERTEX));
-            assertNotEquals(-1, GLStateManager.glGetUniformLocation(program, "iris_ScreenSize"), () -> result.get(PatchShaderType.VERTEX));
+            assertNotEquals(-1, GLSMPrograms.glGetUniformLocation(program, "iris_LineWidth"), () -> result.get(PatchShaderType.VERTEX));
+            assertNotEquals(-1, GLSMPrograms.glGetUniformLocation(program, "iris_ScreenSize"), () -> result.get(PatchShaderType.VERTEX));
         } finally {
-            GLStateManager.glDeleteProgram(program);
+            GLSMPrograms.glDeleteProgram(program);
         }
     }
 
@@ -115,17 +115,17 @@ class AttributeTransformerLinkGLTest {
         final int program = link("coreProfileInputs", result);
         try {
             for (String input : new String[] {"vaPosition", "vaNormal", "vaColor", "vaUV2"}) {
-                assertEquals(-1, GLStateManager.glGetAttribLocation(program, input), () -> input + " left unmapped:\n" + result.get(PatchShaderType.VERTEX));
+                assertEquals(-1, GLSMPrograms.glGetAttribLocation(program, input), () -> input + " left unmapped:\n" + result.get(PatchShaderType.VERTEX));
             }
-            assertEquals(0, GLStateManager.glGetAttribLocation(program, "iris_Vertex"));
-            assertEquals(1, GLStateManager.glGetAttribLocation(program, "iris_Color"));
-            assertEquals(4, GLStateManager.glGetAttribLocation(program, "iris_Normal"));
-            assertEquals(-1, GLStateManager.glGetUniformLocation(program, "modelViewMatrix"));
-            assertEquals(-1, GLStateManager.glGetUniformLocation(program, "projectionMatrix"));
-            assertNotEquals(-1, GLStateManager.glGetUniformLocation(program, "iris_ModelViewMatrix"));
-            assertNotEquals(-1, GLStateManager.glGetUniformLocation(program, "iris_ProjectionMatrix"));
+            assertEquals(0, GLSMPrograms.glGetAttribLocation(program, "iris_Vertex"));
+            assertEquals(1, GLSMPrograms.glGetAttribLocation(program, "iris_Color"));
+            assertEquals(4, GLSMPrograms.glGetAttribLocation(program, "iris_Normal"));
+            assertEquals(-1, GLSMPrograms.glGetUniformLocation(program, "modelViewMatrix"));
+            assertEquals(-1, GLSMPrograms.glGetUniformLocation(program, "projectionMatrix"));
+            assertNotEquals(-1, GLSMPrograms.glGetUniformLocation(program, "iris_ModelViewMatrix"));
+            assertNotEquals(-1, GLSMPrograms.glGetUniformLocation(program, "iris_ProjectionMatrix"));
         } finally {
-            GLStateManager.glDeleteProgram(program);
+            GLSMPrograms.glDeleteProgram(program);
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.texture;
 
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -86,15 +87,15 @@ public class TextureInfoCache {
     }
 
     public void onTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable Buffer pixels) {
-        if (isTrackedTarget(target) && level == 0) defineLevelZero(GLStateManager.getBoundTextureForServerState(), target, internalformat, width, height);
+        if (isTrackedTarget(target) && level == 0) defineLevelZero(GLSMTextures.getBoundTextureForServerState(), target, internalformat, width, height);
     }
 
     public void onTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, long pixels_buffer_offset) {
-        if (isTrackedTarget(target) && level == 0) defineLevelZero(GLStateManager.getBoundTextureForServerState(), target, internalformat, width, height);
+        if (isTrackedTarget(target) && level == 0) defineLevelZero(GLSMTextures.getBoundTextureForServerState(), target, internalformat, width, height);
     }
 
     public void onCopyTexImage2D(int target, int level, int internalformat, int width, int height) {
-        if (isTrackedTarget(target) && level == 0) defineLevelZero(GLStateManager.getBoundTextureForServerState(), target, internalformat, width, height);
+        if (isTrackedTarget(target) && level == 0) defineLevelZero(GLSMTextures.getBoundTextureForServerState(), target, internalformat, width, height);
     }
 
     public void onTextureImage2D(int texture, int target, int level, int internalformat, int width, int height) {
@@ -102,11 +103,11 @@ public class TextureInfoCache {
     }
 
     public void onTexStorage2D(int target, int internalformat, int width, int height) {
-        if (isTrackedTarget(target)) defineLevelZero(GLStateManager.getBoundTextureForServerState(), target, internalformat, width, height);
+        if (isTrackedTarget(target)) defineLevelZero(GLSMTextures.getBoundTextureForServerState(), target, internalformat, width, height);
     }
 
     public void onTexSubImage2D(int target, int level) {
-        if (isTrackedTarget(target) && level == 0) onContentsChanged(GLStateManager.getBoundTextureForServerState());
+        if (isTrackedTarget(target) && level == 0) onContentsChanged(GLSMTextures.getBoundTextureForServerState());
     }
 
     public static boolean isGenericCompressedInternalFormat(int internalFormat) {

@@ -244,12 +244,12 @@ public class GLSM_ServerSideState_UnitTest {
     static Stream<TexParam> texParams() {
         return Stream.of(
             new TexParam("glTexParameteri MIN_FILTER", GL11.GL_LINEAR, GL11.GL_NEAREST,
-                v -> GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, (int) v),
-                () -> GLStateManager.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER),
+                v -> GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, (int) v),
+                () -> GLSMTextures.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER),
                 () -> GL11.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER)),
             new TexParam("glTexParameterf LOD_BIAS", 0.0f, 1.5f,
-                v -> GLStateManager.glTexParameterf(GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_LOD_BIAS, v),
-                () -> GLStateManager.glGetTexParameterf(GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_LOD_BIAS),
+                v -> GLSMTextures.glTexParameterf(GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_LOD_BIAS, v),
+                () -> GLSMTextures.glGetTexParameterf(GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_LOD_BIAS),
                 () -> GL11.glGetTexParameterf(GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_LOD_BIAS)));
     }
 
@@ -262,14 +262,14 @@ public class GLSM_ServerSideState_UnitTest {
         int texId = GL11.glGenTextures();
 
         try {
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texId);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texId);
             param.set.accept(param.initial);
 
             assertEquals(param.initial, param.glsm.get(), 0.001f, "Initial GLSM value");
             assertEquals(param.initial, param.driver.get(), 0.001f, "Initial GL value");
 
             executeOnSharedDrawable(() -> {
-                GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texId);
+                GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texId);
 
                 int boundTex = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
                 assertEquals(texId, boundTex, "SharedDrawable should have texId bound");
@@ -280,14 +280,14 @@ public class GLSM_ServerSideState_UnitTest {
                 assertEquals(param.changed, param.driver.get(), 0.001f, "SharedDrawable GL value");
             });
 
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texId);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texId);
 
             assertEquals(param.changed, param.glsm.get(), 0.001f, "Main thread GLSM value");
             assertEquals(param.changed, param.driver.get(), 0.001f, "Main thread GL value");
 
         } finally {
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-            GLStateManager.glDeleteTextures(texId);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+            GLSMTextures.glDeleteTextures(texId);
         }
     }
 
@@ -302,59 +302,59 @@ public class GLSM_ServerSideState_UnitTest {
         int texIdB = GL11.glGenTextures();
 
         try {
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texIdA);
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texIdA);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
 
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texIdB);
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR_MIPMAP_LINEAR);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texIdB);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR_MIPMAP_LINEAR);
 
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texIdA);
-            int initialA_GLSM = GLStateManager.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texIdA);
+            int initialA_GLSM = GLSMTextures.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER);
             int initialA_GL = GL11.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER);
             assertEquals(GL11.GL_LINEAR, initialA_GLSM, "texIdA initial GLSM should be LINEAR");
             assertEquals(GL11.GL_LINEAR, initialA_GL, "texIdA initial GL should be LINEAR");
 
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texIdB);
-            int initialB_GLSM = GLStateManager.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texIdB);
+            int initialB_GLSM = GLSMTextures.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER);
             int initialB_GL = GL11.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER);
             assertEquals(GL11.GL_LINEAR_MIPMAP_LINEAR, initialB_GLSM, "texIdB initial GLSM should be LINEAR_MIPMAP_LINEAR");
             assertEquals(GL11.GL_LINEAR_MIPMAP_LINEAR, initialB_GL, "texIdB initial GL should be LINEAR_MIPMAP_LINEAR");
 
-            assertEquals(texIdB, GLStateManager.getBoundTextureForServerState(), "Main thread should have texIdB bound");
+            assertEquals(texIdB, GLSMTextures.getBoundTextureForServerState(), "Main thread should have texIdB bound");
 
             // SharedDrawable: bind texIdA and change its MIN_FILTER to NEAREST
             // Main thread has texIdB bound, but SharedDrawable should correctly update texIdA's params, not texIdB's
             executeOnSharedDrawable(() -> {
-                GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texIdA);
+                GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texIdA);
 
                 int bound = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
                 assertEquals(texIdA, bound, "SharedDrawable should have texIdA bound");
 
-                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+                GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
 
-                int glsmValue = GLStateManager.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER);
+                int glsmValue = GLSMTextures.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER);
                 assertEquals(GL11.GL_NEAREST, glsmValue, "SharedDrawable GLSM should return NEAREST for texIdA");
 
                 int glValue = GL11.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER);
                 assertEquals(GL11.GL_NEAREST, glValue, "SharedDrawable GL should be NEAREST for texIdA");
             });
 
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texIdA);
-            int finalA_GLSM = GLStateManager.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texIdA);
+            int finalA_GLSM = GLSMTextures.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER);
             int finalA_GL = GL11.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER);
             assertEquals(GL11.GL_NEAREST, finalA_GLSM, "texIdA final GLSM should be NEAREST (SharedDrawable's update)");
             assertEquals(GL11.GL_NEAREST, finalA_GL, "texIdA final GL should be NEAREST");
 
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texIdB);
-            int finalB_GLSM = GLStateManager.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texIdB);
+            int finalB_GLSM = GLSMTextures.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER);
             int finalB_GL = GL11.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER);
             assertEquals(GL11.GL_LINEAR_MIPMAP_LINEAR, finalB_GLSM, "texIdB should NOT be modified by SharedDrawable");
             assertEquals(GL11.GL_LINEAR_MIPMAP_LINEAR, finalB_GL, "texIdB GL should NOT be modified");
 
         } finally {
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-            GLStateManager.glDeleteTextures(texIdA);
-            GLStateManager.glDeleteTextures(texIdB);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+            GLSMTextures.glDeleteTextures(texIdA);
+            GLSMTextures.glDeleteTextures(texIdB);
         }
     }
 
@@ -367,24 +367,24 @@ public class GLSM_ServerSideState_UnitTest {
         int texId2 = GL11.glGenTextures();
 
         try {
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texId1);
-            assertEquals(texId1, GLStateManager.getBoundTextureForServerState(), "Main thread cache should show texId1 bound");
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texId1);
+            assertEquals(texId1, GLSMTextures.getBoundTextureForServerState(), "Main thread cache should show texId1 bound");
 
             executeOnSharedDrawable(() -> {
-                GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texId2);
-                assertEquals(texId2, GLStateManager.getBoundTextureForServerState(), "SharedDrawable cache should show texId2 bound");
+                GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texId2);
+                assertEquals(texId2, GLSMTextures.getBoundTextureForServerState(), "SharedDrawable cache should show texId2 bound");
                 assertEquals(texId2, GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D), "SharedDrawable actual GL binding should be texId2");
             });
 
-            assertEquals(texId1, GLStateManager.getBoundTextureForServerState(), "Main thread cache should still show texId1 (client-side state is per-context)");
+            assertEquals(texId1, GLSMTextures.getBoundTextureForServerState(), "Main thread cache should still show texId1 (client-side state is per-context)");
 
             int actualBinding = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
             assertEquals(texId1, actualBinding, "Main thread actual GL binding should still be texId1");
 
         } finally {
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-            GLStateManager.glDeleteTextures(texId1);
-            GLStateManager.glDeleteTextures(texId2);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+            GLSMTextures.glDeleteTextures(texId1);
+            GLSMTextures.glDeleteTextures(texId2);
         }
     }
 
@@ -396,21 +396,21 @@ public class GLSM_ServerSideState_UnitTest {
         int texId = GL11.glGenTextures();
 
         try {
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texId);
-            GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, 64, 64, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texId);
+            GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, 64, 64, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
 
-            int initialWidth = GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
-            int initialHeight = GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
+            int initialWidth = GLSMTextures.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
+            int initialHeight = GLSMTextures.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
             assertEquals(64, initialWidth, "Initial width should be 64");
             assertEquals(64, initialHeight, "Initial height should be 64");
 
             // SharedDrawable: re-upload with different dimensions
             executeOnSharedDrawable(() -> {
-                GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texId);
-                GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, 128, 256, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+                GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texId);
+                GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, 128, 256, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
 
-                int sharedWidth = GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
-                int sharedHeight = GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
+                int sharedWidth = GLSMTextures.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
+                int sharedHeight = GLSMTextures.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
                 assertEquals(128, sharedWidth, "SharedDrawable GLSM width should be 128");
                 assertEquals(256, sharedHeight, "SharedDrawable GLSM height should be 256");
 
@@ -420,10 +420,10 @@ public class GLSM_ServerSideState_UnitTest {
                 assertEquals(256, glHeight, "SharedDrawable GL height should be 256");
             });
 
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texId);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texId);
 
-            int finalWidth = GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
-            int finalHeight = GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
+            int finalWidth = GLSMTextures.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
+            int finalHeight = GLSMTextures.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
             assertEquals(128, finalWidth, "Main thread GLSM width should be 128");
             assertEquals(256, finalHeight, "Main thread GLSM height should be 256");
 
@@ -433,44 +433,44 @@ public class GLSM_ServerSideState_UnitTest {
             assertEquals(256, glHeight, "Main thread GL height should be 256");
 
         } finally {
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-            GLStateManager.glDeleteTextures(texId);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+            GLSMTextures.glDeleteTextures(texId);
         }
     }
 
     @Test
     void testDeleteTexturesFromSharedDrawable() throws InterruptedException {
-        final int texId = GLStateManager.glGenTextures();
+        final int texId = GLSMTextures.glGenTextures();
         int flushGen = 0;
 
         try {
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texId);
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
-            GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, 32, 32, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texId);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+            GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, 32, 32, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
 
-            assertEquals(GL11.GL_LINEAR, GLStateManager.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER), "Cache should have LINEAR before delete");
+            assertEquals(GL11.GL_LINEAR, GLSMTextures.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER), "Cache should have LINEAR before delete");
             assertTrue(GL11.glIsTexture(texId), "Texture should exist before delete");
 
             executeOnSharedDrawable(() -> {
-                GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texId);
-                GLStateManager.glDeleteTextures(texId);
-                assertEquals(0, GLStateManager.getBoundTextureForServerState(), "Delete should unbind from the deleting context");
+                GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texId);
+                GLSMTextures.glDeleteTextures(texId);
+                assertEquals(0, GLSMTextures.getBoundTextureForServerState(), "Delete should unbind from the deleting context");
                 assertTrue(GL11.glIsTexture(texId), "Texture name should still be valid (deferred delete)");
             });
 
-            assertEquals(texId, GLStateManager.getBoundTextureForServerState(), "Main thread binding should survive until the flush");
+            assertEquals(texId, GLSMTextures.getBoundTextureForServerState(), "Main thread binding should survive until the flush");
 
-            final int deferredGen = GLStateManager.glGenTextures();
+            final int deferredGen = GLSMTextures.glGenTextures();
             GL11.glDeleteTextures(deferredGen);
             assertTrue(GL11.glIsTexture(texId), "Delete should stay deferred while the splash is not complete");
 
             SplashWindow.setSplashComplete(true);
-            flushGen = GLStateManager.glGenTextures();
+            flushGen = GLSMTextures.glGenTextures();
             assertFalse(GL11.glIsTexture(texId), "Texture should be gone after the post-splash flush");
-            assertEquals(0, GLStateManager.getBoundTextureForServerState(), "Flush should scrub the main thread binding");
+            assertEquals(0, GLSMTextures.getBoundTextureForServerState(), "Flush should scrub the main thread binding");
 
         } finally {
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
             if (flushGen != 0) GL11.glDeleteTextures(flushGen);
             if (GL11.glIsTexture(texId)) {
                 GL11.glDeleteTextures(texId);

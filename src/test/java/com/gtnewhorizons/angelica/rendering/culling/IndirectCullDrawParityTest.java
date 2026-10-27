@@ -8,7 +8,14 @@ import org.embeddedt.embeddium.impl.render.chunk.compile.sorting.QuadPrimitiveTy
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
 import com.gtnewhorizons.angelica.config.GpuCullingMode;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.rendering.RenderRegionKeys;
 import com.gtnewhorizons.angelica.rendering.celeritas.IndividualDrawBatch;
@@ -151,22 +158,22 @@ class IndirectCullDrawParityTest {
 
         Fbo() {
             try {
-                textures[0] = GLStateManager.glGenTextures();
-                GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, textures[0]);
-                GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL30.GL_DEPTH_COMPONENT32F, FBO_SIZE, FBO_SIZE, 0, GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, (ByteBuffer) null);
-                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+                textures[0] = GLSMTextures.glGenTextures();
+                GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, textures[0]);
+                GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL30.GL_DEPTH_COMPONENT32F, FBO_SIZE, FBO_SIZE, 0, GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, (ByteBuffer) null);
+                GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+                GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
 
-                textures[1] = GLStateManager.glGenTextures();
-                GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, textures[1]);
-                GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, FBO_SIZE, FBO_SIZE, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
-                GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+                textures[1] = GLSMTextures.glGenTextures();
+                GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, textures[1]);
+                GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, FBO_SIZE, FBO_SIZE, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+                GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
 
-                id = GLStateManager.glGenFramebuffers();
-                GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, id);
-                GLStateManager.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_ATTACHMENT, GL11.GL_TEXTURE_2D, textures[0], 0);
-                GLStateManager.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, textures[1], 0);
-                assertEquals(GL30.GL_FRAMEBUFFER_COMPLETE, GLStateManager.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER), "parity FBO incomplete");
+                id = GLSMFramebuffer.glGenFramebuffers();
+                GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, id);
+                GLSMFramebuffer.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_ATTACHMENT, GL11.GL_TEXTURE_2D, textures[0], 0);
+                GLSMFramebuffer.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, textures[1], 0);
+                assertEquals(GL30.GL_FRAMEBUFFER_COMPLETE, GLSMFramebuffer.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER), "parity FBO incomplete");
             } catch (RuntimeException | Error e) {
                 close();
                 throw e;
@@ -175,10 +182,10 @@ class IndirectCullDrawParityTest {
 
         @Override
         public void close() {
-            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
-            if (id != 0) GLStateManager.glDeleteFramebuffers(id);
+            GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+            if (id != 0) GLSMFramebuffer.glDeleteFramebuffers(id);
             for (int tex : textures) {
-                if (tex != 0) GLStateManager.glDeleteTextures(tex);
+                if (tex != 0) GLSMTextures.glDeleteTextures(tex);
             }
         }
     }
@@ -192,16 +199,16 @@ class IndirectCullDrawParityTest {
 
     @AfterAll
     static void tearDownDevice() {
-        if (program != 0) GLStateManager.glDeleteProgram(program);
+        if (program != 0) GLSMPrograms.glDeleteProgram(program);
         RenderDevice.exitManagedCode();
     }
 
     @AfterEach
     void resetGlState() {
-        GLStateManager.glUseProgram(0);
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
-        GLStateManager.glDisable(GL11.GL_DEPTH_TEST);
-        GLStateManager.glViewport(0, 0, 800, 600);
+        GLSMPrograms.glUseProgram(0);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+        GLSMEnable.glDisable(GL11.GL_DEPTH_TEST);
+        GLSMRasterizer.glViewport(0, 0, 800, 600);
     }
 
     private static final String FLAT_VS = "#version 330 core\n"
@@ -323,22 +330,22 @@ class IndirectCullDrawParityTest {
     }
 
     private static void beginDrawing(int fbo) {
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
-        GLStateManager.glViewport(0, 0, FBO_SIZE, FBO_SIZE);
-        GLStateManager.glEnable(GL11.GL_DEPTH_TEST);
-        GLStateManager.glDepthFunc(GL11.GL_LESS);
-        GLStateManager.glDepthMask(true);
-        GLStateManager.disableCull();
-        GLStateManager.glClearDepth(1.0);
-        GLStateManager.glClearColor(0f, 0f, 0f, 0f);
-        GLStateManager.glClear(GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_COLOR_BUFFER_BIT);
-        GLStateManager.glUseProgram(program);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
+        GLSMRasterizer.glViewport(0, 0, FBO_SIZE, FBO_SIZE);
+        GLSMEnable.glEnable(GL11.GL_DEPTH_TEST);
+        GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_LESS);
+        GLSMDepthStencilAlpha.glDepthMask(true);
+        GLSMRasterizer.disableCull();
+        GLSMDepthStencilAlpha.glClearDepth(1.0);
+        GLSMBlend.glClearColor(0f, 0f, 0f, 0f);
+        GLSMFramebuffer.glClear(GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_COLOR_BUFFER_BIT);
+        GLSMPrograms.glUseProgram(program);
     }
 
     private static FloatBuffer readDepth(int fbo) {
-        GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, fbo);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, fbo);
         final FloatBuffer depth = BufferUtils.createFloatBuffer(FBO_SIZE * FBO_SIZE);
-        GLStateManager.glReadPixels(0, 0, FBO_SIZE, FBO_SIZE, GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, depth);
+        GLSMFramebuffer.glReadPixels(0, 0, FBO_SIZE, FBO_SIZE, GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, depth);
         return depth;
     }
 
@@ -557,9 +564,9 @@ class IndirectCullDrawParityTest {
     private static void assertIndirectBufferMatches(int bufferId, List<int[]> expected, String label) {
         assertNotEquals(0, bufferId, label + ": no indirect buffer was created");
         final ByteBuffer readback = BufferUtils.createByteBuffer(expected.size() * CMD_INTS * 4).order(ByteOrder.nativeOrder());
-        GLStateManager.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, bufferId);
-        GLStateManager.glGetBufferSubData(GL43.GL_SHADER_STORAGE_BUFFER, 0L, readback);
-        GLStateManager.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, 0);
+        GLSMBuffers.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, bufferId);
+        GLSMBuffers.glGetBufferSubData(GL43.GL_SHADER_STORAGE_BUFFER, 0L, readback);
+        GLSMBuffers.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, 0);
         final String[] fieldNames = { "count", "instanceCount", "firstIndex", "baseVertex", "baseInstance" };
         for (int c = 0; c < expected.size(); c++) {
             for (int i = 0; i < CMD_INTS; i++) {

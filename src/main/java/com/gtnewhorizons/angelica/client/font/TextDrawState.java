@@ -1,7 +1,10 @@
 package com.gtnewhorizons.angelica.client.font;
 
 import com.gtnewhorizons.angelica.glsm.GLContextState;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
 import com.gtnewhorizons.angelica.glsm.states.ColorMask;
 import com.gtnewhorizons.angelica.glsm.states.PolygonState;
 import org.lwjgl.opengl.GL11;
@@ -83,14 +86,14 @@ final class TextDrawState {
     }
 
     void apply() {
-        if (depthTest) GLStateManager.enableDepthTest(); else GLStateManager.disableDepthTest();
-        GLStateManager.glDepthFunc(depthFunc);
-        GLStateManager.glDepthMask(depthMask);
-        GLStateManager.glColorMask(colorRed, colorGreen, colorBlue, colorAlpha);
-        if (cull) GLStateManager.enableCull(); else GLStateManager.disableCull();
-        GLStateManager.glCullFace(cullFace);
-        GLStateManager.glFrontFace(frontFace);
-        if (polygonOffset) GLStateManager.glEnable(GL11.GL_POLYGON_OFFSET_FILL); else GLStateManager.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
-        GLStateManager.glPolygonOffset(offsetFactor, offsetUnits);
+        if (depthTest) GLSMDepthStencilAlpha.enableDepthTest(); else GLSMDepthStencilAlpha.disableDepthTest();
+        GLSMDepthStencilAlpha.glDepthFunc(depthFunc);
+        GLSMDepthStencilAlpha.glDepthMask(depthMask);
+        GLSMBlend.glColorMask(colorRed, colorGreen, colorBlue, colorAlpha);
+        if (cull) GLSMRasterizer.enableCull(); else GLSMRasterizer.disableCull();
+        GLSMRasterizer.glCullFace(cullFace);
+        GLSMRasterizer.glFrontFace(frontFace);
+        if (polygonOffset) GLSMEnable.glEnable(GL11.GL_POLYGON_OFFSET_FILL); else GLSMEnable.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
+        GLSMRasterizer.glPolygonOffset(offsetFactor, offsetUnits);
     }
 }

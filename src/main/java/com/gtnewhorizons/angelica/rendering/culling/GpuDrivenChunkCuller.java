@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.rendering.culling;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -61,15 +62,15 @@ public final class GpuDrivenChunkCuller {
         } finally {
             cs.delete();
         }
-        metaSsboGlId   = GLStateManager.glGenBuffers();
-        frustumUboGlId = GLStateManager.glGenBuffers();
+        metaSsboGlId   = GLSMBuffers.glGenBuffers();
+        frustumUboGlId = GLSMBuffers.glGenBuffers();
 
-        GLStateManager.glBindBuffer(GL31.GL_UNIFORM_BUFFER, frustumUboGlId);
-        GLStateManager.glBufferData(GL31.GL_UNIFORM_BUFFER, FrustumExtractor.UBO_SIZE_BYTES, GL15.GL_STREAM_DRAW);
+        GLSMBuffers.glBindBuffer(GL31.GL_UNIFORM_BUFFER, frustumUboGlId);
+        GLSMBuffers.glBufferData(GL31.GL_UNIFORM_BUFFER, FrustumExtractor.UBO_SIZE_BYTES, GL15.GL_STREAM_DRAW);
 
         metaCapacityBytes = SectionMetaBuffer.BYTES_PER_SECTION * INITIAL_META_SECTIONS;
-        GLStateManager.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, metaSsboGlId);
-        GLStateManager.glBufferData(GL43.GL_SHADER_STORAGE_BUFFER, ByteBuffer.allocateDirect(metaCapacityBytes).order(ByteOrder.nativeOrder()), GL15.GL_DYNAMIC_DRAW);
+        GLSMBuffers.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, metaSsboGlId);
+        GLSMBuffers.glBufferData(GL43.GL_SHADER_STORAGE_BUFFER, ByteBuffer.allocateDirect(metaCapacityBytes).order(ByteOrder.nativeOrder()), GL15.GL_DYNAMIC_DRAW);
 
         ready = true;
         return true;
@@ -78,29 +79,29 @@ public final class GpuDrivenChunkCuller {
     public boolean uploadSectionMeta(ByteBuffer metaBytes) {
         if (!ready || metaBytes == null || metaBytes.remaining() == 0) return false;
         final int needed = metaBytes.remaining();
-        GLStateManager.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, metaSsboGlId);
+        GLSMBuffers.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, metaSsboGlId);
         if (needed > metaCapacityBytes) {
             final int newCap = Math.max(needed, Math.max(metaCapacityBytes * 2, SectionMetaBuffer.BYTES_PER_SECTION * INITIAL_META_SECTIONS));
-            GLStateManager.glBufferData(GL43.GL_SHADER_STORAGE_BUFFER, newCap, GL15.GL_DYNAMIC_DRAW);
+            GLSMBuffers.glBufferData(GL43.GL_SHADER_STORAGE_BUFFER, newCap, GL15.GL_DYNAMIC_DRAW);
             metaCapacityBytes = newCap;
         }
-        GLStateManager.glBufferSubData(GL43.GL_SHADER_STORAGE_BUFFER, 0L, metaBytes);
+        GLSMBuffers.glBufferSubData(GL43.GL_SHADER_STORAGE_BUFFER, 0L, metaBytes);
         return true;
     }
 
     public void uploadFrustum(ByteBuffer frustumUboBytes) {
         if (!ready || frustumUboBytes == null) return;
-        GLStateManager.glBindBuffer(GL31.GL_UNIFORM_BUFFER, frustumUboGlId);
-        GLStateManager.glBufferSubData(GL31.GL_UNIFORM_BUFFER, 0L, frustumUboBytes);
+        GLSMBuffers.glBindBuffer(GL31.GL_UNIFORM_BUFFER, frustumUboGlId);
+        GLSMBuffers.glBufferSubData(GL31.GL_UNIFORM_BUFFER, 0L, frustumUboBytes);
     }
 
     void beginDispatches(int visibleSsboGlId, int indirectSsboGlId) {
-        savedProgram = GLStateManager.getActiveProgram();
+        savedProgram = GLSMPrograms.getActiveProgram();
         savedVisibleSsbo  = RenderSystem.getIndexedBufferBinding(GL43.GL_SHADER_STORAGE_BUFFER, VISIBLE_SSBO_BINDING);
         savedMetaSsbo     = RenderSystem.getIndexedBufferBinding(GL43.GL_SHADER_STORAGE_BUFFER, META_SSBO_BINDING);
         savedIndirectSsbo = RenderSystem.getIndexedBufferBinding(GL43.GL_SHADER_STORAGE_BUFFER, INDIRECT_SSBO_BINDING);
         savedFrustumUbo   = RenderSystem.getIndexedBufferBinding(GL31.GL_UNIFORM_BUFFER,        FRUSTUM_UBO_BINDING);
-        GLStateManager.glUseProgram(program.handle());
+        GLSMPrograms.glUseProgram(program.handle());
         RenderSystem.bindBufferBase(GL43.GL_SHADER_STORAGE_BUFFER, VISIBLE_SSBO_BINDING,   visibleSsboGlId);
         RenderSystem.bindBufferBase(GL43.GL_SHADER_STORAGE_BUFFER, META_SSBO_BINDING,      metaSsboGlId);
         RenderSystem.bindBufferBase(GL43.GL_SHADER_STORAGE_BUFFER, INDIRECT_SSBO_BINDING,  indirectSsboGlId);
@@ -109,22 +110,22 @@ public final class GpuDrivenChunkCuller {
 
     void dispatch(int visibleCount) {
         final int groups = (visibleCount + LOCAL_SIZE_X - 1) / LOCAL_SIZE_X;
-        GLStateManager.glDispatchCompute(groups, 1, 1);
+        GLSMPrograms.glDispatchCompute(groups, 1, 1);
     }
 
     void endDispatches() {
-        GLStateManager.glMemoryBarrier(GL43.GL_SHADER_STORAGE_BARRIER_BIT | GL42.GL_COMMAND_BARRIER_BIT);
+        GLSMBuffers.glMemoryBarrier(GL43.GL_SHADER_STORAGE_BARRIER_BIT | GL42.GL_COMMAND_BARRIER_BIT);
         RenderSystem.bindBufferBase(GL43.GL_SHADER_STORAGE_BUFFER, VISIBLE_SSBO_BINDING,   savedVisibleSsbo);
         RenderSystem.bindBufferBase(GL43.GL_SHADER_STORAGE_BUFFER, META_SSBO_BINDING,      savedMetaSsbo);
         RenderSystem.bindBufferBase(GL43.GL_SHADER_STORAGE_BUFFER, INDIRECT_SSBO_BINDING,  savedIndirectSsbo);
         RenderSystem.bindBufferBase(GL31.GL_UNIFORM_BUFFER,        FRUSTUM_UBO_BINDING,    savedFrustumUbo);
-        GLStateManager.glUseProgram(savedProgram);
+        GLSMPrograms.glUseProgram(savedProgram);
     }
 
     public synchronized void shutdown() {
         if (program != null) { program.delete(); program = null; }
-        if (metaSsboGlId   != 0) { GLStateManager.glDeleteBuffers(metaSsboGlId);   metaSsboGlId   = 0; }
-        if (frustumUboGlId != 0) { GLStateManager.glDeleteBuffers(frustumUboGlId); frustumUboGlId = 0; }
+        if (metaSsboGlId   != 0) { GLSMBuffers.glDeleteBuffers(metaSsboGlId);   metaSsboGlId   = 0; }
+        if (frustumUboGlId != 0) { GLSMBuffers.glDeleteBuffers(frustumUboGlId); frustumUboGlId = 0; }
         ready = false;
         disabled = true;
     }

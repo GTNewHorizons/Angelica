@@ -1,7 +1,13 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -76,19 +82,19 @@ public final class ParticleParityFixture {
     }
 
     private static int createCheckerTexture() {
-        final int id = GLStateManager.glGenTextures();
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, id);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        final int id = GLSMTextures.glGenTextures();
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, id);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
         final ByteBuffer texels = BufferUtils.createByteBuffer(2 * 2 * 4);
         putTexel(texels, 255, 32, 32);
         putTexel(texels, 32, 255, 32);
         putTexel(texels, 32, 32, 255);
         putTexel(texels, 255, 255, 32);
         texels.flip();
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, 2, 2, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels);
-        GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+        GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, 2, 2, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels);
+        GLSMEnable.glEnable(GL11.GL_TEXTURE_2D);
         return id;
     }
 
@@ -97,28 +103,28 @@ public final class ParticleParityFixture {
     }
 
     public static void setupScene(boolean textureMatrix) {
-        GLStateManager.glDisable(GL11.GL_FOG);
-        GLStateManager.glDisable(GL11.GL_BLEND);
-        GLStateManager.glDisable(GL11.GL_ALPHA_TEST);
-        GLStateManager.glDisable(GL11.GL_DEPTH_TEST);
-        GLStateManager.glDisable(GL11.GL_CULL_FACE);
-        GLStateManager.glDisable(GL11.GL_LIGHTING);
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glLoadIdentity();
+        GLSMEnable.glDisable(GL11.GL_FOG);
+        GLSMEnable.glDisable(GL11.GL_BLEND);
+        GLSMEnable.glDisable(GL11.GL_ALPHA_TEST);
+        GLSMEnable.glDisable(GL11.GL_DEPTH_TEST);
+        GLSMEnable.glDisable(GL11.GL_CULL_FACE);
+        GLSMEnable.glDisable(GL11.GL_LIGHTING);
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glLoadIdentity();
 
         checkerTexture = createCheckerTexture();
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, checkerTexture);
-        GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
-        GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
-        GLStateManager.glLoadIdentity();
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, checkerTexture);
+        GLSMEnable.glEnable(GL11.GL_TEXTURE_2D);
+        GLSMMatrices.glMatrixMode(GL11.GL_TEXTURE);
+        GLSMMatrices.glLoadIdentity();
         if (textureMatrix) {
-            GLStateManager.glTranslatef(0.1f, 0.1f, 0.0f);
-            GLStateManager.glScalef(0.8f, 0.8f, 1.0f);
+            GLSMMatrices.glTranslatef(0.1f, 0.1f, 0.0f);
+            GLSMMatrices.glScalef(0.8f, 0.8f, 1.0f);
         }
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
     }
 
     private static ByteBuffer buildReferenceData(Particle[] particles, float rotX, float rotXZ, float rotZ, float rotYZ, float rotXY) {
@@ -149,19 +155,19 @@ public final class ParticleParityFixture {
     public static void drawReference(Particle[] particles, float rotX, float rotXZ, float rotZ, float rotYZ, float rotXY) {
         final ByteBuffer data = buildReferenceData(particles, rotX, rotXZ, rotZ, rotYZ, rotXY);
 
-        if (referenceVao == 0) referenceVao = GLStateManager.glGenVertexArrays();
-        GLStateManager.glBindVertexArray(referenceVao);
-        if (referenceVbo == 0) referenceVbo = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, referenceVbo);
-        GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, data, GL15.GL_STREAM_DRAW);
+        if (referenceVao == 0) referenceVao = GLSMVertexInput.glGenVertexArrays();
+        GLSMVertexInput.glBindVertexArray(referenceVao);
+        if (referenceVbo == 0) referenceVbo = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, referenceVbo);
+        GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, data, GL15.GL_STREAM_DRAW);
         FfpFixture.attrib(0, 3, GL11.GL_FLOAT, false, REF_STRIDE, 0);
         FfpFixture.attrib(1, 4, GL11.GL_UNSIGNED_BYTE, true, REF_STRIDE, 12);
         FfpFixture.attrib(2, 2, GL11.GL_FLOAT, false, REF_STRIDE, 16);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         VAOManager.setCurrentVertexFlags(VertexFlags.COLOR_BIT | VertexFlags.TEXTURE_BIT);
 
-        GLStateManager.glDrawArrays(GL11.GL_QUADS, 0, particles.length * 4);
-        GLStateManager.glBindVertexArray(0);
+        GLSMDraws.glDrawArrays(GL11.GL_QUADS, 0, particles.length * 4);
+        GLSMVertexInput.glBindVertexArray(0);
     }
 
     public static void drawInstanced(Particle[] particles, float rotX, float rotXZ, float rotZ, float rotYZ, float rotXY) {
@@ -176,18 +182,18 @@ public final class ParticleParityFixture {
         }
         records.position(0).limit(particles.length * ParticleInstancedAttribs.STRIDE);
 
-        GLStateManager.glBindVertexArray(ParticleQuadMesh.vao());
+        GLSMVertexInput.glBindVertexArray(ParticleQuadMesh.vao());
         VAOManager.setCurrentVertexFlags(ParticleQuadMesh.VERTEX_FLAGS);
-        if (instanceVbo == 0) instanceVbo = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, instanceVbo);
-        GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, records, GL15.GL_STREAM_DRAW);
+        if (instanceVbo == 0) instanceVbo = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, instanceVbo);
+        GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, records, GL15.GL_STREAM_DRAW);
         ParticleInstancedAttribs.pointInstanceAttribs(0L);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
 
-        GLStateManager.setFfpInstancing(Instancing.PARTICLE);
-        GLStateManager.glDrawArraysInstanced(GL11.GL_QUADS, 0, ParticleQuadMesh.VERTEX_COUNT, particles.length);
-        GLStateManager.setFfpInstancing(Instancing.NONE);
-        GLStateManager.glBindVertexArray(0);
+        GLSMPrograms.setFfpInstancing(Instancing.PARTICLE);
+        GLSMDraws.glDrawArraysInstanced(GL11.GL_QUADS, 0, ParticleQuadMesh.VERTEX_COUNT, particles.length);
+        GLSMPrograms.setFfpInstancing(Instancing.NONE);
+        GLSMVertexInput.glBindVertexArray(0);
     }
 
     public static void assertPixelParity(int[] reference, int[] instanced, int size, int background, IntFunction<String> describe) {
@@ -196,19 +202,19 @@ public final class ParticleParityFixture {
 
     public static void deleteResources() {
         if (instanceVbo != 0) {
-            GLStateManager.glDeleteBuffers(instanceVbo);
+            GLSMBuffers.glDeleteBuffers(instanceVbo);
             instanceVbo = 0;
         }
         if (referenceVbo != 0) {
-            GLStateManager.glDeleteBuffers(referenceVbo);
+            GLSMBuffers.glDeleteBuffers(referenceVbo);
             referenceVbo = 0;
         }
         if (referenceVao != 0) {
-            GLStateManager.glDeleteVertexArrays(referenceVao);
+            GLSMVertexInput.glDeleteVertexArrays(referenceVao);
             referenceVao = 0;
         }
         if (checkerTexture != 0) {
-            GLStateManager.glDeleteTextures(checkerTexture);
+            GLSMTextures.glDeleteTextures(checkerTexture);
             checkerTexture = 0;
         }
         ParticleQuadMesh.delete();

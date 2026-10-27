@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
 import com.gtnewhorizons.angelica.glsm.streaming.PersistentStreamingBuffer;
@@ -24,19 +24,19 @@ class GlsmSdlStreamingRingTest {
     @Test
     void ringCreationLeavesTheGlsmArrayBufferCacheMatchingSdl() {
         assertTrue(RenderSystem.supportsBufferStorage(), "SDL-GPU must advertise buffer storage");
-        final int other = GLStateManager.glGenBuffers();
+        final int other = GLSMBuffers.glGenBuffers();
         PersistentStreamingBuffer ring = null;
         try {
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, other);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, other);
             ring = PersistentStreamingBuffer.createOrNull(4096);
             assertNotNull(ring);
             final IntSet persistent = Reflect.getStatic(FfpExtendedAttribs.class, "persistentSources");
             assertTrue(persistent.contains(ring.getBufferId()), "the ring buffer is the persistent source");
             assertFalse(persistent.contains(other), "the previously bound buffer is not persistent");
-            assertEquals(RENDER_BACKEND.getInteger(GL15.GL_ARRAY_BUFFER_BINDING), GLStateManager.getBoundVBO(), "SDL ContextState.boundArrayBuffer must equal the GLSM cache after ring creation");
+            assertEquals(RENDER_BACKEND.getInteger(GL15.GL_ARRAY_BUFFER_BINDING), GLSMBuffers.getBoundVBO(), "SDL ContextState.boundArrayBuffer must equal the GLSM cache after ring creation");
         } finally {
             if (ring != null) ring.destroy();
-            GLStateManager.glDeleteBuffers(other);
+            GLSMBuffers.glDeleteBuffers(other);
         }
     }
 }

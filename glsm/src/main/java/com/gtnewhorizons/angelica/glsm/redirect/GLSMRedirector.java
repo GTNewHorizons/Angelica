@@ -11,6 +11,8 @@ import org.objectweb.asm.Handle;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.FieldInsnNode;
+import org.objectweb.asm.tree.InsnList;
 import org.objectweb.asm.tree.IntInsnNode;
 import org.objectweb.asm.tree.InvokeDynamicInsnNode;
 import org.objectweb.asm.tree.LdcInsnNode;
@@ -21,13 +23,15 @@ import org.objectweb.asm.tree.TypeInsnNode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Core GL call redirector for GLSM. Rewrites bytecode so that GL calls go through {@code GLStateManager} for state tracking and backend abstraction.
+ * Core GL call redirector for GLSM. Rewrites bytecode so GL calls go through the GLSM classes for state tracking and backend abstraction.
  * <p>
  * THIS CLASS MIGHT BE LOADED ON A DIFFERENT CLASS LOADER.
  * IT SHOULD NOT CALL ANY CODE FROM THE MAIN MOD.
@@ -186,6 +190,12 @@ public class GLSMRedirector {
     private static final Map<String, String> typeRedirects = new HashMap<>();
     private static final ClassConstantPoolParser cstPoolParser;
     private static final String[] CONSTANT_POOL_SEARCH_STRINGS;
+    private static final Map<String, String> methodOwner = new HashMap<>(512);
+    private static final Map<String, String> fieldOwner = new HashMap<>(64);
+    static final String[] CORE_REWRITE_TARGETS = {"makeCurrent", "releaseContext", "swapBuffers", "updateDisplay", "isCurrent"};
+    private static final Set<String> LEGACY_WARNED = ConcurrentHashMap.newKeySet();
+    private String legacyHint = "";
+    private LegacyRewriter legacyRewriter;
 
     private static final String[] CORE_EXCLUSIONS = {
         "org.lwjgl",
@@ -540,7 +550,9 @@ public class GLSMRedirector {
             .add("glIsFramebuffer")
             .add("glIsRenderbuffer")
             .add("glBindBufferBase")
-            .add("glBindBufferRange");
+            .add("glBindBufferRange")
+            .add("glEnablei")
+            .add("glDisablei");
         final var gl31 = RedirectMap.newMap()
             .add("glDrawElementsInstanced")
             .add("glDrawArraysInstanced")
@@ -574,7 +586,8 @@ public class GLSMRedirector {
             .add("glVertexAttribFormat")
             .add("glVertexAttribIFormat")
             .add("glVertexAttribBinding")
-            .add("glMultiDrawElementsIndirect");
+            .add("glMultiDrawElementsIndirect")
+            .add("glCopyImageSubData");
         final var gl44 = RedirectMap.newMap()
             .add("glBufferStorage")
             .add("glBindSamplers")
@@ -899,10 +912,34 @@ public class GLSMRedirector {
         stringsToSearch.add(Drawable);
         stringsToSearch.add(SharedDrawable);
         stringsToSearch.add(Display);
+        stringsToSearch.add(GLStateManager);
         stringsToSearch.addAll(typeRedirects.keySet());
         stringsToSearch.addAll(methodRedirects.keySet());
         CONSTANT_POOL_SEARCH_STRINGS = stringsToSearch.toArray(new String[0]);
         cstPoolParser = new ClassConstantPoolParser(CONSTANT_POOL_SEARCH_STRINGS);
+
+        fillOwners(methodOwner, GLSMOwners.METHODS);
+        fillOwners(fieldOwner, GLSMOwners.FIELDS);
+    }
+
+    private static void fillOwners(Map<String, String> owners, String[][] table) {
+        for (String[] row : table) {
+            for (int i = 1; i < row.length; i++) owners.put(row[i], row[0]);
+        }
+    }
+
+    static Set<String> redirectTargets() {
+        final Set<String> targets = new TreeSet<>(glMethodRedirects.values());
+        targets.addAll(glDescRedirects.values());
+        for (Map<String, String> inner : methodRedirects.values()) targets.addAll(inner.values());
+        for (String cap : glCapRedirects.values()) {
+            targets.add("enable" + cap);
+            targets.add("disable" + cap);
+        }
+        targets.add("glEnable");
+        targets.add("glDisable");
+        Collections.addAll(targets, CORE_REWRITE_TARGETS);
+        return targets;
     }
 
     public String[] getCoreExclusions() {
@@ -915,9 +952,46 @@ public class GLSMRedirector {
 
     public static String getGLPrefix() { return GL_PREFIX; }
 
-    public static String getTargetClassName() { return GLStateManager; }
+    public static String getTargetOwner(String glsmName) { return methodOwner.getOrDefault(glsmName, GLStateManager); }
 
-    /** Key: original method name, value: GLStateManager method name. */
+    public static List<String> glsmClasses() {
+        final Set<String> classes = new LinkedHashSet<>();
+        classes.add(GLStateManager);
+        for (String[] row : GLSMOwners.METHODS) classes.add(row[0]);
+        for (String[] row : GLSMOwners.FIELDS) classes.add(row[0]);
+        return List.copyOf(classes);
+    }
+
+    public void setLegacyHint(String hint) { this.legacyHint = hint; }
+
+    public void setLegacyRewriter(LegacyRewriter rewriter) { this.legacyRewriter = rewriter; }
+
+    private static String simpleName(String internalName) {
+        return internalName.substring(internalName.lastIndexOf('/') + 1);
+    }
+
+    private void warnLegacy(String transformedName, String name, String newOwner) {
+        warnLegacyUse(transformedName, name, "moved to " + simpleName(newOwner) + "." + name);
+    }
+
+    private void warnLegacyUse(String transformedName, String name, String outcome) {
+        final int dot = transformedName.lastIndexOf('.');
+        final String key = dot < 0 ? transformedName : transformedName.substring(0, dot);
+        if (LEGACY_WARNED.add(key)) {
+            LOGGER.warn("{} uses GLStateManager.{}, {}; rewritten at load.{}", transformedName, name, outcome, legacyHint.isEmpty() ? "" : " " + legacyHint);
+        }
+    }
+
+    private boolean tryLegacyRewrite(String transformedName, InsnList instructions, MethodInsnNode call) {
+        if (legacyRewriter == null) return false;
+        final String name = call.name;
+        final String replacement = legacyRewriter.rewrite(instructions, call);
+        if (replacement == null) return false;
+        warnLegacyUse(transformedName, name, "redirected to " + replacement);
+        return true;
+    }
+
+    /** @return Map from GL method name to GLSM method name. {@link #getTargetOwner} gives its class. */
     public static Map<String, String> getGLPrefixMethodRedirects() {
         return Collections.unmodifiableMap(glMethodRedirects);
     }
@@ -943,7 +1017,9 @@ public class GLSMRedirector {
             if (isOpenGlHelper && (mn.name.equals("glBlendFunc") || mn.name.equals("func_148821_a"))) {
                 continue;
             }
+            boolean rewroteLegacy = false;
             for (AbstractInsnNode node : mn.instructions.toArray()) {
+                if (rewroteLegacy && !mn.instructions.contains(node)) continue;
                 if (node instanceof TypeInsnNode tNode) {
                     if (tNode.getOpcode() == Opcodes.NEW || tNode.getOpcode() == Opcodes.CHECKCAST) {
                         final String redirect = typeRedirects.get(tNode.desc);
@@ -955,7 +1031,29 @@ public class GLSMRedirector {
                             changed = true;
                         }
                     }
+                } else if (node instanceof FieldInsnNode fNode) {
+                    if (fNode.owner.equals(GLStateManager) && (fNode.getOpcode() == Opcodes.GETSTATIC || fNode.getOpcode() == Opcodes.PUTSTATIC)) {
+                        final String newOwner = fieldOwner.get(fNode.name);
+                        if (newOwner != null) {
+                            warnLegacy(transformedName, fNode.name, newOwner);
+                            fNode.owner = newOwner;
+                            changed = true;
+                        }
+                    }
                 } else if (node instanceof MethodInsnNode mNode) {
+                    if (mNode.owner.equals(GLStateManager)) {
+                        if (tryLegacyRewrite(transformedName, mn.instructions, mNode)) {
+                            rewroteLegacy = true;
+                            changed = true;
+                            continue;
+                        }
+                        final String newOwner = methodOwner.get(mNode.name);
+                        if (newOwner != null) {
+                            warnLegacy(transformedName, mNode.name, newOwner);
+                            mNode.owner = newOwner;
+                            changed = true;
+                        }
+                    }
                     if (mNode.desc.equals("(I)V") && mNode.owner.startsWith(GL_PREFIX) && (mNode.name.equals("glEnable") || mNode.name.equals("glDisable"))) {
                         final AbstractInsnNode prevNode = node.getPrevious();
                         String name = null;
@@ -974,12 +1072,12 @@ public class GLSMRedirector {
                         if (LOG_SPAM) {
                             final String shortOwner = mNode.owner.substring(mNode.owner.lastIndexOf("/") + 1);
                             if (name == null) {
-                                LOGGER.info("Redirecting call in {} from {}.{}(I)V to GLStateManager.{}(I)V", transformedName, shortOwner, mNode.name, mNode.name);
+                                LOGGER.info("Redirecting call in {} from {}.{}(I)V to {}.{}(I)V", transformedName, shortOwner, mNode.name, simpleName(getTargetOwner(mNode.name)), mNode.name);
                             } else {
-                                LOGGER.info("Redirecting call in {} from {}.{}(I)V to GLStateManager.{}()V", transformedName, shortOwner, mNode.name, name);
+                                LOGGER.info("Redirecting call in {} from {}.{}(I)V to {}.{}()V", transformedName, shortOwner, mNode.name, simpleName(getTargetOwner(name)), name);
                             }
                         }
-                        mNode.owner = GLStateManager;
+                        mNode.owner = getTargetOwner(name != null ? name : mNode.name);
                         if (name != null) {
                             mNode.name = name;
                             mNode.desc = "()V";
@@ -1039,9 +1137,9 @@ public class GLSMRedirector {
                         } else if (glsmName != null) {
                             if (LOG_SPAM) {
                                 final String shortOwner = mNode.owner.substring(mNode.owner.lastIndexOf("/") + 1);
-                                LOGGER.info("Redirecting call in {} from {}.{}{} to GLStateManager.{}{}", transformedName, shortOwner, mNode.name, mNode.desc, glsmName, mNode.desc);
+                                LOGGER.info("Redirecting call in {} from {}.{}{} to {}.{}{}", transformedName, shortOwner, mNode.name, mNode.desc, simpleName(getTargetOwner(glsmName)), glsmName, mNode.desc);
                             }
-                            mNode.owner = GLStateManager;
+                            mNode.owner = getTargetOwner(glsmName);
                             mNode.name = glsmName;
                             changed = true;
                         } else if (lwjgl3Aware && mNode.owner.startsWith(LWJGL_GL_PACKAGE) && hasLwjglTypedDescriptor(mNode.desc) && !isAwareNonDispatching(mNode.owner, mNode.name)) {
@@ -1066,6 +1164,17 @@ public class GLSMRedirector {
                     // Redirect method handles in invokedynamic bootstrap arguments
                     for (int i = 0; i < dynNode.bsmArgs.length; i++) {
                         if (!(dynNode.bsmArgs[i] instanceof Handle handle)) continue;
+                        if (handle.getOwner().equals(GLStateManager)) {
+                            final int tag = handle.getTag();
+                            final String newOwner = tag == Opcodes.H_INVOKESTATIC ? methodOwner.get(handle.getName())
+                                : tag == Opcodes.H_GETSTATIC || tag == Opcodes.H_PUTSTATIC ? fieldOwner.get(handle.getName()) : null;
+                            if (newOwner != null) {
+                                warnLegacy(transformedName, handle.getName(), newOwner);
+                                dynNode.bsmArgs[i] = new Handle(tag, newOwner, handle.getName(), handle.getDesc());
+                                changed = true;
+                                continue;
+                            }
+                        }
                         String glsmName = glDescRedirects.get(handle.getOwner() + " " + handle.getName() + handle.getDesc());
                         if (glsmName == null) {
                             final Map<String, String> redirects = handle.getOwner().startsWith(GL_PREFIX) ? glMethodRedirects : methodRedirects.get(handle.getOwner());
@@ -1081,9 +1190,9 @@ public class GLSMRedirector {
                         }
                         if (LOG_SPAM) {
                             final String shortOwner = handle.getOwner().substring(handle.getOwner().lastIndexOf("/") + 1);
-                            LOGGER.info("Redirecting invokedynamic handle in {} from {}.{}{} to GLStateManager.{}{}", transformedName, shortOwner, handle.getName(), handle.getDesc(), glsmName, handle.getDesc());
+                            LOGGER.info("Redirecting invokedynamic handle in {} from {}.{}{} to {}.{}{}", transformedName, shortOwner, handle.getName(), handle.getDesc(), simpleName(getTargetOwner(glsmName)), glsmName, handle.getDesc());
                         }
-                        dynNode.bsmArgs[i] = new Handle(handle.getTag(), GLStateManager, glsmName, handle.getDesc());
+                        dynNode.bsmArgs[i] = new Handle(handle.getTag(), getTargetOwner(glsmName), glsmName, handle.getDesc());
                         changed = true;
                     }
                 }

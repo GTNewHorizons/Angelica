@@ -1,7 +1,16 @@
 package com.gtnewhorizons.angelica.compat.thaumcraft;
 
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMFog;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMLighting;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
@@ -92,7 +101,7 @@ public final class PortalRenderer implements PendingTesrDraws.Pending {
     }
 
     public static void addFace(int axis, boolean negative, double plane, double x0, double y0, double z0, double x1, double y1, double z1, double x3, double y3, double z3) {
-        addFace(GLStateManager.getFogMode().isEnabled(), axis, negative, plane, x0, y0, z0, x1, y1, z1, x3, y3, z3);
+        addFace(GLSMFog.getFogMode().isEnabled(), axis, negative, plane, x0, y0, z0, x1, y1, z1, x3, y3, z3);
     }
 
     static void addFace(boolean fogged, int axis, boolean negative, double plane, double x0, double y0, double z0, double x1, double y1, double z1, double x3, double y3, double z3) {
@@ -153,18 +162,18 @@ public final class PortalRenderer implements PendingTesrDraws.Pending {
     }
 
     public static void endSkippedRender() {
-        if (!GLStateManager.glIsEnabled(GL11.GL_FOG)) GLStateManager.glEnable(GL11.GL_FOG);
+        if (!GLSMEnable.glIsEnabled(GL11.GL_FOG)) GLSMEnable.glEnable(GL11.GL_FOG);
     }
 
     private static void prepareBatch(boolean fogged) {
         if ((faceCount > 0 || farCount > 0) && fogged != batchFogged) flushFaces();
         batchFogged = fogged;
-        final int modelViewGeneration = GLStateManager.getMvGeneration();
-        final int projectionGeneration = GLStateManager.getProjGeneration();
+        final int modelViewGeneration = GLSMMatrices.getMvGeneration();
+        final int projectionGeneration = GLSMMatrices.getProjGeneration();
         final boolean empty = faceCount == 0 && farCount == 0;
         if (empty || modelViewGeneration != batchModelViewGeneration || projectionGeneration != batchProjectionGeneration) {
             final int mode = currentMode();
-            GLStateManager.getProjectionMatrix().mul(GLStateManager.getModelViewMatrix(), modelViewProjection);
+            GLSMMatrices.getProjectionMatrix().mul(GLSMMatrices.getModelViewMatrix(), modelViewProjection);
             if (!empty && (mode != batchMode || !modelViewProjection.equals(frame.modelViewProjection))) flushFaces();
             if (faceCount == 0 && farCount == 0) startBatch(mode);
             batchModelViewGeneration = modelViewGeneration;
@@ -186,14 +195,14 @@ public final class PortalRenderer implements PendingTesrDraws.Pending {
     private static void restoreSkippedPlaneState() {
         if (!skippedPlaneState) return;
         skippedPlaneState = false;
-        if (GLStateManager.glIsEnabled(GL11.GL_BLEND)) GLStateManager.disableBlend();
-        if (GLStateManager.glIsEnabled(GL11.GL_TEXTURE_GEN_S)) GLStateManager.glDisable(GL11.GL_TEXTURE_GEN_S);
-        if (GLStateManager.glIsEnabled(GL11.GL_TEXTURE_GEN_T)) GLStateManager.glDisable(GL11.GL_TEXTURE_GEN_T);
-        if (GLStateManager.glIsEnabled(GL11.GL_TEXTURE_GEN_R)) GLStateManager.glDisable(GL11.GL_TEXTURE_GEN_R);
-        if (GLStateManager.glIsEnabled(GL11.GL_TEXTURE_GEN_Q)) GLStateManager.glDisable(GL11.GL_TEXTURE_GEN_Q);
-        if (!GLStateManager.glIsEnabled(GL11.GL_LIGHTING)) GLStateManager.enableLighting();
-        if (GLStateManager.getTextures().getTextureUnitBindings(GLStateManager.getActiveTextureUnit()).getBinding() != lastPlaneTexture) {
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, lastPlaneTexture);
+        if (GLSMEnable.glIsEnabled(GL11.GL_BLEND)) GLSMBlend.disableBlend();
+        if (GLSMEnable.glIsEnabled(GL11.GL_TEXTURE_GEN_S)) GLSMEnable.glDisable(GL11.GL_TEXTURE_GEN_S);
+        if (GLSMEnable.glIsEnabled(GL11.GL_TEXTURE_GEN_T)) GLSMEnable.glDisable(GL11.GL_TEXTURE_GEN_T);
+        if (GLSMEnable.glIsEnabled(GL11.GL_TEXTURE_GEN_R)) GLSMEnable.glDisable(GL11.GL_TEXTURE_GEN_R);
+        if (GLSMEnable.glIsEnabled(GL11.GL_TEXTURE_GEN_Q)) GLSMEnable.glDisable(GL11.GL_TEXTURE_GEN_Q);
+        if (!GLSMEnable.glIsEnabled(GL11.GL_LIGHTING)) GLSMLighting.enableLighting();
+        if (GLSMTextures.getTextures().getTextureUnitBindings(GLSMTextures.getActiveTextureUnit()).getBinding() != lastPlaneTexture) {
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, lastPlaneTexture);
         }
     }
 
@@ -248,7 +257,7 @@ public final class PortalRenderer implements PendingTesrDraws.Pending {
         farTexture = textureId(FAR_FIELD);
         frame.modelViewProjection.set(modelViewProjection);
         if (mode == MODE_SHADOW) return;
-        frame.modelView.set(GLStateManager.getModelViewMatrix());
+        frame.modelView.set(GLSMMatrices.getModelViewMatrix());
         frame.cameraX = (float) TileEntityRendererDispatcher.staticPlayerX;
         frame.cameraY = (float) TileEntityRendererDispatcher.staticPlayerY;
         frame.cameraZ = (float) TileEntityRendererDispatcher.staticPlayerZ;
@@ -266,7 +275,7 @@ public final class PortalRenderer implements PendingTesrDraws.Pending {
             drawer.drawDirect(faces, faceCount, tunnel, field, frame, batchFogged);
             return;
         }
-        final ViewportState viewport = GLStateManager.getViewportState();
+        final ViewportState viewport = GLSMRasterizer.getViewportState();
         int first = 0, x = 0, y = 0, rowHeight = 0;
         for (int face = 0; face < faceCount; face++) {
             final int size = slotSize(face, viewport.width, viewport.height);
@@ -313,40 +322,40 @@ public final class PortalRenderer implements PendingTesrDraws.Pending {
 
     private static void capture(DeferredWorldRenderingPipeline pipeline, int first, int count, int tunnel, int field) {
         BatchStateGuard.beforeChange();
-        final int drawFramebuffer = GLStateManager.getDrawFramebuffer();
-        final int readFramebuffer = GLStateManager.getReadFramebuffer();
+        final int drawFramebuffer = GLSMFramebuffer.getDrawFramebuffer();
+        final int readFramebuffer = GLSMFramebuffer.getReadFramebuffer();
         pipeline.setIsMainBound(false);
-        final int depth = GLStateManager.pushState(StateSet.forMask(GL11.GL_VIEWPORT_BIT | GL11.GL_ENABLE_BIT | GL11.GL_COLOR_BUFFER_BIT));
+        final int depth = GLSMAttribStack.pushState(StateSet.forMask(GL11.GL_VIEWPORT_BIT | GL11.GL_ENABLE_BIT | GL11.GL_COLOR_BUFFER_BIT));
         try {
             drawer.atlasFramebuffer().bind();
-            GLStateManager.glViewport(0, 0, PortalDrawer.ATLAS_SIZE, PortalDrawer.ATLAS_SIZE);
-            GLStateManager.disableDepthTest();
-            GLStateManager.disableCull();
-            GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
-            GLStateManager.glDisable(GL11.GL_STENCIL_TEST);
-            GLStateManager.glColorMask(true, true, true, true);
+            GLSMRasterizer.glViewport(0, 0, PortalDrawer.ATLAS_SIZE, PortalDrawer.ATLAS_SIZE);
+            GLSMDepthStencilAlpha.disableDepthTest();
+            GLSMRasterizer.disableCull();
+            GLSMEnable.glDisable(GL11.GL_SCISSOR_TEST);
+            GLSMEnable.glDisable(GL11.GL_STENCIL_TEST);
+            GLSMBlend.glColorMask(true, true, true, true);
             drawer.drawCapture(faces, first, count, tunnel, field, frame);
         } finally {
-            GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, drawFramebuffer);
-            GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, readFramebuffer);
-            GLStateManager.popStateTo(depth);
+            GLSMFramebuffer.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, drawFramebuffer);
+            GLSMFramebuffer.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, readFramebuffer);
+            GLSMAttribStack.popStateTo(depth);
             pipeline.setIsMainBound(true);
             pipeline.rebindCurrentPass();
         }
     }
 
     private static void drawQuads(int texture, int first, int count, boolean fromAtlas) {
-        final int depth = GLStateManager.pushState(StateSet.forMask(GL11.GL_ENABLE_BIT | GL11.GL_COLOR_BUFFER_BIT | GL11.GL_CURRENT_BIT | GL11.GL_TEXTURE_BIT));
-        savedTextureMatrix.set(GLStateManager.getTextures().getTextureUnitMatrix(0));
+        final int depth = GLSMAttribStack.pushState(StateSet.forMask(GL11.GL_ENABLE_BIT | GL11.GL_COLOR_BUFFER_BIT | GL11.GL_CURRENT_BIT | GL11.GL_TEXTURE_BIT));
+        savedTextureMatrix.set(GLSMTextures.getTextures().getTextureUnitMatrix(0));
         CapturedRenderingState.INSTANCE.pushCurrentBlockEntity();
         try {
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-            GLStateManager.enableTexture();
-            GLStateManager.disableLighting();
-            GLStateManager.disableBlend();
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+            GLSMTextures.enableTexture();
+            GLSMLighting.disableLighting();
+            GLSMBlend.disableBlend();
             if (!batchFogged) disableFogUntilPop();
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-            GLStateManager.setTextureMatrix(0, IDENTITY);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+            GLSMMatrices.setTextureMatrix(0, IDENTITY);
             final Tessellator tess = Tessellator.instance;
             final float texel = 1.0F / PortalDrawer.ATLAS_SIZE;
             int runStart = first;
@@ -372,21 +381,21 @@ public final class PortalRenderer implements PendingTesrDraws.Pending {
             if (fromAtlas) BatchStateGuard.beforeChange();
         } finally {
             CapturedRenderingState.INSTANCE.popCurrentBlockEntity();
-            GLStateManager.setTextureMatrix(0, savedTextureMatrix);
+            GLSMMatrices.setTextureMatrix(0, savedTextureMatrix);
             popStateTo(depth);
         }
     }
 
     private static void drawFarFaces() {
-        final int depth = GLStateManager.pushState(StateSet.forMask(GL11.GL_ENABLE_BIT | GL11.GL_COLOR_BUFFER_BIT | GL11.GL_CURRENT_BIT | GL11.GL_TEXTURE_BIT));
+        final int depth = GLSMAttribStack.pushState(StateSet.forMask(GL11.GL_ENABLE_BIT | GL11.GL_COLOR_BUFFER_BIT | GL11.GL_CURRENT_BIT | GL11.GL_TEXTURE_BIT));
         CapturedRenderingState.INSTANCE.pushCurrentBlockEntity();
         try {
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-            GLStateManager.enableTexture();
-            GLStateManager.disableLighting();
-            GLStateManager.disableBlend();
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+            GLSMTextures.enableTexture();
+            GLSMLighting.disableLighting();
+            GLSMBlend.disableBlend();
             disableFogUntilPop();
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, farTexture);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, farTexture);
             final Tessellator tess = Tessellator.instance;
             final float[] f = farFaces;
             int runStart = 0;
@@ -416,7 +425,7 @@ public final class PortalRenderer implements PendingTesrDraws.Pending {
     private static void disableFogUntilPop() {
         BatchStateGuard.suspend();
         try {
-            GLStateManager.glDisable(GL11.GL_FOG);
+            GLSMEnable.glDisable(GL11.GL_FOG);
         } finally {
             BatchStateGuard.resume();
         }
@@ -425,7 +434,7 @@ public final class PortalRenderer implements PendingTesrDraws.Pending {
     private static void popStateTo(int depth) {
         BatchStateGuard.suspend();
         try {
-            GLStateManager.popStateTo(depth);
+            GLSMAttribStack.popStateTo(depth);
         } finally {
             BatchStateGuard.resume();
         }

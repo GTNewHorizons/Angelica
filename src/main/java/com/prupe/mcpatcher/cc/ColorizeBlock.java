@@ -16,7 +16,7 @@ import net.minecraft.init.Blocks;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.IBlockAccess;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
 
 import com.prupe.mcpatcher.MCLogger;
 import com.prupe.mcpatcher.MCPatcherUtils;
@@ -414,7 +414,7 @@ public class ColorizeBlock {
                 waterColor = new float[3];
                 ColorUtils.intToFloat3(waterColorMap.getColorMultiplier(), waterColor);
             }
-            GLStateManager.glColor4f(waterColor[0], waterColor[1], waterColor[2], 1.0f);
+            GLSMCurrentAttribs.glColor4f(waterColor[0], waterColor[1], waterColor[2], 1.0f);
         }
     }
 

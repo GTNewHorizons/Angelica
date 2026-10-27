@@ -31,7 +31,7 @@ import com.gtnewhorizons.angelica.debug.render.DebugGeometry;
 import com.gtnewhorizons.angelica.debug.render.DebugProgram;
 import com.gtnewhorizons.angelica.debug.render.DebugPrograms;
 import com.gtnewhorizons.angelica.debug.render.NativeScratch;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.rendering.celeritas.AngelicaRenderSectionManager;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
@@ -110,7 +110,7 @@ public class ChunkDebugMinimap {
             }
         }
 
-        GLStateManager.getProjectionMatrix().mul(GLStateManager.getModelViewMatrix(), mvp).scale(2, 2, 1).translate(32, 32, 0);
+        GLSMMatrices.getProjectionMatrix().mul(GLSMMatrices.getModelViewMatrix(), mvp).scale(2, 2, 1).translate(32, 32, 0);
 
         scope.beginHud();
         try {

@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.tesr;
 
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
 import com.gtnewhorizons.angelica.mixins.interfaces.IBatchEligibility;
 import com.gtnewhorizons.angelica.rendering.tesr.BatchEligibility;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrProviderDispatch;
@@ -28,11 +28,11 @@ public class MixinTileEntityRendererDispatcher {
 
             final IBatchEligibility holder = (IBatchEligibility) renderer;
             final byte state = holder.angelica$batchState();
-            BatchEligibility.begin(state, GLStateManager.drawCalls);
+            BatchEligibility.begin(state, GLSMDraws.drawCalls);
             try {
                 renderer.renderTileEntityAt(te, x, y, z, partialTicks);
             } finally {
-                final byte next = BatchEligibility.end(state, GLStateManager.drawCalls);
+                final byte next = BatchEligibility.end(state, GLSMDraws.drawCalls);
                 if (next != state) {
                     holder.angelica$setBatchState(next);
                     BatchEligibility.onStateChange(renderer, next);

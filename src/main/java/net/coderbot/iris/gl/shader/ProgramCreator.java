@@ -3,7 +3,7 @@
 package net.coderbot.iris.gl.shader;
 
 import com.gtnewhorizons.angelica.glsm.GLDebug;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
@@ -51,17 +51,17 @@ public class ProgramCreator {
 	}
 
 	public static int create(String name, @Nullable ProgramBinaryCache.Key cacheKey, GlShader... shaders) {
-		int program = GLStateManager.glCreateProgram();
+		int program = GLSMPrograms.glCreateProgram();
 
 		for (int i = 0; i < ATTRIBUTE_NAMES.length; i++) {
 			RenderSystem.bindAttributeLocation(program, ATTRIBUTE_LOCATIONS[i], ATTRIBUTE_NAMES[i]);
 		}
 
 		for (GlShader shader : shaders) {
-            GLStateManager.glAttachShader(program, shader.getHandle());
+            GLSMPrograms.glAttachShader(program, shader.getHandle());
 		}
 
-        GLStateManager.glLinkProgram(program);
+        GLSMPrograms.glLinkProgram(program);
 
 		GLDebug.nameObject(KHRDebug.GL_PROGRAM, program, name);
 
@@ -76,7 +76,7 @@ public class ProgramCreator {
 			LOGGER.warn("Program link log for " + name + ": " + log);
 		}
 
-		int result = GLStateManager.glGetProgrami(program, GL20.GL_LINK_STATUS);
+		int result = GLSMPrograms.glGetProgrami(program, GL20.GL_LINK_STATUS);
 
 		if (result != GL11.GL_TRUE) {
 			throw new RuntimeException("Shader program linking failed, see log for details");

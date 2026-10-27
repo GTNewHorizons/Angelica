@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.rendering.culling;
 
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
 import com.gtnewhorizons.angelica.glsm.GlTestSupport;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import org.junit.jupiter.api.Test;
@@ -26,7 +26,7 @@ class CullingShaderCompileTest {
 
     private static void assertCompiles(String name) throws IOException {
         assumeTrue(RenderSystem.supportsCompute(), "compute shaders unsupported");
-        GLStateManager.glDeleteShader(GlTestSupport.compile(GL43.GL_COMPUTE_SHADER, source(name)));
+        GLSMPrograms.glDeleteShader(GlTestSupport.compile(GL43.GL_COMPUTE_SHADER, source(name)));
     }
 
     @Test

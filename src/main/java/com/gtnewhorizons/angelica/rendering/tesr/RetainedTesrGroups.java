@@ -3,6 +3,13 @@ package com.gtnewhorizons.angelica.rendering.tesr;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.CubeParams;
@@ -1322,7 +1329,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
             final Group group = list.get(i);
             if (!live(group) || !queuedInstanced(group)) continue;
             if (group.templateColumns.hasInstances()) {
-                final boolean fixedFunction = deferred == null && GLStateManager.getActiveProgram() == 0;
+                final boolean fixedFunction = deferred == null && GLSMPrograms.getActiveProgram() == 0;
                 drawTemplateRuns(group.templateColumns, group.material.special().isGlint() && fixedFunction, group.material == EntityMaterials.ITEM_GLINT);
             }
             if (!cubeAvailable && group.cubeColumns.hasInstances() && !group.cubeColumns.anyAtlasSlot) {
@@ -1438,13 +1445,13 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
             applyTexMatrix(run);
             final boolean combined = combineGlint && r + 1 < n && combineRuns(cols, run, cols.runs.get(r + 1));
             if (itemStencil) {
-                GLStateManager.glPushAttrib(GL11.GL_STENCIL_BUFFER_BIT);
-                GLStateManager.glEnable(GL11.GL_STENCIL_TEST);
-                GLStateManager.glStencilMask(1);
-                GLStateManager.glClearStencil(0);
-                GLStateManager.glClear(GL11.GL_STENCIL_BUFFER_BIT);
-                GLStateManager.glStencilFunc(GL11.GL_EQUAL, 0, 1);
-                GLStateManager.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_INCR);
+                GLSMAttribStack.glPushAttrib(GL11.GL_STENCIL_BUFFER_BIT);
+                GLSMEnable.glEnable(GL11.GL_STENCIL_TEST);
+                GLSMDepthStencilAlpha.glStencilMask(1);
+                GLSMDepthStencilAlpha.glClearStencil(0);
+                GLSMFramebuffer.glClear(GL11.GL_STENCIL_BUFFER_BIT);
+                GLSMDepthStencilAlpha.glStencilFunc(GL11.GL_EQUAL, 0, 1);
+                GLSMDepthStencilAlpha.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_INCR);
             }
             try {
                 if (canRedraw(run)) {
@@ -1456,7 +1463,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
                 }
                 instancedInstances += run.parts;
             } finally {
-                if (itemStencil) GLStateManager.glPopAttrib();
+                if (itemStencil) GLSMAttribStack.glPopAttrib();
                 if (combined) CombinedGlint.end();
             }
             if (combined) r++;
@@ -1509,16 +1516,16 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
         if (run.identity && !texApplied) return;
         if (!texApplied) {
             texApplied = true;
-            savedTexMatrix.set(GLStateManager.getTextures().getTextureUnitMatrix(0));
+            savedTexMatrix.set(GLSMTextures.getTextures().getTextureUnitMatrix(0));
         }
-        GLStateManager.setTextureMatrix(0, run.identity ? IDENTITY : run.matrix);
+        GLSMMatrices.setTextureMatrix(0, run.identity ? IDENTITY : run.matrix);
         if (!run.identity) texMatrixRuns++;
     }
 
     private void restoreTexMatrix() {
         if (!texApplied) return;
         texApplied = false;
-        GLStateManager.setTextureMatrix(0, savedTexMatrix);
+        GLSMMatrices.setTextureMatrix(0, savedTexMatrix);
     }
 
     private static final Matrix4f IDENTITY = new Matrix4f();
@@ -1537,7 +1544,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
 
     private void drawInstancesCpu(Group group, InstanceColumns cols) {
         saveMV();
-        GLStateManager.setModelViewMatrix(IDENTITY);
+        GLSMMatrices.setModelViewMatrix(IDENTITY);
         final VertexFormat format = group.layer.getVertexFormat();
         for (int r = 0, rn = cols.runs.size(); r < rn; r++) {
             final TexRun head = cols.runs.get(r);
@@ -1744,21 +1751,21 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
         AngelicaBufferSource.setEntityColor(group.entityColor);
         drawMV.set(baseMV).translate((float) (group.anchor.x - camX), (float) (group.anchor.y - camY), (float) (group.anchor.z - camZ));
         saveMV();
-        GLStateManager.setModelViewMatrix(drawMV);
+        GLSMMatrices.setModelViewMatrix(drawMV);
         group.mesh.render();
     }
 
     private void saveMV() {
         if (!mvSaved) {
             mvSaved = true;
-            savedMV.set(GLStateManager.getModelViewMatrix());
+            savedMV.set(GLSMMatrices.getModelViewMatrix());
         }
     }
 
     private void restoreMV() {
         if (mvSaved) {
             mvSaved = false;
-            GLStateManager.setModelViewMatrix(savedMV);
+            GLSMMatrices.setModelViewMatrix(savedMV);
         }
     }
 }

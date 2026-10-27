@@ -18,16 +18,16 @@ public class GLSM_WorkerContextStacks_GLTest {
     void enableBitBracketRestoresOnWorkerContext() {
         GLStateManager.enterWorkerContext();
         try {
-            GLStateManager.glDisable(GL11.GL_CULL_FACE);
+            GLSMEnable.glDisable(GL11.GL_CULL_FACE);
 
-            final int d = GLStateManager.pushState(StateSet.forMask(GL11.GL_ENABLE_BIT));
-            GLStateManager.glEnable(GL11.GL_CULL_FACE);
-            GLStateManager.popStateTo(d);
+            final int d = GLSMAttribStack.pushState(StateSet.forMask(GL11.GL_ENABLE_BIT));
+            GLSMEnable.glEnable(GL11.GL_CULL_FACE);
+            GLSMAttribStack.popStateTo(d);
 
-            assertFalse(GLStateManager.glIsEnabled(GL11.GL_CULL_FACE), "cull face restored on the worker context");
+            assertFalse(GLSMEnable.glIsEnabled(GL11.GL_CULL_FACE), "cull face restored on the worker context");
             verifyIsEnabled(GL11.GL_CULL_FACE, false, "driver cull face restored on the worker context");
         } finally {
-            GLStateManager.glDisable(GL11.GL_CULL_FACE);
+            GLSMEnable.glDisable(GL11.GL_CULL_FACE);
             GLStateManager.exitWorkerContext();
         }
     }
@@ -36,44 +36,44 @@ public class GLSM_WorkerContextStacks_GLTest {
     void colorBufferBitBracketRestoresOnWorkerContext() {
         GLStateManager.enterWorkerContext();
         try {
-            GLStateManager.disableBlend();
-            GLStateManager.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE, GL11.GL_ZERO);
+            GLSMBlend.disableBlend();
+            GLSMBlend.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE, GL11.GL_ZERO);
 
-            final int d = GLStateManager.pushState(StateSet.forMask(GL11.GL_COLOR_BUFFER_BIT));
-            GLStateManager.enableBlend();
-            GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
-            GLStateManager.popStateTo(d);
+            final int d = GLSMAttribStack.pushState(StateSet.forMask(GL11.GL_COLOR_BUFFER_BIT));
+            GLSMBlend.enableBlend();
+            GLSMBlend.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+            GLSMAttribStack.popStateTo(d);
 
-            assertFalse(GLStateManager.glIsEnabled(GL11.GL_BLEND), "blend enable restored on the worker context");
+            assertFalse(GLSMEnable.glIsEnabled(GL11.GL_BLEND), "blend enable restored on the worker context");
             verifyIsEnabled(GL11.GL_BLEND, false, "driver blend enable restored on the worker context");
-            assertEquals(GL11.GL_ONE, GLStateManager.getBlendState().getSrcRgb(), "blend src rgb restored on the worker context");
+            assertEquals(GL11.GL_ONE, GLSMBlend.getBlendState().getSrcRgb(), "blend src rgb restored on the worker context");
             assertEquals(GL11.GL_ONE, GL11.glGetInteger(GL14.GL_BLEND_SRC_RGB), "driver blend src rgb restored on the worker context");
         } finally {
-            GLStateManager.disableBlend();
-            GLStateManager.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE, GL11.GL_ZERO);
+            GLSMBlend.disableBlend();
+            GLSMBlend.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE, GL11.GL_ZERO);
             GLStateManager.exitWorkerContext();
         }
     }
 
     @Test
     void workerResetLeavesPrimaryContextUntouched() {
-        GLStateManager.glDisable(GL11.GL_CULL_FACE);
-        final int primaryDepthBefore = GLStateManager.getAttribDepth();
+        GLSMEnable.glDisable(GL11.GL_CULL_FACE);
+        final int primaryDepthBefore = GLSMAttribStack.getAttribDepth();
 
         GLStateManager.enterWorkerContext();
         try {
-            GLStateManager.pushState(StateSet.forMask(GL11.GL_ENABLE_BIT));
-            GLStateManager.glEnable(GL11.GL_CULL_FACE);
+            GLSMAttribStack.pushState(StateSet.forMask(GL11.GL_ENABLE_BIT));
+            GLSMEnable.glEnable(GL11.GL_CULL_FACE);
 
             GLStateManager.reset();
 
-            assertEquals(0, GLStateManager.getAttribDepth(), "worker attrib depth drained by its own reset");
+            assertEquals(0, GLSMAttribStack.getAttribDepth(), "worker attrib depth drained by its own reset");
         } finally {
             GLStateManager.exitWorkerContext();
         }
 
-        assertEquals(primaryDepthBefore, GLStateManager.getAttribDepth(), "primary context depth untouched by the worker reset");
-        assertFalse(GLStateManager.glIsEnabled(GL11.GL_CULL_FACE), "primary context cull face untouched by the worker reset");
+        assertEquals(primaryDepthBefore, GLSMAttribStack.getAttribDepth(), "primary context depth untouched by the worker reset");
+        assertFalse(GLSMEnable.glIsEnabled(GL11.GL_CULL_FACE), "primary context cull face untouched by the worker reset");
     }
 
     @Test

@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.client.gui;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
 import lombok.AllArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -123,7 +123,7 @@ public class SliderClone extends GuiButton {
                 this.displayString = displayStringFormatter.apply(f);
             }
 
-            GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+            GLSMCurrentAttribs.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
             this.drawTexturedModalRect(this.xPosition + (int)(this.sliderPercentage * (float)(this.width - 8)), this.yPosition, 0, 66, 4, 20);
             this.drawTexturedModalRect(this.xPosition + (int)(this.sliderPercentage * (float)(this.width - 8)) + 4, this.yPosition, 196, 66, 4, 20);
         }

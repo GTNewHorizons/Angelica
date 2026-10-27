@@ -78,8 +78,8 @@ import java.lang.annotation.Target;
  * <pre>
  * &#64;Surround(method = ..., at = &#64;At(value = "INVOKE", target = ...))
  * private void enter() {
- *     &#64;Surround.Carry("depth") int depth = GLStateManager.pushState(StateSet.BLEND);
- *     &#64;Surround.Carry("prev") int prevProgram = GLStateManager.getActiveProgram();
+ *     &#64;Surround.Carry("depth") int depth = GLSMAttribStack.pushState(StateSet.BLEND);
+ *     &#64;Surround.Carry("prev") int prevProgram = GLSMPrograms.getActiveProgram();
  *     &#64;Surround.Carry Class&lt;?&gt; prevRenderable = TesrAttribution.currentRenderable;
  * }
  *

@@ -1,6 +1,6 @@
 package net.coderbot.iris.gbuffer_overrides.matching;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import org.lwjgl.opengl.GL11;
 
@@ -15,10 +15,10 @@ public final class TranslucentBlendMatcher {
     private TranslucentBlendMatcher() {}
 
     public static boolean matchesCurrentState() {
-        if (!GLStateManager.isEffectiveBlendEnabled()) {
+        if (!GLSMBlend.isEffectiveBlendEnabled()) {
             return false;
         }
-        GLStateManager.getEffectiveBlendState(scratch);
+        GLSMBlend.getEffectiveBlendState(scratch);
         return scratch.getSrcRgb() == GL11.GL_SRC_ALPHA && scratch.getDstRgb() == GL11.GL_ONE_MINUS_SRC_ALPHA;
     }
 }

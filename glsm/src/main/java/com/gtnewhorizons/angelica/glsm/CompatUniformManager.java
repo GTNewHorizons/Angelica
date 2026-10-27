@@ -257,8 +257,8 @@ public class CompatUniformManager {
     }
 
     private static void uploadMatrices(int[] locs, boolean mvChanged, boolean mvLinearChanged, boolean projChanged, boolean texMatChanged) {
-        final Matrix4f mv = GLStateManager.getModelViewMatrix();
-        final Matrix4f proj = GLStateManager.getProjectionMatrix();
+        final Matrix4f mv = GLSMMatrices.getModelViewMatrix();
+        final Matrix4f proj = GLSMMatrices.getProjectionMatrix();
 
         if (mvChanged) {
             // ModelView
@@ -340,13 +340,13 @@ public class CompatUniformManager {
 
             // angelica_LightmapTextureMatrix — actual GLSM texture unit 1 matrix (set by enableLightmap())
             if (locs[LOC_LIGHTMAP_TEXTURE_MATRIX] != -1) {
-                GLStateManager.getTextures().getTextureUnitMatrix(1).get(mat4Buf);
+                GLSMTextures.getTextures().getTextureUnitMatrix(1).get(mat4Buf);
                 RENDER_BACKEND.uniformMatrix4(locs[LOC_LIGHTMAP_TEXTURE_MATRIX], false, mat4Buf);
             }
 
             // iris_TextureMatrix — texture unit 0 matrix (animated by glints, etc.)
             if (locs[LOC_IRIS_TEXTURE_MATRIX] != -1) {
-                GLStateManager.getTextures().getTextureUnitMatrix(0).get(mat4Buf);
+                GLSMTextures.getTextures().getTextureUnitMatrix(0).get(mat4Buf);
                 RENDER_BACKEND.uniformMatrix4(locs[LOC_IRIS_TEXTURE_MATRIX], false, mat4Buf);
             }
         }
@@ -359,7 +359,7 @@ public class CompatUniformManager {
 
     private static void uploadFragmentUniforms(int[] locs) {
         // Fog uniforms
-        FogStateStack fog = GLStateManager.getFogState();
+        FogStateStack fog = GLSMFog.getFogState();
         if (locs[LOC_FOG_DENSITY] != -1) {
             RENDER_BACKEND.uniform1f(locs[LOC_FOG_DENSITY], Math.max(0.0f, fog.getDensity()));
         }
@@ -383,10 +383,10 @@ public class CompatUniformManager {
         // Return -1.0f for ALWAYS or disabled so `alpha <= ref` never discards.
         if (locs[LOC_ALPHA_TEST_REF] != -1) {
             final float ref;
-            if (!GLStateManager.getAlphaTest().isEnabled() || GLStateManager.getAlphaState().getFunction() == GL11.GL_ALWAYS) {
+            if (!GLSMDepthStencilAlpha.getAlphaTest().isEnabled() || GLSMDepthStencilAlpha.getAlphaState().getFunction() == GL11.GL_ALWAYS) {
                 ref = -1.0f;
             } else {
-                ref = GLStateManager.getAlphaState().getReference();
+                ref = GLSMDepthStencilAlpha.getAlphaState().getReference();
             }
             RENDER_BACKEND.uniform1f(locs[LOC_ALPHA_TEST_REF], ref);
         }
@@ -396,8 +396,8 @@ public class CompatUniformManager {
      * Scene color = emission + ambient * lightModel.ambient, alpha = diffuse.a Same computation as {@code Uniforms.uploadLightingPreComputed()}.
      */
     private static void uploadSceneColor(int[] locs) {
-        final MaterialState mat = GLStateManager.getFrontMaterial();
-        final LightModelState lm = GLStateManager.getLightModel();
+        final MaterialState mat = GLSMLighting.getFrontMaterial();
+        final LightModelState lm = GLSMLighting.getLightModel();
         vec4Buf.clear();
         vec4Buf.put(mat.emission.x + mat.ambient.x * lm.ambient.x)
                .put(mat.emission.y + mat.ambient.y * lm.ambient.y)
@@ -408,7 +408,7 @@ public class CompatUniformManager {
     }
 
     private static void uploadLightSources(int[] locs) {
-        final LightStateStack[] lights = GLStateManager.getLightDataStates();
+        final LightStateStack[] lights = GLSMLighting.getLightDataStates();
         for (int li = 0; li < 2; li++) {
             final int base = LOC_LIGHT_BASE + li * LIGHT_FIELDS;
             final LightState light = lights[li];
@@ -455,7 +455,7 @@ public class CompatUniformManager {
     private static void uploadMaterial(int[] locs) {
         // Early exit: if the first material field isn't present, no material uniforms exist
         if (locs[LOC_MAT_BASE] == -1) return;
-        final MaterialState mat = GLStateManager.getFrontMaterial();
+        final MaterialState mat = GLSMLighting.getFrontMaterial();
         if (locs[LOC_MAT_BASE + MF_EMISSION] != -1)
             RENDER_BACKEND.uniform4f(locs[LOC_MAT_BASE + MF_EMISSION], mat.emission.x, mat.emission.y, mat.emission.z, mat.emission.w);
         if (locs[LOC_MAT_BASE + MF_AMBIENT] != -1)
@@ -470,10 +470,10 @@ public class CompatUniformManager {
 
     private static void uploadClipPlanes(int[] locs) {
         if (locs[LOC_CLIP_PLANES_ENABLED] != -1) {
-            RENDER_BACKEND.uniform1i(locs[LOC_CLIP_PLANES_ENABLED], GLStateManager.anyClipPlaneEnabled() ? 1 : 0);
+            RENDER_BACKEND.uniform1i(locs[LOC_CLIP_PLANES_ENABLED], GLSMRasterizer.anyClipPlaneEnabled() ? 1 : 0);
         }
         if (locs[LOC_CLIP_PLANES] != -1) {
-            final ClipPlaneState cps = GLStateManager.getClipPlaneState();
+            final ClipPlaneState cps = GLSMRasterizer.getClipPlaneState();
             clipPlaneBuf.clear();
             for (int i = 0; i < GLStateManager.MAX_CLIP_PLANES; i++) {
                 cps.putEyePlane(i, clipPlaneBuf);

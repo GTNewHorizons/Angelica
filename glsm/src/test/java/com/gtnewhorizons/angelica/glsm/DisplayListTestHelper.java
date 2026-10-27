@@ -62,9 +62,9 @@ public final class DisplayListTestHelper {
 
     public static CompiledDisplayList createDisplayList(Runnable runnable) {
         int list = GL11.glGenLists(1);
-        GLStateManager.glNewList(list, GL11.GL_COMPILE);
+        GLSMDraws.glNewList(list, GL11.GL_COMPILE);
         runnable.run();
-        GLStateManager.glEndList();
+        GLSMDraws.glEndList();
         CompiledDisplayList compiled = DisplayListManager.getDisplayList(list);
         assertNotNull(compiled, "Display list should be compiled");
         return compiled;
@@ -72,13 +72,13 @@ public final class DisplayListTestHelper {
 
     /** Calls {@code list} on an identity modelview and returns the resulting matrix. The caller's matrix is restored. */
     public static FloatBuffer modelviewAfterCall(int list) {
-        GLStateManager.glPushMatrix();
+        GLSMMatrices.glPushMatrix();
         try {
-            GLStateManager.glLoadIdentity();
-            GLStateManager.glCallList(list);
+            GLSMMatrices.glLoadIdentity();
+            GLSMDraws.glCallList(list);
             return GlTestSupport.modelview();
         } finally {
-            GLStateManager.glPopMatrix();
+            GLSMMatrices.glPopMatrix();
         }
     }
 
@@ -96,12 +96,12 @@ public final class DisplayListTestHelper {
 
     /** Immediate-mode quad from the origin to (size, size) at z = 0. */
     public static void immediateQuad(float size) {
-        GLStateManager.glBegin(GL11.GL_QUADS);
-        GLStateManager.glVertex3f(0.0f, 0.0f, 0.0f);
-        GLStateManager.glVertex3f(size, 0.0f, 0.0f);
-        GLStateManager.glVertex3f(size, size, 0.0f);
-        GLStateManager.glVertex3f(0.0f, size, 0.0f);
-        GLStateManager.glEnd();
+        GLSMDraws.glBegin(GL11.GL_QUADS);
+        GLSMDraws.glVertex3f(0.0f, 0.0f, 0.0f);
+        GLSMDraws.glVertex3f(size, 0.0f, 0.0f);
+        GLSMDraws.glVertex3f(size, size, 0.0f);
+        GLSMDraws.glVertex3f(0.0f, size, 0.0f);
+        GLSMDraws.glEnd();
     }
 
     /** Textured quad written straight into the vanilla Tessellator's raw buffer and handed to the draw interceptor. */

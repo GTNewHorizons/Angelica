@@ -9,6 +9,8 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vbo.IVertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
@@ -80,7 +82,7 @@ public final class DisplayListVBOBuilder {
             final IntArrayList extCounts = wantExt ? new IntArrayList() : null;
             final IntArrayList extPrims = wantExt ? new IntArrayList() : null;
             // drawIndex, start, vertexCount, drawMode for each line draw
-            final IntArrayList lineDraws = GLStateManager.wideLineEmulationEnabled ? new IntArrayList() : null;
+            final IntArrayList lineDraws = GLSMRasterizer.wideLineEmulationEnabled ? new IntArrayList() : null;
 
             for (FormatData data : formatData) {
                 int vertexCount;
@@ -212,11 +214,11 @@ public final class DisplayListVBOBuilder {
                 extAddr + (long) rStart * extStride, extStride);
         }
 
-        final int extVbo = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, extVbo);
+        final int extVbo = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, extVbo);
         ext.position(0).limit(extVerts * extStride);
-        GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, ext, GL15.GL_STATIC_DRAW);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, ext, GL15.GL_STATIC_DRAW);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         memFree(ext);
         return extVbo;
     }

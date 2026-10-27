@@ -4,7 +4,17 @@ import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMLighting;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.ffp.CubeParams;
 import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
@@ -281,14 +291,14 @@ class EntityShadowReplayGLTest {
         when(manager.getEntityRenderObject(entity)).thenReturn(renderer);
         EntityShadowReplay.clear();
         EntityShadowReplay.beginFrame();
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.enableTexture();
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-        GLStateManager.setTextureMatrix(0, new Matrix4f());
-        GLStateManager.glColor4f(1, 1, 1, 1);
-        GLStateManager.setOverlayColor(0, 0, 0, 0);
-        GLStateManager.getTextures().getTextureUnitStates(1).setEnabled(true);
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.enableTexture();
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        GLSMMatrices.setTextureMatrix(0, new Matrix4f());
+        GLSMCurrentAttribs.glColor4f(1, 1, 1, 1);
+        GLSMCurrentAttribs.setOverlayColor(0, 0, 0, 0);
+        GLSMTextures.getTextures().getTextureUnitStates(1).setEnabled(true);
         ModelPartBatcher.onTextureBind(new ResourceLocation("angelica", "test/replay"), 0);
         RenderManager.renderPosX = 1000000.25;
         RenderManager.renderPosY = 7.74;
@@ -304,9 +314,9 @@ class EntityShadowReplayGLTest {
         target.beginPass(new Matrix4f(), 0, 0, 0, new InstancedTemplateRenderer(new InstanceRing()),
             new RetainedTesrTestSupport.CountingPipeline(true, true));
         Reflect.set(batcher, "activeGroups", target);
-        GLStateManager.setModelViewMatrix(shadowView);
-        GLStateManager.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
-        GLStateManager.glPolygonOffset(1, 1);
+        GLSMMatrices.setModelViewMatrix(shadowView);
+        GLSMEnable.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
+        GLSMRasterizer.glPolygonOffset(1, 1);
         ShadowRenderer.ACTIVE = true;
         EntityShadowReplay.beginPass(true, 0);
     }
@@ -325,21 +335,21 @@ class EntityShadowReplayGLTest {
     }
 
     private void beginCapture(Entity captured) {
-        captureEntry.set(GLStateManager.getModelViewMatrix());
+        captureEntry.set(GLSMMatrices.getModelViewMatrix());
         captureOpen = !EntityShadowReplay.isExcluded(captured.getClass()) && !captured.shouldRenderInPass(1);
         assertEquals(captureOpen, EntityShadowReplay.beginEntity(captured, TICK_DELTA));
     }
 
     private void setCapturePose(Matrix4f pose) {
         closeCapturePose();
-        GLStateManager.glPushMatrix();
+        GLSMMatrices.glPushMatrix();
         capturePoseOpen = true;
-        GLStateManager.applyMultMatrix(pose);
+        GLSMMatrices.applyMultMatrix(pose);
     }
 
     private void closeCapturePose() {
         if (!capturePoseOpen) return;
-        GLStateManager.glPopMatrix();
+        GLSMMatrices.glPopMatrix();
         capturePoseOpen = false;
     }
 
@@ -352,8 +362,8 @@ class EntityShadowReplayGLTest {
     private void capture() {
         beginCapture(entity);
         assertEquals(captureOpen, EntityShadowReplay.beginRenderer(renderer, entity, TICK_DELTA, BatchEligibility.SAFE));
-        GLStateManager.glColor4f(1, 1, 1, 1);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        GLSMCurrentAttribs.glColor4f(1, 1, 1, 1);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
         setCapturePose(model);
         assertTrue(batcher.queueTemplate(template(), EntityMaterials.CUTOUT));
     }
@@ -378,9 +388,9 @@ class EntityShadowReplayGLTest {
         RenderManager.renderPosX -= 0.5;
         RenderManager.renderPosY -= 0.12;
         RenderManager.renderPosZ += 0.25;
-        GLStateManager.setModelViewMatrix(mainView);
-        GLStateManager.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
-        GLStateManager.glPolygonOffset(0, 0);
+        GLSMMatrices.setModelViewMatrix(mainView);
+        GLSMEnable.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
+        GLSMRasterizer.glPolygonOffset(0, 0);
         target = new RetainedTesrGroups(new AngelicaBufferSource());
         final AngelicaBufferSource source = Reflect.get(target, "source");
         source.setIdKind(AngelicaBufferSource.GroupIdKind.ENTITY);
@@ -392,10 +402,10 @@ class EntityShadowReplayGLTest {
 
     @Test
     void replayUsesTheMainCameraAndInheritsMainEntryState() {
-        GLStateManager.glShadeModel(GL11.GL_SMOOTH);
+        GLSMRasterizer.glShadeModel(GL11.GL_SMOOTH);
         capture();
         endCaptureAndStartMainPass();
-        GLStateManager.glShadeModel(GL11.GL_FLAT);
+        GLSMRasterizer.glShadeModel(GL11.GL_FLAT);
         assertTrue(EntityShadowReplay.replay(manager, entity, TICK_DELTA, 0));
         final RetainedTesrGroups.Group group = onlyGroup(target);
         final Matrix4f expected = new Matrix4f(mainView).translate(0.5f, 0.12f, -0.25f).mul(model);
@@ -404,22 +414,22 @@ class EntityShadowReplayGLTest {
         assertEquals(0, group.layer.getState().getOffsetFactor());
         assertEquals(0, group.layer.getState().getOffsetUnits());
         assertTrue(group.layer.getState().isLightmap());
-        assertEquals(GL11.GL_FLAT, GLStateManager.getShadeModelState().getValue());
+        assertEquals(GL11.GL_FLAT, GLSMRasterizer.getShadeModelState().getValue());
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"inherited", "explicitNoOp", "popped"})
     void bodyLightingUsesMainInheritanceWhileGlintRemainsUnlit(String kind) {
         prepareGlintCapture();
-        GLStateManager.glDisable(GL11.GL_LIGHTING);
+        GLSMEnable.glDisable(GL11.GL_LIGHTING);
         final GlintCapture armor = new GlintCapture();
         captureGlint(entity, renderer, () -> {
             if (kind.equals("explicitNoOp")) {
-                GLStateManager.glDisable(GL11.GL_LIGHTING);
+                GLSMEnable.glDisable(GL11.GL_LIGHTING);
             } else if (kind.equals("popped")) {
-                GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT);
-                GLStateManager.glEnable(GL11.GL_LIGHTING);
-                GLStateManager.glPopAttrib();
+                GLSMAttribStack.glPushAttrib(GL11.GL_LIGHTING_BIT);
+                GLSMEnable.glEnable(GL11.GL_LIGHTING);
+                GLSMAttribStack.glPopAttrib();
             }
             setCapturePose(model);
             assertTrue(batcher.beginArmorCapture(armor));
@@ -429,13 +439,13 @@ class EntityShadowReplayGLTest {
         });
         assertFalse(onlyMaterialGroup(EntityMaterials.CUTOUT).layer.getState().isLit());
         mainPass();
-        GLStateManager.glEnable(GL11.GL_LIGHTING);
+        GLSMEnable.glEnable(GL11.GL_LIGHTING);
 
         assertTrue(EntityShadowReplay.replay(manager, entity, TICK_DELTA, 0));
         final boolean inherited = !kind.equals("explicitNoOp");
         assertEquals(inherited, onlyMaterialGroup(EntityMaterials.CUTOUT).layer.getState().isLit());
         assertFalse(onlyMaterialGroup(EntityMaterials.GLINT).layer.getState().isLit());
-        assertEquals(inherited, GLStateManager.getLightingState().isEnabled(),
+        assertEquals(inherited, GLSMLighting.getLightingState().isEnabled(),
             "untouched or restored lighting must preserve main entry state; an explicit no-op disable must still apply");
     }
 
@@ -445,17 +455,17 @@ class EntityShadowReplayGLTest {
         final boolean scoped = kind.equals("scoped") || kind.equals("afterPop");
         final boolean inheritedDraw = kind.equals("afterPop");
         final boolean enabled = !kind.equals("explicitNoOp");
-        final var lightmap = GLStateManager.getTextures().getTextureUnitStates(1);
+        final var lightmap = GLSMTextures.getTextures().getTextureUnitStates(1);
         lightmap.setEnabled(false);
         beginCapture(entity);
         assertTrue(EntityShadowReplay.beginRenderer(renderer, entity, TICK_DELTA, BatchEligibility.SAFE));
         setCapturePose(model);
-        if (scoped) GLStateManager.glPushAttrib(GL11.GL_TEXTURE_BIT);
+        if (scoped) GLSMAttribStack.glPushAttrib(GL11.GL_TEXTURE_BIT);
         try {
             lightmap.setEnabled(enabled);
             assertTrue(batcher.queueTemplate(template(), EntityMaterials.CUTOUT));
         } finally {
-            if (scoped) GLStateManager.glPopAttrib();
+            if (scoped) GLSMAttribStack.glPopAttrib();
         }
         if (inheritedDraw) assertTrue(batcher.queueTemplate(template(), EntityMaterials.CUTOUT));
         endCaptureAndStartMainPass();
@@ -485,7 +495,7 @@ class EntityShadowReplayGLTest {
         assertFalse(EntityShadowReplay.replay(manager, entity, TICK_DELTA, 0));
         assertEquals(0, target.groupCount());
         assertEquals(1, rejections(EntityShadowReplay.Rejection.EXIT_STATE_UNSUPPORTED));
-        assertTrue(mainView.equals(GLStateManager.getModelViewMatrix(), 0));
+        assertTrue(mainView.equals(GLSMMatrices.getModelViewMatrix(), 0));
     }
 
     @ParameterizedTest
@@ -500,48 +510,48 @@ class EntityShadowReplayGLTest {
         applyGlintExit(kind);
         endCaptureAndStartMainPass();
 
-        GLStateManager.glColor4f(0.2f, 0.3f, 0.4f, 0.5f);
-        GLStateManager.glEnable(GL11.GL_BLEND);
-        GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ZERO, GL11.GL_ONE);
-        GLStateManager.glDisable(GL11.GL_LIGHTING);
-        GLStateManager.glDepthFunc(GL11.GL_LESS);
-        GLStateManager.glDepthMask(false);
-        GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.63f);
+        GLSMCurrentAttribs.glColor4f(0.2f, 0.3f, 0.4f, 0.5f);
+        GLSMEnable.glEnable(GL11.GL_BLEND);
+        GLSMBlend.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ZERO, GL11.GL_ONE);
+        GLSMEnable.glDisable(GL11.GL_LIGHTING);
+        GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_LESS);
+        GLSMDepthStencilAlpha.glDepthMask(false);
+        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, 0.63f);
         assertTrue(EntityShadowReplay.replay(manager, entity, TICK_DELTA, 0));
 
         final boolean armor = kind.equals("armor");
         final boolean held = kind.equals("held");
-        assertEquals(armor ? 1 : 0.5f * 0.76f, GLStateManager.getColor().getRed());
-        assertEquals(armor ? 1 : 0.25f * 0.76f, GLStateManager.getColor().getGreen());
-        assertEquals(armor ? 1 : 0.8f * 0.76f, GLStateManager.getColor().getBlue());
-        assertEquals(1, GLStateManager.getColor().getAlpha());
-        assertFalse(GLStateManager.isEffectiveBlendEnabled());
-        assertTrue(GLStateManager.getLightingState().isEnabled());
-        assertEquals(GL11.GL_LEQUAL, GLStateManager.getDepthState().getFunc());
-        assertEquals(armor, GLStateManager.isEffectiveDepthMaskEnabled());
-        assertEquals(GL11.GL_SRC_COLOR, GLStateManager.getBlendState().getSrcRgb());
-        assertEquals(GL11.GL_ONE, GLStateManager.getBlendState().getDstRgb());
-        assertEquals(held ? GL11.GL_ONE : GL11.GL_SRC_COLOR, GLStateManager.getBlendState().getSrcAlpha());
-        assertEquals(held ? GL11.GL_ZERO : GL11.GL_ONE, GLStateManager.getBlendState().getDstAlpha());
-        assertEquals(0.63f, GLStateManager.getAlphaState().getReference(), "an untouched exit field must retain the main entry value");
-        assertTrue(mainView.equals(GLStateManager.getModelViewMatrix(), 0));
+        assertEquals(armor ? 1 : 0.5f * 0.76f, GLSMCurrentAttribs.getColor().getRed());
+        assertEquals(armor ? 1 : 0.25f * 0.76f, GLSMCurrentAttribs.getColor().getGreen());
+        assertEquals(armor ? 1 : 0.8f * 0.76f, GLSMCurrentAttribs.getColor().getBlue());
+        assertEquals(1, GLSMCurrentAttribs.getColor().getAlpha());
+        assertFalse(GLSMBlend.isEffectiveBlendEnabled());
+        assertTrue(GLSMLighting.getLightingState().isEnabled());
+        assertEquals(GL11.GL_LEQUAL, GLSMDepthStencilAlpha.getDepthState().getFunc());
+        assertEquals(armor, GLSMDepthStencilAlpha.isEffectiveDepthMaskEnabled());
+        assertEquals(GL11.GL_SRC_COLOR, GLSMBlend.getBlendState().getSrcRgb());
+        assertEquals(GL11.GL_ONE, GLSMBlend.getBlendState().getDstRgb());
+        assertEquals(held ? GL11.GL_ONE : GL11.GL_SRC_COLOR, GLSMBlend.getBlendState().getSrcAlpha());
+        assertEquals(held ? GL11.GL_ZERO : GL11.GL_ONE, GLSMBlend.getBlendState().getDstAlpha());
+        assertEquals(0.63f, GLSMDepthStencilAlpha.getAlphaState().getReference(), "an untouched exit field must retain the main entry value");
+        assertTrue(mainView.equals(GLSMMatrices.getModelViewMatrix(), 0));
     }
 
     @Test
     void followingLiveModelInheritsTheFinalTextureBoundAfterCapturedGeometry() {
         final ResourceLocation finalTexture = new ResourceLocation("angelica", "test/final_binding");
         final ResourceLocation liveTexture = new ResourceLocation("angelica", "test/preceding_live_binding");
-        final int capturedId = GLStateManager.glGenTextures();
-        final int liveId = GLStateManager.glGenTextures();
+        final int capturedId = GLSMTextures.glGenTextures();
+        final int liveId = GLSMTextures.glGenTextures();
         try {
             capture();
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, capturedId);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, capturedId);
             ModelPartBatcher.onTextureBind(finalTexture, capturedId);
             endCaptureAndStartMainPass();
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, liveId);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, liveId);
             ModelPartBatcher.onTextureBind(liveTexture, liveId);
             assertTrue(EntityShadowReplay.replay(manager, entity, TICK_DELTA, 0));
-            assertEquals(capturedId, GLStateManager.getBoundTextureForServerState(0));
+            assertEquals(capturedId, GLSMTextures.getBoundTextureForServerState(0));
 
             final TemplateBuffer following = template();
             assertTrue(batcher.queueTemplate(following, EntityMaterials.CUTOUT), "the next live renderer must inherit matching texture metadata");
@@ -558,8 +568,8 @@ class EntityShadowReplayGLTest {
             }
             assertTrue(found, "the final texture can differ from every captured geometry command's texture");
         } finally {
-            GLStateManager.glDeleteTextures(capturedId);
-            GLStateManager.glDeleteTextures(liveId);
+            GLSMTextures.glDeleteTextures(capturedId);
+            GLSMTextures.glDeleteTextures(liveId);
         }
     }
 
@@ -568,37 +578,37 @@ class EntityShadowReplayGLTest {
     void polygonOffsetAndTextureMatrixKeepOnlyTheWritesTheCaptureMade(String operation) {
         final Matrix4f texture = new Matrix4f().translation(0.2f, 0.3f, 0);
         if (operation.equals("enableOnly") || operation.equals("valuesOnly")) {
-            GLStateManager.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
+            GLSMEnable.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
         }
         beginCapture(entity);
         assertTrue(EntityShadowReplay.beginRenderer(renderer, entity, TICK_DELTA, BatchEligibility.SAFE));
         switch (operation) {
             case "explicitNoOp" -> {
-                GLStateManager.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
-                GLStateManager.glPolygonOffset(1, 1);
+                GLSMEnable.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
+                GLSMRasterizer.glPolygonOffset(1, 1);
             }
-            case "enableOnly" -> GLStateManager.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
-            case "valuesOnly" -> GLStateManager.glPolygonOffset(-2, -3);
+            case "enableOnly" -> GLSMEnable.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
+            case "valuesOnly" -> GLSMRasterizer.glPolygonOffset(-2, -3);
             case "explicit" -> {
-                GLStateManager.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
-                GLStateManager.glPolygonOffset(-2, -3);
-                GLStateManager.setTextureMatrix(0, texture);
+                GLSMEnable.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
+                GLSMRasterizer.glPolygonOffset(-2, -3);
+                GLSMMatrices.setTextureMatrix(0, texture);
             }
             case "popped" -> {
-                GLStateManager.glPushAttrib(GL11.GL_POLYGON_BIT | GL11.GL_ENABLE_BIT);
-                GLStateManager.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
-                GLStateManager.glPolygonOffset(7, 8);
-                GLStateManager.glPopAttrib();
+                GLSMAttribStack.glPushAttrib(GL11.GL_POLYGON_BIT | GL11.GL_ENABLE_BIT);
+                GLSMEnable.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
+                GLSMRasterizer.glPolygonOffset(7, 8);
+                GLSMAttribStack.glPopAttrib();
             }
             default -> {
             }
         }
         assertTrue(batcher.queueTemplate(template(), EntityMaterials.CUTOUT));
         endCaptureAndStartMainPass();
-        GLStateManager.setTextureMatrix(0, new Matrix4f());
-        GLStateManager.glPolygonOffset(-4, -5);
+        GLSMMatrices.setTextureMatrix(0, new Matrix4f());
+        GLSMRasterizer.glPolygonOffset(-4, -5);
         if (!operation.equals("explicitNoOp") && !operation.equals("enableOnly")) {
-            GLStateManager.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
+            GLSMEnable.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
         }
 
         assertTrue(EntityShadowReplay.replay(manager, entity, TICK_DELTA, 0));
@@ -616,8 +626,8 @@ class EntityShadowReplayGLTest {
         final TemplateBuffer second = template();
         final Matrix4f secondModel = new Matrix4f(model).translate(2, 3, 4);
         setCapturePose(secondModel);
-        GLStateManager.glColor4f(0.25f, 0.5f, 0.75f, 1);
-        GLStateManager.setOverlayColor(1, 0, 0, 0.5f);
+        GLSMCurrentAttribs.glColor4f(0.25f, 0.5f, 0.75f, 1);
+        GLSMCurrentAttribs.setOverlayColor(1, 0, 0, 0.5f);
         assertTrue(batcher.queueTemplate(second, EntityMaterials.CUTOUT));
         EntityShadowReplay.endRenderer(true, BatchEligibility.SAFE);
         final ObjectArrayList<EntityRenderCommands.Command> entries = commands();
@@ -626,7 +636,7 @@ class EntityShadowReplayGLTest {
         assertSame(shadow.templateColumns, captured.source);
         assertEquals(2, captured.end - captured.start);
         final float[] original = shadow.templateColumns.matrices.clone();
-        GLStateManager.setOverlayColor(0, 0, 0, 0);
+        GLSMCurrentAttribs.setOverlayColor(0, 0, 0, 0);
         mainPass();
         assertTrue(EntityShadowReplay.replay(manager, entity, TICK_DELTA, 0));
         final RetainedTesrGroups.InstanceColumns actual = onlyGroup(target).templateColumns;
@@ -738,7 +748,7 @@ class EntityShadowReplayGLTest {
         final Matrix4f secondPose = new Matrix4f(model).rotateX(0.3f).translate(-0.5f, 1.25f, 0.75f);
         final Matrix4f otherPose = new Matrix4f(model).translate(5, 2, -3).rotateZ(0.4f);
         final GlintCapture capture = new GlintCapture();
-        final long drawsBefore = GLStateManager.drawCalls;
+        final long drawsBefore = GLSMDraws.drawCalls;
         captureGlint(entity, renderer, () -> {
             setCapturePose(model);
             assertTrue(batcher.queueTemplate(body, EntityMaterials.CUTOUT));
@@ -761,7 +771,7 @@ class EntityShadowReplayGLTest {
         capture.reset();
         assertEquals(4, onlyGroup(target).templateColumns.size, "the shadow pass must only queue base geometry");
         mainPass();
-        final Matrix4f callerMatrix = new Matrix4f(GLStateManager.getModelViewMatrix());
+        final Matrix4f callerMatrix = new Matrix4f(GLSMMatrices.getModelViewMatrix());
         assertTrue(EntityShadowReplay.replay(manager, other, TICK_DELTA, 0));
         assertTrue(EntityShadowReplay.replay(manager, entity, TICK_DELTA, 0));
         assertEquals(List.of(otherArmor, body, firstArmor, secondArmor), onlyMaterialGroup(EntityMaterials.CUTOUT).templateColumns.templates);
@@ -772,8 +782,8 @@ class EntityShadowReplayGLTest {
             new Matrix4f[]{mainPose(otherPose), mainPose(firstPose), mainPose(secondPose)}, 0L, 0);
         assertEquals(0, glint.layer.getState().getOffsetFactor());
         assertEquals(0, glint.layer.getState().getOffsetUnits());
-        assertEquals(drawsBefore, GLStateManager.drawCalls, "capture and replay must leave draws to the batch flush");
-        assertTrue(callerMatrix.equals(GLStateManager.getModelViewMatrix(), 0));
+        assertEquals(drawsBefore, GLSMDraws.drawCalls, "capture and replay must leave draws to the batch flush");
+        assertTrue(callerMatrix.equals(GLSMMatrices.getModelViewMatrix(), 0));
     }
 
     @ParameterizedTest
@@ -799,7 +809,7 @@ class EntityShadowReplayGLTest {
         for (EntityRenderCommands.Model base : bases) assertEquals(sourceNull, base.source == null);
         final EntityRenderCommands.Glint capturedGlint = bases.getFirst().glint;
         mainPass();
-        GLStateManager.setModelViewMatrix(mainPose(new Matrix4f(model).translate(-3, 0, 0)));
+        GLSMMatrices.setModelViewMatrix(mainPose(new Matrix4f(model).translate(-3, 0, 0)));
         queueCubes(unrelated, cube);
         assertTrue(EntityShadowReplay.replay(manager, entity, TICK_DELTA, 0));
         final RetainedTesrGroups.InstanceColumns mainBase = onlyMaterialGroup(EntityMaterials.CUTOUT).cubeColumns;
@@ -929,7 +939,7 @@ class EntityShadowReplayGLTest {
             final int overlay = AngelicaBufferSource.packAbgr(0.25f, 0.5f, 0.75f, 1);
             final TemplateBuffer item = template(), laterLayer = template();
             final Matrix4f pose = new Matrix4f(model).rotateXYZ(0.17f, -0.29f, 0.41f).translate(0.37f, -0.63f, 1.19f);
-            final long drawsBefore = GLStateManager.drawCalls;
+            final long drawsBefore = GLSMDraws.drawCalls;
             captureGlint(entity, renderer, () -> {
                 setCapturePose(pose);
                 assertTrue(batcher.queueTemplate(item, EntityMaterials.DROPPED_ITEM_CUTOUT));
@@ -941,7 +951,7 @@ class EntityShadowReplayGLTest {
             state.setCurrentEntityAndItem(89, 29);
             state.setCurrentBlockEntity(31);
             state.setCurrentEntityColor(1, 0, 0, 0.5f);
-            final Matrix4f callerMatrix = new Matrix4f(GLStateManager.getModelViewMatrix());
+            final Matrix4f callerMatrix = new Matrix4f(GLSMMatrices.getModelViewMatrix());
             assertTrue(EntityShadowReplay.replay(manager, entity, TICK_DELTA, 0));
             final RetainedTesrGroups.Group glint = onlyMaterialGroup(glintMaterial);
             assertEquals(ItemGlint.texture(), glint.layer.getTextureId());
@@ -960,9 +970,9 @@ class EntityShadowReplayGLTest {
                     assertGlintMatchesBase(glint, group.templateColumns);
                 }
             }
-            assertEquals(drawsBefore, GLStateManager.drawCalls);
-            assertTrue(callerMatrix.equals(GLStateManager.getModelViewMatrix(), 0));
-            assertTrue(new Matrix4f().equals(GLStateManager.getTextures().getTextureUnitMatrix(0), 0));
+            assertEquals(drawsBefore, GLSMDraws.drawCalls);
+            assertTrue(callerMatrix.equals(GLSMMatrices.getModelViewMatrix(), 0));
+            assertTrue(new Matrix4f().equals(GLSMTextures.getTextures().getTextureUnitMatrix(0), 0));
             assertEquals(89, state.getCurrentRenderedEntity());
             assertEquals(31, state.getCurrentRenderedBlockEntity());
             assertEquals(29, state.getCurrentRenderedItem());
@@ -974,12 +984,12 @@ class EntityShadowReplayGLTest {
     @ValueSource(ints = {1, 2, 3, 4})
     void droppedStackGlintKeepsEachCopyPoseWhenEntitiesReplayInReverseOrder(int copies) {
         prepareGlintCapture();
-        GLStateManager.glEnable(GL11.GL_STENCIL_TEST);
-        GLStateManager.glStencilFunc(GL11.GL_EQUAL, 3, 0xFF);
+        GLSMEnable.glEnable(GL11.GL_STENCIL_TEST);
+        GLSMDepthStencilAlpha.glStencilFunc(GL11.GL_EQUAL, 3, 0xFF);
         final Entity other = mock(Entity.class);
         final TemplateBuffer[] items = {template(), template()};
         final Matrix4f[][] poses = new Matrix4f[2][copies];
-        final long drawsBefore = GLStateManager.drawCalls;
+        final long drawsBefore = GLSMDraws.drawCalls;
         for (int entityIndex = 0; entityIndex < 2; entityIndex++) {
             final int index = entityIndex;
             captureGlint(index == 0 ? entity : other, renderer, () -> {
@@ -1010,8 +1020,8 @@ class EntityShadowReplayGLTest {
         assertGlintLayers(glint, ItemGlint.firstMatrix(), ItemGlint.secondMatrix(), expectedTemplates, expectedPoses, 0, 0);
         assertGlintMatchesBase(glint, base.templateColumns);
         assertTrue(materialGroups(EntityMaterials.ITEM_GLINT).isEmpty(), "dropped copies must not use held-item stencil deduplication");
-        assertEquals(GL11.GL_EQUAL, GLStateManager.getStencilState().getFuncFront());
-        assertEquals(drawsBefore, GLStateManager.drawCalls);
+        assertEquals(GL11.GL_EQUAL, GLSMDepthStencilAlpha.getStencilState().getFuncFront());
+        assertEquals(drawsBefore, GLSMDraws.drawCalls);
     }
 
     @Test
@@ -1024,7 +1034,7 @@ class EntityShadowReplayGLTest {
             assertTrue(batcher.queueSkippedItemGlint(item, EntityMaterials.GLINT));
         });
         EntityShadowReplay.beginFrame();
-        GLStateManager.setModelViewMatrix(shadowView);
+        GLSMMatrices.setModelViewMatrix(shadowView);
         EntityShadowReplay.beginPass(true, 0);
         final TemplateBuffer first = template(), second = template();
         final Matrix4f secondPose = new Matrix4f(model).translate(0.31f, 0.47f, -0.59f);
@@ -1080,8 +1090,8 @@ class EntityShadowReplayGLTest {
             case "stale" -> laterSource.clear();
             case "instancing" -> target.beginPass(new Matrix4f(), 0, 0, 0);
             case "stencil" -> {
-                GLStateManager.glEnable(GL11.GL_STENCIL_TEST);
-                GLStateManager.glStencilFunc(GL11.GL_EQUAL, 3, 0xFF);
+                GLSMEnable.glEnable(GL11.GL_STENCIL_TEST);
+                GLSMDepthStencilAlpha.glStencilFunc(GL11.GL_EQUAL, 3, 0xFF);
             }
         }
         assertFalse(EntityShadowReplay.replay(manager, entity, TICK_DELTA, 0));
@@ -1140,7 +1150,7 @@ class EntityShadowReplayGLTest {
             assertTrue(batcher.queueSkippedItemGlint(held, EntityMaterials.ITEM_GLINT));
         });
         EntityShadowReplay.beginFrame();
-        GLStateManager.setModelViewMatrix(shadowView);
+        GLSMMatrices.setModelViewMatrix(shadowView);
         EntityShadowReplay.beginPass(true, 0);
         captureGlint(entity, renderer, () -> {
             setCapturePose(model);
@@ -1172,8 +1182,8 @@ class EntityShadowReplayGLTest {
 
     private void prepareGlintCapture() {
         Reflect.set(batcher, "instancedThisCycle", true);
-        GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
-        GLStateManager.glDisable(GL11.GL_STENCIL_TEST);
+        GLSMEnable.glEnable(GL11.GL_TEXTURE_2D);
+        GLSMEnable.glDisable(GL11.GL_STENCIL_TEST);
         GlintClock.beginFrame(123456789L);
     }
 
@@ -1181,13 +1191,13 @@ class EntityShadowReplayGLTest {
         when(manager.getEntityRenderObject(captured)).thenReturn(render);
         beginCapture(captured);
         assertTrue(EntityShadowReplay.beginRenderer(render, captured, TICK_DELTA, BatchEligibility.SAFE));
-        assertTrue(BatchEligibility.begin(BatchEligibility.SAFE, GLStateManager.drawCalls));
+        assertTrue(BatchEligibility.begin(BatchEligibility.SAFE, GLSMDraws.drawCalls));
         boolean completed = false;
         try {
             queue.run();
             completed = true;
         } finally {
-            EntityShadowReplay.endRenderer(completed, BatchEligibility.end(BatchEligibility.SAFE, GLStateManager.drawCalls));
+            EntityShadowReplay.endRenderer(completed, BatchEligibility.end(BatchEligibility.SAFE, GLSMDraws.drawCalls));
             finishCapture(completed);
         }
     }
@@ -1215,13 +1225,13 @@ class EntityShadowReplayGLTest {
     void incompleteOrChangedRecordsNeverQueuePartialGeometry(String reason) {
         capture();
         switch (reason) {
-            case "foreign" -> GLStateManager.drawCalls++;
+            case "foreign" -> GLSMDraws.drawCalls++;
             case "expected" -> {
-                BatchEligibility.begin(BatchEligibility.SAFE, GLStateManager.drawCalls);
-                BatchEligibility.beginExpectedDraws(GLStateManager.drawCalls);
-                GLStateManager.drawCalls++;
-                BatchEligibility.endExpectedDraws(GLStateManager.drawCalls);
-                BatchEligibility.end(BatchEligibility.SAFE, GLStateManager.drawCalls);
+                BatchEligibility.begin(BatchEligibility.SAFE, GLSMDraws.drawCalls);
+                BatchEligibility.beginExpectedDraws(GLSMDraws.drawCalls);
+                GLSMDraws.drawCalls++;
+                BatchEligibility.endExpectedDraws(GLSMDraws.drawCalls);
+                BatchEligibility.end(BatchEligibility.SAFE, GLSMDraws.drawCalls);
             }
             case "bail" -> BatchEligibility.onBail(ModelPartBatcher.BailReason.TEXTURE);
             case "shadowOnly" -> EntityShadowReplay.rejectShadowOnly();
@@ -1230,13 +1240,13 @@ class EntityShadowReplayGLTest {
             case "nestedEntity" -> assertFalse(EntityShadowReplay.beginEntity(mock(Entity.class), TICK_DELTA));
         }
         EntityShadowReplay.endRenderer(!reason.equals("failed"), BatchEligibility.SAFE);
-        if (reason.equals("afterRenderer")) GLStateManager.drawCalls++;
+        if (reason.equals("afterRenderer")) GLSMDraws.drawCalls++;
         if (reason.equals("outerFailed")) finishCapture(false);
         if (reason.equals("nextFrame")) EntityShadowReplay.beginFrame();
         mainPass();
         switch (reason) {
             case "camera" -> RenderManager.instance.playerViewY = 0.2f;
-            case "lightmap" -> GLStateManager.getTextures().getTextureUnitStates(1).setEnabled(false);
+            case "lightmap" -> GLSMTextures.getTextures().getTextureUnitStates(1).setEnabled(false);
             case "renderer" -> when(manager.getEntityRenderObject(entity)).thenReturn(mock(Render.class));
         }
         assertFalse(EntityShadowReplay.replay(manager, entity, reason.equals("partialTicks") ? 0.5f : TICK_DELTA, reason.equals("passOne") ? 1 : 0));
@@ -1259,7 +1269,7 @@ class EntityShadowReplayGLTest {
             final RetainedTesrGroups.InstanceColumns columns = shadow.templateColumns;
             final TemplateBuffer extra = template();
             final Matrix4f pose = new Matrix4f(shadowView).mul(model).translate(2, 0, 0);
-            final long draws = GLStateManager.drawCalls;
+            final long draws = GLSMDraws.drawCalls;
             switch (operation) {
                 case "queue" -> target.queue(0, extra, shadow.layer, EntityMaterials.CUTOUT, pose, 0, -1, 0, 0L, 0, null);
                 case "copyRange" -> target.copyInstances(columns, 0, 1, shadow.layer, EntityMaterials.CUTOUT,
@@ -1278,7 +1288,7 @@ class EntityShadowReplayGLTest {
             } else {
                 assertEquals(2, columns.size, "unrecorded submission must still reach shadow storage");
             }
-            assertEquals(draws, GLStateManager.drawCalls, "rejection must not force an immediate shadow draw");
+            assertEquals(draws, GLSMDraws.drawCalls, "rejection must not force an immediate shadow draw");
             endCaptureAndStartMainPass();
             resetBossStatus();
 
@@ -1349,27 +1359,27 @@ class EntityShadowReplayGLTest {
     }
 
     private void queueFire(int[] vertices, int vertexCount) {
-        GLStateManager.glEnable(GL11.GL_DEPTH_TEST);
-        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
-        GLStateManager.glDepthMask(true);
-        GLStateManager.glColorMask(true, true, true, true);
-        GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
-        GLStateManager.glDisable(GL11.GL_BLEND);
-        GLStateManager.glDisable(GL11.GL_ALPHA_TEST);
+        GLSMEnable.glEnable(GL11.GL_DEPTH_TEST);
+        GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_LEQUAL);
+        GLSMDepthStencilAlpha.glDepthMask(true);
+        GLSMBlend.glColorMask(true, true, true, true);
+        GLSMEnable.glEnable(GL11.GL_TEXTURE_2D);
+        GLSMEnable.glDisable(GL11.GL_BLEND);
+        GLSMEnable.glDisable(GL11.GL_ALPHA_TEST);
         final Tessellator tess = mock(Tessellator.class);
         tess.isDrawing = true;
         tess.drawMode = GL11.GL_QUADS;
         tess.rawBuffer = vertices;
         tess.vertexCount = vertexCount;
         tess.rawBufferIndex = tess.rawBuffer.length;
-        final long draws = GLStateManager.drawCalls;
+        final long draws = GLSMDraws.drawCalls;
         batcher.beginEntityFire();
         try {
             ModelPartBatcher.drawTessellator(tess);
         } finally {
             batcher.endEntityFire();
         }
-        assertEquals(draws, GLStateManager.drawCalls);
+        assertEquals(draws, GLSMDraws.drawCalls);
     }
 
     @Test
@@ -1455,23 +1465,23 @@ class EntityShadowReplayGLTest {
             queueAura(callback, livingRenderer, rendered, new float[]{TICK_DELTA, 1, 2, 3, 4, 5, 0.0625f},
                 new Matrix4f(shadowView).mul(model));
             if (reason.equals("dragonEyes")) {
-                final int depth = GLStateManager.pushState(StateSet.BATCH);
+                final int depth = GLSMAttribStack.pushState(StateSet.BATCH);
                 try {
-                    GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
-                    GLStateManager.glEnable(GL11.GL_BLEND);
-                    GLStateManager.glBlendFunc(GL11.GL_ONE, GL11.GL_ONE);
-                    GLStateManager.glDisable(GL11.GL_ALPHA_TEST);
-                    GLStateManager.glDepthFunc(GL11.GL_EQUAL);
-                    GLStateManager.glDepthMask(true);
+                    GLSMEnable.glEnable(GL11.GL_TEXTURE_2D);
+                    GLSMEnable.glEnable(GL11.GL_BLEND);
+                    GLSMBlend.glBlendFunc(GL11.GL_ONE, GL11.GL_ONE);
+                    GLSMEnable.glDisable(GL11.GL_ALPHA_TEST);
+                    GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_EQUAL);
+                    GLSMDepthStencilAlpha.glDepthMask(true);
                     assertFalse(batcher.queueTemplate(template(), null));
                 } finally {
-                    GLStateManager.popStateTo(depth);
+                    GLSMAttribStack.popStateTo(depth);
                 }
             }
             endCaptureAndStartMainPass();
             if (reason.equals("program")) {
                 final DeferredWorldRenderingPipeline pipeline = mock(DeferredWorldRenderingPipeline.class);
-                when(pipeline.getActivePassProgramId()).thenReturn(GLStateManager.getActiveProgram() + 1);
+                when(pipeline.getActivePassProgramId()).thenReturn(GLSMPrograms.getActiveProgram() + 1);
                 Reflect.set(batcher, "shaderPipeline", pipeline);
                 assertTrue(batcher.entityPassActive(), "program ownership must not disable the active pass's fallback flushing");
             }
@@ -1497,7 +1507,7 @@ class EntityShadowReplayGLTest {
             observeBossStatus(first, true);
             endCapture();
             EntityShadowReplay.beginFrame();
-            GLStateManager.setModelViewMatrix(shadowView);
+            GLSMMatrices.setModelViewMatrix(shadowView);
             EntityShadowReplay.beginPass(true, 0);
             final Entity next;
             if (nextIsBoss) {
@@ -1545,14 +1555,14 @@ class EntityShadowReplayGLTest {
             mainPass();
             queueAura(liveCallback, creeperRenderer, live, liveArgs, liveAura);
             assertSame(recycled, deferred.getFirst(), "the live aura must overwrite a recycled shadow queue entry");
-            final long draws = GLStateManager.drawCalls;
+            final long draws = GLSMDraws.drawCalls;
             assertTrue(EntityShadowReplay.replay(manager, second, TICK_DELTA, 0));
             assertTrue(EntityShadowReplay.replay(manager, first, TICK_DELTA, 0));
             assertEquals(2, onlyGroup(target).templateColumns.size, "both bodies must still replay");
             assertEquals(3, deferred.size(), "replay must enqueue both captured auras after the live main aura");
-            assertEquals(draws, GLStateManager.drawCalls, "replay must leave aura drawing to the deferred phase");
+            assertEquals(draws, GLSMDraws.drawCalls, "replay must leave aura drawing to the deferred phase");
             verifyNoInteractions(callback, liveCallback, creeperRenderer);
-            assertTrue(liveAura.equals(GLStateManager.getModelViewMatrix(), 0));
+            assertTrue(liveAura.equals(GLSMMatrices.getModelViewMatrix(), 0));
 
             EntityShadowReplay.beginFrame();
             assertAura(deferred.get(0), liveCallback, creeperRenderer, live, liveArgs, liveAura);
@@ -1574,19 +1584,19 @@ class EntityShadowReplayGLTest {
                 new Matrix4f(shadowView).mul(model));
             endCapture();
             EntityShadowReplay.beginFrame();
-            GLStateManager.setModelViewMatrix(shadowView);
+            GLSMMatrices.setModelViewMatrix(shadowView);
             EntityShadowReplay.beginPass(true, 0);
             captureLiving(creeper, creeperRenderer);
             assertTrue(batcher.queueTemplate(template(), EntityMaterials.TRANSLUCENT));
             if (markOnly) DeferredEntityOverlay.markOverlayPass(callback, creeperRenderer, creeper, TICK_DELTA);
             DeferredEntityOverlay.clearStaleOverlayFlag();
             endCaptureAndStartMainPass();
-            final long draws = GLStateManager.drawCalls;
+            final long draws = GLSMDraws.drawCalls;
             assertTrue(EntityShadowReplay.replay(manager, creeper, TICK_DELTA, 0));
             assertEquals(2, target.groupCount(), "the previous aura entry must be reusable as a model range");
             final List<?> deferred = Reflect.getStatic(DeferredEntityOverlay.class, "deferred");
             assertTrue(deferred.isEmpty());
-            assertEquals(draws, GLStateManager.drawCalls);
+            assertEquals(draws, GLSMDraws.drawCalls);
             verifyNoInteractions(callback, creeperRenderer);
         });
     }
@@ -1633,11 +1643,11 @@ class EntityShadowReplayGLTest {
             DeferredEntityOverlay.clearStaleOverlayFlag();
             endCaptureAndStartMainPass();
             resetBossStatus();
-            final long draws = GLStateManager.drawCalls;
+            final long draws = GLSMDraws.drawCalls;
             assertTrue(EntityShadowReplay.replay(manager, wither, TICK_DELTA, 0));
             assertBossStatus(wither, true);
             assertEquals(1, onlyGroup(target).templateColumns.size);
-            assertEquals(draws, GLStateManager.drawCalls);
+            assertEquals(draws, GLSMDraws.drawCalls);
             final List<?> deferred = Reflect.getStatic(DeferredEntityOverlay.class, "deferred");
             assertEquals(armor.equals("armored") ? 1 : 0, deferred.size());
             verifyNoInteractions(callback, armorModel, witherRenderer);
@@ -1662,7 +1672,7 @@ class EntityShadowReplayGLTest {
             assertTrue(deferred.isEmpty());
             assertFalse(DeferredEntityOverlay.isOverlayPassActive());
             assertFalse(DeferredEntityOverlay.isReplaying());
-            assertTrue(mainView.equals(GLStateManager.getModelViewMatrix(), 0));
+            assertTrue(mainView.equals(GLSMMatrices.getModelViewMatrix(), 0));
             assertBossStatus(wither, true);
         }));
     }
@@ -1678,7 +1688,7 @@ class EntityShadowReplayGLTest {
     private void queueAura(DeferredEntityOverlay.ShouldRenderPassFn callback, RendererLivingEntity renderer,
                            EntityLivingBase entity, float[] args, Matrix4f matrix) {
         if (captureOpen) setCapturePose(new Matrix4f(captureEntry).invert().mul(matrix));
-        else GLStateManager.setModelViewMatrix(matrix);
+        else GLSMMatrices.setModelViewMatrix(matrix);
         DeferredEntityOverlay.markOverlayPass(callback, renderer, entity, args[0]);
         DeferredEntityOverlay.deferRender(args[1], args[2], args[3], args[4], args[5], args[6]);
     }

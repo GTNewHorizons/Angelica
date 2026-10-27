@@ -2,7 +2,7 @@ package net.coderbot.iris.gl.program;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import net.coderbot.iris.gl.sampler.GlSampler;
@@ -40,7 +40,7 @@ public class ProgramSamplers {
 
 		active = this;
 
-		int activeTexture = GLStateManager.getActiveTextureUnit();
+		int activeTexture = GLSMTextures.getActiveTextureUnit();
 		try {
 			if (initializer != null) {
 				for (GlUniform1iCall call : initializer) {
@@ -57,7 +57,7 @@ public class ProgramSamplers {
 			clearActiveSamplers();
 			throw e;
 		} finally {
-			GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + activeTexture);
+			GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0 + activeTexture);
 		}
 	}
 

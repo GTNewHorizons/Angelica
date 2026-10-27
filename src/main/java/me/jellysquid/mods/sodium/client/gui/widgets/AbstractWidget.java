@@ -2,7 +2,8 @@ package me.jellysquid.mods.sodium.client.gui.widgets;
 
 import com.gtnewhorizons.angelica.compat.mojang.Drawable;
 import com.gtnewhorizons.angelica.compat.mojang.Element;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.PositionedSoundRecord;
 import net.minecraft.client.gui.FontRenderer;
@@ -33,17 +34,17 @@ public abstract class AbstractWidget implements Drawable, Element {
     }
 
     protected void drawQuads(Consumer<Tessellator> consumer) {
-        GLStateManager.glEnable(GL11.GL_BLEND);
-        GLStateManager.glDisable(GL11.GL_TEXTURE_2D);
-        GLStateManager.defaultBlendFunc();
+        GLSMEnable.glEnable(GL11.GL_BLEND);
+        GLSMEnable.glDisable(GL11.GL_TEXTURE_2D);
+        GLSMBlend.defaultBlendFunc();
 
         final Tessellator tessellator = Tessellator.instance;
         tessellator.startDrawingQuads();
         consumer.accept(tessellator);
         tessellator.draw();
 
-        GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
-        GLStateManager.glDisable(GL11.GL_BLEND);
+        GLSMEnable.glEnable(GL11.GL_TEXTURE_2D);
+        GLSMEnable.glDisable(GL11.GL_BLEND);
     }
 
     protected static void addQuad(Tessellator consumer, double x1, double y1, double x2, double y2, float a, float r, float g, float b) {

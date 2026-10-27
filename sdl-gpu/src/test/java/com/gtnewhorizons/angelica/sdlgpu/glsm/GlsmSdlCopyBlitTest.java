@@ -1,6 +1,10 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
@@ -55,10 +59,10 @@ class GlsmSdlCopyBlitTest {
         GlsmSdlHeadlessRig.bindTarget();
         GlsmSdlHeadlessRig.clearTo(0.0f, 0.0f, 1.0f, 1.0f);
 
-        GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
-        GLStateManager.glScissor(0, 0, SIZE, SCISSOR_ROWS);
+        GLSMEnable.glEnable(GL11.GL_SCISSOR_TEST);
+        GLSMRasterizer.glScissor(0, 0, SIZE, SCISSOR_ROWS);
         GlsmSdlHeadlessRig.solidQuad(1.0f, 0.0f, 0.0f);
-        GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
+        GLSMEnable.glDisable(GL11.GL_SCISSOR_TEST);
 
         final int[] pixels = GlsmSdlHeadlessRig.readTarget();
         assertRow(pixels, 0, RED, "inside the scissor");
@@ -68,15 +72,15 @@ class GlsmSdlCopyBlitTest {
     }
 
     private static int createTwoLevelTexture(int level0Argb, int level1Argb) {
-        final int id = GLStateManager.glGenTextures();
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, id);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST_MIPMAP_NEAREST);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 1);
-        GLStateManager.glTexParameterf(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MIN_LOD, 0.0f);
-        GLStateManager.glTexParameterf(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LOD, 1.0f);
-        GLStateManager.glTexParameterf(GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_LOD_BIAS, 0.0f);
+        final int id = GLSMTextures.glGenTextures();
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, id);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST_MIPMAP_NEAREST);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 1);
+        GLSMTextures.glTexParameterf(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MIN_LOD, 0.0f);
+        GLSMTextures.glTexParameterf(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LOD, 1.0f);
+        GLSMTextures.glTexParameterf(GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_LOD_BIAS, 0.0f);
         GlsmSdlHeadlessRig.uploadSolidLevel(0, SIZE, level0Argb);
         GlsmSdlHeadlessRig.uploadSolidLevel(1, SIZE / 2, level1Argb);
         return id;
@@ -88,7 +92,7 @@ class GlsmSdlCopyBlitTest {
         GlsmSdlHeadlessRig.solidQuad(0.0f, 1.0f, 0.0f);
 
         final int texture = createTwoLevelTexture(RED, BLUE);
-        GLStateManager.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 1, 0, 0, 0, 0, SIZE / 2, SIZE / 2);
+        GLSMTextures.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 1, 0, 0, 0, 0, SIZE / 2, SIZE / 2);
         return texture;
     }
 
@@ -136,17 +140,17 @@ class GlsmSdlCopyBlitTest {
         GlsmSdlHeadlessRig.solidQuad(0.0f, 1.0f, 0.0f);
 
         final int destination = GlsmSdlHeadlessRig.createDepthStencilFbo();
-        GLStateManager.glViewport(0, 0, SIZE, SIZE);
-        GLStateManager.glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
+        GLSMRasterizer.glViewport(0, 0, SIZE, SIZE);
+        GLSMBlend.glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
         GlsmSdlHeadlessRig.solidQuad(0.0f, 0.0f, 1.0f);
 
         GlsmSdlHeadlessRig.bindTarget();
-        GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, destination);
-        GLStateManager.glBlitFramebuffer(0, 0, SIZE, SIZE, 0, 0, SIZE, SIZE,
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, destination);
+        GLSMFramebuffer.glBlitFramebuffer(0, 0, SIZE, SIZE, 0, 0, SIZE, SIZE,
             GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT, GL11.GL_NEAREST);
 
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, destination);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, destination);
         final int[] pixels = GlsmSdlHeadlessRig.readTarget();
         GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, SIZE / 2, SIZE / 2, GREEN, "color aspect of a color+depth blit");
         GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, 4, SIZE - 5, GREEN, "color aspect of a color+depth blit");
@@ -160,45 +164,45 @@ class GlsmSdlCopyBlitTest {
         final int drawFbo = GlsmSdlHeadlessRig.fboWithColor(destination, dstLevel);
 
         final int dstExtent = Math.max(1, dstSize >> dstLevel);
-        GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, readFbo);
-        GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, drawFbo);
-        GLStateManager.glBlitFramebuffer(0, 0, SIZE / 2, SIZE / 2, 0, 0, dstExtent, dstExtent, GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, readFbo);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, drawFbo);
+        GLSMFramebuffer.glBlitFramebuffer(0, 0, SIZE / 2, SIZE / 2, 0, 0, dstExtent, dstExtent, GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
 
         GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTextureLevel(destination, dstLevel), GREEN, "destination level " + dstLevel + " after blitting source level 1");
         GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTextureLevel(source, 0), RED, "source level 0 is not the blit source");
         if (dstLevel != 0) GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTextureLevel(destination, 0), BLUE, "destination level 0 is not the blit target");
 
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
-        GLStateManager.glDeleteFramebuffers(readFbo);
-        GLStateManager.glDeleteFramebuffers(drawFbo);
-        GLStateManager.glDeleteTextures(source);
-        GLStateManager.glDeleteTextures(destination);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+        GLSMFramebuffer.glDeleteFramebuffers(readFbo);
+        GLSMFramebuffer.glDeleteFramebuffers(drawFbo);
+        GLSMTextures.glDeleteTextures(source);
+        GLSMTextures.glDeleteTextures(destination);
     }
 
     @Test
     void attachingToTheReadFramebufferLeavesTheDrawFramebufferAlone() {
         final int source = GlsmSdlHeadlessRig.createSolidTexture(GREEN);
         final int drawColor = GlsmSdlHeadlessRig.createSolidTexture(BLUE);
-        final int readFbo = GLStateManager.glGenFramebuffers();
+        final int readFbo = GLSMFramebuffer.glGenFramebuffers();
         final int drawFbo = GlsmSdlHeadlessRig.fboWithColor(drawColor, 0);
         try {
-            GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, readFbo);
-            GLStateManager.glFramebufferTexture2D(GL30.GL_READ_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, source, 0);
-            GLStateManager.glBlitFramebuffer(0, 0, 2, 2, 0, 0, 2, 2, GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
+            GLSMFramebuffer.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, readFbo);
+            GLSMFramebuffer.glFramebufferTexture2D(GL30.GL_READ_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, source, 0);
+            GLSMFramebuffer.glBlitFramebuffer(0, 0, 2, 2, 0, 0, 2, 2, GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
             GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTextureLevel(drawColor, 0), GREEN, "the blit reads the read framebuffer's attachment");
 
-            GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, drawFbo);
-            GLStateManager.glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
-            GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
+            GLSMFramebuffer.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, drawFbo);
+            GLSMBlend.glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+            GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
             GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTextureLevel(drawColor, 0), RED, "the draw framebuffer kept its own attachment");
             GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTextureLevel(source, 0), GREEN, "the read attachment never became a draw target");
         } finally {
-            GLStateManager.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
-            GLStateManager.glDeleteFramebuffers(readFbo);
-            GLStateManager.glDeleteFramebuffers(drawFbo);
-            GLStateManager.glDeleteTextures(source);
-            GLStateManager.glDeleteTextures(drawColor);
+            GLSMBlend.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+            GLSMFramebuffer.glDeleteFramebuffers(readFbo);
+            GLSMFramebuffer.glDeleteFramebuffers(drawFbo);
+            GLSMTextures.glDeleteTextures(source);
+            GLSMTextures.glDeleteTextures(drawColor);
         }
     }
 
@@ -221,17 +225,17 @@ class GlsmSdlCopyBlitTest {
         GlsmSdlHeadlessRig.clearTo(0.0f, 1.0f, 0.0f, 1.0f);
         GlsmSdlHeadlessRig.solidQuad(0.0f, 1.0f, 0.0f);
 
-        GLStateManager.glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
-        GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, 0);
-        GLStateManager.glBlitFramebuffer(0, 0, SIZE, SIZE, 0, 0, SIZE, SIZE, GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
+        GLSMBlend.glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, 0);
+        GLSMFramebuffer.glBlitFramebuffer(0, 0, SIZE, SIZE, 0, 0, SIZE, SIZE, GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
 
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
-        GLStateManager.glViewport(0, 0, SIZE, SIZE);
-        GLStateManager.glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
-        GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
-        GLStateManager.glScissor(0, 0, 4, 4);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+        GLSMRasterizer.glViewport(0, 0, SIZE, SIZE);
+        GLSMBlend.glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+        GLSMEnable.glEnable(GL11.GL_SCISSOR_TEST);
+        GLSMRasterizer.glScissor(0, 0, 4, 4);
         GlsmSdlHeadlessRig.solidQuad(1.0f, 0.0f, 0.0f);
-        GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
+        GLSMEnable.glDisable(GL11.GL_SCISSOR_TEST);
 
         final int[] pixels = GlsmSdlHeadlessRig.readTarget();
         GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, SIZE / 2, SIZE / 2, GREEN, "blit into fbo0 survived the first fbo0 pass");
@@ -243,16 +247,16 @@ class GlsmSdlCopyBlitTest {
         GlsmSdlHeadlessRig.clearTo(0.0f, 0.0f, 0.0f, 1.0f);
         GlsmSdlHeadlessRig.solidQuad(0.0f, 0.0f, 0.0f);
 
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
-        GLStateManager.glViewport(0, 0, SIZE, SIZE);
-        GLStateManager.glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+        GLSMRasterizer.glViewport(0, 0, SIZE, SIZE);
+        GLSMBlend.glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
         GlsmSdlHeadlessRig.halfQuad(-1.0f, 0.0f, 0.0f, 1.0f, 0.0f);
         GlsmSdlHeadlessRig.halfQuad(0.0f, 1.0f, 1.0f, 0.0f, 0.0f);
 
         GlsmSdlHeadlessRig.bindTarget();
-        GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, 0);
-        GLStateManager.glBlitFramebuffer(0, 0, SIZE, SIZE, 0, 0, SIZE, SIZE, GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, 0);
+        GLSMFramebuffer.glBlitFramebuffer(0, 0, SIZE, SIZE, 0, 0, SIZE, SIZE, GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
 
         GlsmSdlHeadlessRig.bindTarget();
         final int[] pixels = GlsmSdlHeadlessRig.readTarget();
@@ -268,14 +272,14 @@ class GlsmSdlCopyBlitTest {
         GlsmSdlHeadlessRig.writeStencilOneInBottomHalf();
 
         final int destination = GlsmSdlHeadlessRig.createDepthStencilFbo();
-        GLStateManager.glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
+        GLSMBlend.glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
 
         GlsmSdlHeadlessRig.bindTarget();
-        GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, destination);
-        GLStateManager.glBlitFramebuffer(0, 0, SIZE, SIZE, 0, 0, SIZE, SIZE, GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT, GL11.GL_NEAREST);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, destination);
+        GLSMFramebuffer.glBlitFramebuffer(0, 0, SIZE, SIZE, 0, 0, SIZE, SIZE, GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT, GL11.GL_NEAREST);
 
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, destination);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, destination);
         GlsmSdlHeadlessRig.drawRedWhereStencilIsOne();
 
         final int[] pixels = GlsmSdlHeadlessRig.readTarget();
@@ -292,7 +296,7 @@ class GlsmSdlCopyBlitTest {
 
     private static int createPatternTexture() {
         final int id = GlsmSdlHeadlessRig.newNearestTexture();
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 0);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 0);
         final ByteBuffer texels = MemoryUtil.memAlloc(SIZE * SIZE * 4);
         try {
             for (int y = 0; y < SIZE; y++) {
@@ -300,7 +304,7 @@ class GlsmSdlCopyBlitTest {
                     GlsmSdlHeadlessRig.putArgb(texels, y * SIZE + x, pattern(x, y));
                 }
             }
-            GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, SIZE, SIZE, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels);
+            GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, SIZE, SIZE, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels);
         } finally {
             MemoryUtil.memFree(texels);
         }
@@ -312,15 +316,15 @@ class GlsmSdlCopyBlitTest {
         final int destination = GlsmSdlHeadlessRig.createSolidMipTexture(SIZE, 0, UNTOUCHED);
         final int readFbo = GlsmSdlHeadlessRig.fboWithColor(source, 0);
         final int drawFbo = GlsmSdlHeadlessRig.fboWithColor(destination, 0);
-        GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, readFbo);
-        GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, drawFbo);
-        GLStateManager.glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, readFbo);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, drawFbo);
+        GLSMFramebuffer.glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
         final int[] pixels = GlsmSdlHeadlessRig.readTextureLevel(destination, 0);
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
-        GLStateManager.glDeleteFramebuffers(readFbo);
-        GLStateManager.glDeleteFramebuffers(drawFbo);
-        GLStateManager.glDeleteTextures(source);
-        GLStateManager.glDeleteTextures(destination);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+        GLSMFramebuffer.glDeleteFramebuffers(readFbo);
+        GLSMFramebuffer.glDeleteFramebuffers(drawFbo);
+        GLSMTextures.glDeleteTextures(source);
+        GLSMTextures.glDeleteTextures(destination);
         return pixels;
     }
 
@@ -372,19 +376,19 @@ class GlsmSdlCopyBlitTest {
         final int third = GlsmSdlHeadlessRig.createSolidMipTexture(SIZE, 0, UNTOUCHED);
         final int readFbo = GlsmSdlHeadlessRig.fboWithColor(source, 0);
         final int drawFbo = GlsmSdlHeadlessRig.fboWithColor(first, 0);
-        GLStateManager.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT1, GL11.GL_TEXTURE_2D, skipped, 0);
-        GLStateManager.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT2, GL11.GL_TEXTURE_2D, third, 0);
+        GLSMFramebuffer.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT1, GL11.GL_TEXTURE_2D, skipped, 0);
+        GLSMFramebuffer.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT2, GL11.GL_TEXTURE_2D, third, 0);
         final IntBuffer bufs = MemoryUtil.memAllocInt(3);
         try {
             bufs.put(0, GL30.GL_COLOR_ATTACHMENT0).put(1, GL11.GL_NONE).put(2, GL30.GL_COLOR_ATTACHMENT2);
-            GLStateManager.glDrawBuffers(bufs);
+            GLSMFramebuffer.glDrawBuffers(bufs);
         } finally {
             MemoryUtil.memFree(bufs);
         }
 
-        GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, readFbo);
-        GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, drawFbo);
-        GLStateManager.glBlitFramebuffer(0, 0, SIZE, SIZE, 0, 0, SIZE, SIZE, GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, readFbo);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, drawFbo);
+        GLSMFramebuffer.glBlitFramebuffer(0, 0, SIZE, SIZE, 0, 0, SIZE, SIZE, GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
 
         final int[] firstPixels = GlsmSdlHeadlessRig.readTextureLevel(first, 0);
         final int[] thirdPixels = GlsmSdlHeadlessRig.readTextureLevel(third, 0);
@@ -396,12 +400,12 @@ class GlsmSdlCopyBlitTest {
         }
         GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTextureLevel(skipped, 0), UNTOUCHED, "attachment 1 behind a GL_NONE draw buffer");
 
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
-        GLStateManager.glDeleteFramebuffers(readFbo);
-        GLStateManager.glDeleteFramebuffers(drawFbo);
-        GLStateManager.glDeleteTextures(source);
-        GLStateManager.glDeleteTextures(first);
-        GLStateManager.glDeleteTextures(skipped);
-        GLStateManager.glDeleteTextures(third);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+        GLSMFramebuffer.glDeleteFramebuffers(readFbo);
+        GLSMFramebuffer.glDeleteFramebuffers(drawFbo);
+        GLSMTextures.glDeleteTextures(source);
+        GLSMTextures.glDeleteTextures(first);
+        GLSMTextures.glDeleteTextures(skipped);
+        GLSMTextures.glDeleteTextures(third);
     }
 }

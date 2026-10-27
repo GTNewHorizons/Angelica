@@ -1,6 +1,9 @@
 package com.gtnewhorizons.angelica.rendering;
 
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.QuadConverter;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
@@ -69,13 +72,13 @@ class PlayerReflectionSsboMappingTest {
 
     @AfterEach
     void cleanup() {
-        GLStateManager.glUseProgram(0);
-        GLStateManager.glBindVertexArray(0);
-        if (program != 0) GLStateManager.glDeleteProgram(program);
-        if (vbo != 0) GLStateManager.glDeleteBuffers(vbo);
-        if (ssbo != 0) GLStateManager.glDeleteBuffers(ssbo);
-        if (visitedSsbo != 0) GLStateManager.glDeleteBuffers(visitedSsbo);
-        if (vao != 0) GLStateManager.glDeleteVertexArrays(vao);
+        GLSMPrograms.glUseProgram(0);
+        GLSMVertexInput.glBindVertexArray(0);
+        if (program != 0) GLSMPrograms.glDeleteProgram(program);
+        if (vbo != 0) GLSMBuffers.glDeleteBuffers(vbo);
+        if (ssbo != 0) GLSMBuffers.glDeleteBuffers(ssbo);
+        if (visitedSsbo != 0) GLSMBuffers.glDeleteBuffers(visitedSsbo);
+        if (vao != 0) GLSMVertexInput.glDeleteVertexArrays(vao);
         program = vao = vbo = ssbo = visitedSsbo = 0;
     }
 
@@ -103,38 +106,38 @@ class PlayerReflectionSsboMappingTest {
         final FloatBuffer verts = BufferUtils.createFloatBuffer(xyzuv.length);
         verts.put(xyzuv).flip();
 
-        vao = GLStateManager.glGenVertexArrays();
-        vbo = GLStateManager.glGenBuffers();
-        GLStateManager.glBindVertexArray(vao);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-        GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, verts, GL15.GL_STATIC_DRAW);
+        vao = GLSMVertexInput.glGenVertexArrays();
+        vbo = GLSMBuffers.glGenBuffers();
+        GLSMVertexInput.glBindVertexArray(vao);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, verts, GL15.GL_STATIC_DRAW);
         final int stride = PlayerReflectionTestSupport.FLOATS * 4;
         GL20.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, stride, 0L);
         GL20.glEnableVertexAttribArray(0);
         GL20.glVertexAttribPointer(1, 2, GL11.GL_FLOAT, false, stride, 12L);
         GL20.glEnableVertexAttribArray(1);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
     }
 
     private void allocateSsbo() {
-        ssbo = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, ssbo);
-        GLStateManager.glBufferData(GL43.GL_SHADER_STORAGE_BUFFER, ByteBuffer.allocateDirect(SSBO_BYTES).order(ByteOrder.nativeOrder()), GL15.GL_DYNAMIC_DRAW);
+        ssbo = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, ssbo);
+        GLSMBuffers.glBufferData(GL43.GL_SHADER_STORAGE_BUFFER, ByteBuffer.allocateDirect(SSBO_BYTES).order(ByteOrder.nativeOrder()), GL15.GL_DYNAMIC_DRAW);
         GL30.glBindBufferBase(GL43.GL_SHADER_STORAGE_BUFFER, BINDING, ssbo);
 
-        visitedSsbo = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, visitedSsbo);
-        GLStateManager.glBufferData(GL43.GL_SHADER_STORAGE_BUFFER, ByteBuffer.allocateDirect(VISITED_BYTES).order(ByteOrder.nativeOrder()), GL15.GL_DYNAMIC_DRAW);
+        visitedSsbo = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, visitedSsbo);
+        GLSMBuffers.glBufferData(GL43.GL_SHADER_STORAGE_BUFFER, ByteBuffer.allocateDirect(VISITED_BYTES).order(ByteOrder.nativeOrder()), GL15.GL_DYNAMIC_DRAW);
         GL30.glBindBufferBase(GL43.GL_SHADER_STORAGE_BUFFER, VISITED_BINDING, visitedSsbo);
-        GLStateManager.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, 0);
+        GLSMBuffers.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, 0);
     }
 
     private ByteBuffer readback(int buffer, int bytes) {
         GL42.glMemoryBarrier(GL43.GL_SHADER_STORAGE_BARRIER_BIT | GL42.GL_BUFFER_UPDATE_BARRIER_BIT);
         final ByteBuffer out = BufferUtils.createByteBuffer(bytes);
-        GLStateManager.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, buffer);
-        GLStateManager.glGetBufferSubData(GL43.GL_SHADER_STORAGE_BUFFER, 0L, out);
-        GLStateManager.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, 0);
+        GLSMBuffers.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, buffer);
+        GLSMBuffers.glGetBufferSubData(GL43.GL_SHADER_STORAGE_BUFFER, 0L, out);
+        GLSMBuffers.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, 0);
         return out;
     }
 
@@ -146,8 +149,8 @@ class PlayerReflectionSsboMappingTest {
         uploadVertices(xyzuv);
         allocateSsbo();
 
-        GLStateManager.glUseProgram(program);
-        GLStateManager.glBindVertexArray(vao);
+        GLSMPrograms.glUseProgram(program);
+        GLSMVertexInput.glBindVertexArray(vao);
         QuadConverter.drawQuadsAsTriangles(GLStateManager.ctx(), 0, PlayerReflectionCapture.VERTEX_COUNT);
         return xyzuv;
     }

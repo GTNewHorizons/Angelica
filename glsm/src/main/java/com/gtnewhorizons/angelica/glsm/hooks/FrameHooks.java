@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.glsm.hooks;
 import com.gtnewhorizons.angelica.glsm.CaptureGate;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLDebug;
+import com.gtnewhorizons.angelica.glsm.GLSMTextureLifetime;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 
@@ -26,7 +27,7 @@ public final class FrameHooks {
     }
 
     public static void frameEnd() {
-        GLStateManager.onFrameEnd();
+        GLSMTextureLifetime.onFrameEnd();
         popFrameGroup();
         RENDER_BACKEND.onFrameEnd();
     }

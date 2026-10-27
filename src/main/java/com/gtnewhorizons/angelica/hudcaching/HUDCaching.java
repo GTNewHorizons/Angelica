@@ -6,7 +6,19 @@ import com.gtnewhorizons.angelica.compat.holoinventory.HoloInventoryReflectionCo
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.event.ClientEvent;
 import com.gtnewhorizons.angelica.event.ClientEventType;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMLighting;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMQueries;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.stacks.RetainedState;
@@ -84,13 +96,13 @@ public class HUDCaching {
     }
 
     private static void setupOverlay(ScaledResolution scaled) {
-        GLStateManager.glClear(GL11.GL_DEPTH_BUFFER_BIT);
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glOrtho(0.0D, scaled.getScaledWidth_double(), scaled.getScaledHeight_double(), 0.0D, 1000.0D, 3000.0D);
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glTranslatef(0.0F, 0.0F, -2000.0F);
+        GLSMFramebuffer.glClear(GL11.GL_DEPTH_BUFFER_BIT);
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glOrtho(0.0D, scaled.getScaledWidth_double(), scaled.getScaledHeight_double(), 0.0D, 1000.0D, 3000.0D);
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glTranslatef(0.0F, 0.0F, -2000.0F);
     }
 
     public static void init() {
@@ -99,43 +111,43 @@ public class HUDCaching {
 
     public static void resetAfterCrash() {
         renderingCacheOverride = false;
-        GLStateManager.setHudCacheOverride(false);
+        GLSMBlend.setHudCacheOverride(false);
         dirty = true;
     }
 
     private static void initComposite() {
         compositeProgram = PanoramaRenderer.loadProgram("angelica:hud_composite", "angelica:panorama_blur", "angelica:hud_composite", ctx -> ctx);
         compositeProgram.bind();
-        GLStateManager.glUniform1i(GLStateManager.glGetUniformLocation(compositeProgram.handle(), "u_Depth"), 1);
+        GLSMPrograms.glUniform1i(GLSMPrograms.glGetUniformLocation(compositeProgram.handle(), "u_Depth"), 1);
         compositeProgram.unbind();
-        compositeVao = GLStateManager.glGenVertexArrays();
+        compositeVao = GLSMVertexInput.glGenVertexArrays();
     }
 
     private static void composite() {
         if (compositeProgram == null) initComposite();
-        final int program = GLStateManager.getActiveProgram();
-        final int vao = GLStateManager.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
-        final int stateDepth = GLStateManager.pushState(allState);
+        final int program = GLSMPrograms.getActiveProgram();
+        final int vao = GLSMQueries.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
+        final int stateDepth = GLSMAttribStack.pushState(allState);
         try {
-            GLStateManager.enableBlend();
-            GLStateManager.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
-            GLStateManager.enableDepthTest();
-            GLStateManager.glDepthFunc(GL11.GL_ALWAYS);
-            GLStateManager.glDepthMask(true);
-            GLStateManager.glColorMask(true, true, true, true);
-            GLStateManager.disableCull();
-            GLStateManager.disableScissorTest();
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, framebuffer.depthAttachment);
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, framebuffer.framebufferTexture);
+            GLSMBlend.enableBlend();
+            GLSMBlend.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            GLSMDepthStencilAlpha.enableDepthTest();
+            GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_ALWAYS);
+            GLSMDepthStencilAlpha.glDepthMask(true);
+            GLSMBlend.glColorMask(true, true, true, true);
+            GLSMRasterizer.disableCull();
+            GLSMRasterizer.disableScissorTest();
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, framebuffer.depthAttachment);
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, framebuffer.framebufferTexture);
             compositeProgram.bind();
-            GLStateManager.glBindVertexArray(compositeVao);
-            GLStateManager.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
+            GLSMVertexInput.glBindVertexArray(compositeVao);
+            GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
         } finally {
-            GLStateManager.glBindVertexArray(vao);
-            GLStateManager.glUseProgram(program);
-            GLStateManager.popStateTo(stateDepth);
+            GLSMVertexInput.glBindVertexArray(vao);
+            GLSMPrograms.glUseProgram(program);
+            GLSMAttribStack.popStateTo(stateDepth);
         }
     }
 
@@ -147,11 +159,11 @@ public class HUDCaching {
             XaeroMinimapCore.beforeIngameGuiRender(partialTicks);
         }
 
-        GLStateManager.disableLighting();
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-        GLStateManager.disableTexture();
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.enableTexture();
+        GLSMLighting.disableLighting();
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
+        GLSMTextures.disableTexture();
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.enableTexture();
 
         if (!AngelicaConfig.hudCachingActive || mc.displayWidth < 16 || mc.displayHeight < 16) {
             ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
@@ -168,29 +180,29 @@ public class HUDCaching {
             dirty = false;
             nextHudRefresh = System.currentTimeMillis() + (1000 / AngelicaConfig.hudCachingFPS);
             if (Tracy.ENABLED) Tracy.beginZone(Z_CACHE_WRAP);
-            final int outerDepth = GLStateManager.pushState(allState);
+            final int outerDepth = GLSMAttribStack.pushState(allState);
             try {
                 if (framebuffer.framebufferWidth != mc.displayWidth || framebuffer.framebufferHeight != mc.displayHeight) {
                     framebuffer.createBindFramebuffer(mc.displayWidth, mc.displayHeight);
                 } else {
                     framebuffer.clearBindFramebuffer();
                 }
-                final int hudDepth = GLStateManager.pushState(allState);
+                final int hudDepth = GLSMAttribStack.pushState(allState);
                 renderingCacheOverride = true;
-                GLStateManager.setHudCacheOverride(true);
+                GLSMBlend.setHudCacheOverride(true);
                 if (Tracy.ENABLED) Tracy.beginZone(Z_DRAW);
                 try {
                     ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
                 } finally {
                     if (Tracy.ENABLED) Tracy.endZone();
                 }
-                GLStateManager.setHudCacheOverride(false);
-                GLStateManager.popStateTo(hudDepth + 1);
-                GLStateManager.retainModifiedState(hudDepth, hudExitState);
+                GLSMBlend.setHudCacheOverride(false);
+                GLSMAttribStack.popStateTo(hudDepth + 1);
+                GLSMAttribStack.retainModifiedState(hudDepth, hudExitState);
             } finally {
                 renderingCacheOverride = false;
-                GLStateManager.setHudCacheOverride(false);
-                GLStateManager.popStateTo(outerDepth);
+                GLSMBlend.setHudCacheOverride(false);
+                GLSMAttribStack.popStateTo(outerDepth);
                 mc.getFramebuffer().bindFramebuffer(false);
                 if (Tracy.ENABLED) Tracy.endZone();
             }
@@ -201,17 +213,17 @@ public class HUDCaching {
         int width = scaled.getScaledWidth();
         int height = scaled.getScaledHeight();
         if (Tracy.ENABLED) Tracy.beginZone(Z_CAPTURED_BITS);
-        GLStateManager.enableBlend();
+        GLSMBlend.enableBlend();
 
         // reset the color that may be applied by some items
-        GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        GLSMCurrentAttribs.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
 
         // render bits that were captured when rendering into cache
         GuiIngameAccessor gui = (GuiIngameAccessor) ingame;
         if (renderVignetteCaptured) {
             gui.callRenderVignette(mc.thePlayer.getBrightness(partialTicks), width, height);
         } else {
-            GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, 1, 0);
+            GLSMBlend.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, 1, 0);
         }
 
         if (ingame instanceof GuiIngameForge) {
@@ -231,7 +243,7 @@ public class HUDCaching {
             if (renderCrosshairsCaptured) {
                 if (ModStatus.isXaerosMinimapLoaded) {
                     // this fixes the crosshair going invisible when no lines are being drawn under the minimap
-                    GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+                    GLSMCurrentAttribs.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
                 }
                 guiForge.callRenderCrosshairs(width, height);
             }
@@ -262,7 +274,7 @@ public class HUDCaching {
         composite();
         if (Tracy.ENABLED) Tracy.endZone();
         if (Tracy.ENABLED) Tracy.beginZone(Z_APPLY_RETAINED);
-        GLStateManager.applyRetainedState(hudExitState);
+        GLSMAttribStack.applyRetainedState(hudExitState);
         if (Tracy.ENABLED) Tracy.endZone();
 
         ClientEvent.post(ClientEventType.POST_RENDER_HUD, renderer, partialTicks);
@@ -274,11 +286,11 @@ public class HUDCaching {
      * the state before we start rendering
      */
     public static void fixGLStateBeforeRenderingCache() {
-        GLStateManager.glDepthMask(true);
-        GLStateManager.enableDepthTest();
-        GLStateManager.enableAlphaTest();
-        GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
-        GLStateManager.disableBlend();
+        GLSMDepthStencilAlpha.glDepthMask(true);
+        GLSMDepthStencilAlpha.enableDepthTest();
+        GLSMDepthStencilAlpha.enableAlphaTest();
+        GLSMBlend.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        GLSMBlend.disableBlend();
     }
 
     public static void disableHoloInventory() {

@@ -1,6 +1,15 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextureLifetime;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.GlTestSupport;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
@@ -47,7 +56,7 @@ class GlsmSdlSamplerOverflowTest {
     private static final int FETCH_GREEN = 17;
     private static final int FILTERED_BLUE = 15;
     private static final int EXPECTED = 0xFF4080C0;
-    private static final int RELEASE_DELAY_FRAMES = Reflect.getStatic(GLStateManager.class, "RELEASE_DELAY_FRAMES");
+    private static final int RELEASE_DELAY_FRAMES = Reflect.getStatic(GLSMTextureLifetime.class, "RELEASE_DELAY_FRAMES");
 
     private final int[] textures = new int[SAMPLERS];
     private int program;
@@ -99,31 +108,31 @@ class GlsmSdlSamplerOverflowTest {
         assertEquals(2, po.fragmentResources.numStorageTextures(), "fetch-only samplers moved to texture slots");
         for (int i = 0; i < SAMPLERS; i++) textures[i] = i == FETCH_RED ? redTexture.getAsInt() : GlsmSdlHeadlessRig.createSolidTexture(colorFor(i));
         for (int i = 0; i < SAMPLERS; i++) {
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + units[i]);
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, textures[i]);
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0 + units[i]);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, textures[i]);
         }
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        vao = GLStateManager.glGenVertexArrays();
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        vao = GLSMVertexInput.glGenVertexArrays();
     }
 
     private int drawCenter(String redName, int[] units) {
         bindDrawState(redName, units);
-        GLStateManager.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
-        GLStateManager.glUseProgram(0);
+        GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
+        GLSMPrograms.glUseProgram(0);
         assertMovedSamplersReadCopiesOnVulkan();
         return GlsmSdlHeadlessRig.readTarget(GlsmSdlHeadlessRig.SIZE / 2, GlsmSdlHeadlessRig.SIZE / 2, 1, 1)[0];
     }
 
     private void bindDrawState(String redName, int[] units) {
         GlsmSdlHeadlessRig.bindTarget();
-        GLStateManager.glUseProgram(program);
-        GLStateManager.glUniform1i(GLStateManager.glGetUniformLocation(program, "redLod"), redLod);
+        GLSMPrograms.glUseProgram(program);
+        GLSMPrograms.glUniform1i(GLSMPrograms.glGetUniformLocation(program, "redLod"), redLod);
         for (int i = 0; i < SAMPLERS; i++) {
-            final int location = GLStateManager.glGetUniformLocation(program, name(i, redName));
+            final int location = GLSMPrograms.glGetUniformLocation(program, name(i, redName));
             assertTrue(location >= 0, name(i, redName) + " has no location");
-            GLStateManager.glUniform1i(location, units[i]);
+            GLSMPrograms.glUniform1i(location, units[i]);
         }
-        GLStateManager.glBindVertexArray(vao);
+        GLSMVertexInput.glBindVertexArray(vao);
     }
 
     private void assertMovedSamplersReadCopiesOnVulkan() {
@@ -147,21 +156,21 @@ class GlsmSdlSamplerOverflowTest {
     @AfterEach
     void cleanUp() {
         copyProbe.close();
-        GLStateManager.glDisable(GL11.GL_COLOR_LOGIC_OP);
-        GLStateManager.glLogicOp(GL11.GL_COPY);
-        GLStateManager.glBindImageTexture(0, 0, 0, false, 0, GL15.GL_WRITE_ONLY, GL11.GL_RGBA8);
-        GLStateManager.glBindVertexArray(0);
-        if (vao != 0) GLStateManager.glDeleteVertexArrays(vao);
+        GLSMEnable.glDisable(GL11.GL_COLOR_LOGIC_OP);
+        GLSMBlend.glLogicOp(GL11.GL_COPY);
+        GLSMTextures.glBindImageTexture(0, 0, 0, false, 0, GL15.GL_WRITE_ONLY, GL11.GL_RGBA8);
+        GLSMVertexInput.glBindVertexArray(0);
+        if (vao != 0) GLSMVertexInput.glDeleteVertexArrays(vao);
         for (int unit = 0; unit < SAMPLERS; unit++) {
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + unit);
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0 + unit);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
         }
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
         for (int i = 0; i < SAMPLERS; i++) {
-            if (textures[i] != 0) GLStateManager.glDeleteTextures(textures[i]);
+            if (textures[i] != 0) GLSMTextures.glDeleteTextures(textures[i]);
             textures[i] = 0;
         }
-        if (program != 0) GLStateManager.glDeleteProgram(program);
+        if (program != 0) GLSMPrograms.glDeleteProgram(program);
         program = 0;
         vao = 0;
     }
@@ -178,9 +187,9 @@ class GlsmSdlSamplerOverflowTest {
     void unboundMovedSamplerReadsTheFloat2DFallback() {
         final int[] units = shuffledUnits();
         setUp("t" + FETCH_RED, units);
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + units[FETCH_RED]);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0 + units[FETCH_RED]);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
         assertEquals(0xFF0080C0, drawCenter("t" + FETCH_RED, units));
     }
 
@@ -190,19 +199,19 @@ class GlsmSdlSamplerOverflowTest {
         final int[] units = shuffledUnits();
         setUp("t" + FETCH_RED, units);
         bindDrawState("t" + FETCH_RED, units);
-        for (int i = 0; i < 3; i++) GLStateManager.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
+        for (int i = 0; i < 3; i++) GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
 
         if (change.equals("uniform")) {
-            GLStateManager.glUniform1i(GLStateManager.glGetUniformLocation(program, "t" + FETCH_RED), units[0]);
+            GLSMPrograms.glUniform1i(GLSMPrograms.glGetUniformLocation(program, "t" + FETCH_RED), units[0]);
         } else {
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + units[FETCH_RED]);
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, textures[0]);
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0 + units[FETCH_RED]);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, textures[0]);
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
         }
         final int refreshes = copyProbe.refreshCalls();
-        GLStateManager.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
+        GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
         if (SDLGPUGate.device().isVulkan()) assertEquals(refreshes + 1, copyProbe.refreshCalls(), "a changed moved sampler must invalidate preparation");
-        GLStateManager.glUseProgram(0);
+        GLSMPrograms.glUseProgram(0);
         assertEquals(0xFF0080C0, GlsmSdlHeadlessRig.readTarget(32, 32, 1, 1)[0], "the new unit supplies black instead of red");
     }
 
@@ -212,14 +221,14 @@ class GlsmSdlSamplerOverflowTest {
         setUp("t" + FETCH_RED, units);
         final int fbo = GlsmSdlHeadlessRig.fboWithColor(textures[FETCH_RED], 0);
         try {
-            GLStateManager.glViewport(0, 0, 2, 2);
-            GLStateManager.glClearColor(0x60 / 255.0f, 0.0f, 0.0f, 1.0f);
-            GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
+            GLSMRasterizer.glViewport(0, 0, 2, 2);
+            GLSMBlend.glClearColor(0x60 / 255.0f, 0.0f, 0.0f, 1.0f);
+            GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
             assertEquals(Integer.toHexString(0xFF6080C0), Integer.toHexString(drawCenter("t" + FETCH_RED, units)),
                 "the moved sampler must read the cleared texture, not its uploaded texels");
         } finally {
-            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
-            GLStateManager.glDeleteFramebuffers(fbo);
+            GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+            GLSMFramebuffer.glDeleteFramebuffers(fbo);
         }
     }
 
@@ -231,7 +240,7 @@ class GlsmSdlSamplerOverflowTest {
             final ByteBuffer texels = MemoryUtil.memAlloc(2 * 2 * 4);
             try {
                 for (int i = 0; i < 4; i++) GlsmSdlHeadlessRig.putArgb(texels, i, colorFor(FETCH_RED));
-                GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL21.GL_SRGB8_ALPHA8, 2, 2, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels);
+                GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL21.GL_SRGB8_ALPHA8, 2, 2, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels);
             } finally {
                 MemoryUtil.memFree(texels);
             }
@@ -253,15 +262,15 @@ class GlsmSdlSamplerOverflowTest {
         final int[] units = shuffledUnits();
         setUp("t" + FETCH_RED, units, () -> {
             final int texture = GlsmSdlHeadlessRig.newNearestTexture();
-            GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL30.GL_DEPTH_COMPONENT32F, 2, 2, 0, GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, (ByteBuffer) null);
+            GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL30.GL_DEPTH_COMPONENT32F, 2, 2, 0, GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, (ByteBuffer) null);
             final int fbo = GlsmSdlHeadlessRig.fboWithColor(GlsmSdlHeadlessRig.createSolidTexture(0xFF000000), 0);
-            GLStateManager.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_ATTACHMENT, GL11.GL_TEXTURE_2D, texture, 0);
-            GLStateManager.glViewport(0, 0, 2, 2);
-            GLStateManager.glDepthMask(true);
-            GLStateManager.glClearDepth(0.25);
-            GLStateManager.glClear(GL11.GL_DEPTH_BUFFER_BIT);
-            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
-            GLStateManager.glDeleteFramebuffers(fbo);
+            GLSMFramebuffer.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_ATTACHMENT, GL11.GL_TEXTURE_2D, texture, 0);
+            GLSMRasterizer.glViewport(0, 0, 2, 2);
+            GLSMDepthStencilAlpha.glDepthMask(true);
+            GLSMDepthStencilAlpha.glClearDepth(0.25);
+            GLSMFramebuffer.glClear(GL11.GL_DEPTH_BUFFER_BIT);
+            GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+            GLSMFramebuffer.glDeleteFramebuffers(fbo);
             return texture;
         });
         assertChannels(drawCenter("t" + FETCH_RED, units), 64, 0x80, 0xC0, "red is the cleared depth 0.25");
@@ -281,11 +290,11 @@ class GlsmSdlSamplerOverflowTest {
         drawCenter("t" + FETCH_RED, units);
         final int beforeDelete = liveTextureCount();
 
-        GLStateManager.glDeleteTextures(textures[FETCH_RED]);
+        GLSMTextures.glDeleteTextures(textures[FETCH_RED]);
         textures[FETCH_RED] = 0;
         for (int i = 0; i < RELEASE_DELAY_FRAMES; i++) {
             GlsmSdlHeadlessRig.beginFrame();
-            GLStateManager.onFrameEnd();
+            GLSMTextureLifetime.onFrameEnd();
             GlsmSdlHeadlessRig.endFrame();
         }
         assertEquals(beforeDelete - 2, liveTextureCount(), "the deleted texture and its copy are released after the delay");
@@ -299,7 +308,7 @@ class GlsmSdlSamplerOverflowTest {
         drawCenter("t" + FETCH_RED, units);
         final int beforeExpiry = liveTextureCount();
 
-        GLStateManager.glDeleteProgram(program);
+        GLSMPrograms.glDeleteProgram(program);
         program = 0;
         for (int frame = 0; frame < 12; frame++) {
             GlsmSdlHeadlessRig.beginFrame();
@@ -330,22 +339,22 @@ class GlsmSdlSamplerOverflowTest {
         final int[] units = shuffledUnits();
         setUp("t" + FETCH_RED, units);
         bindDrawState("t" + FETCH_RED, units);
-        GLStateManager.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
+        GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
         final long copy = watchCopy("t" + FETCH_RED);
         final int writes = copyProbe.writesTo(copy);
-        GLStateManager.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
+        GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
         final int refreshes = copyProbe.refreshCalls();
         assertTrue(refreshes > 0, "the probe must observe preparation before the cache can skip it");
         final var frame = GlsmSdlHeadlessRig.frameManager().frame();
         final long pass = frame.renderPassGeneration;
         final int bindGen = SdlTestRig.contextState().samplerBindGen;
         final long writeGen = GlsmSdlHeadlessRig.resourceManager().textureWriteGeneration();
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + units[0]);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0 + units[0]);
         for (int i = 0; i < 4; i++) {
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, textures[(i + 1) % 2]);
-            GLStateManager.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, textures[(i + 1) % 2]);
+            GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
         }
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
         assertEquals(pass, frame.renderPassGeneration, "the draws keep the same render pass");
         assertNotEquals(bindGen, SdlTestRig.contextState().samplerBindGen, "the entity texture changes reached the backend");
         assertEquals(writeGen, GlsmSdlHeadlessRig.resourceManager().textureWriteGeneration(), "observing copies must not change write tracking");
@@ -353,10 +362,10 @@ class GlsmSdlSamplerOverflowTest {
         assertEquals(writes, copyProbe.writesTo(copy), "repeated draws must not copy unchanged content");
 
         GlsmSdlHeadlessRig.frameManager().endRenderPassIfActive();
-        GLStateManager.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
+        GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
         assertEquals(refreshes + 1, copyProbe.refreshCalls(), "a new pass must recheck its snapshots");
         assertEquals(writes, copyProbe.writesTo(copy), "a new pass must reuse unchanged content");
-        GLStateManager.glUseProgram(0);
+        GLSMPrograms.glUseProgram(0);
         GlsmSdlHeadlessRig.endFrame();
         GlsmSdlHeadlessRig.beginFrame();
         assertEquals(EXPECTED, drawCenter("t" + FETCH_RED, units));
@@ -379,7 +388,7 @@ class GlsmSdlSamplerOverflowTest {
         } else {
             setUp("t" + FETCH_RED, units);
         }
-        if (write.equals("compute")) GLStateManager.glBindImageTexture(0, textures[FETCH_RED], 0, false, 0, GL15.GL_WRITE_ONLY, GL11.GL_RGBA8);
+        if (write.equals("compute")) GLSMTextures.glBindImageTexture(0, textures[FETCH_RED], 0, false, 0, GL15.GL_WRITE_ONLY, GL11.GL_RGBA8);
         final int fbo = GlsmSdlHeadlessRig.fboWithColor(textures[FETCH_RED], 0);
         try {
             assertEquals(EXPECTED, drawCenter("t" + FETCH_RED, units));
@@ -390,14 +399,14 @@ class GlsmSdlSamplerOverflowTest {
             GlsmSdlHeadlessRig.beginFrame();
             switch (write) {
                 case "upload" -> {
-                    GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + units[FETCH_RED]);
+                    GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0 + units[FETCH_RED]);
                     final ByteBuffer texels = MemoryUtil.memAlloc(16);
                     try {
                         for (int i = 0; i < 4; i++) GlsmSdlHeadlessRig.putArgb(texels, i, 0xFF000000);
-                        GLStateManager.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 2, 2, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels);
+                        GLSMTextures.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 2, 2, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels);
                     } finally {
                         MemoryUtil.memFree(texels);
-                        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+                        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
                     }
                 }
                 case "copy" -> BackendManager.RENDER_BACKEND.copyImageSubData(textures[0], GL11.GL_TEXTURE_2D, 0, 0, 0, 0,
@@ -405,28 +414,28 @@ class GlsmSdlSamplerOverflowTest {
                 case "blit" -> {
                     final int srcFbo = GlsmSdlHeadlessRig.fboWithColor(textures[0], 0);
                     try {
-                        GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, srcFbo);
-                        GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, fbo);
-                        GLStateManager.glBlitFramebuffer(0, 0, 2, 2, 0, 0, 2, 2, GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
+                        GLSMFramebuffer.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, srcFbo);
+                        GLSMFramebuffer.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, fbo);
+                        GLSMFramebuffer.glBlitFramebuffer(0, 0, 2, 2, 0, 0, 2, 2, GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
                     } finally {
-                        GLStateManager.glDeleteFramebuffers(srcFbo);
+                        GLSMFramebuffer.glDeleteFramebuffers(srcFbo);
                     }
                 }
                 case "clear" -> {
-                    GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
-                    GLStateManager.glClearColor(0, 0, 0, 1);
-                    GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
+                    GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
+                    GLSMBlend.glClearColor(0, 0, 0, 1);
+                    GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
                 }
                 case "mipmap" -> BackendManager.RENDER_BACKEND.generateTextureMipmap(textures[FETCH_RED]);
                 case "compute" -> computeBlack();
                 case "copyTexSubImage" -> {
                     final int srcFbo = GlsmSdlHeadlessRig.fboWithColor(textures[0], 0);
                     try {
-                        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + units[FETCH_RED]);
-                        GLStateManager.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, 2, 2);
+                        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0 + units[FETCH_RED]);
+                        GLSMTextures.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, 2, 2);
                     } finally {
-                        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-                        GLStateManager.glDeleteFramebuffers(srcFbo);
+                        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+                        GLSMFramebuffer.glDeleteFramebuffers(srcFbo);
                     }
                 }
                 default -> throw new AssertionError(write);
@@ -435,8 +444,8 @@ class GlsmSdlSamplerOverflowTest {
             assertEquals(redWrites + 1, copyProbe.writesTo(redCopy), "changed source copied once");
             assertEquals(greenWrites, copyProbe.writesTo(greenCopy), "unchanged source not copied again");
         } finally {
-            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
-            GLStateManager.glDeleteFramebuffers(fbo);
+            GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+            GLSMFramebuffer.glDeleteFramebuffers(fbo);
         }
     }
 
@@ -447,17 +456,17 @@ class GlsmSdlSamplerOverflowTest {
             layout(rgba8, binding = 0) uniform writeonly image2D target;
             void main() { imageStore(target, ivec2(gl_GlobalInvocationID.xy), vec4(0.0, 0.0, 0.0, 1.0)); }
             """);
-        final int compute = GLStateManager.glCreateProgram();
+        final int compute = GLSMPrograms.glCreateProgram();
         try {
-            GLStateManager.glAttachShader(compute, shader);
-            GLStateManager.glLinkProgram(compute);
-            assertEquals(1, GLStateManager.glGetProgrami(compute, GL20.GL_LINK_STATUS), GLStateManager.glGetProgramInfoLog(compute, 4096));
-            GLStateManager.glUseProgram(compute);
-            GLStateManager.glDispatchCompute(2, 2, 1);
+            GLSMPrograms.glAttachShader(compute, shader);
+            GLSMPrograms.glLinkProgram(compute);
+            assertEquals(1, GLSMPrograms.glGetProgrami(compute, GL20.GL_LINK_STATUS), GLSMPrograms.glGetProgramInfoLog(compute, 4096));
+            GLSMPrograms.glUseProgram(compute);
+            GLSMPrograms.glDispatchCompute(2, 2, 1);
         } finally {
-            GLStateManager.glUseProgram(0);
-            GLStateManager.glDeleteProgram(compute);
-            GLStateManager.glDeleteShader(shader);
+            GLSMPrograms.glUseProgram(0);
+            GLSMPrograms.glDeleteProgram(compute);
+            GLSMPrograms.glDeleteShader(shader);
         }
     }
 
@@ -469,14 +478,14 @@ class GlsmSdlSamplerOverflowTest {
         bindDrawState("t" + FETCH_RED, units);
         final var frame = GlsmSdlHeadlessRig.frameManager().frame();
         final long before = frame.renderPassGeneration;
-        GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
-        GLStateManager.glScissor(0, 0, 1, 1);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
-        GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
+        GLSMEnable.glEnable(GL11.GL_SCISSOR_TEST);
+        GLSMRasterizer.glScissor(0, 0, 1, 1);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        GLSMEnable.glDisable(GL11.GL_SCISSOR_TEST);
         assertEquals(before + 1, frame.renderPassGeneration, "only the clear's render pass is opened");
-        GLStateManager.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
+        GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
         assertNotEquals(0L, boundCopy("t" + FETCH_RED), "the first draw prepares the copy");
-        GLStateManager.glUseProgram(0);
+        GLSMPrograms.glUseProgram(0);
         assertEquals(EXPECTED, GlsmSdlHeadlessRig.readTarget(32, 32, 1, 1)[0]);
     }
 
@@ -488,16 +497,16 @@ class GlsmSdlSamplerOverflowTest {
             + "fragColor = c + vec4(texelFetch(fetched, " + coord + "(0), 0)); }\n";
         final int vs = GlTestSupport.compile(GL20.GL_VERTEX_SHADER, GlsmSdlHeadlessRig.FULLSCREEN_VERTEX);
         final int fs = GlTestSupport.compile(GL20.GL_FRAGMENT_SHADER, source);
-        program = GLStateManager.glCreateProgram();
+        program = GLSMPrograms.glCreateProgram();
         try {
-            GLStateManager.glAttachShader(program, vs);
-            GLStateManager.glAttachShader(program, fs);
-            GLStateManager.glLinkProgram(program);
-            assertEquals(0, GLStateManager.glGetProgrami(program, GL20.GL_LINK_STATUS));
-            assertTrue(GLStateManager.glGetProgramInfoLog(program, 4096).contains("Too many fragment shader texture samplers"));
+            GLSMPrograms.glAttachShader(program, vs);
+            GLSMPrograms.glAttachShader(program, fs);
+            GLSMPrograms.glLinkProgram(program);
+            assertEquals(0, GLSMPrograms.glGetProgrami(program, GL20.GL_LINK_STATUS));
+            assertTrue(GLSMPrograms.glGetProgramInfoLog(program, 4096).contains("Too many fragment shader texture samplers"));
         } finally {
-            GLStateManager.glDeleteShader(vs);
-            GLStateManager.glDeleteShader(fs);
+            GLSMPrograms.glDeleteShader(vs);
+            GLSMPrograms.glDeleteShader(fs);
         }
     }
 
@@ -579,7 +588,7 @@ class GlsmSdlSamplerOverflowTest {
 
         program = GlTestSupport.program(GlsmSdlHeadlessRig.FULLSCREEN_VERTEX, sb.toString());
         assertEquals(1, shaderManager().getProgram(program).fragmentResources.numStorageTextures(), "only 'fetched' moves");
-        assertTrue(GLStateManager.glGetUniformLocation(program, "realTex") >= 0, "the uniform keeps the name the macro expands to");
+        assertTrue(GLSMPrograms.glGetUniformLocation(program, "realTex") >= 0, "the uniform keeps the name the macro expands to");
     }
 
     @ParameterizedTest
@@ -603,22 +612,22 @@ class GlsmSdlSamplerOverflowTest {
             """);
         final ShaderManager.ProgramObject po = shaderManager().getProgram(program);
         assertEquals(1, (fragment ? po.fragmentResources : po.vertexResources).numStorageTextures(), "shadowtex0 moved");
-        assertEquals(-1, GLStateManager.glGetUniformLocation(program, "shadowtex0"), "an unread sampler must report -1, or Iris treats shadows as used");
-        assertTrue(GLStateManager.glGetUniformLocation(program, "f0") >= 0, "read samplers keep their location");
+        assertEquals(-1, GLSMPrograms.glGetUniformLocation(program, "shadowtex0"), "an unread sampler must report -1, or Iris treats shadows as used");
+        assertTrue(GLSMPrograms.glGetUniformLocation(program, "f0") >= 0, "read samplers keep their location");
 
         textures[0] = GlsmSdlHeadlessRig.createSolidTexture(GlsmSdlHeadlessRig.RED);
-        vao = GLStateManager.glGenVertexArrays();
-        GLStateManager.glBindVertexArray(vao);
-        GLStateManager.glUseProgram(program);
+        vao = GLSMVertexInput.glGenVertexArrays();
+        GLSMVertexInput.glBindVertexArray(vao);
+        GLSMPrograms.glUseProgram(program);
         GlsmSdlHeadlessRig.bindTarget();
         final var rm = GlsmSdlHeadlessRig.resourceManager();
         final long fallback = rm.getOrCreateFallbackStorageTexture2D();
         final long before = rm.textureWriteGeneration();
-        for (int i = 0; i < 3; i++) GLStateManager.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
+        for (int i = 0; i < 3; i++) GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
         final ContextState st = SdlTestRig.contextState();
         assertEquals(fallback, (fragment ? st.lastFragStorageTex : st.lastVertStorageTex)[0], "the unread slot uses the 2D fallback");
         assertEquals(before, rm.textureWriteGeneration(), "the unread sampler must not start tracking or copying unit 0");
-        GLStateManager.glUseProgram(0);
+        GLSMPrograms.glUseProgram(0);
         assertEquals(GlsmSdlHeadlessRig.GREEN, GlsmSdlHeadlessRig.readTarget(32, 32, 1, 1)[0]);
     }
 
@@ -635,32 +644,32 @@ class GlsmSdlSamplerOverflowTest {
         for (int i = 0; i < 16; i++) textures[i] = GlsmSdlHeadlessRig.createSolidTexture(0xFF000000);
         textures[16] = GlsmSdlHeadlessRig.createSolidTexture(0xFF00FF00);
         for (int i = 0; i <= 16; i++) {
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + i);
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, textures[i]);
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0 + i);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, textures[i]);
         }
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        vao = GLStateManager.glGenVertexArrays();
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        vao = GLSMVertexInput.glGenVertexArrays();
         final int fbo = GlsmSdlHeadlessRig.fboWithColor(textures[16], 0);
         try {
-            GLStateManager.glUseProgram(program);
-            for (int i = 0; i < 16; i++) GLStateManager.glUniform1i(GLStateManager.glGetUniformLocation(program, "f" + i), i);
-            GLStateManager.glUniform1i(GLStateManager.glGetUniformLocation(program, "written"), 16);
-            GLStateManager.glBindVertexArray(vao);
+            GLSMPrograms.glUseProgram(program);
+            for (int i = 0; i < 16; i++) GLSMPrograms.glUniform1i(GLSMPrograms.glGetUniformLocation(program, "f" + i), i);
+            GLSMPrograms.glUniform1i(GLSMPrograms.glGetUniformLocation(program, "written"), 16);
+            GLSMVertexInput.glBindVertexArray(vao);
 
-            GLStateManager.glViewport(0, 0, 2, 2);
-            GLStateManager.glUniform1i(GLStateManager.glGetUniformLocation(program, "readWritten"), 0);
-            for (int i = 0; i < 3; i++) GLStateManager.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
+            GLSMRasterizer.glViewport(0, 0, 2, 2);
+            GLSMPrograms.glUniform1i(GLSMPrograms.glGetUniformLocation(program, "readWritten"), 0);
+            for (int i = 0; i < 3; i++) GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
 
             GlsmSdlHeadlessRig.bindTarget();
-            GLStateManager.glUniform1i(GLStateManager.glGetUniformLocation(program, "readWritten"), 1);
-            GLStateManager.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
-            GLStateManager.glUseProgram(0);
+            GLSMPrograms.glUniform1i(GLSMPrograms.glGetUniformLocation(program, "readWritten"), 1);
+            GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
+            GLSMPrograms.glUseProgram(0);
 
             assertChannels(GlsmSdlHeadlessRig.readTarget(GlsmSdlHeadlessRig.SIZE / 2, GlsmSdlHeadlessRig.SIZE / 2, 1, 1)[0], 0x40, 0, 0,
                 "the second draw must see what the first draw wrote, not the texture's earlier green");
         } finally {
-            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
-            GLStateManager.glDeleteFramebuffers(fbo);
+            GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+            GLSMFramebuffer.glDeleteFramebuffers(fbo);
         }
     }
 
@@ -668,18 +677,18 @@ class GlsmSdlSamplerOverflowTest {
     void tooManyFilteredSamplersFailLinkInsteadOfDraw() {
         final int vs = GlTestSupport.compile(GL20.GL_VERTEX_SHADER, GlsmSdlHeadlessRig.FULLSCREEN_VERTEX);
         final int fs = GlTestSupport.compile(GL20.GL_FRAGMENT_SHADER, fragment("t" + FETCH_RED, false));
-        final int failed = GLStateManager.glCreateProgram();
+        final int failed = GLSMPrograms.glCreateProgram();
         try {
-            GLStateManager.glAttachShader(failed, vs);
-            GLStateManager.glAttachShader(failed, fs);
-            GLStateManager.glLinkProgram(failed);
-            assertEquals(0, GLStateManager.glGetProgrami(failed, GL20.GL_LINK_STATUS), "18 filtered samplers cannot fit 16 slots");
-            final String log = GLStateManager.glGetProgramInfoLog(failed, 4096);
+            GLSMPrograms.glAttachShader(failed, vs);
+            GLSMPrograms.glAttachShader(failed, fs);
+            GLSMPrograms.glLinkProgram(failed);
+            assertEquals(0, GLSMPrograms.glGetProgrami(failed, GL20.GL_LINK_STATUS), "18 filtered samplers cannot fit 16 slots");
+            final String log = GLSMPrograms.glGetProgramInfoLog(failed, 4096);
             assertTrue(log.contains("Too many fragment shader texture samplers (18, maximum 16)"), () -> "info log should name the count: " + log);
         } finally {
-            GLStateManager.glDeleteShader(vs);
-            GLStateManager.glDeleteShader(fs);
-            GLStateManager.glDeleteProgram(failed);
+            GLSMPrograms.glDeleteShader(vs);
+            GLSMPrograms.glDeleteShader(fs);
+            GLSMPrograms.glDeleteProgram(failed);
         }
     }
 

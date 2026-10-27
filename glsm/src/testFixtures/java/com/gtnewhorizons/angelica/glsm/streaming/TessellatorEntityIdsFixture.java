@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.streaming;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
 import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
 import net.minecraft.client.renderer.Tessellator;
 import org.lwjgl.opengl.GL11;
@@ -30,21 +30,21 @@ public final class TessellatorEntityIdsFixture {
 
     public static void drawIdsChangedMidBatch() {
         draw(() -> {
-            GLStateManager.setEntityIds(-1, 0, 7);
+            GLSMCurrentAttribs.setEntityIds(-1, 0, 7);
             startQuads();
             addQuad(-1.0f, 0.0f);
-            GLStateManager.setEntityIds(-1, 0, 50020);
+            GLSMCurrentAttribs.setEntityIds(-1, 0, 50020);
             addQuad(0.0f, 1.0f);
-            GLStateManager.setEntityIds(-1, 0, -1);
+            GLSMCurrentAttribs.setEntityIds(-1, 0, -1);
         });
     }
 
     public static void drawIdsChangedAfterTheLastVertex() {
         draw(() -> {
-            GLStateManager.setEntityIds(-1, 0, 7);
+            GLSMCurrentAttribs.setEntityIds(-1, 0, 7);
             startQuads();
             addQuad(-1.0f, 1.0f);
-            GLStateManager.setEntityIds(-1, 0, 50020);
+            GLSMCurrentAttribs.setEntityIds(-1, 0, 50020);
         });
     }
 
@@ -65,7 +65,7 @@ public final class TessellatorEntityIdsFixture {
             TessellatorStreamingDrawer.draw(tess);
         } finally {
             TessellatorEntityIds.onReset(tess);
-            GLStateManager.setEntityIds(-1, 0, -1);
+            GLSMCurrentAttribs.setEntityIds(-1, 0, -1);
             tess.rawBuffer = savedRawBuffer;
             tess.rawBufferSize = savedRawBufferSize;
             tess.rawBufferIndex = savedRawBufferIndex;

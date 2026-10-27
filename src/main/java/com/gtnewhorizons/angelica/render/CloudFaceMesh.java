@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.render;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
@@ -74,9 +76,9 @@ final class CloudFaceMesh {
     }
 
     void delete() {
-        if (vao != -1) GLStateManager.glDeleteVertexArrays(vao);
-        if (vbo != -1) GLStateManager.glDeleteBuffers(vbo);
-        if (ebo != -1) GLStateManager.glDeleteBuffers(ebo);
+        if (vao != -1) GLSMVertexInput.glDeleteVertexArrays(vao);
+        if (vbo != -1) GLSMBuffers.glDeleteBuffers(vbo);
+        if (ebo != -1) GLSMBuffers.glDeleteBuffers(ebo);
         vao = -1;
         vbo = -1;
         ebo = -1;
@@ -261,54 +263,54 @@ final class CloudFaceMesh {
         uploadBuffer.position(0).limit(uploadBytes);
 
         final boolean freshBuffers = vbo == -1;
-        if (freshBuffers) vbo = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        if (freshBuffers) vbo = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
         if (uploadBytes > vboCapacityBytes) {
-            GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, uploadBuffer, GL15.GL_DYNAMIC_DRAW);
+            GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, uploadBuffer, GL15.GL_DYNAMIC_DRAW);
             vboCapacityBytes = uploadBytes;
         } else {
-            GLStateManager.glBufferSubData(GL15.GL_ARRAY_BUFFER, 0, uploadBuffer);
+            GLSMBuffers.glBufferSubData(GL15.GL_ARRAY_BUFFER, 0, uploadBuffer);
         }
 
         if (freshBuffers) {
             ensureQuadIndices();
-            if (vao == -1) vao = GLStateManager.glGenVertexArrays();
-            GLStateManager.glBindVertexArray(vao);
-            GLStateManager.glEnableVertexAttribArray(FACE_ATTRIB);
-            GLStateManager.glVertexAttribDivisor(FACE_ATTRIB, 1);
-            GLStateManager.glVertexAttribIPointer(FACE_ATTRIB, 1, GL11.GL_INT, FACE_BYTES, 0L);
-            GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
-            GLStateManager.glBindVertexArray(0);
+            if (vao == -1) vao = GLSMVertexInput.glGenVertexArrays();
+            GLSMVertexInput.glBindVertexArray(vao);
+            GLSMVertexInput.glEnableVertexAttribArray(FACE_ATTRIB);
+            GLSMVertexInput.glVertexAttribDivisor(FACE_ATTRIB, 1);
+            GLSMVertexInput.glVertexAttribIPointer(FACE_ATTRIB, 1, GL11.GL_INT, FACE_BYTES, 0L);
+            GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
+            GLSMVertexInput.glBindVertexArray(0);
         }
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
     }
 
     private void ensureQuadIndices() {
         if (ebo != -1) return;
-        ebo = GLStateManager.glGenBuffers();
+        ebo = GLSMBuffers.glGenBuffers();
         final IntBuffer indices = BufferUtils.createIntBuffer(6);
         indices.put(0).put(1).put(2).put(0).put(2).put(3);
         indices.flip();
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
-        GLStateManager.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, indices, GL15.GL_STATIC_DRAW);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
+        GLSMBuffers.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, indices, GL15.GL_STATIC_DRAW);
+        GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
     }
 
     void bind() {
-        GLStateManager.glBindVertexArray(vao);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        GLSMVertexInput.glBindVertexArray(vao);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
     }
 
     void unbind() {
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-        GLStateManager.glBindVertexArray(0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLSMVertexInput.glBindVertexArray(0);
     }
 
     void drawRange(int startFace, int endFace) {
         final int faces = endFace - startFace;
         if (faces <= 0) return;
-        GLStateManager.glVertexAttribIPointer(FACE_ATTRIB, 1, GL11.GL_INT, FACE_BYTES, (long) startFace * FACE_BYTES);
-        GLStateManager.glDrawElementsInstanced(GL11.GL_TRIANGLES, 6, GL11.GL_UNSIGNED_INT, 0L, faces);
+        GLSMVertexInput.glVertexAttribIPointer(FACE_ATTRIB, 1, GL11.GL_INT, FACE_BYTES, (long) startFace * FACE_BYTES);
+        GLSMDraws.glDrawElementsInstanced(GL11.GL_TRIANGLES, 6, GL11.GL_UNSIGNED_INT, 0L, faces);
     }
 
     void drawInterior() {

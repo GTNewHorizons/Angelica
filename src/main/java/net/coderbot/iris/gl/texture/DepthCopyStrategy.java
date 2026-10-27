@@ -1,5 +1,6 @@
 package net.coderbot.iris.gl.texture;
 
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
@@ -97,7 +98,7 @@ public interface DepthCopyStrategy {
 		public void copy(GlFramebuffer sourceFb, int sourceTexture, GlFramebuffer destFb, int destTexture, int width, int height) {
 			if (Tracy.ENABLED) Tracy.beginZone(Z_DEPTH_COPY_IMAGE);
 			try {
-				GLStateManager.glCopyImageSubData(sourceTexture, GL11.GL_TEXTURE_2D, 0, 0, 0, 0, destTexture, GL11.GL_TEXTURE_2D, 0, 0, 0, 0, width, height, 1);
+				GLSMTextures.glCopyImageSubData(sourceTexture, GL11.GL_TEXTURE_2D, 0, 0, 0, 0, destTexture, GL11.GL_TEXTURE_2D, 0, 0, 0, 0, width, height, 1);
 			} finally {
 				if (Tracy.ENABLED) Tracy.endZone();
 			}

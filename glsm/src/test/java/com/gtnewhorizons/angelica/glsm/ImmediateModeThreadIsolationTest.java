@@ -49,12 +49,12 @@ class ImmediateModeThreadIsolationTest {
         final TestThreads.Body spam = () -> {
             start.await();
             while (!stop.get()) {
-                GLStateManager.glBegin(GL11.GL_QUADS);
-                GLStateManager.glVertex3f(0, 0, 0);
-                GLStateManager.glVertex3f(1, 0, 0);
-                GLStateManager.glVertex3f(1, 1, 0);
-                GLStateManager.glVertex3f(0, 1, 0);
-                GLStateManager.glEnd();
+                GLSMDraws.glBegin(GL11.GL_QUADS);
+                GLSMDraws.glVertex3f(0, 0, 0);
+                GLSMDraws.glVertex3f(1, 0, 0);
+                GLSMDraws.glVertex3f(1, 1, 0);
+                GLSMDraws.glVertex3f(0, 1, 0);
+                GLSMDraws.glEnd();
             }
         };
         final TestThreads.Worker t1 = TestThreads.start("iso-spam-1", spam);
@@ -64,15 +64,15 @@ class ImmediateModeThreadIsolationTest {
         final List<Integer> lists = new ArrayList<>();
         try {
             for (int i = 0; i < 50; i++) {
-                final int list = GLStateManager.glGenLists(1);
-                GLStateManager.glNewList(list, GL11.GL_COMPILE);
-                GLStateManager.glBegin(GL11.GL_QUADS);
-                GLStateManager.glVertex3f(0, 0, 0);
-                GLStateManager.glVertex3f(1, 0, 0);
-                GLStateManager.glVertex3f(1, 1, 0);
-                GLStateManager.glVertex3f(0, 1, 0);
-                GLStateManager.glEnd();
-                GLStateManager.glEndList();
+                final int list = GLSMDraws.glGenLists(1);
+                GLSMDraws.glNewList(list, GL11.GL_COMPILE);
+                GLSMDraws.glBegin(GL11.GL_QUADS);
+                GLSMDraws.glVertex3f(0, 0, 0);
+                GLSMDraws.glVertex3f(1, 0, 0);
+                GLSMDraws.glVertex3f(1, 1, 0);
+                GLSMDraws.glVertex3f(0, 1, 0);
+                GLSMDraws.glEnd();
+                GLSMDraws.glEndList();
                 lists.add(list);
             }
         } finally {
@@ -85,7 +85,7 @@ class ImmediateModeThreadIsolationTest {
             final CompiledDisplayList compiled = DisplayListManager.getDisplayList(list);
             assertNotNull(compiled, "list " + list + " should be compiled");
             assertEquals(1, compiled.getCommandCounts().getOrDefault(GLCommand.DRAW_RANGE, 0), "list " + list + " should contain exactly the main thread's draw");
-            GLStateManager.glDeleteLists(list, 1);
+            GLSMDraws.glDeleteLists(list, 1);
         }
     }
 

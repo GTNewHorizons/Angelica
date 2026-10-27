@@ -10,7 +10,11 @@ import com.gtnewhorizons.angelica.debug.render.DebugGeometry;
 import com.gtnewhorizons.angelica.debug.render.DebugPrograms;
 import com.gtnewhorizons.angelica.debug.render.NativeScratch;
 import com.gtnewhorizons.angelica.debug.screen.DebugNumbers;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
@@ -129,21 +133,21 @@ public abstract class F3Graph {
     private void init() {
         final int handle = DebugPrograms.link("angelica:debug_graph", "angelica:debug_graph.vert.glsl", "angelica:debug_graph.frag.glsl", ShaderConstants.EMPTY, new String[]{"pos"}, new int[]{0});
         program = handle;
-        GLStateManager.glUseProgram(handle);
+        GLSMPrograms.glUseProgram(handle);
 
-        uFBWidth = GLStateManager.glGetUniformLocation(handle, "fbWidth");
-        uFBHeight = GLStateManager.glGetUniformLocation(handle, "fbHeight");
-        uScaleFactor = GLStateManager.glGetUniformLocation(handle, "scaleFactor");
-        uSamples = GLStateManager.glGetUniformLocation(handle, "samples");
-        uHeadIdx = GLStateManager.glGetUniformLocation(handle, "headIdx");
-        final int uPxPerNs = GLStateManager.glGetUniformLocation(handle, "pxPerNs");
-        final int uLeft = GLStateManager.glGetUniformLocation(handle, "left");
+        uFBWidth = GLSMPrograms.glGetUniformLocation(handle, "fbWidth");
+        uFBHeight = GLSMPrograms.glGetUniformLocation(handle, "fbHeight");
+        uScaleFactor = GLSMPrograms.glGetUniformLocation(handle, "scaleFactor");
+        uSamples = GLSMPrograms.glGetUniformLocation(handle, "samples");
+        uHeadIdx = GLSMPrograms.glGetUniformLocation(handle, "headIdx");
+        final int uPxPerNs = GLSMPrograms.glGetUniformLocation(handle, "pxPerNs");
+        final int uLeft = GLSMPrograms.glGetUniformLocation(handle, "left");
 
-        vao = GLStateManager.glGenVertexArrays();
-        GLStateManager.glBindVertexArray(vao);
+        vao = GLSMVertexInput.glGenVertexArrays();
+        GLSMVertexInput.glBindVertexArray(vao);
 
-        vertBuf = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL_ARRAY_BUFFER, vertBuf);
+        vertBuf = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL_ARRAY_BUFFER, vertBuf);
         try (final MemoryStack stack = stackPush()) {
             final FloatBuffer vertices = stack.mallocFloat(VERT_COUNT * VERT_FLOATS);
             // Since we use a triangle strip, we only need 4 vertices. The quad extends to the top of the screen so spikes
@@ -156,18 +160,18 @@ public abstract class F3Graph {
             });
             vertices.rewind();
 
-            GLStateManager.glBufferData(GL_ARRAY_BUFFER, vertices, GL_STATIC_DRAW);
+            GLSMBuffers.glBufferData(GL_ARRAY_BUFFER, vertices, GL_STATIC_DRAW);
         }
 
         // Configure vertex attribute in the VAO
-        GLStateManager.glVertexAttribPointer(0, VERT_FLOATS, GL_FLOAT, false, VERT_FLOATS * 4, 0);
-        GLStateManager.glEnableVertexAttribArray(0);
+        GLSMVertexInput.glVertexAttribPointer(0, VERT_FLOATS, GL_FLOAT, false, VERT_FLOATS * 4, 0);
+        GLSMVertexInput.glEnableVertexAttribArray(0);
 
-        GLStateManager.glBindBuffer(GL_ARRAY_BUFFER, 0);
-        GLStateManager.glBindVertexArray(0);
+        GLSMBuffers.glBindBuffer(GL_ARRAY_BUFFER, 0);
+        GLSMVertexInput.glBindVertexArray(0);
 
-        GLStateManager.glUniform1f(uPxPerNs, pxPerNs);
-        GLStateManager.glUniform1i(uLeft, left ? 1 : 0);
+        GLSMPrograms.glUniform1f(uPxPerNs, pxPerNs);
+        GLSMPrograms.glUniform1i(uLeft, left ? 1 : 0);
     }
 
     public void render(ScaledResolution sr, int tick) {
@@ -185,7 +189,7 @@ public abstract class F3Graph {
 
         final Minecraft mc = Minecraft.getMinecraft();
 
-        GLStateManager.getProjectionMatrix().mul(GLStateManager.getModelViewMatrix(), mvp);
+        GLSMMatrices.getProjectionMatrix().mul(GLSMMatrices.getModelViewMatrix(), mvp);
 
         scope.beginHud();
         try {
@@ -236,14 +240,14 @@ public abstract class F3Graph {
         color.mvp(mvp);
         TessellatorStreamingDrawer.drawPacked(scratch.window(4 * COLOR_STRIDE), GL11.GL_QUADS, COLOR_FLAGS, 4);
 
-        GLStateManager.glUseProgram(program);
-        GLStateManager.glUniform1f(uFBWidth, mc.displayWidth);
-        GLStateManager.glUniform1f(uFBHeight, mc.displayHeight);
-        GLStateManager.glUniform1f(uScaleFactor, sr.getScaleFactor());
-        GLStateManager.glUniform1i(uHeadIdx, samplesHead);
-        GLStateManager.glUniform1(uSamples, sampleBuf);
-        GLStateManager.glBindVertexArray(vao);
-        GLStateManager.glDrawArrays(GL_TRIANGLE_STRIP, 0, VERT_COUNT);
+        GLSMPrograms.glUseProgram(program);
+        GLSMPrograms.glUniform1f(uFBWidth, mc.displayWidth);
+        GLSMPrograms.glUniform1f(uFBHeight, mc.displayHeight);
+        GLSMPrograms.glUniform1f(uScaleFactor, sr.getScaleFactor());
+        GLSMPrograms.glUniform1i(uHeadIdx, samplesHead);
+        GLSMPrograms.glUniform1(uSamples, sampleBuf);
+        GLSMVertexInput.glBindVertexArray(vao);
+        GLSMDraws.glDrawArrays(GL_TRIANGLE_STRIP, 0, VERT_COUNT);
 
         mc.getTextureManager().bindTexture(texture);
         p = scratch.address();

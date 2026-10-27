@@ -3,6 +3,15 @@ package com.gtnewhorizons.angelica.rendering;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMQueries;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.QuadConverter;
 import com.gtnewhorizons.angelica.glsm.StateSet;
@@ -130,8 +139,8 @@ public final class PlayerReflectionCapture {
         final float[] data = vertexScratch();
         emitModel(model, scale, data);
 
-        pendingModelView.set(GLStateManager.getModelViewMatrix());
-        pendingSkin = GLStateManager.getBoundTextureForServerState(0);
+        pendingModelView.set(GLSMMatrices.getModelViewMatrix());
+        pendingSkin = GLSMTextures.getBoundTextureForServerState(0);
         pendingEntityId = CapturedRenderingState.INSTANCE.getCurrentRenderedEntity();
         pendingItemId = CapturedRenderingState.INSTANCE.getCurrentRenderedItem();
         pending = true;
@@ -212,7 +221,7 @@ public final class PlayerReflectionCapture {
 
         if (!(Iris.getPipelineManager().getPipelineNullable() instanceof DeferredWorldRenderingPipeline pipeline)) return;
         pipeline.rebindCurrentPass();
-        if (GLStateManager.getActiveProgram() != pipeline.getActivePassProgramId()) return;
+        if (GLSMPrograms.getActiveProgram() != pipeline.getActivePassProgramId()) return;
 
         if (Tracy.ENABLED) Tracy.beginZone(Z_PLAYER_REFLECTION_FLUSH);
         try {
@@ -251,14 +260,14 @@ public final class PlayerReflectionCapture {
         repackBuffer.limit((int) (writePtr - repackAddress));
 
         ensureVAO(format);
-        GLStateManager.glBindVertexArray(vao);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-        GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, repackBuffer, GL15.GL_STREAM_DRAW);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLSMVertexInput.glBindVertexArray(vao);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, repackBuffer, GL15.GL_STREAM_DRAW);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
 
-        final int prevUnit = GL13.GL_TEXTURE0 + GLStateManager.getActiveTextureUnitForServerState();
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        final int prevTexture = GLStateManager.getBoundTextureForServerState();
+        final int prevUnit = GL13.GL_TEXTURE0 + GLSMTextures.getActiveTextureUnitForServerState();
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        final int prevTexture = GLSMTextures.getBoundTextureForServerState();
 
         if (pendingSkin > 0 && pendingSkin != skin64Tex) {
             final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(pendingSkin);
@@ -285,8 +294,8 @@ public final class PlayerReflectionCapture {
                         skinPixels = ByteBuffer.allocateDirect(required).order(ByteOrder.nativeOrder());
                     }
                     skinPixels.clear();
-                    GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, pendingSkin);
-                    GLStateManager.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, skinPixels);
+                    GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, pendingSkin);
+                    GLSMTextures.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, skinPixels);
                     skinCopyWidth = srcW;
                     skinCopyHeight = srcH;
                 }
@@ -295,12 +304,12 @@ public final class PlayerReflectionCapture {
             if (skinCopyWidth > 0 && (skinChanged || atlasChanged)) {
                 ensureSkin64Texture(Math.max(skinCopyWidth, skinCopyHeight));
 
-                final int prevRowLength = GLStateManager.glGetInteger(GL11.GL_UNPACK_ROW_LENGTH);
-                GLStateManager.glPixelStorei(GL11.GL_UNPACK_ROW_LENGTH, skinCopyWidth);
+                final int prevRowLength = GLSMQueries.glGetInteger(GL11.GL_UNPACK_ROW_LENGTH);
+                GLSMTextures.glPixelStorei(GL11.GL_UNPACK_ROW_LENGTH, skinCopyWidth);
                 try {
                     skinPixels.rewind();
-                    GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, skin64Tex);
-                    GLStateManager.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, skinCopyWidth, skinCopyHeight, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, skinPixels);
+                    GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, skin64Tex);
+                    GLSMTextures.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, skinCopyWidth, skinCopyHeight, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, skinPixels);
                     skin64Valid = true;
 
                     if (atlasInfo != null) {
@@ -308,39 +317,39 @@ public final class PlayerReflectionCapture {
                         final int dstH = Math.min(atlasInfo.getHeight(), skinCopyHeight);
                         if (dstW > 0 && dstH > 0) {
                             skinPixels.rewind();
-                            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, atlasId);
-                            GLStateManager.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, dstW, dstH, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, skinPixels);
+                            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, atlasId);
+                            GLSMTextures.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, dstW, dstH, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, skinPixels);
                         }
                     }
                 } finally {
-                    GLStateManager.glPixelStorei(GL11.GL_UNPACK_ROW_LENGTH, prevRowLength);
+                    GLSMTextures.glPixelStorei(GL11.GL_UNPACK_ROW_LENGTH, prevRowLength);
                 }
                 lastUploadedAtlasInfo = atlasInfo;
                 lastUploadedAtlasGeneration = atlasInfo != null ? atlasInfo.getUploadGeneration() : 0;
             }
 
-            if (skin64Valid) GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, skin64Tex);
+            if (skin64Valid) GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, skin64Tex);
         }
 
         final int prevEntityId = CapturedRenderingState.INSTANCE.getCurrentRenderedEntity();
         final int prevItemId = CapturedRenderingState.INSTANCE.getCurrentRenderedItem();
-        savedModelView.set(GLStateManager.getModelViewMatrix());
+        savedModelView.set(GLSMMatrices.getModelViewMatrix());
 
         CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(pendingEntityId, pendingItemId);
-        GLStateManager.setModelViewMatrix(pendingModelView);
-        final int maskStateDepth = GLStateManager.pushState(StateSet.MASKS);
-        GLStateManager.glColorMask(false, false, false, false);
-        GLStateManager.glDepthMask(false);
+        GLSMMatrices.setModelViewMatrix(pendingModelView);
+        final int maskStateDepth = GLSMAttribStack.pushState(StateSet.MASKS);
+        GLSMBlend.glColorMask(false, false, false, false);
+        GLSMDepthStencilAlpha.glDepthMask(false);
         try {
             QuadConverter.drawQuadsAsTriangles(GLStateManager.ctx(), 0, VERTEX_COUNT);
         } finally {
-            GLStateManager.popStateTo(maskStateDepth);
-            GLStateManager.setModelViewMatrix(savedModelView);
+            GLSMAttribStack.popStateTo(maskStateDepth);
+            GLSMMatrices.setModelViewMatrix(savedModelView);
             CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(prevEntityId, prevItemId);
 
-            GLStateManager.glBindVertexArray(0);
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, prevTexture);
-            GLStateManager.glActiveTexture(prevUnit);
+            GLSMVertexInput.glBindVertexArray(0);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, prevTexture);
+            GLSMTextures.glActiveTexture(prevUnit);
         }
     }
 
@@ -351,23 +360,23 @@ public final class PlayerReflectionCapture {
 
     private static void ensureVAO(VertexFormat format) {
         if (vao != 0) return;
-        vbo = GLStateManager.glGenBuffers();
-        vao = GLStateManager.glGenVertexArrays();
-        GLStateManager.glBindVertexArray(vao);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        vbo = GLSMBuffers.glGenBuffers();
+        vao = GLSMVertexInput.glGenVertexArrays();
+        GLSMVertexInput.glBindVertexArray(vao);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
         format.setupBufferState(0L);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-        GLStateManager.glBindVertexArray(0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLSMVertexInput.glBindVertexArray(0);
     }
 
     private static void ensureSkin64Texture(int size) {
         if (skin64Tex != 0 && skin64Size == size) return;
-        if (skin64Tex == 0) skin64Tex = GLStateManager.glGenTextures();
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, skin64Tex);
+        if (skin64Tex == 0) skin64Tex = GLSMTextures.glGenTextures();
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, skin64Tex);
         final ByteBuffer zero = ByteBuffer.allocateDirect(size * size * 4);
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, size, size, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, zero);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, size, size, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, zero);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
         skin64Size = size;
         skin64Valid = false;
     }

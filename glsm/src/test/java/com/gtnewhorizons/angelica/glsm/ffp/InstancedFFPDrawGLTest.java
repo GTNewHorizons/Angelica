@@ -1,6 +1,16 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.hooks.DeferredBlendHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
@@ -90,9 +100,9 @@ class InstancedFFPDrawGLTest {
         CubeParityFixture.disableDirectionalLight();
         CubeParityFixture.deleteResources();
         ParticleParityFixture.deleteResources();
-        if (templateVbo != 0) { GLStateManager.glDeleteBuffers(templateVbo); templateVbo = 0; }
-        if (instanceVbo != 0) { GLStateManager.glDeleteBuffers(instanceVbo); instanceVbo = 0; }
-        if (vao != 0) { GLStateManager.glDeleteVertexArrays(vao); vao = 0; }
+        if (templateVbo != 0) { GLSMBuffers.glDeleteBuffers(templateVbo); templateVbo = 0; }
+        if (instanceVbo != 0) { GLSMBuffers.glDeleteBuffers(instanceVbo); instanceVbo = 0; }
+        if (vao != 0) { GLSMVertexInput.glDeleteVertexArrays(vao); vao = 0; }
     }
 
     @Test
@@ -100,7 +110,7 @@ class InstancedFFPDrawGLTest {
         GLSMHooks.pendingProgramSelection = LOGGING_SELECTION;
         GLSMHooks.blendHandler = new LoggingBlendHandler();
 
-        GLStateManager.glDrawArrays(GL11.GL_TRIANGLES, 0, 0);
+        GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, 0, 0);
         drainErrors();
 
         assertEquals(List.of("resolve", "flush"), log);
@@ -109,12 +119,12 @@ class InstancedFFPDrawGLTest {
     @Test
     void resolveIsSuppressedWhileDisplayListIsRecording() {
         GLSMHooks.pendingProgramSelection = LOGGING_SELECTION;
-        final int list = GLStateManager.glGenLists(1);
+        final int list = GLSMDraws.glGenLists(1);
 
-        GLStateManager.glNewList(list, GL11.GL_COMPILE);
+        GLSMDraws.glNewList(list, GL11.GL_COMPILE);
         GLSMHooks.resolvePendingProgram();
         assertTrue(log.isEmpty());
-        GLStateManager.glEndList();
+        GLSMDraws.glEndList();
 
         GLSMHooks.resolvePendingProgram();
         assertEquals(List.of("resolve"), log);
@@ -144,7 +154,7 @@ class InstancedFFPDrawGLTest {
     }
 
     private void assertCubeParity(boolean lightmap, boolean lit) {
-        GLStateManager.glViewport(0, 0, PARITY_SIZE, PARITY_SIZE);
+        GLSMRasterizer.glViewport(0, 0, PARITY_SIZE, PARITY_SIZE);
         CubeParityFixture.setupScene(lightmap, lit);
 
         FfpFixture.activateFfp();
@@ -167,7 +177,7 @@ class InstancedFFPDrawGLTest {
     @Test
     void particleUnit0TextureMatrixMatchesReference() {
         final ParticleParityFixture.Rotation rot = ParticleParityFixture.Rotation.of(35f, -12f, false);
-        GLStateManager.glViewport(0, 0, PARITY_SIZE, PARITY_SIZE);
+        GLSMRasterizer.glViewport(0, 0, PARITY_SIZE, PARITY_SIZE);
         ParticleParityFixture.setupScene(true);
 
         FfpFixture.activateFfp();
@@ -188,14 +198,14 @@ class InstancedFFPDrawGLTest {
 
     @Test
     void entityAttribSelectsColorPerInstance() {
-        GLStateManager.glViewport(0, 0, INTEGER_WIDTH, INTEGER_HEIGHT);
-        GLStateManager.disableDepthTest();
-        GLStateManager.disableCull();
+        GLSMRasterizer.glViewport(0, 0, INTEGER_WIDTH, INTEGER_HEIGHT);
+        GLSMDepthStencilAlpha.disableDepthTest();
+        GLSMRasterizer.disableCull();
 
         FfpFixture.EntityIdInstances.build(0.66f);
 
-        GLStateManager.glClearColor(0f, 0f, 0f, 1f);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        GLSMBlend.glClearColor(0f, 0f, 0f, 1f);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
 
         FfpFixture.EntityIdInstances.draw();
 
@@ -219,9 +229,9 @@ class InstancedFFPDrawGLTest {
 
     @Test
     void instancedSourceUsesInstanceAttribs() {
-        GLStateManager.setFfpInstancing(Instancing.TEMPLATE);
+        GLSMPrograms.setFfpInstancing(Instancing.TEMPLATE);
         final VertexKey key = VertexKey.fromState(true, true, false, false, 0b10);
-        GLStateManager.setFfpInstancing(Instancing.NONE);
+        GLSMPrograms.setFfpInstancing(Instancing.NONE);
 
         final String source = VertexShaderGenerator.generate(key);
         assertTrue(source.contains("a_InstRow0"), "instance matrix attribs declared");
@@ -235,8 +245,8 @@ class InstancedFFPDrawGLTest {
     void twoInstancesDrawWithDistinctTransformsAndColors() {
         prepareTwoInstances(0xFF0000FF, 0, 0xFF00FF00, 0);
 
-        GLStateManager.glClearColor(0f, 0f, 0f, 1f);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        GLSMBlend.glClearColor(0f, 0f, 0f, 1f);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
 
         drawInstances();
 
@@ -251,14 +261,14 @@ class InstancedFFPDrawGLTest {
     @Test
     void instancedAlphaTestDiscardsLowAlphaInstance() {
         prepareTwoInstances(0xFF0000FF, 0, 0x0D0000FF, 0);
-        GLStateManager.enableAlphaTest();
-        GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.1f);
+        GLSMDepthStencilAlpha.enableAlphaTest();
+        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, 0.1f);
 
-        GLStateManager.glClearColor(0f, 0f, 0f, 1f);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        GLSMBlend.glClearColor(0f, 0f, 0f, 1f);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
 
         drawInstances();
-        GLStateManager.disableAlphaTest();
+        GLSMDepthStencilAlpha.disableAlphaTest();
 
         assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
         final int[] left = FfpFixture.readPixel(200, 300);
@@ -269,35 +279,35 @@ class InstancedFFPDrawGLTest {
 
     @Test
     void equalDepthOverlayBlendsOnlyOverBase() {
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glViewport(0, 0, 800, 600);
-        GLStateManager.enableDepthTest();
-        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
-        GLStateManager.disableCull();
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glLoadIdentity();
+        GLSMRasterizer.glViewport(0, 0, 800, 600);
+        GLSMDepthStencilAlpha.enableDepthTest();
+        GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_LEQUAL);
+        GLSMRasterizer.disableCull();
 
         buildTemplate();
         uploadInstances(0xFF0000FF, 0, 0xFF00FF00, 0);
 
         FfpFixture.activateFfp();
 
-        GLStateManager.glClearColor(0f, 0f, 0f, 1f);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
+        GLSMBlend.glClearColor(0f, 0f, 0f, 1f);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
 
         drawInstances();
 
-        GLStateManager.glDepthFunc(GL11.GL_EQUAL);
-        GLStateManager.enableBlend();
-        GLStateManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-        GLStateManager.glColor4f(1f, 1f, 1f, 1f);
+        GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_EQUAL);
+        GLSMBlend.enableBlend();
+        GLSMBlend.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GLSMCurrentAttribs.glColor4f(1f, 1f, 1f, 1f);
         uploadInstances(0x800000FF, 0, 0x8000FF00, 0);
         drawInstances();
 
-        GLStateManager.disableBlend();
-        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
-        GLStateManager.disableDepthTest();
+        GLSMBlend.disableBlend();
+        GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_LEQUAL);
+        GLSMDepthStencilAlpha.disableDepthTest();
 
         assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
         final int[] left = FfpFixture.readPixel(200, 300);
@@ -310,12 +320,12 @@ class InstancedFFPDrawGLTest {
     void perInstanceOverlayMixesOnlyTintedInstances() {
         prepareTwoInstances(0xFFFFFFFF, 0, 0xFFFFFFFF, 0xFF0000FF);
 
-        GLStateManager.glClearColor(0f, 0f, 0f, 1f);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        GLSMBlend.glClearColor(0f, 0f, 0f, 1f);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
 
-        GLStateManager.setOverlayColor(0f, 1f, 0f, 1f);
+        GLSMCurrentAttribs.setOverlayColor(0f, 1f, 0f, 1f);
         drawInstances();
-        GLStateManager.setOverlayColor(0f, 0f, 0f, 0f);
+        GLSMCurrentAttribs.setOverlayColor(0f, 0f, 0f, 0f);
 
         assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "instanced overlay draw must not raise a GL error");
 
@@ -326,13 +336,13 @@ class InstancedFFPDrawGLTest {
     }
 
     private void prepareTwoInstances(int leftColor, int leftOverlay, int rightColor, int rightOverlay) {
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glViewport(0, 0, 800, 600);
-        GLStateManager.disableDepthTest();
-        GLStateManager.disableCull();
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glLoadIdentity();
+        GLSMRasterizer.glViewport(0, 0, 800, 600);
+        GLSMDepthStencilAlpha.disableDepthTest();
+        GLSMRasterizer.disableCull();
         buildTemplate();
         uploadInstances(leftColor, leftOverlay, rightColor, rightOverlay);
         FfpFixture.activateFfp();
@@ -345,18 +355,18 @@ class InstancedFFPDrawGLTest {
         instances.flip();
 
         final boolean first = instanceVbo == 0;
-        if (first) instanceVbo = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, instanceVbo);
-        GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, instances, GL15.GL_STATIC_DRAW);
+        if (first) instanceVbo = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, instanceVbo);
+        GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, instances, GL15.GL_STATIC_DRAW);
         if (first) {
             pointAndEnableInstanceAttribs();
         }
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
     }
 
     private void buildTemplate() {
-        vao = GLStateManager.glGenVertexArrays();
-        GLStateManager.glBindVertexArray(vao);
+        vao = GLSMVertexInput.glGenVertexArrays();
+        GLSMVertexInput.glBindVertexArray(vao);
 
         final ByteBuffer template = BufferUtils.createByteBuffer(3 * TEMPLATE_STRIDE);
         putVertex(template, -0.4f, -0.4f);
@@ -364,15 +374,15 @@ class InstancedFFPDrawGLTest {
         putVertex(template, 0.0f, 0.4f);
         template.flip();
 
-        templateVbo = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, templateVbo);
-        GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, template, GL15.GL_STATIC_DRAW);
-        GLStateManager.glEnableVertexAttribArray(0);
-        GLStateManager.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, TEMPLATE_STRIDE, 0L);
-        GLStateManager.glEnableVertexAttribArray(1);
-        GLStateManager.glVertexAttribPointer(1, 4, GL11.GL_UNSIGNED_BYTE, true, TEMPLATE_STRIDE, 20L);
-        GLStateManager.glEnableVertexAttribArray(4);
-        GLStateManager.glVertexAttribPointer(4, 3, GL11.GL_BYTE, true, TEMPLATE_STRIDE, 24L);
+        templateVbo = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, templateVbo);
+        GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, template, GL15.GL_STATIC_DRAW);
+        GLSMVertexInput.glEnableVertexAttribArray(0);
+        GLSMVertexInput.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, TEMPLATE_STRIDE, 0L);
+        GLSMVertexInput.glEnableVertexAttribArray(1);
+        GLSMVertexInput.glVertexAttribPointer(1, 4, GL11.GL_UNSIGNED_BYTE, true, TEMPLATE_STRIDE, 20L);
+        GLSMVertexInput.glEnableVertexAttribArray(4);
+        GLSMVertexInput.glVertexAttribPointer(4, 3, GL11.GL_BYTE, true, TEMPLATE_STRIDE, 24L);
         VAOManager.setCurrentVertexFlags(COLOR_BIT | NORMAL_BIT);
     }
 
@@ -399,8 +409,8 @@ class InstancedFFPDrawGLTest {
     }
 
     private static void drawInstances() {
-        GLStateManager.setFfpInstancing(Instancing.TEMPLATE);
-        GLStateManager.glDrawArraysInstanced(GL11.GL_TRIANGLES, 0, 3, 2);
-        GLStateManager.setFfpInstancing(Instancing.NONE);
+        GLSMPrograms.setFfpInstancing(Instancing.TEMPLATE);
+        GLSMDraws.glDrawArraysInstanced(GL11.GL_TRIANGLES, 0, 3, 2);
+        GLSMPrograms.setFfpInstancing(Instancing.NONE);
     }
 }

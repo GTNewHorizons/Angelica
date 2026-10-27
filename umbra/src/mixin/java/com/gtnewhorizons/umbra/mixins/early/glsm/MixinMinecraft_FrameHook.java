@@ -1,5 +1,6 @@
 package com.gtnewhorizons.umbra.mixins.early.glsm;
 
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.hooks.FrameHooks;
@@ -39,7 +40,7 @@ public class MixinMinecraft_FrameHook {
         at = @At(value = "INVOKE", target = "Lcpw/mods/fml/common/FMLCommonHandler;onRenderTickEnd(F)V", shift = At.Shift.AFTER, remap = false)
     )
     private void umbra$injectLightingFixPostRenderTick(CallbackInfo ci) {
-        GLStateManager.glEnable(GL11.GL_LIGHTING);
+        GLSMEnable.glEnable(GL11.GL_LIGHTING);
     }
 
     @Inject(method = "runGameLoop", at = @At("RETURN"))

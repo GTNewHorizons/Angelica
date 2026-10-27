@@ -1,7 +1,12 @@
 package com.gtnewhorizons.angelica.rendering.tesr;
 
 import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMLighting;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.states.PolygonState;
 import it.unimi.dsi.fastutil.Hash;
 import it.unimi.dsi.fastutil.objects.ObjectOpenCustomHashSet;
@@ -105,8 +110,8 @@ public final class DrawState {
     }
 
     public static int liveCull() {
-        final PolygonState polygon = GLStateManager.getPolygonState();
-        final int cull = packCull(GLStateManager.getCullState().isEnabled(), polygon.getCullFaceMode());
+        final PolygonState polygon = GLSMRasterizer.getPolygonState();
+        final int cull = packCull(GLSMRasterizer.getCullState().isEnabled(), polygon.getCullFaceMode());
         return cull != DISABLED && polygon.getFrontFace() == GL11.GL_CW ? cull | FRONT_FACE_CLOCKWISE : cull;
     }
 
@@ -115,76 +120,76 @@ public final class DrawState {
     }
 
     public static boolean liveLit(TesrMaterial material) {
-        return GLStateManager.getLightingState().isEnabled() && !material.isUnlit();
+        return GLSMLighting.getLightingState().isEnabled() && !material.isUnlit();
     }
 
     public static boolean liveLightmap() {
-        return GLStateManager.getTextures().getTextureUnitStates(LIGHTMAP_UNIT).isEnabled();
+        return GLSMTextures.getTextures().getTextureUnitStates(LIGHTMAP_UNIT).isEnabled();
     }
 
     public void apply() {
         switch (blend) {
             case TRANSLUCENT -> {
-                GLStateManager.enableBlend();
-                GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
+                GLSMBlend.enableBlend();
+                GLSMBlend.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
             }
             case ADDITIVE -> {
-                GLStateManager.enableBlend();
-                GLStateManager.glBlendFunc(GL11.GL_ONE, GL11.GL_ONE);
+                GLSMBlend.enableBlend();
+                GLSMBlend.glBlendFunc(GL11.GL_ONE, GL11.GL_ONE);
             }
             case ADDITIVE_ALPHA -> {
-                GLStateManager.enableBlend();
-                GLStateManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
+                GLSMBlend.enableBlend();
+                GLSMBlend.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
             }
             case GLINT -> {
-                GLStateManager.enableBlend();
-                GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_COLOR, GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE);
+                GLSMBlend.enableBlend();
+                GLSMBlend.tryBlendFuncSeparate(GL11.GL_SRC_COLOR, GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE);
             }
-            default -> GLStateManager.disableBlend();
+            default -> GLSMBlend.disableBlend();
         }
 
-        GLStateManager.enableDepthTest();
-        GLStateManager.glDepthFunc(depthEqual ? GL11.GL_EQUAL : GL11.GL_LEQUAL);
-        GLStateManager.glDepthMask(depthWrite);
-        GLStateManager.glColorMask(colorWrite, colorWrite, colorWrite, colorWrite);
+        GLSMDepthStencilAlpha.enableDepthTest();
+        GLSMDepthStencilAlpha.glDepthFunc(depthEqual ? GL11.GL_EQUAL : GL11.GL_LEQUAL);
+        GLSMDepthStencilAlpha.glDepthMask(depthWrite);
+        GLSMBlend.glColorMask(colorWrite, colorWrite, colorWrite, colorWrite);
 
         if (alphaCutoff > 0.0f) {
-            GLStateManager.enableAlphaTest();
-            GLStateManager.glAlphaFunc(GL11.GL_GREATER, alphaCutoff);
+            GLSMDepthStencilAlpha.enableAlphaTest();
+            GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, alphaCutoff);
         } else {
-            GLStateManager.disableAlphaTest();
+            GLSMDepthStencilAlpha.disableAlphaTest();
         }
 
         if (lit) {
-            GLStateManager.enableLighting();
+            GLSMLighting.enableLighting();
         } else {
-            GLStateManager.disableLighting();
+            GLSMLighting.disableLighting();
         }
-        GLStateManager.getTextures().getTextureUnitStates(LIGHTMAP_UNIT).setEnabled(lightmap);
+        GLSMTextures.getTextures().getTextureUnitStates(LIGHTMAP_UNIT).setEnabled(lightmap);
 
         switch (cull & CULL_FACE_MASK) {
             case CULL_BACK -> {
-                GLStateManager.enableCull();
-                GLStateManager.glCullFace(GL11.GL_BACK);
+                GLSMRasterizer.enableCull();
+                GLSMRasterizer.glCullFace(GL11.GL_BACK);
             }
             case CULL_FRONT -> {
-                GLStateManager.enableCull();
-                GLStateManager.glCullFace(GL11.GL_FRONT);
+                GLSMRasterizer.enableCull();
+                GLSMRasterizer.glCullFace(GL11.GL_FRONT);
             }
             case CULL_BOTH -> {
-                GLStateManager.enableCull();
-                GLStateManager.glCullFace(GL11.GL_FRONT_AND_BACK);
+                GLSMRasterizer.enableCull();
+                GLSMRasterizer.glCullFace(GL11.GL_FRONT_AND_BACK);
             }
-            default -> GLStateManager.disableCull();
+            default -> GLSMRasterizer.disableCull();
         }
-        GLStateManager.glFrontFace((cull & FRONT_FACE_CLOCKWISE) != 0 ? GL11.GL_CW : GL11.GL_CCW);
+        GLSMRasterizer.glFrontFace((cull & FRONT_FACE_CLOCKWISE) != 0 ? GL11.GL_CW : GL11.GL_CCW);
 
         if (offsetFactor != 0.0f || offsetUnits != 0.0f) {
-            GLStateManager.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
-            GLStateManager.glPolygonOffset(offsetFactor, offsetUnits);
+            GLSMEnable.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
+            GLSMRasterizer.glPolygonOffset(offsetFactor, offsetUnits);
         } else {
-            GLStateManager.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
-            GLStateManager.glPolygonOffset(0.0f, 0.0f);
+            GLSMEnable.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
+            GLSMRasterizer.glPolygonOffset(0.0f, 0.0f);
         }
     }
 

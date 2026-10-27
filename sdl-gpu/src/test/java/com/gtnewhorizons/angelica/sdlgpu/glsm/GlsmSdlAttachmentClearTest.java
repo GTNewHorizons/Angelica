@@ -1,7 +1,14 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
 import com.gtnewhorizons.angelica.config.SystemProperties;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
 import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
@@ -40,33 +47,33 @@ class GlsmSdlAttachmentClearTest {
     /** Clears colour to black and depth to 0.9, then draws a quad so a render pass is open. */
     private static void primeTarget(float r, float g, float b) {
         GlsmSdlHeadlessRig.bindTarget();
-        GLStateManager.glDepthMask(true);
-        GLStateManager.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        GLStateManager.glClearDepth(0.9);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
+        GLSMDepthStencilAlpha.glDepthMask(true);
+        GLSMBlend.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        GLSMDepthStencilAlpha.glClearDepth(0.9);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
         GlsmSdlHeadlessRig.solidQuad(r, g, b);
     }
 
     private static void primeTargetWithStencil(int stencil) {
         GlsmSdlHeadlessRig.bindTarget();
-        GLStateManager.glDepthMask(true);
-        GLStateManager.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        GLStateManager.glClearDepth(1.0);
-        GLStateManager.glClearStencil(stencil);
-        GLStateManager.glStencilMask(0xFF);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT);
+        GLSMDepthStencilAlpha.glDepthMask(true);
+        GLSMBlend.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        GLSMDepthStencilAlpha.glClearDepth(1.0);
+        GLSMDepthStencilAlpha.glClearStencil(stencil);
+        GLSMDepthStencilAlpha.glStencilMask(0xFF);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT);
         GlsmSdlHeadlessRig.solidQuad(0.1f, 0.1f, 0.1f);
     }
 
     private static void drawFullQuadAtZ(float z, float r, float g, float b) {
-        GLStateManager.glColor4f(r, g, b, 1.0f);
-        GLStateManager.glNormal3f(0.0f, 0.0f, 1.0f);
-        GLStateManager.glBegin(GL11.GL_QUADS);
-        GLStateManager.glVertex3f(-1.0f, -1.0f, z);
-        GLStateManager.glVertex3f(1.0f, -1.0f, z);
-        GLStateManager.glVertex3f(1.0f, 1.0f, z);
-        GLStateManager.glVertex3f(-1.0f, 1.0f, z);
-        GLStateManager.glEnd();
+        GLSMCurrentAttribs.glColor4f(r, g, b, 1.0f);
+        GLSMCurrentAttribs.glNormal3f(0.0f, 0.0f, 1.0f);
+        GLSMDraws.glBegin(GL11.GL_QUADS);
+        GLSMDraws.glVertex3f(-1.0f, -1.0f, z);
+        GLSMDraws.glVertex3f(1.0f, -1.0f, z);
+        GLSMDraws.glVertex3f(1.0f, 1.0f, z);
+        GLSMDraws.glVertex3f(-1.0f, 1.0f, z);
+        GLSMDraws.glEnd();
     }
 
     private static boolean isRed(int argb) {
@@ -82,11 +89,11 @@ class GlsmSdlAttachmentClearTest {
     }
 
     private static boolean depthEquals(float depthValue) {
-        GLStateManager.glEnable(GL11.GL_DEPTH_TEST);
-        GLStateManager.glDepthFunc(GL11.GL_EQUAL);
-        GLStateManager.glDepthMask(false);
+        GLSMEnable.glEnable(GL11.GL_DEPTH_TEST);
+        GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_EQUAL);
+        GLSMDepthStencilAlpha.glDepthMask(false);
         drawFullQuadAtZ(depthValue * 2.0f - 1.0f, 1.0f, 0.0f, 0.0f);
-        GLStateManager.glDisable(GL11.GL_DEPTH_TEST);
+        GLSMEnable.glDisable(GL11.GL_DEPTH_TEST);
         final int[] pixels = GlsmSdlHeadlessRig.readTarget();
         return isRed(GlsmSdlHeadlessRig.pixelAt(pixels, SIZE, SIZE / 2, SIZE / 2));
     }
@@ -101,10 +108,10 @@ class GlsmSdlAttachmentClearTest {
         final int inPassBefore = f.inPassClearsThisFrame;
         final int passEndClearBefore = f.passEndCauseCountsThisFrame[FrameManager.PASS_END_CLEAR];
 
-        GLStateManager.glDepthMask(false);
-        GLStateManager.glClearDepth(0.0);
-        GLStateManager.glClear(GL11.GL_DEPTH_BUFFER_BIT);
-        GLStateManager.glDepthMask(true);
+        GLSMDepthStencilAlpha.glDepthMask(false);
+        GLSMDepthStencilAlpha.glClearDepth(0.0);
+        GLSMFramebuffer.glClear(GL11.GL_DEPTH_BUFFER_BIT);
+        GLSMDepthStencilAlpha.glDepthMask(true);
 
         assertEquals(passBefore, f.renderPass, "a masked clear must not break the active render pass");
         assertEquals(inPassBefore, f.inPassClearsThisFrame, "a masked clear must not take the in-pass path");
@@ -121,9 +128,9 @@ class GlsmSdlAttachmentClearTest {
         assertTrue(passBefore != 0, "expected an active render pass before the clear");
         final int inPassBefore = f.inPassClearsThisFrame;
 
-        GLStateManager.glDepthMask(true);
-        GLStateManager.glClearDepth(0.25);
-        GLStateManager.glClear(GL11.GL_DEPTH_BUFFER_BIT);
+        GLSMDepthStencilAlpha.glDepthMask(true);
+        GLSMDepthStencilAlpha.glClearDepth(0.25);
+        GLSMFramebuffer.glClear(GL11.GL_DEPTH_BUFFER_BIT);
 
         assertEquals(passBefore, f.renderPass, "the in-pass clear must not break the active render pass");
         assertEquals(inPassBefore + 1, f.inPassClearsThisFrame, "the in-pass clear must be taken exactly once");
@@ -140,9 +147,9 @@ class GlsmSdlAttachmentClearTest {
 
         setDisableInPassClear(true);
         try {
-            GLStateManager.glDepthMask(true);
-            GLStateManager.glClearDepth(0.6);
-            GLStateManager.glClear(GL11.GL_DEPTH_BUFFER_BIT);
+            GLSMDepthStencilAlpha.glDepthMask(true);
+            GLSMDepthStencilAlpha.glClearDepth(0.6);
+            GLSMFramebuffer.glClear(GL11.GL_DEPTH_BUFFER_BIT);
             assertEquals(inPassBefore, f.inPassClearsThisFrame, "angelica.sdlgpu.disableInPassClear must force the legacy path, never the in-pass path");
         } finally {
             setDisableInPassClear(false);
@@ -164,9 +171,9 @@ class GlsmSdlAttachmentClearTest {
             GlsmSdlHeadlessRig.resetState();
             primeTarget(0.1f, 0.1f, 0.1f);
 
-            GLStateManager.glDepthMask(true);
-            GLStateManager.glClearDepth(depthValue);
-            GLStateManager.glClear(GL11.GL_DEPTH_BUFFER_BIT);
+            GLSMDepthStencilAlpha.glDepthMask(true);
+            GLSMDepthStencilAlpha.glClearDepth(depthValue);
+            GLSMFramebuffer.glClear(GL11.GL_DEPTH_BUFFER_BIT);
 
             return depthEquals(depthValue);
         } finally {
@@ -178,24 +185,24 @@ class GlsmSdlAttachmentClearTest {
     void scissoredClearOnlyAffectsTheScissorRect() {
         primeTarget(0.1f, 0.1f, 0.1f);
 
-        GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
-        GLStateManager.glScissor(0, 0, SIZE / 2, SIZE);
-        GLStateManager.glDepthMask(true);
-        GLStateManager.glClearDepth(0.0);
-        GLStateManager.glClear(GL11.GL_DEPTH_BUFFER_BIT);
-        GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
+        GLSMEnable.glEnable(GL11.GL_SCISSOR_TEST);
+        GLSMRasterizer.glScissor(0, 0, SIZE / 2, SIZE);
+        GLSMDepthStencilAlpha.glDepthMask(true);
+        GLSMDepthStencilAlpha.glClearDepth(0.0);
+        GLSMFramebuffer.glClear(GL11.GL_DEPTH_BUFFER_BIT);
+        GLSMEnable.glDisable(GL11.GL_SCISSOR_TEST);
 
-        GLStateManager.glEnable(GL11.GL_DEPTH_TEST);
-        GLStateManager.glDepthFunc(GL11.GL_EQUAL);
-        GLStateManager.glDepthMask(false);
+        GLSMEnable.glEnable(GL11.GL_DEPTH_TEST);
+        GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_EQUAL);
+        GLSMDepthStencilAlpha.glDepthMask(false);
 
-        GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
-        GLStateManager.glScissor(0, 0, SIZE / 2, SIZE);
+        GLSMEnable.glEnable(GL11.GL_SCISSOR_TEST);
+        GLSMRasterizer.glScissor(0, 0, SIZE / 2, SIZE);
         drawFullQuadAtZ(-1.0f, 1.0f, 0.0f, 0.0f);
-        GLStateManager.glScissor(SIZE / 2, 0, SIZE - SIZE / 2, SIZE);
+        GLSMRasterizer.glScissor(SIZE / 2, 0, SIZE - SIZE / 2, SIZE);
         drawFullQuadAtZ(0.9f * 2.0f - 1.0f, 1.0f, 0.0f, 0.0f);
-        GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
-        GLStateManager.glDisable(GL11.GL_DEPTH_TEST);
+        GLSMEnable.glDisable(GL11.GL_SCISSOR_TEST);
+        GLSMEnable.glDisable(GL11.GL_DEPTH_TEST);
 
         final int[] pixels = GlsmSdlHeadlessRig.readTarget();
         assertTrue(isRed(GlsmSdlHeadlessRig.pixelAt(pixels, SIZE, SIZE / 4, SIZE / 2)), "inside the scissor rect the depth must have been cleared to 0");
@@ -210,10 +217,10 @@ class GlsmSdlAttachmentClearTest {
         final long passBefore = f.renderPass;
         final int inPassBefore = f.inPassClearsThisFrame;
 
-        GLStateManager.glClearStencil(0x3F);
-        GLStateManager.glStencilMask(0x0F);
-        GLStateManager.glClear(GL11.GL_STENCIL_BUFFER_BIT);
-        GLStateManager.glStencilMask(0xFF);
+        GLSMDepthStencilAlpha.glClearStencil(0x3F);
+        GLSMDepthStencilAlpha.glStencilMask(0x0F);
+        GLSMFramebuffer.glClear(GL11.GL_STENCIL_BUFFER_BIT);
+        GLSMDepthStencilAlpha.glStencilMask(0xFF);
 
         assertEquals(passBefore, f.renderPass, "the stencil-only clear must not break the active render pass");
         assertEquals(inPassBefore + 1, f.inPassClearsThisFrame, "the stencil clear must take the in-pass path");
@@ -284,14 +291,14 @@ class GlsmSdlAttachmentClearTest {
     private static void probeStrip(int index, int regionW, int strips, int func, int ref, int mask) {
         final int x = index * regionW;
         final int w = (index == strips - 1) ? SIZE - x : regionW;
-        GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
-        GLStateManager.glScissor(x, 0, w, SIZE);
-        GLStateManager.glEnable(GL11.GL_STENCIL_TEST);
-        GLStateManager.glStencilFunc(func, ref, mask);
-        GLStateManager.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_KEEP);
+        GLSMEnable.glEnable(GL11.GL_SCISSOR_TEST);
+        GLSMRasterizer.glScissor(x, 0, w, SIZE);
+        GLSMEnable.glEnable(GL11.GL_STENCIL_TEST);
+        GLSMDepthStencilAlpha.glStencilFunc(func, ref, mask);
+        GLSMDepthStencilAlpha.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_KEEP);
         drawFullQuadAtZ(0.0f, 1.0f, 0.0f, 0.0f);
-        GLStateManager.glDisable(GL11.GL_STENCIL_TEST);
-        GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
+        GLSMEnable.glDisable(GL11.GL_STENCIL_TEST);
+        GLSMEnable.glDisable(GL11.GL_SCISSOR_TEST);
     }
 
     private static int stripCenter(int index, int regionW, int strips) {
@@ -303,19 +310,19 @@ class GlsmSdlAttachmentClearTest {
     @Test
     void colorIsUntouchedByADepthStencilOnlyClear() {
         GlsmSdlHeadlessRig.bindTarget();
-        GLStateManager.glDepthMask(true);
-        GLStateManager.glClearColor(0.2f, 0.4f, 0.6f, 1.0f);
-        GLStateManager.glClearDepth(0.9);
-        GLStateManager.glClearStencil(0x55);
-        GLStateManager.glStencilMask(0xFF);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT);
+        GLSMDepthStencilAlpha.glDepthMask(true);
+        GLSMBlend.glClearColor(0.2f, 0.4f, 0.6f, 1.0f);
+        GLSMDepthStencilAlpha.glClearDepth(0.9);
+        GLSMDepthStencilAlpha.glClearStencil(0x55);
+        GLSMDepthStencilAlpha.glStencilMask(0xFF);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT);
         GlsmSdlHeadlessRig.solidQuad(0.2f, 0.4f, 0.6f);
 
-        GLStateManager.glDepthMask(true);
-        GLStateManager.glClearDepth(0.1);
-        GLStateManager.glClearStencil(0x77);
-        GLStateManager.glStencilMask(0xFF);
-        GLStateManager.glClear(GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT);
+        GLSMDepthStencilAlpha.glDepthMask(true);
+        GLSMDepthStencilAlpha.glClearDepth(0.1);
+        GLSMDepthStencilAlpha.glClearStencil(0x77);
+        GLSMDepthStencilAlpha.glStencilMask(0xFF);
+        GLSMFramebuffer.glClear(GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT);
 
         final int[] pixels = GlsmSdlHeadlessRig.readTarget();
         final int argb = GlsmSdlHeadlessRig.pixelAt(pixels, SIZE, SIZE / 2, SIZE / 2);
@@ -336,12 +343,12 @@ class GlsmSdlAttachmentClearTest {
         assertTrue(passBefore != 0, "expected an active render pass before the scissored clear");
         final int inPassBefore = f.inPassClearsThisFrame;
 
-        GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
-        GLStateManager.glScissor(0, 0, SIZE / 2, SIZE);
-        GLStateManager.glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
-        GLStateManager.glClearDepth(0.0);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
-        GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
+        GLSMEnable.glEnable(GL11.GL_SCISSOR_TEST);
+        GLSMRasterizer.glScissor(0, 0, SIZE / 2, SIZE);
+        GLSMBlend.glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+        GLSMDepthStencilAlpha.glClearDepth(0.0);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
+        GLSMEnable.glDisable(GL11.GL_SCISSOR_TEST);
 
         assertEquals(passBefore, f.renderPass, "the scissored clear must not break the active render pass");
         assertEquals(inPassBefore + 1, f.inPassClearsThisFrame, "the scissored clear must take the in-pass path");
@@ -350,17 +357,17 @@ class GlsmSdlAttachmentClearTest {
         final int leftProbeX = SIZE / 2 - probeSize * 2;
         final int rightProbeX = SIZE / 2 + probeSize;
 
-        GLStateManager.glEnable(GL11.GL_DEPTH_TEST);
-        GLStateManager.glDepthFunc(GL11.GL_EQUAL);
-        GLStateManager.glDepthMask(false);
+        GLSMEnable.glEnable(GL11.GL_DEPTH_TEST);
+        GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_EQUAL);
+        GLSMDepthStencilAlpha.glDepthMask(false);
 
-        GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
-        GLStateManager.glScissor(leftProbeX, 0, probeSize, SIZE);
+        GLSMEnable.glEnable(GL11.GL_SCISSOR_TEST);
+        GLSMRasterizer.glScissor(leftProbeX, 0, probeSize, SIZE);
         drawFullQuadAtZ(0.0f * 2.0f - 1.0f, 0.0f, 1.0f, 0.0f);
-        GLStateManager.glScissor(rightProbeX, 0, probeSize, SIZE);
+        GLSMRasterizer.glScissor(rightProbeX, 0, probeSize, SIZE);
         drawFullQuadAtZ(0.9f * 2.0f - 1.0f, 0.0f, 1.0f, 0.0f);
-        GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
-        GLStateManager.glDisable(GL11.GL_DEPTH_TEST);
+        GLSMEnable.glDisable(GL11.GL_SCISSOR_TEST);
+        GLSMEnable.glDisable(GL11.GL_DEPTH_TEST);
 
         final int[] pixels = GlsmSdlHeadlessRig.readTarget();
         assertTrue(isRed(GlsmSdlHeadlessRig.pixelAt(pixels, SIZE, SIZE / 8, SIZE / 2)), "inside the scissor rect must be the clear color");
@@ -372,18 +379,18 @@ class GlsmSdlAttachmentClearTest {
     @Test
     void scissoredClearAfterPendingFullClear() {
         GlsmSdlHeadlessRig.bindTarget();
-        GLStateManager.glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        GLSMBlend.glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
 
-        GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
-        GLStateManager.glScissor(0, 0, SIZE / 2, SIZE);
-        GLStateManager.glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        GLSMEnable.glEnable(GL11.GL_SCISSOR_TEST);
+        GLSMRasterizer.glScissor(0, 0, SIZE / 2, SIZE);
+        GLSMBlend.glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
 
-        GLStateManager.glScissor(0, 0, 0, SIZE);
-        GLStateManager.glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
-        GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
+        GLSMRasterizer.glScissor(0, 0, 0, SIZE);
+        GLSMBlend.glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        GLSMEnable.glDisable(GL11.GL_SCISSOR_TEST);
 
         final int[] pixels = GlsmSdlHeadlessRig.readTarget();
         assertTrue(isGreen(GlsmSdlHeadlessRig.pixelAt(pixels, SIZE, SIZE / 4, SIZE / 2)), "the scissored clear must have painted the left half green");
@@ -395,10 +402,10 @@ class GlsmSdlAttachmentClearTest {
         GlsmSdlHeadlessRig.bindTarget();
         GlsmSdlHeadlessRig.solidQuad(0.2f, 0.4f, 0.6f);
 
-        GLStateManager.glColorMask(true, false, false, true);
-        GLStateManager.glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
-        GLStateManager.glColorMask(true, true, true, true);
+        GLSMBlend.glColorMask(true, false, false, true);
+        GLSMBlend.glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        GLSMBlend.glColorMask(true, true, true, true);
 
         final int[] pixels = GlsmSdlHeadlessRig.readTarget();
         final int argb = GlsmSdlHeadlessRig.pixelAt(pixels, SIZE, SIZE / 2, SIZE / 2);
@@ -415,54 +422,54 @@ class GlsmSdlAttachmentClearTest {
         final int texA = createColorTexture();
         final int texB = createColorTexture();
 
-        final int mrtFbo = GLStateManager.glGenFramebuffers();
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, mrtFbo);
-        GLStateManager.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, texA, 0);
-        GLStateManager.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT1, GL11.GL_TEXTURE_2D, texB, 0);
-        GLStateManager.glViewport(0, 0, SIZE, SIZE);
-        GLStateManager.glDrawBuffers(IntBuffer.wrap(new int[]{ GL30.GL_COLOR_ATTACHMENT0, GL30.GL_COLOR_ATTACHMENT1 }));
+        final int mrtFbo = GLSMFramebuffer.glGenFramebuffers();
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, mrtFbo);
+        GLSMFramebuffer.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, texA, 0);
+        GLSMFramebuffer.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT1, GL11.GL_TEXTURE_2D, texB, 0);
+        GLSMRasterizer.glViewport(0, 0, SIZE, SIZE);
+        GLSMFramebuffer.glDrawBuffers(IntBuffer.wrap(new int[]{ GL30.GL_COLOR_ATTACHMENT0, GL30.GL_COLOR_ATTACHMENT1 }));
 
-        GLStateManager.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        GLSMBlend.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
 
-        GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
-        GLStateManager.glScissor(0, 0, SIZE / 2, SIZE);
-        GLStateManager.glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
-        GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
+        GLSMEnable.glEnable(GL11.GL_SCISSOR_TEST);
+        GLSMRasterizer.glScissor(0, 0, SIZE / 2, SIZE);
+        GLSMBlend.glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        GLSMEnable.glDisable(GL11.GL_SCISSOR_TEST);
 
-        final int readFbo = GLStateManager.glGenFramebuffers();
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, readFbo);
+        final int readFbo = GLSMFramebuffer.glGenFramebuffers();
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, readFbo);
 
         assertLeftHalfRed(texA, "texture A");
         assertLeftHalfRed(texB, "texture B");
 
-        GLStateManager.glDeleteFramebuffers(readFbo);
-        GLStateManager.glDeleteFramebuffers(mrtFbo);
-        GLStateManager.glDeleteTextures(texA);
-        GLStateManager.glDeleteTextures(texB);
+        GLSMFramebuffer.glDeleteFramebuffers(readFbo);
+        GLSMFramebuffer.glDeleteFramebuffers(mrtFbo);
+        GLSMTextures.glDeleteTextures(texA);
+        GLSMTextures.glDeleteTextures(texB);
 
         GlsmSdlHeadlessRig.bindTarget();
     }
 
     @Test
     void clearReachesARenderbufferRespecifiedWhileAttached() {
-        final int rb = GLStateManager.glGenRenderbuffers();
-        GLStateManager.glBindRenderbuffer(GL30.GL_RENDERBUFFER, rb);
-        GLStateManager.glRenderbufferStorage(GL30.GL_RENDERBUFFER, GL11.GL_RGBA8, SIZE / 4, SIZE / 4);
-        final int fbo = GLStateManager.glGenFramebuffers();
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
-        GLStateManager.glFramebufferRenderbuffer(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL30.GL_RENDERBUFFER, rb);
+        final int rb = GLSMFramebuffer.glGenRenderbuffers();
+        GLSMFramebuffer.glBindRenderbuffer(GL30.GL_RENDERBUFFER, rb);
+        GLSMFramebuffer.glRenderbufferStorage(GL30.GL_RENDERBUFFER, GL11.GL_RGBA8, SIZE / 4, SIZE / 4);
+        final int fbo = GLSMFramebuffer.glGenFramebuffers();
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
+        GLSMFramebuffer.glFramebufferRenderbuffer(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL30.GL_RENDERBUFFER, rb);
 
-        GLStateManager.glRenderbufferStorage(GL30.GL_RENDERBUFFER, GL11.GL_RGBA8, SIZE, SIZE);
-        GLStateManager.glViewport(0, 0, SIZE, SIZE);
-        GLStateManager.glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        GLSMFramebuffer.glRenderbufferStorage(GL30.GL_RENDERBUFFER, GL11.GL_RGBA8, SIZE, SIZE);
+        GLSMRasterizer.glViewport(0, 0, SIZE, SIZE);
+        GLSMBlend.glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
 
         GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTarget(), RED, "respecified renderbuffer must stay attached");
 
-        GLStateManager.glDeleteFramebuffers(fbo);
-        GLStateManager.glDeleteRenderbuffers(rb);
+        GLSMFramebuffer.glDeleteFramebuffers(fbo);
+        GLSMFramebuffer.glDeleteRenderbuffers(rb);
         GlsmSdlHeadlessRig.bindTarget();
     }
 
@@ -471,16 +478,16 @@ class GlsmSdlAttachmentClearTest {
     }
 
     private static int createColorTexture(int internalFormat, int format) {
-        final int tex = GLStateManager.glGenTextures();
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, internalFormat, SIZE, SIZE, 0, format, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+        final int tex = GLSMTextures.glGenTextures();
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, tex);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, internalFormat, SIZE, SIZE, 0, format, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
         return tex;
     }
 
     private static void assertLeftHalfRed(int texture, String label) {
-        GLStateManager.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, texture, 0);
+        GLSMFramebuffer.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, texture, 0);
         final int[] pixels = GlsmSdlHeadlessRig.readTarget();
         assertTrue(isRed(GlsmSdlHeadlessRig.pixelAt(pixels, SIZE, SIZE / 4, SIZE / 2)), label + " left half must be cleared red");
         assertFalse(isRed(GlsmSdlHeadlessRig.pixelAt(pixels, SIZE, SIZE / 2 + SIZE / 4, SIZE / 2)), label + " right half must keep the base clear");
@@ -491,11 +498,11 @@ class GlsmSdlAttachmentClearTest {
         GlsmSdlHeadlessRig.bindTarget();
         GlsmSdlHeadlessRig.solidQuad(1.0f, 0.0f, 0.0f);
 
-        GLStateManager.glEnable(GL30.GL_RASTERIZER_DISCARD);
-        GLStateManager.glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        GLSMEnable.glEnable(GL30.GL_RASTERIZER_DISCARD);
+        GLSMBlend.glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
         GlsmSdlHeadlessRig.solidQuad(0.0f, 0.0f, 1.0f);
-        GLStateManager.glDisable(GL30.GL_RASTERIZER_DISCARD);
+        GLSMEnable.glDisable(GL30.GL_RASTERIZER_DISCARD);
 
         final int[] pixels = GlsmSdlHeadlessRig.readTarget();
         assertTrue(isRed(GlsmSdlHeadlessRig.pixelAt(pixels, SIZE, SIZE / 2, SIZE / 2)), "rasterizer discard must skip both the clear and the draw");
@@ -507,11 +514,11 @@ class GlsmSdlAttachmentClearTest {
         GlsmSdlHeadlessRig.solidQuad(1.0f, 0.0f, 0.0f);
 
         final FloatBuffer feedbackBuffer = BufferUtils.createFloatBuffer(16);
-        GLStateManager.glFeedbackBuffer(GL11.GL_3D, feedbackBuffer);
-        GLStateManager.glRenderMode(GL11.GL_FEEDBACK);
-        GLStateManager.glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
-        GLStateManager.glRenderMode(GL11.GL_RENDER);
+        GLSMDraws.glFeedbackBuffer(GL11.GL_3D, feedbackBuffer);
+        GLSMDraws.glRenderMode(GL11.GL_FEEDBACK);
+        GLSMBlend.glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        GLSMDraws.glRenderMode(GL11.GL_RENDER);
 
         final int[] pixels = GlsmSdlHeadlessRig.readTarget();
         assertTrue(isRed(GlsmSdlHeadlessRig.pixelAt(pixels, SIZE, SIZE / 2, SIZE / 2)), "a clear issued outside GL_RENDER mode must be ignored");
@@ -520,27 +527,27 @@ class GlsmSdlAttachmentClearTest {
     @Test
     void colorMaskCoveringEveryPresentChannelIsAFullClear() {
         final int tex = createColorTexture(GL30.GL_R8, GL11.GL_RED);
-        final int fbo = GLStateManager.glGenFramebuffers();
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
-        GLStateManager.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, tex, 0);
-        GLStateManager.glViewport(0, 0, SIZE, SIZE);
+        final int fbo = GLSMFramebuffer.glGenFramebuffers();
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
+        GLSMFramebuffer.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, tex, 0);
+        GLSMRasterizer.glViewport(0, 0, SIZE, SIZE);
 
-        GLStateManager.glClearColor(0.2f, 0.0f, 0.0f, 1.0f);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        GLSMBlend.glClearColor(0.2f, 0.0f, 0.0f, 1.0f);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
         GlsmSdlHeadlessRig.solidQuad(0.4f, 0.0f, 0.0f);
 
         final FrameManager.FrameState f = frame();
         final int inPassBefore = f.inPassClearsThisFrame;
 
-        GLStateManager.glColorMask(true, false, false, false);
-        GLStateManager.glClearColor(0.6f, 0.0f, 0.0f, 1.0f);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
-        GLStateManager.glColorMask(true, true, true, true);
+        GLSMBlend.glColorMask(true, false, false, false);
+        GLSMBlend.glClearColor(0.6f, 0.0f, 0.0f, 1.0f);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        GLSMBlend.glColorMask(true, true, true, true);
 
         assertEquals(inPassBefore, f.inPassClearsThisFrame, "masking every present channel on a single-red-channel target must take the load-op path, not in-pass");
 
-        GLStateManager.glDeleteFramebuffers(fbo);
-        GLStateManager.glDeleteTextures(tex);
+        GLSMFramebuffer.glDeleteFramebuffers(fbo);
+        GLSMTextures.glDeleteTextures(tex);
         GlsmSdlHeadlessRig.bindTarget();
     }
 
@@ -561,8 +568,8 @@ class GlsmSdlAttachmentClearTest {
     @Test
     void aSingleAspectClearLeavesTheTextureUndefined() {
         final int fbo = GlsmSdlHeadlessRig.createDepthStencilFbo();
-        GLStateManager.glDepthMask(true);
-        GLStateManager.glClear(GL11.GL_DEPTH_BUFFER_BIT);
+        GLSMDepthStencilAlpha.glDepthMask(true);
+        GLSMFramebuffer.glClear(GL11.GL_DEPTH_BUFFER_BIT);
 
         final ResourceManager resourceManager = GlsmSdlHeadlessRig.resourceManager();
         final long depthTexture = resourceManager.getFbo(fbo).depthTexture;

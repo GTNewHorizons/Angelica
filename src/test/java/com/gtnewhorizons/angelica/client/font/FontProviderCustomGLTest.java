@@ -2,7 +2,7 @@ package com.gtnewhorizons.angelica.client.font;
 
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.glsm.testutil.TestThreads;
 import org.junit.jupiter.api.AfterEach;
@@ -87,11 +87,11 @@ class FontProviderCustomGLTest {
     @Test
     void glyphInkLandsInsideMeasuredRects() {
         assertTrue(provider.isGlyphAvailable('A'));
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, provider.getTexture('A'));
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, provider.getTexture('A'));
         final int width = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
         final int height = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
         final IntBuffer pixels = BufferUtils.createIntBuffer(width * height);
-        GLStateManager.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, pixels);
+        GLSMTextures.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, pixels);
 
         final int margin = QUALITY / 6;
         final boolean[] covered = new boolean[width * height];

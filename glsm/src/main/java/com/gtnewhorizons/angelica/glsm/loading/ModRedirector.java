@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.loading;
 
 import com.gtnewhorizons.angelica.glsm.redirect.GLSMRedirector;
+import com.gtnewhorizons.angelica.glsm.redirect.LegacyRewriter;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.tree.ClassNode;
@@ -28,6 +29,14 @@ public class ModRedirector {
         exclusions.add("com.gtnewhorizons.angelica.lwjgl3.");
         Collections.addAll(exclusions, extraExclusions);
         this.allExclusions = exclusions.toArray(new String[0]);
+    }
+
+    public void setLegacyHint(String hint) {
+        core.setLegacyHint(hint);
+    }
+
+    public void setLegacyRewriter(LegacyRewriter rewriter) {
+        core.setLegacyRewriter(rewriter);
     }
 
     public ClassDump getDump() {

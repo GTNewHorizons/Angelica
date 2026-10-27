@@ -5,6 +5,11 @@ import com.gtnewhorizons.angelica.api.tesr.TesrShaderUniforms;
 import com.gtnewhorizons.angelica.api.tesr.TesrShaders;
 import com.gtnewhorizons.angelica.glsm.CompatUniformManager;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMFog;
+import com.gtnewhorizons.angelica.glsm.GLSMLighting;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpFixture;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
@@ -115,16 +120,16 @@ class TesrShaderProgramsGLTest {
 
     @AfterEach
     void cleanup() {
-        GLStateManager.glUseProgram(0);
+        GLSMPrograms.glUseProgram(0);
         TesrShaderPrograms.invalidateAll();
         Reflect.setStatic(Minecraft.class, "theMinecraft", savedMinecraft);
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-        GLStateManager.glDeleteTextures(lightmapTexture);
-        GLStateManager.glDeleteTextures(otherTexture);
-        GLStateManager.disableFog();
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        GLSMTextures.glDeleteTextures(lightmapTexture);
+        GLSMTextures.glDeleteTextures(otherTexture);
+        GLSMFog.disableFog();
         final ShaderManager ffp = ShaderManager.getInstance();
         if (ffp.isActive()) ffp.deactivate();
     }
@@ -165,12 +170,12 @@ class TesrShaderProgramsGLTest {
         assertNotEquals(0, entry.baked.program);
         assertNotEquals(0, entry.instanced.program, "the first layer bind links the instanced variant too");
         assertTrue(TesrShaderPrograms.instancedAvailable(entry));
-        assertEquals(entry.baked.program, GLStateManager.getActiveProgram());
+        assertEquals(entry.baked.program, GLSMPrograms.getActiveProgram());
 
         assertTrue(TesrShaderPrograms.bindInstanced(entry));
-        assertEquals(entry.instanced.program, GLStateManager.getActiveProgram());
+        assertEquals(entry.instanced.program, GLSMPrograms.getActiveProgram());
         TesrShaderPrograms.release(entry);
-        assertEquals(0, GLStateManager.getActiveProgram(), "release restores the program bound before the layer");
+        assertEquals(0, GLSMPrograms.getActiveProgram(), "release restores the program bound before the layer");
 
         assertTrue(TesrShaderPrograms.bindBaked(entry, false));
         TesrShaderPrograms.release(entry);
@@ -181,14 +186,14 @@ class TesrShaderProgramsGLTest {
     void linkWaitsWhileADisplayListRecords() {
         final TesrShaderPrograms.Entry entry = entry(UNLIT_VERTEX, UNLIT_FRAGMENT, null);
         final long failures = TesrShaderPrograms.linkFailures;
-        final int list = GLStateManager.glGenLists(1);
-        GLStateManager.glNewList(list, GL11.GL_COMPILE);
+        final int list = GLSMDraws.glGenLists(1);
+        GLSMDraws.glNewList(list, GL11.GL_COMPILE);
         try {
             assertFalse(TesrShaderPrograms.bindBaked(entry, false), "a recording list would capture the link's program switches");
             TesrShaderPrograms.release(entry);
         } finally {
-            GLStateManager.glEndList();
-            GLStateManager.glDeleteLists(list, 1);
+            GLSMDraws.glEndList();
+            GLSMDraws.glDeleteLists(list, 1);
         }
         assertEquals(0, reads);
         assertEquals(failures, TesrShaderPrograms.linkFailures, "the variants stay unlinked, not failed");
@@ -206,7 +211,7 @@ class TesrShaderProgramsGLTest {
         final long fallbacks = TesrShaderPrograms.fallbacks;
 
         assertFalse(TesrShaderPrograms.bindBaked(entry, false));
-        assertEquals(0, GLStateManager.getActiveProgram(), "a failed bind leaves the emulation bound");
+        assertEquals(0, GLSMPrograms.getActiveProgram(), "a failed bind leaves the emulation bound");
         TesrShaderPrograms.release(entry);
         final int readsAfterFirstBind = reads;
         assertFalse(TesrShaderPrograms.bindBaked(entry, false));
@@ -216,7 +221,7 @@ class TesrShaderProgramsGLTest {
         assertEquals(2, TesrShaderPrograms.linkFailures - failures, "each variant reports its failure once, not per bind");
         assertEquals(2, TesrShaderPrograms.fallbacks - fallbacks);
         assertEquals(readsAfterFirstBind, reads, "a failed variant is not retried");
-        assertEquals(0, GLStateManager.getActiveProgram());
+        assertEquals(0, GLSMPrograms.getActiveProgram());
     }
 
     @Test
@@ -225,11 +230,11 @@ class TesrShaderProgramsGLTest {
         final long failures = TesrShaderPrograms.linkFailures;
 
         assertTrue(TesrShaderPrograms.bindBaked(entry, false), "the baked variant still draws");
-        assertEquals(entry.baked.program, GLStateManager.getActiveProgram());
+        assertEquals(entry.baked.program, GLSMPrograms.getActiveProgram());
         assertFalse(TesrShaderPrograms.instancedAvailable(entry), "the body names a uniform only the baked variant declares");
         assertEquals(1, TesrShaderPrograms.linkFailures - failures);
         assertFalse(TesrShaderPrograms.bindInstanced(entry));
-        assertEquals(entry.baked.program, GLStateManager.getActiveProgram(), "a failed instanced bind leaves the baked variant bound");
+        assertEquals(entry.baked.program, GLSMPrograms.getActiveProgram(), "a failed instanced bind leaves the baked variant bound");
         TesrShaderPrograms.release(entry);
         assertEquals(1, TesrShaderPrograms.linkFailures - failures, "a failed variant is not retried");
     }
@@ -241,7 +246,7 @@ class TesrShaderProgramsGLTest {
         final TesrShaderUniforms uniforms = new TesrShaderUniforms() {
             @Override
             public void angelica$linked(int program, boolean instanced) {
-                assertEquals(program, GLStateManager.getActiveProgram(), "the variant is bound while locations resolve");
+                assertEquals(program, GLSMPrograms.getActiveProgram(), "the variant is bound while locations resolve");
                 linked[instanced ? 1 : 0]++;
             }
 
@@ -277,26 +282,26 @@ class TesrShaderProgramsGLTest {
     @Test
     void lightmapBoundOnUnitOneAndRestored() {
         final TesrShaderPrograms.Entry entry = entry(LIT_VERTEX, LIT_FRAGMENT, null);
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, otherTexture);
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, otherTexture);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
 
         assertTrue(TesrShaderPrograms.bindBaked(entry, false));
-        assertEquals(otherTexture, GLStateManager.getBoundTextureForServerState(1), "a layer without the lightmap flag leaves unit 1 alone");
+        assertEquals(otherTexture, GLSMTextures.getBoundTextureForServerState(1), "a layer without the lightmap flag leaves unit 1 alone");
         TesrShaderPrograms.release(entry);
 
         assertTrue(TesrShaderPrograms.bindBaked(entry, true));
-        assertEquals(lightmapTexture, GLStateManager.getBoundTextureForServerState(1));
-        assertEquals(0, GLStateManager.getActiveTextureUnit(), "the bind must not move the active unit");
+        assertEquals(lightmapTexture, GLSMTextures.getBoundTextureForServerState(1));
+        assertEquals(0, GLSMTextures.getActiveTextureUnit(), "the bind must not move the active unit");
         assertEquals(1, uniformInt(entry.baked.program, TesrShaderPrelude.LIGHTMAP_SAMPLER));
         assertTrue(TesrShaderPrograms.bindInstanced(entry));
-        assertEquals(lightmapTexture, GLStateManager.getBoundTextureForServerState(1));
+        assertEquals(lightmapTexture, GLSMTextures.getBoundTextureForServerState(1));
         TesrShaderPrograms.release(entry);
-        assertEquals(otherTexture, GLStateManager.getBoundTextureForServerState(1), "release restores the caller's unit-1 texture");
-        assertEquals(0, GLStateManager.getActiveTextureUnit());
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        assertEquals(otherTexture, GLSMTextures.getBoundTextureForServerState(1), "release restores the caller's unit-1 texture");
+        assertEquals(0, GLSMTextures.getActiveTextureUnit());
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
         assertEquals(otherTexture, GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D), "the driver binding is restored too");
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
     }
 
     @Test
@@ -305,32 +310,32 @@ class TesrShaderProgramsGLTest {
         assertTrue(TesrShaderPrograms.bindBaked(entry, false));
         final int program = entry.baked.program;
 
-        GLStateManager.disableFog();
-        GLStateManager.glFogi(GL11.GL_FOG_MODE, GL11.GL_LINEAR);
+        GLSMFog.disableFog();
+        GLSMFog.glFogi(GL11.GL_FOG_MODE, GL11.GL_LINEAR);
         refresh(program);
         assertEquals(0, uniformInt(program, "angelica_FogMode"), "disabled fog is mode 0 whatever the fog function");
-        GLStateManager.enableFog();
+        GLSMFog.enableFog();
         refresh(program);
         assertEquals(1, uniformInt(program, "angelica_FogMode"));
-        GLStateManager.glFogi(GL11.GL_FOG_MODE, GL11.GL_EXP);
+        GLSMFog.glFogi(GL11.GL_FOG_MODE, GL11.GL_EXP);
         refresh(program);
         assertEquals(2, uniformInt(program, "angelica_FogMode"));
-        GLStateManager.glFogi(GL11.GL_FOG_MODE, GL11.GL_EXP2);
+        GLSMFog.glFogi(GL11.GL_FOG_MODE, GL11.GL_EXP2);
         refresh(program);
         assertEquals(3, uniformInt(program, "angelica_FogMode"));
-        GLStateManager.disableFog();
+        GLSMFog.disableFog();
         refresh(program);
         assertEquals(0, uniformInt(program, "angelica_FogMode"));
 
-        GLStateManager.glFogf(GL11.GL_FOG_START, 2f);
-        GLStateManager.glFogf(GL11.GL_FOG_END, 10f);
+        GLSMFog.glFogf(GL11.GL_FOG_START, 2f);
+        GLSMFog.glFogf(GL11.GL_FOG_END, 10f);
         refresh(program);
         final FloatBuffer params = BufferUtils.createFloatBuffer(4);
         GL20.glGetUniform(program, GL20.glGetUniformLocation(program, "angelica_FogParams"), params);
         assertEquals(-1f / 8f, params.get(0), 1e-6f, "a fog range change re-uploads the params");
         TesrShaderPrograms.release(entry);
-        GLStateManager.glFogf(GL11.GL_FOG_START, 0f);
-        GLStateManager.glFogf(GL11.GL_FOG_END, 1f);
+        GLSMFog.glFogf(GL11.GL_FOG_START, 0f);
+        GLSMFog.glFogf(GL11.GL_FOG_END, 1f);
     }
 
     @Test
@@ -340,7 +345,7 @@ class TesrShaderProgramsGLTest {
         final int program = entry.baked.program;
         final FloatBuffer diffuse = BufferUtils.createFloatBuffer(4);
         diffuse.put(0.25f).put(0.5f).put(0.75f).put(1f).flip();
-        GLStateManager.glLight(GL11.GL_LIGHT1, GL11.GL_DIFFUSE, diffuse);
+        GLSMLighting.glLight(GL11.GL_LIGHT1, GL11.GL_DIFFUSE, diffuse);
         refresh(program);
 
         final int location = GL20.glGetUniformLocation(program, "angelica_LightSource[1].diffuse");
@@ -352,6 +357,6 @@ class TesrShaderProgramsGLTest {
         TesrShaderPrograms.release(entry);
         diffuse.clear();
         diffuse.put(0f).put(0f).put(0f).put(1f).flip();
-        GLStateManager.glLight(GL11.GL_LIGHT1, GL11.GL_DIFFUSE, diffuse);
+        GLSMLighting.glLight(GL11.GL_LIGHT1, GL11.GL_DIFFUSE, diffuse);
     }
 }

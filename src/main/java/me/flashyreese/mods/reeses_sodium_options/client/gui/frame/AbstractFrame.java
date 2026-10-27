@@ -3,7 +3,7 @@ package me.flashyreese.mods.reeses_sodium_options.client.gui.frame;
 import com.gtnewhorizons.angelica.compat.mojang.Drawable;
 import com.gtnewhorizons.angelica.compat.mojang.Element;
 import com.gtnewhorizons.angelica.compat.mojang.ParentElement;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
 import me.jellysquid.mods.sodium.client.gui.options.control.ControlElement;
 import me.jellysquid.mods.sodium.client.gui.widgets.AbstractWidget;
 import me.jellysquid.mods.sodium.client.util.Dim2i;
@@ -55,10 +55,10 @@ public abstract class AbstractFrame extends AbstractWidget implements ParentElem
 
     public void applyScissor(int x, int y, int width, int height, Runnable action) {
         final double scale = new ScaledResolution(Minecraft.getMinecraft(), Minecraft.getMinecraft().displayWidth, Minecraft.getMinecraft().displayHeight).getScaleFactor();
-        GLStateManager.enableScissorTest();
-        GLStateManager.glScissor((int) (x * scale), (int) (Minecraft.getMinecraft().getFramebuffer().framebufferHeight - (y + height) * scale), (int) (width * scale), (int) (height * scale));
+        GLSMRasterizer.enableScissorTest();
+        GLSMRasterizer.glScissor((int) (x * scale), (int) (Minecraft.getMinecraft().getFramebuffer().framebufferHeight - (y + height) * scale), (int) (width * scale), (int) (height * scale));
         action.run();
-        GLStateManager.disableScissorTest();
+        GLSMRasterizer.disableScissorTest();
     }
 
     protected void drawRectOutline(double x, double y, double w, double h, int color) {

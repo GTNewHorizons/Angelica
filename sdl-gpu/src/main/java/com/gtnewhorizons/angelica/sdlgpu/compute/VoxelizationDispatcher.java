@@ -1,10 +1,10 @@
 package com.gtnewhorizons.angelica.sdlgpu.compute;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 
 public final class VoxelizationDispatcher {
-    private static final InvocationDispatch.IntUniformWriter UNIFORM_1I = (st, location, value) -> GLStateManager.glUniform1i(location, value);
+    private static final InvocationDispatch.IntUniformWriter UNIFORM_1I = (st, location, value) -> GLSMPrograms.glUniform1i(location, value);
 
     private final ComputeDispatchSink computeBinder;
 
@@ -21,9 +21,9 @@ public final class VoxelizationDispatcher {
     }
 
     public void dispatchRegion(long pass, int locBase, int locCount, int locTotal, int locInvBase, int rangeBase, int rangeCount, int vertexTotal, ContextState st) {
-        if (locBase >= 0) GLStateManager.glUniform1i(locBase, rangeBase);
-        if (locCount >= 0) GLStateManager.glUniform1i(locCount, rangeCount);
-        if (locTotal >= 0) GLStateManager.glUniform1i(locTotal, vertexTotal);
+        if (locBase >= 0) GLSMPrograms.glUniform1i(locBase, rangeBase);
+        if (locCount >= 0) GLSMPrograms.glUniform1i(locCount, rangeCount);
+        if (locTotal >= 0) GLSMPrograms.glUniform1i(locTotal, vertexTotal);
         InvocationDispatch.dispatch(computeBinder, st, pass, vertexTotal, locInvBase, UNIFORM_1I);
     }
 

@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.states;
 
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import lombok.Getter;
 import org.lwjgl.opengl.GL11;
@@ -45,7 +46,7 @@ public class BooleanState implements ISettableState<BooleanState> {
 
     public void setEnabled(boolean enabled) {
         final boolean bypass = !GLStateManager.isCachingEnabled();
-        if (stateUnknown || bypass || enabled != this.enabled || (this.glCap == GL11.GL_BLEND && GLStateManager.vendorIsAMD() && GLStateManager.isPoppingAttributes())) {
+        if (stateUnknown || bypass || enabled != this.enabled || (this.glCap == GL11.GL_BLEND && GLStateManager.vendorIsAMD() && GLSMAttribStack.isPoppingAttributes())) {
             GLStateManager.beforeUncapturedCapabilityChange(glCap);
             stateUnknown = false;
             this.enabled = enabled;

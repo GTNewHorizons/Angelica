@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.glsm.hooks;
 
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLContextState;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
@@ -26,12 +27,12 @@ public final class TextureUtilHooks {
     private TextureUtilHooks() {}
 
     public static void setMaxLevel(int mipmapLevels) {
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, mipmapLevels);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, mipmapLevels);
     }
 
     public static void captureBoundFilterTexture() {
         final GLContextState ctx = GLStateManager.ctx();
-        final int id = GLStateManager.getBoundTextureForServerState();
+        final int id = GLSMTextures.getBoundTextureForServerState();
         ctx.savedFilterTextureId = id;
         final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(id);
         if (info != null) {
@@ -78,8 +79,8 @@ public final class TextureUtilHooks {
             RenderSystem.texParameteri(id, GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, min);
             RenderSystem.texParameteri(id, GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, mag);
         } else {
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, min);
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, mag);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, min);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, mag);
         }
     }
 
@@ -88,7 +89,7 @@ public final class TextureUtilHooks {
         if (id != 0 && DisplayListManager.getRecordMode() == DisplayListManager.RecordMode.NONE) {
             RenderSystem.texParameterf(id, GL11.GL_TEXTURE_2D, EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso);
         } else {
-            GLStateManager.glTexParameterf(GL11.GL_TEXTURE_2D, EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso);
+            GLSMTextures.glTexParameterf(GL11.GL_TEXTURE_2D, EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso);
         }
     }
 
@@ -116,7 +117,7 @@ public final class TextureUtilHooks {
 
     /** TextureUtil.func_152777_a(false, false, 1) without using vanilla's single save slot, which the caller may hold. */
     public static void forceNearestFilter() {
-        final int id = GLStateManager.getBoundTextureForServerState();
+        final int id = GLSMTextures.getBoundTextureForServerState();
         final TextureInfo info = id != 0 ? TextureInfoCache.INSTANCE.getInfo(id) : null;
         if (info == null) {
             nearestTexture = 0;
@@ -143,9 +144,9 @@ public final class TextureUtilHooks {
             RenderSystem.texParameteri(id, GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, mag);
             if (anisotropic) RenderSystem.texParameterf(id, GL11.GL_TEXTURE_2D, EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso);
         } else {
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, min);
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, mag);
-            if (anisotropic) GLStateManager.glTexParameterf(GL11.GL_TEXTURE_2D, EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, min);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, mag);
+            if (anisotropic) GLSMTextures.glTexParameterf(GL11.GL_TEXTURE_2D, EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso);
         }
     }
 }

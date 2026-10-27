@@ -3,6 +3,8 @@ package com.gtnewhorizons.angelica.glsm.ffp;
 import com.gtnewhorizon.gtnhlib.client.renderer.MatrixHelper;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLContextState;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.TexGenState;
 import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
@@ -230,11 +232,11 @@ public final class VertexKey {
         if (hasTexCoord) bits |= (1L << BIT_HAS_VERTEX_TEX);
         if (hasLightmap) bits |= (1L << BIT_HAS_VERTEX_LIGHTMAP);
 
-        if (GLStateManager.consumeUnit23TexCoordSetDuringDraw(glCtx) && hasTexCoord) {
+        if (GLSMCurrentAttribs.consumeUnit23TexCoordSetDuringDraw(glCtx) && hasTexCoord) {
             bits |= (1L << BIT_UNIT23_UV_FROM_UNIT0);
         }
 
-        if (GLStateManager.anyClipPlaneEnabled(glCtx)) {
+        if (GLSMRasterizer.anyClipPlaneEnabled(glCtx)) {
             bits |= (1L << BIT_CLIP_PLANES);
         }
 

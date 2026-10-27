@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,26 +28,26 @@ class GlsmSdlReadbackTest {
 
     @Test
     void getTexImageSeesDeferredTextureUpload() {
-        final int texture = GLStateManager.glGenTextures();
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        final int texture = GLSMTextures.glGenTextures();
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texture);
 
         final ByteBuffer src = solidTexture(TEX_SIZE, TEX_SIZE);
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, TEX_SIZE, TEX_SIZE, 0,
+        GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, TEX_SIZE, TEX_SIZE, 0,
             GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, src);
 
         final ByteBuffer dst = BufferUtils.createByteBuffer(TEX_SIZE * TEX_SIZE * 4);
-        GLStateManager.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, dst);
+        GLSMTextures.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, dst);
 
         assertPixels(dst, TEX_SIZE * TEX_SIZE);
-        GLStateManager.glDeleteTextures(texture);
+        GLSMTextures.glDeleteTextures(texture);
     }
 
     @Test
     void getBufferSubDataSeesSameFrameStorageBufferWrite() {
         final int size = 64;
-        final int ssbo = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, ssbo);
+        final int ssbo = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, ssbo);
 
         final ByteBuffer initial = BufferUtils.createByteBuffer(size);
         final ByteBuffer update = BufferUtils.createByteBuffer(size);
@@ -53,16 +55,16 @@ class GlsmSdlReadbackTest {
             initial.put(i, (byte) 0x11);
             update.put(i, (byte) (i + 1));
         }
-        GLStateManager.glBufferData(GL43.GL_SHADER_STORAGE_BUFFER, initial, GL15.GL_DYNAMIC_DRAW);
-        GLStateManager.glBufferSubData(GL43.GL_SHADER_STORAGE_BUFFER, 0, update);
+        GLSMBuffers.glBufferData(GL43.GL_SHADER_STORAGE_BUFFER, initial, GL15.GL_DYNAMIC_DRAW);
+        GLSMBuffers.glBufferSubData(GL43.GL_SHADER_STORAGE_BUFFER, 0, update);
 
         final ByteBuffer dst = BufferUtils.createByteBuffer(size);
-        GLStateManager.glGetBufferSubData(GL43.GL_SHADER_STORAGE_BUFFER, 0, dst);
+        GLSMBuffers.glGetBufferSubData(GL43.GL_SHADER_STORAGE_BUFFER, 0, dst);
 
         for (int i = 0; i < size; i++) {
             assertEquals((byte) (i + 1), dst.get(i), "byte " + i + " should hold the same-frame sub-data write");
         }
-        GLStateManager.glDeleteBuffers(ssbo);
+        GLSMBuffers.glDeleteBuffers(ssbo);
     }
 
     @Test
@@ -72,7 +74,7 @@ class GlsmSdlReadbackTest {
         GlsmSdlHeadlessRig.solidQuad(1.0f, 0.0f, 0.0f);
 
         final ByteBuffer pixel = BufferUtils.createByteBuffer(4);
-        GLStateManager.glReadPixels(
+        GLSMFramebuffer.glReadPixels(
             GlsmSdlHeadlessRig.SIZE / 2, GlsmSdlHeadlessRig.SIZE / 2, 1, 1,
             GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixel);
 

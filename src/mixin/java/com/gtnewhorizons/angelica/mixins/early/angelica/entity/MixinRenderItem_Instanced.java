@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.entity;
 
 import com.gtnewhorizons.angelica.experimental.surround.Surround;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
 import com.gtnewhorizons.angelica.rendering.GlintClock;
 import com.gtnewhorizons.angelica.rendering.SkippedGlintBlock;
 import com.gtnewhorizons.angelica.rendering.items.DroppedItemInstancer;
@@ -159,12 +159,12 @@ public abstract class MixinRenderItem_Instanced {
         id = "customDraws"
     )
     private void angelica$beginCustomItemDraws() {
-        BatchEligibility.beginExpectedDraws(GLStateManager.drawCalls);
+        BatchEligibility.beginExpectedDraws(GLSMDraws.drawCalls);
     }
 
     @Surround.Finally("customDraws")
     private void angelica$endCustomItemDraws() {
-        BatchEligibility.endExpectedDraws(GLStateManager.drawCalls);
+        BatchEligibility.endExpectedDraws(GLSMDraws.drawCalls);
     }
 
     @Surround(

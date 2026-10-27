@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import com.gtnewhorizons.angelica.experimental.surround.Surround;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
 import com.gtnewhorizons.angelica.api.EnderDragonBeams;
 import net.minecraft.client.renderer.entity.RenderDragon;
 import net.minecraft.entity.boss.EntityDragon;
@@ -51,14 +51,14 @@ public abstract class MixinRenderDragon {
             EnderDragonBeams.beginDeathRays();
 
             angelica$depthPassReplay++;
-            GLStateManager.glColorMask(false, false, false, false);
+            GLSMBlend.glColorMask(false, false, false, false);
             try {
                 angelica$invokeRenderEquippedItems(dragon, partialTicks);
             } catch (Throwable t) {
                 angelica$endDeathBeamsLighting(true);
                 throw t;
             } finally {
-                GLStateManager.glColorMask(true, true, true, true);
+                GLSMBlend.glColorMask(true, true, true, true);
                 angelica$depthPassReplay--;
             }
         }

@@ -4,6 +4,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
 import org.lwjgl.opengl.GL11;
@@ -60,16 +61,16 @@ public final class LineQuads {
     }
 
     public static boolean disableCulling() {
-        final boolean wasEnabled = GLStateManager.getCullState().isEnabled();
+        final boolean wasEnabled = GLSMRasterizer.getCullState().isEnabled();
         if (wasEnabled) {
-            GLStateManager.disableCull();
+            GLSMRasterizer.disableCull();
         }
         return wasEnabled;
     }
 
     public static void restoreCulling(boolean wasEnabled) {
         if (wasEnabled) {
-            GLStateManager.enableCull();
+            GLSMRasterizer.enableCull();
         }
     }
 

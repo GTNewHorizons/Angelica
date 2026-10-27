@@ -1,7 +1,13 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,30 +41,30 @@ class WideLineClipGLTest {
 
     @BeforeEach
     void setUp() {
-        savedEmulation = GLStateManager.wideLineEmulationEnabled;
-        GLStateManager.wideLineEmulationEnabled = true;
+        savedEmulation = GLSMRasterizer.wideLineEmulationEnabled;
+        GLSMRasterizer.wideLineEmulationEnabled = true;
 
         FfpFixture.resetFfpState();
         FfpFixture.activateFfp();
-        GLStateManager.glViewport(0, 0, SIZE, SIZE);
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glFrustum(-NEAR, NEAR, -NEAR, NEAR, NEAR, 100.0);
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glDisable(GL11.GL_DEPTH_TEST);
-        GLStateManager.glLineWidth(LINE_WIDTH);
+        GLSMRasterizer.glViewport(0, 0, SIZE, SIZE);
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glFrustum(-NEAR, NEAR, -NEAR, NEAR, NEAR, 100.0);
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glLoadIdentity();
+        GLSMEnable.glDisable(GL11.GL_DEPTH_TEST);
+        GLSMRasterizer.glLineWidth(LINE_WIDTH);
     }
 
     @AfterEach
     void tearDown() {
-        GLStateManager.wideLineEmulationEnabled = savedEmulation;
-        GLStateManager.glLineWidth(1.0f);
-        if (vbo != 0) { GLStateManager.glDeleteBuffers(vbo); vbo = 0; }
-        if (vao != 0) { GLStateManager.glDeleteVertexArrays(vao); vao = 0; }
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMRasterizer.wideLineEmulationEnabled = savedEmulation;
+        GLSMRasterizer.glLineWidth(1.0f);
+        if (vbo != 0) { GLSMBuffers.glDeleteBuffers(vbo); vbo = 0; }
+        if (vao != 0) { GLSMVertexInput.glDeleteVertexArrays(vao); vao = 0; }
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
         FfpFixture.resetFfpState();
     }
 
@@ -83,9 +89,9 @@ class WideLineClipGLTest {
     }
 
     private static void orthographic() {
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
     }
 
     private static float pixelCenter(int pixel) {
@@ -102,8 +108,8 @@ class WideLineClipGLTest {
 
     private int[] drawLineOnce(float[] start, float[] end) {
         final int[] pixels = drawLine(start, end);
-        GLStateManager.glDeleteBuffers(vbo);
-        GLStateManager.glDeleteVertexArrays(vao);
+        GLSMBuffers.glDeleteBuffers(vbo);
+        GLSMVertexInput.glDeleteVertexArrays(vao);
         vbo = 0;
         vao = 0;
         return pixels;
@@ -112,7 +118,7 @@ class WideLineClipGLTest {
     @Test
     void wideLineCoversItsFirstPixelButNotItsLast() {
         orthographic();
-        GLStateManager.glLineWidth(2.0f);
+        GLSMRasterizer.glLineWidth(2.0f);
         final float y = pixelCenter(16);
         final int[] pixels = drawLineOnce(new float[] { pixelCenter(40), y, 0f }, new float[] { pixelCenter(20), y, 0f });
         assertEquals(2, litInColumn(pixels, 40), "first pixel of a right-to-left line");
@@ -123,16 +129,16 @@ class WideLineClipGLTest {
     @Test
     void cullingKeepsWideLinesInBothDirections() {
         orthographic();
-        GLStateManager.glLineWidth(2.0f);
-        GLStateManager.glEnable(GL11.GL_CULL_FACE);
+        GLSMRasterizer.glLineWidth(2.0f);
+        GLSMEnable.glEnable(GL11.GL_CULL_FACE);
         try {
             final int[] rightward = drawLineOnce(new float[] { -0.8f, 0f, 0f }, new float[] { 0.8f, 0f, 0f });
             final int[] leftward = drawLineOnce(new float[] { 0.8f, 0f, 0f }, new float[] { -0.8f, 0f, 0f });
             assertEquals(2, litInColumn(rightward, SIZE / 2), "left-to-right line with culling on");
             assertEquals(2, litInColumn(leftward, SIZE / 2), "right-to-left line with culling on");
-            assertTrue(GLStateManager.getCullState().isEnabled(), "the game's cull state survives");
+            assertTrue(GLSMRasterizer.getCullState().isEnabled(), "the game's cull state survives");
         } finally {
-            GLStateManager.glDisable(GL11.GL_CULL_FACE);
+            GLSMEnable.glDisable(GL11.GL_CULL_FACE);
         }
     }
 
@@ -149,21 +155,21 @@ class WideLineClipGLTest {
     }
 
     private int[] drawLine(float[] start, float[] end) {
-        vao = GLStateManager.glGenVertexArrays();
-        GLStateManager.glBindVertexArray(vao);
-        vbo = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        vao = GLSMVertexInput.glGenVertexArrays();
+        GLSMVertexInput.glBindVertexArray(vao);
+        vbo = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
         final FloatBuffer positions = BufferUtils.createFloatBuffer(6);
         positions.put(start).put(end).flip();
-        GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, positions, GL15.GL_STATIC_DRAW);
+        GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, positions, GL15.GL_STATIC_DRAW);
         FfpFixture.attrib(0, 3, GL11.GL_FLOAT, false, 12, 0);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         VAOManager.setCurrentVertexFlags(0);
 
         FfpFixture.clear();
-        GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-        GLStateManager.glDrawArrays(GL11.GL_LINES, 0, 2);
-        GLStateManager.glBindVertexArray(0);
+        GLSMCurrentAttribs.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        GLSMDraws.glDrawArrays(GL11.GL_LINES, 0, 2);
+        GLSMVertexInput.glBindVertexArray(0);
         return FfpFixture.readRegion(SIZE);
     }
 }

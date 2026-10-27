@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.glsm.recording;
 
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLContextState;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
 import com.gtnewhorizons.angelica.glsm.recording.commands.IndexedDrawBatch;
@@ -43,15 +44,15 @@ public final class CompiledDisplayList {
 
     int resolveProgram(int program) {
         if (program == 0) return 0;
-        final long generation = GLStateManager.getProgramLifetimeGeneration();
+        final long generation = GLSMPrograms.getProgramLifetimeGeneration();
         if (replayPrograms == null) replayPrograms = new Int2IntOpenHashMap();
         if (programLifetimeGeneration != generation) {
             replayPrograms.clear();
             programLifetimeGeneration = generation;
         }
         if (replayPrograms.containsKey(program)) return replayPrograms.get(program);
-        final boolean valid = GLStateManager.glIsProgram(program);
-        if (!valid || !GLStateManager.isProgramPendingDeletion(program)) {
+        final boolean valid = GLSMPrograms.glIsProgram(program);
+        if (!valid || !GLSMPrograms.isProgramPendingDeletion(program)) {
             replayPrograms.put(program, valid ? program : 0);
         }
         return valid ? program : 0;

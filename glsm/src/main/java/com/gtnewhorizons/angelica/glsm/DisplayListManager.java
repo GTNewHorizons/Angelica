@@ -80,7 +80,7 @@ public class DisplayListManager {
     private static int glListMode = 0;
     private static int glListId = -1;
     private static int recordedStatePushes;
-    private static final DisplayListCommand POP_STATE = GLStateManager::popState;
+    private static final DisplayListCommand POP_STATE = GLSMAttribStack::popState;
     private static CommandRecorder currentRecorder = null;  // Command recorder (null when not recording)
     private static volatile Thread recordingThread = null;  // Thread that started recording (for thread-safety)
     private static List<AccumulatedDraw> accumulatedDraws = null;  // Accumulates quad draws for batching
@@ -237,7 +237,7 @@ public class DisplayListManager {
             currentRecorder.writeMultMatrix(pending);
         }
         if (glListMode == GL11.GL_COMPILE_AND_EXECUTE) {
-            GLStateManager.applyMultMatrix(pending);
+            GLSMMatrices.applyMultMatrix(pending);
         }
 
 
@@ -722,7 +722,7 @@ public class DisplayListManager {
 
     /**
      * Add an immediate mode draw to the current display list compilation.
-     * Called by GLStateManager.glEnd() when immediate mode geometry is ready.
+     * Called by GLSMDraws.glEnd() when immediate mode geometry is ready.
      *
      * <p>This method captures the current transform and command position, creating
      * an AccumulatedDraw that will be interleaved correctly with other commands
@@ -781,7 +781,7 @@ public class DisplayListManager {
 
     /**
      * Update the relative transform with a matrix multiplication during display list compilation.
-     * Called by GLStateManager.glMultMatrix().
+     * Called by GLSMMatrices.glMultMatrix().
      *
      * <p>In normal mode: accumulates transforms, emits collapsed MultMatrix at barriers.
      * <p>In debug mode: emits MultMatrix immediately (no collapsing).
@@ -833,7 +833,7 @@ public class DisplayListManager {
 
     /**
      * Reset the relative transform to identity during display list compilation.
-     * Called by GLStateManager.glLoadMatrix() - after loading an absolute matrix,
+     * Called by GLSMMatrices.glLoadMatrix() - after loading an absolute matrix,
      * subsequent transforms are relative to that loaded matrix (i.e., start from identity).
      */
     static void resetRelativeTransform() {
@@ -1147,7 +1147,7 @@ public class DisplayListManager {
         }
         if (pendingDraw.drawMode != tessellator.drawMode
             || pendingDraw.format != tessellator.getVertexFormat()
-            || GLStateManager.isContinuousDraw(tessellator.drawMode)
+            || GLSMDraws.isContinuousDraw(tessellator.drawMode)
         ) {
             drawBarrier();
             createNewDraw(tessellator, copyLast);

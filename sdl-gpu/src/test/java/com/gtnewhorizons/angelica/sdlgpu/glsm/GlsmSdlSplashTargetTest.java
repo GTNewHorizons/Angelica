@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.glsm.testutil.TestThreads;
@@ -24,7 +24,7 @@ class GlsmSdlSplashTargetTest {
         final OffscreenTarget target = createSplashTarget(backend);
         Reflect.set(backend, "splashTarget", target);
         try {
-            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+            GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
             TestThreads.run("SplashTarget-Seed-Thread", () -> {
                 Reflect.invoke(backend, "enterContext", new Class<?>[]{boolean.class}, true);
                 GlsmSdlHeadlessRig.solidQuad(0f, 1f, 0f);
@@ -32,7 +32,7 @@ class GlsmSdlSplashTargetTest {
                 backend.onRenderThreadReleased(Thread.currentThread());
             });
 
-            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, target.fboId());
+            GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, target.fboId());
             GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTarget(), GlsmSdlHeadlessRig.GREEN, "splash target");
         } finally {
             releaseSplashTarget(backend, target);
@@ -50,14 +50,14 @@ class GlsmSdlSplashTargetTest {
             TestThreads.run("SplashTarget-BindZero-Thread", () -> {
                 Reflect.invoke(backend, "enterContext", new Class<?>[]{boolean.class}, true);
                 GlsmSdlHeadlessRig.bindTarget();
-                GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+                GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
                 GlsmSdlHeadlessRig.clearTo(1f, 0f, 0f, 1f);
                 GlsmSdlHeadlessRig.solidQuad(0f, 1f, 0f);
                 backend.handleSwapBuffers();
                 backend.onRenderThreadReleased(Thread.currentThread());
             });
 
-            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, target.fboId());
+            GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, target.fboId());
             GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTarget(), GlsmSdlHeadlessRig.GREEN, "splash target");
 
             GlsmSdlHeadlessRig.bindTarget();

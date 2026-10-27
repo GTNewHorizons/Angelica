@@ -149,7 +149,7 @@ public class GLSMExtension implements BeforeAllCallback, BeforeEachCallback, Aft
         // Force-sync VAO binding. Tests may unbind via raw GL, desynchronizing GLSM's cache.
         // Invalidate the cache so glBindVertexArray(0) actually issues the GL call.
         GLStateManager.ctx().boundVAO = -1;
-        GLStateManager.glBindVertexArray(0);
+        GLSMVertexInput.glBindVertexArray(0);
 
         GL11.glMatrixMode(GL11.GL_MODELVIEW);
         while (GL11.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH) > EXPECTED_MODELVIEW_STACK_DEPTH) {

@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
 import com.gtnewhorizons.angelica.glsm.GLContextState;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.ClipPlaneState;
 import com.gtnewhorizons.angelica.glsm.states.FogState;
@@ -225,7 +226,7 @@ public class Uniforms {
                 ring = new UniformRingBuffer(RING_CAPACITY, FFPUniformBlock.SIZE);
             }
             final int offset = ring.writeBlock(staging);
-            GLStateManager.glBindBufferRange(GL31.GL_UNIFORM_BUFFER, FFPUniformBlock.BINDING_POINT,
+            GLSMBuffers.glBindBufferRange(GL31.GL_UNIFORM_BUFFER, FFPUniformBlock.BINDING_POINT,
                 ring.getBufferId(), offset, FFPUniformBlock.SIZE);
             bound = true;
             blockWrites++;

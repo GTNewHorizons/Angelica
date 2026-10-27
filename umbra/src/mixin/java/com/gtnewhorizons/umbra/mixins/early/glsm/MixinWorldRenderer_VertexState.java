@@ -10,7 +10,8 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import net.minecraftforge.client.ForgeHooksClient;
 
 @Mixin(WorldRenderer.class)
@@ -24,8 +25,8 @@ public class MixinWorldRenderer_VertexState {
             // Can't get vertex state from DirectTessellator, draw and return
             Tessellator.instance.draw();
             ForgeHooksClient.onPostRenderWorld((WorldRenderer)(Object)this, pass);
-            GLStateManager.glPopMatrix();
-            GLStateManager.glEndList();
+            GLSMMatrices.glPopMatrix();
+            GLSMDraws.glEndList();
             ci.cancel();
         }
     }

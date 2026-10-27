@@ -3,7 +3,7 @@ package net.coderbot.iris.uniforms.custom.cached;
 import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
 import net.coderbot.iris.parsing.VectorType;
 import org.joml.Vector3i;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
 import org.joml.Vector3ic;
 
 import java.util.function.Supplier;
@@ -21,7 +21,7 @@ public class Int3VectorCachedUniform extends VectorCachedUniform<Vector3ic> {
 
 	@Override
 	public void push(int location) {
-		GLStateManager.glUniform3i(location, this.cached.x(), this.cached.y(), this.cached.z());
+		GLSMPrograms.glUniform3i(location, this.cached.x(), this.cached.y(), this.cached.z());
 	}
 
 	@Override

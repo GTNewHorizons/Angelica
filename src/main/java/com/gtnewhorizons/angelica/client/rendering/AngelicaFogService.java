@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.client.rendering;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMFog;
 import org.embeddedt.embeddium.impl.render.chunk.fog.FogService;
 import org.embeddedt.embeddium.impl.render.chunk.shader.ChunkFogMode;
 
@@ -11,17 +11,17 @@ public class AngelicaFogService implements FogService {
 
     @Override
     public float getFogEnd() {
-        return GLStateManager.getFogState().getEnd();
+        return GLSMFog.getFogState().getEnd();
     }
 
     @Override
     public float getFogStart() {
-        return GLStateManager.getFogState().getStart();
+        return GLSMFog.getFogState().getStart();
     }
 
     @Override
     public float getFogDensity() {
-        return GLStateManager.getFogState().getDensity();
+        return GLSMFog.getFogState().getDensity();
     }
 
     @Override
@@ -36,7 +36,7 @@ public class AngelicaFogService implements FogService {
 
     @Override
     public float[] getFogColor() {
-        final var fogState = GLStateManager.getFogState();
+        final var fogState = GLSMFog.getFogState();
         final var color = fogState.getFogColor();
         fogColorArray[0] = (float) color.x;
         fogColorArray[1] = (float) color.y;
@@ -47,9 +47,9 @@ public class AngelicaFogService implements FogService {
 
     @Override
     public ChunkFogMode getFogMode() {
-        if (!GLStateManager.getFogMode().isEnabled()) {
+        if (!GLSMFog.getFogMode().isEnabled()) {
             return ChunkFogMode.NONE;
         }
-        return ChunkFogMode.fromGLMode(GLStateManager.getFogState().getFogMode());
+        return ChunkFogMode.fromGLMode(GLSMFog.getFogState().getFogMode());
     }
 }

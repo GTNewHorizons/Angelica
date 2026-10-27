@@ -22,7 +22,12 @@
 package com.gtnewhorizons.angelica.render;
 
 import com.gtnewhorizons.angelica.api.clouds.CloudLayer;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMFog;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.states.FogState;
 import net.irisshaders.iris.api.v0.IrisApi;
@@ -166,10 +171,10 @@ final class CloudLayerRenderer {
     }
 
     private void uploadFogUniforms(CloudUniforms uniforms, float fogStart, float fogEnd) {
-        final boolean fogEnabled = GLStateManager.getFogMode().isEnabled();
+        final boolean fogEnabled = GLSMFog.getFogMode().isEnabled();
         uniforms.setFogEnabled(fogEnabled);
         if (!fogEnabled) return;
-        final FogState fog = GLStateManager.getFogState();
+        final FogState fog = GLSMFog.getFogState();
         final Vector3d color = fog.getFogColor();
         uniforms.setFogColor((float) color.x, (float) color.y, (float) color.z);
         switch (fog.getFogMode()) {
@@ -320,11 +325,11 @@ final class CloudLayerRenderer {
             b = tempB;
         }
 
-        final float origFogStart = GLStateManager.getFogState().getStart();
-        final float origFogEnd = GLStateManager.getFogState().getEnd();
+        final float origFogStart = GLSMFog.getFogState().getStart();
+        final float origFogEnd = GLSMFog.getFogState().getEnd();
         final float cloudExtentBlocks = renderRadiusChunks * CELLS_PER_CHUNK * cellWidthBlocks;
-        final boolean stretchFog = GLStateManager.getFogMode().isEnabled()
-            && GLStateManager.getFogState().getFogMode() == GL11.GL_LINEAR
+        final boolean stretchFog = GLSMFog.getFogMode().isEnabled()
+            && GLSMFog.getFogState().getFogMode() == GL11.GL_LINEAR
             && origFogEnd > 0.0f
             && origFogEnd < cloudExtentBlocks;
         final float fogStart = stretchFog ? origFogStart * (cloudExtentBlocks / origFogEnd) : origFogStart;
@@ -332,8 +337,8 @@ final class CloudLayerRenderer {
 
         final boolean pushFog = stretchFog && shadersActive;
         if (pushFog) {
-            GLStateManager.glFogf(GL11.GL_FOG_START, fogStart);
-            GLStateManager.glFogf(GL11.GL_FOG_END, fogEnd);
+            GLSMFog.glFogf(GL11.GL_FOG_START, fogStart);
+            GLSMFog.glFogf(GL11.GL_FOG_END, fogEnd);
         }
 
         final float anchorDriftX = (float) (anchorX - anchorCellX);
@@ -354,18 +359,18 @@ final class CloudLayerRenderer {
         if (!shadersActive) {
             program.bind();
             final CloudUniforms uniforms = program.getInterface();
-            final Matrix4fStack modelView = GLStateManager.getModelViewMatrix();
+            final Matrix4fStack modelView = GLSMMatrices.getModelViewMatrix();
             modelView.pushMatrix();
             modelView.scale(cellWidthBlocks, 1.0f, cellWidthBlocks);
             if (interiorActive) {
                 modelView.pushMatrix();
                 modelView.translate(entityToCameraX - cellFractionX, deckBaseY, entityToCameraZ - cellFractionZ);
-                GLStateManager.getProjectionMatrix().mul(modelView, mvpInteriorScratch);
+                GLSMMatrices.getProjectionMatrix().mul(modelView, mvpInteriorScratch);
                 modelView.popMatrix();
             }
             modelView.translate(entityToCameraX - (cellFractionX + anchorDriftX), deckBaseY, entityToCameraZ - (cellFractionZ + anchorDriftZ));
             modelViewScratch.set(modelView);
-            GLStateManager.getProjectionMatrix().mul(modelView, mvpScratch);
+            GLSMMatrices.getProjectionMatrix().mul(modelView, mvpScratch);
             modelView.popMatrix();
             uniforms.mvp.set(mvpScratch);
             uniforms.modelView.set(modelViewScratch);
@@ -377,16 +382,16 @@ final class CloudLayerRenderer {
             drawClouds(r, g, b, false);
             program.unbind();
         } else {
-            GLStateManager.glPushMatrix();
-            GLStateManager.glScalef(cellWidthBlocks, 1.0f, cellWidthBlocks);
-            GLStateManager.glTranslatef(entityToCameraX - (cellFractionX + anchorDriftX), deckBaseY, entityToCameraZ - (cellFractionZ + anchorDriftZ));
+            GLSMMatrices.glPushMatrix();
+            GLSMMatrices.glScalef(cellWidthBlocks, 1.0f, cellWidthBlocks);
+            GLSMMatrices.glTranslatef(entityToCameraX - (cellFractionX + anchorDriftX), deckBaseY, entityToCameraZ - (cellFractionZ + anchorDriftZ));
             drawClouds(r, g, b, true);
-            GLStateManager.glPopMatrix();
+            GLSMMatrices.glPopMatrix();
         }
 
         if (pushFog) {
-            GLStateManager.glFogf(GL11.GL_FOG_START, origFogStart);
-            GLStateManager.glFogf(GL11.GL_FOG_END, origFogEnd);
+            GLSMFog.glFogf(GL11.GL_FOG_START, origFogStart);
+            GLSMFog.glFogf(GL11.GL_FOG_END, origFogEnd);
         }
         if (Tracy.FINE_ZONES) Tracy.endZone();
         return true;
@@ -523,11 +528,11 @@ final class CloudLayerRenderer {
     }
 
     private void drawFaces(float r, float g, float b) {
-        GLStateManager.enableCull();
+        GLSMRasterizer.enableCull();
         applyAnaglyphColorMask();
-        GLStateManager.enableBlend();
-        GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
-        GLStateManager.glDepthMask(true);
+        GLSMBlend.enableBlend();
+        GLSMBlend.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        GLSMDepthStencilAlpha.glDepthMask(true);
 
         program.getInterface().setColorMult(r, g, b, alpha);
 
@@ -540,9 +545,9 @@ final class CloudLayerRenderer {
         drawVisibleWedges(faceMesh.plateStarts(), faceMesh.wallStarts(), faceMesh.uploadedCount(), true);
         faceMesh.unbind();
 
-        GLStateManager.glDepthMask(true);
-        GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-        GLStateManager.disableBlend();
+        GLSMDepthStencilAlpha.glDepthMask(true);
+        GLSMCurrentAttribs.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        GLSMBlend.disableBlend();
     }
 
     private void drawVertices(float r, float g, float b, boolean depthPrepass) {
@@ -550,16 +555,16 @@ final class CloudLayerRenderer {
         final int totalQuads = vertexMesh.quadCount();
 
         if (cullBackFaces()) {
-            GLStateManager.enableCull();
+            GLSMRasterizer.enableCull();
         } else {
-            GLStateManager.disableCull();
+            GLSMRasterizer.disableCull();
         }
 
         if (depthPrepass) {
-            GLStateManager.disableBlend();
-            GLStateManager.glDepthMask(true);
-            GLStateManager.glColorMask(false, false, false, false);
-            GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, alpha);
+            GLSMBlend.disableBlend();
+            GLSMDepthStencilAlpha.glDepthMask(true);
+            GLSMBlend.glColorMask(false, false, false, false);
+            GLSMCurrentAttribs.glColor4f(1.0f, 1.0f, 1.0f, alpha);
             vertexMesh.drawAll();
             drawCalls++;
             if (interiorActive) {
@@ -575,15 +580,15 @@ final class CloudLayerRenderer {
         }
 
         applyAnaglyphColorMask();
-        GLStateManager.enableBlend();
-        GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
-        GLStateManager.glDepthMask(!depthPrepass);
+        GLSMBlend.enableBlend();
+        GLSMBlend.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        GLSMDepthStencilAlpha.glDepthMask(!depthPrepass);
 
         if (depthPrepass) {
             for (int face = 0; face < 4; face++) {
                 if (vertexMesh.faceEmpty(face)) continue;
                 final float shade = CloudVertexMesh.FACE_SHADE[face];
-                GLStateManager.glColor4f(shade * r, shade * g, shade * b, alpha);
+                GLSMCurrentAttribs.glColor4f(shade * r, shade * g, shade * b, alpha);
                 vertexMesh.drawFace(face);
                 drawCalls++;
             }
@@ -605,7 +610,7 @@ final class CloudLayerRenderer {
                 for (int face = 0; face < 4; face++) {
                     if (interiorMesh.faceEmpty(face)) continue;
                     final float shade = CloudVertexMesh.FACE_SHADE[face];
-                    GLStateManager.glColor4f(shade * r, shade * g, shade * b, alpha);
+                    GLSMCurrentAttribs.glColor4f(shade * r, shade * g, shade * b, alpha);
                     interiorMesh.drawFace(face);
                     drawCalls++;
                 }
@@ -617,16 +622,16 @@ final class CloudLayerRenderer {
             popInteriorTransform(depthPrepass);
         }
 
-        GLStateManager.enableCull();
-        GLStateManager.glDepthMask(true);
-        GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-        GLStateManager.disableBlend();
+        GLSMRasterizer.enableCull();
+        GLSMDepthStencilAlpha.glDepthMask(true);
+        GLSMCurrentAttribs.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        GLSMBlend.disableBlend();
     }
 
     private void pushInteriorTransform(boolean shadersActive) {
         if (shadersActive) {
-            GLStateManager.glPushMatrix();
-            GLStateManager.glTranslatef(interiorDriftX, 0.0f, interiorDriftZ);
+            GLSMMatrices.glPushMatrix();
+            GLSMMatrices.glTranslatef(interiorDriftX, 0.0f, interiorDriftZ);
         } else {
             program.getInterface().mvp.set(mvpInteriorScratch);
         }
@@ -634,7 +639,7 @@ final class CloudLayerRenderer {
 
     private void popInteriorTransform(boolean shadersActive) {
         if (shadersActive) {
-            GLStateManager.glPopMatrix();
+            GLSMMatrices.glPopMatrix();
         } else {
             program.getInterface().mvp.set(mvpScratch);
         }
@@ -689,13 +694,13 @@ final class CloudLayerRenderer {
 
     private void applyAnaglyphColorMask() {
         if (!mc.gameSettings.anaglyph) {
-            GLStateManager.glColorMask(true, true, true, true);
+            GLSMBlend.glColorMask(true, true, true, true);
             return;
         }
         switch (EntityRenderer.anaglyphField) {
-            case 0 -> GLStateManager.glColorMask(false, true, true, true);
-            case 1 -> GLStateManager.glColorMask(true, false, false, true);
-            default -> GLStateManager.glColorMask(true, true, true, true);
+            case 0 -> GLSMBlend.glColorMask(false, true, true, true);
+            case 1 -> GLSMBlend.glColorMask(true, false, false, true);
+            default -> GLSMBlend.glColorMask(true, true, true, true);
         }
     }
 

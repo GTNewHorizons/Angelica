@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
 import net.minecraftforge.client.GuiIngameForge;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
@@ -13,6 +13,6 @@ public class MixinGuiIngameForge {
     @Inject(method="renderCrosshairs", at= @At(value = "INVOKE", target = "Lnet/minecraftforge/client/GuiIngameForge;bind(Lnet/minecraft/util/ResourceLocation;)V", shift = At.Shift.AFTER))
     private void renderCrosshairs(CallbackInfo ci) {
         // Set the same state as vanilla so we don't break with textures that set a color value on transparent pixels for the crosshairs
-        GLStateManager.glEnable(GL11.GL_ALPHA_TEST);
+        GLSMEnable.glEnable(GL11.GL_ALPHA_TEST);
     }
 }

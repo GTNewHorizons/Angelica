@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.late.client.ntmSpace;
 
 import com.gtnewhorizons.angelica.experimental.surround.Surround;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
 import com.gtnewhorizons.angelica.utils.WorkaroundUtils;
 import com.hbm.dim.orbit.SkyProviderOrbit;
 import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
@@ -41,26 +41,26 @@ public class MixinSkyProviderOrbit {
 				, target = "Lnet/minecraft/client/renderer/RenderHelper;disableStandardItemLighting()V"
 				, remap = true))
 	public void iris$main$renderInDefaultProgram(CallbackInfo ci) {
-		angelica$previousProgram = GLStateManager.getActiveProgram();
-		GLStateManager.glUseProgram(0);
+		angelica$previousProgram = GLSMPrograms.getActiveProgram();
+		GLSMPrograms.glUseProgram(0);
 	}
 	
 	@Surround(method = "render"
 			, at = @At(value = "INVOKE"
 				, target = "Lcom/hbm/dim/orbit/SkyProviderOrbit;renderSun(FLnet/minecraft/client/multiplayer/WorldClient;Lnet/minecraft/client/Minecraft;Lcom/hbm/dim/CelestialBody;DDFF)V"))
 	private void iris$main$renderSunInShaderProgram(){
-		GLStateManager.glUseProgram(angelica$previousProgram);
+		GLSMPrograms.glUseProgram(angelica$previousProgram);
 	}
 
 	@Surround.Finally
 	private void iris$main$renderSunInShaderProgramEnd() {
-		GLStateManager.glUseProgram(0);
+		GLSMPrograms.glUseProgram(0);
 	}
 
 	@Inject(method = "render"
 			, at = @At(value = "TAIL"))
 	public void iris$main$restorePreviousProgram(CallbackInfo ci) {
-		GLStateManager.glUseProgram(angelica$previousProgram);
+		GLSMPrograms.glUseProgram(angelica$previousProgram);
 	}
 
 }

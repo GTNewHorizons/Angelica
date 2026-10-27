@@ -43,7 +43,9 @@ import com.gtnewhorizons.angelica.compat.cubicchunks.CubicChunksAPI;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightWorldRenderer;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.mixins.interfaces.ITileEntityBoundingBoxCache;
@@ -386,7 +388,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
     @Override
     public void drawChunkLayer(BlockRenderLayer renderLayer, double x, double y, double z) {
         if (DEBUG_WIREFRAME_MODE) {
-            GLStateManager.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
+            GLSMRasterizer.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
         }
 
         final ChunkRenderMatrices matrices = createChunkRenderMatrices();
@@ -400,10 +402,10 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
         }
 
         if (DEBUG_WIREFRAME_MODE) {
-            GLStateManager.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
+            GLSMRasterizer.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
         }
 
-        GLStateManager.glColor4f(1, 1, 1, 1);
+        GLSMCurrentAttribs.glColor4f(1, 1, 1, 1);
     }
 
     public int renderBlockEntities(float partialTicks) {
@@ -412,7 +414,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
 
         TesrBatchRenderer.INSTANCE.beginPass(
             pass == 0 ? TesrBatchRenderer.PASS_MAIN_0 : TesrBatchRenderer.PASS_MAIN_1,
-            GLStateManager.getModelViewMatrix(),
+            GLSMMatrices.getModelViewMatrix(),
             TileEntityRendererDispatcher.staticPlayerX,
             TileEntityRendererDispatcher.staticPlayerY,
             TileEntityRendererDispatcher.staticPlayerZ);

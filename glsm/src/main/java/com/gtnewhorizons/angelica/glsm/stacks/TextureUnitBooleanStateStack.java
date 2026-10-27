@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.stacks;
 
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
@@ -50,7 +51,7 @@ public final class TextureUnitBooleanStateStack extends BooleanStateStack {
             }
 
             if (!ffpStateOnly) {
-                final int currentUnit = GLStateManager.getActiveTextureUnit();
+                final int currentUnit = GLSMTextures.getActiveTextureUnit();
                 final boolean needsSwitch = currentUnit != unitIndex;
 
                 if (needsSwitch) BackendManager.RENDER_BACKEND.activeTexture(GL13.GL_TEXTURE0 + unitIndex);

@@ -1,6 +1,10 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
 import com.gtnewhorizons.angelica.glsm.ReadbackFixture;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -41,7 +45,7 @@ class GlsmSdlReadbackMatrixTest {
     @AfterEach
     void resetPack() {
         ReadbackFixture.resetPack();
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
     }
 
     static Stream<Arguments> fixtureCases() {
@@ -67,18 +71,18 @@ class GlsmSdlReadbackMatrixTest {
 
     @Test
     void fbo0FloatReadIsBottomUp() {
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
-        GLStateManager.glViewport(0, 0, FBO0_W, FBO0_H);
-        GLStateManager.glClearColor(0f, 0f, 1f, 1f);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
-        GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
-        GLStateManager.glScissor(0, 0, FBO0_W, 1);
-        GLStateManager.glClearColor(1f, 0f, 0f, 1f);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
-        GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+        GLSMRasterizer.glViewport(0, 0, FBO0_W, FBO0_H);
+        GLSMBlend.glClearColor(0f, 0f, 1f, 1f);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        GLSMEnable.glEnable(GL11.GL_SCISSOR_TEST);
+        GLSMRasterizer.glScissor(0, 0, FBO0_W, 1);
+        GLSMBlend.glClearColor(1f, 0f, 0f, 1f);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        GLSMEnable.glDisable(GL11.GL_SCISSOR_TEST);
 
         final ByteBuffer out = BufferUtils.createByteBuffer(FBO0_W * FBO0_H * 16).order(ByteOrder.nativeOrder());
-        GLStateManager.glReadPixels(0, 0, FBO0_W, FBO0_H, GL11.GL_RGBA, GL11.GL_FLOAT, out);
+        GLSMFramebuffer.glReadPixels(0, 0, FBO0_W, FBO0_H, GL11.GL_RGBA, GL11.GL_FLOAT, out);
         assertEquals(1f, out.getFloat(0), "GL row 0 is the scissored bottom row (red)");
         assertEquals(0f, out.getFloat(8), "GL row 0 blue");
         final int top = (FBO0_H - 1) * FBO0_W * 16;
@@ -88,13 +92,13 @@ class GlsmSdlReadbackMatrixTest {
 
     @Test
     void fbo0ReadAfterBareClearSeesTheClear() {
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
-        GLStateManager.glViewport(0, 0, FBO0_W, FBO0_H);
-        GLStateManager.glClearColor(0.2f, 0.4f, 0.6f, 1f);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+        GLSMRasterizer.glViewport(0, 0, FBO0_W, FBO0_H);
+        GLSMBlend.glClearColor(0.2f, 0.4f, 0.6f, 1f);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
 
         final ByteBuffer out = BufferUtils.createByteBuffer(FBO0_W * FBO0_H * 4);
-        GLStateManager.glReadPixels(0, 0, FBO0_W, FBO0_H, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, out);
+        GLSMFramebuffer.glReadPixels(0, 0, FBO0_W, FBO0_H, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, out);
         assertEquals(51, out.get(0) & 0xFF, "red after bare clear");
         assertEquals(102, out.get(1) & 0xFF, "green after bare clear");
         assertEquals(153, out.get(2) & 0xFF, "blue after bare clear");
@@ -102,29 +106,29 @@ class GlsmSdlReadbackMatrixTest {
 
     @Test
     void fbo0DepthAndStencilAreBottomUp() {
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
-        GLStateManager.glViewport(0, 0, FBO0_W, FBO0_H);
-        GLStateManager.glDepthMask(true);
-        GLStateManager.glStencilMask(0xFF);
-        GLStateManager.glClearDepth(0.75);
-        GLStateManager.glClearStencil(0x11);
-        GLStateManager.glClear(GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT);
-        GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
-        GLStateManager.glScissor(0, 0, FBO0_W, 1);
-        GLStateManager.glClearDepth(0.25);
-        GLStateManager.glClearStencil(0x22);
-        GLStateManager.glClear(GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT);
-        GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
-        GLStateManager.glClearDepth(1.0);
-        GLStateManager.glClearStencil(0);
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+        GLSMRasterizer.glViewport(0, 0, FBO0_W, FBO0_H);
+        GLSMDepthStencilAlpha.glDepthMask(true);
+        GLSMDepthStencilAlpha.glStencilMask(0xFF);
+        GLSMDepthStencilAlpha.glClearDepth(0.75);
+        GLSMDepthStencilAlpha.glClearStencil(0x11);
+        GLSMFramebuffer.glClear(GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT);
+        GLSMEnable.glEnable(GL11.GL_SCISSOR_TEST);
+        GLSMRasterizer.glScissor(0, 0, FBO0_W, 1);
+        GLSMDepthStencilAlpha.glClearDepth(0.25);
+        GLSMDepthStencilAlpha.glClearStencil(0x22);
+        GLSMFramebuffer.glClear(GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT);
+        GLSMEnable.glDisable(GL11.GL_SCISSOR_TEST);
+        GLSMDepthStencilAlpha.glClearDepth(1.0);
+        GLSMDepthStencilAlpha.glClearStencil(0);
 
         final ByteBuffer depth = BufferUtils.createByteBuffer(FBO0_W * FBO0_H * 4).order(ByteOrder.nativeOrder());
-        GLStateManager.glReadPixels(0, 0, FBO0_W, FBO0_H, GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, depth);
+        GLSMFramebuffer.glReadPixels(0, 0, FBO0_W, FBO0_H, GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, depth);
         assertEquals(0.25f, depth.getFloat(0), 1e-6f, "fbo0 depth bottom row");
         assertEquals(0.75f, depth.getFloat((FBO0_H - 1) * FBO0_W * 4), 1e-6f, "fbo0 depth top row");
 
         final ByteBuffer stencil = BufferUtils.createByteBuffer(FBO0_W * FBO0_H);
-        GLStateManager.glReadPixels(0, 0, FBO0_W, FBO0_H, GL11.GL_STENCIL_INDEX, GL11.GL_UNSIGNED_BYTE, stencil);
+        GLSMFramebuffer.glReadPixels(0, 0, FBO0_W, FBO0_H, GL11.GL_STENCIL_INDEX, GL11.GL_UNSIGNED_BYTE, stencil);
         assertEquals(0x22, stencil.get(0) & 0xFF, "fbo0 stencil bottom row");
         assertEquals(0x11, stencil.get((FBO0_H - 1) * FBO0_W) & 0xFF, "fbo0 stencil top row");
     }

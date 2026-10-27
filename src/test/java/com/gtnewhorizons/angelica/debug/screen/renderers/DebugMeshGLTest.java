@@ -11,7 +11,15 @@ import com.gtnewhorizons.angelica.debug.render.DebugPrograms;
 import com.gtnewhorizons.angelica.debug.render.NativeScratch;
 import com.gtnewhorizons.angelica.debug.screen.renderers.DebugMeshData.LineWidth;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.GlTestSupport;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpFixture;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
@@ -60,22 +68,22 @@ class DebugMeshGLTest {
         FfpFixture.resetFfpState();
         ShaderManager.enable();
         ShaderManager.getInstance().activate();
-        GLStateManager.glViewport(0, 0, SIZE, SIZE);
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glLoadIdentity();
+        GLSMRasterizer.glViewport(0, 0, SIZE, SIZE);
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glLoadIdentity();
     }
 
     @AfterEach
     void tearDown() {
-        GLStateManager.glBindVertexArray(0);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLSMVertexInput.glBindVertexArray(0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         mesh.delete();
         data.free();
         uploadScratch.free();
-        if (vbo != 0) GLStateManager.glDeleteBuffers(vbo);
-        if (vao != 0) GLStateManager.glDeleteVertexArrays(vao);
+        if (vbo != 0) GLSMBuffers.glDeleteBuffers(vbo);
+        if (vao != 0) GLSMVertexInput.glDeleteVertexArrays(vao);
         FfpFixture.resetFfpState();
     }
 
@@ -191,80 +199,80 @@ class DebugMeshGLTest {
         mesh.upload(data, uploadScratch);
 
         final int program = GlTestSupport.program(GlTestSupport.TRIVIAL_VS, GlTestSupport.TRIVIAL_FS);
-        final int ambient = GLStateManager.glGenTextures();
-        final int glyphs = GLStateManager.glGenTextures();
-        vao = GLStateManager.glGenVertexArrays();
-        GLStateManager.glBindVertexArray(vao);
-        vbo = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        final int ambient = GLSMTextures.glGenTextures();
+        final int glyphs = GLSMTextures.glGenTextures();
+        vao = GLSMVertexInput.glGenVertexArrays();
+        GLSMVertexInput.glBindVertexArray(vao);
+        vbo = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
         try {
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, ambient);
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-            GLStateManager.enableDepthTest();
-            GLStateManager.glDepthFunc(GL11.GL_ALWAYS);
-            GLStateManager.glDepthMask(true);
-            GLStateManager.disableBlend();
-            GLStateManager.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE);
-            GLStateManager.enableCull();
-            GLStateManager.glCullFace(GL11.GL_FRONT);
-            GLStateManager.glFrontFace(GL11.GL_CW);
-            GLStateManager.enableScissorTest();
-            GLStateManager.glScissor(0, 0, SIZE, SIZE);
-            GLStateManager.glPolygonMode(GL11.GL_FRONT, GL11.GL_FILL);
-            GLStateManager.glPolygonMode(GL11.GL_BACK, GL11.GL_LINE);
-            GLStateManager.glLineWidth(3.0F);
-            GLStateManager.glUseProgram(program);
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, ambient);
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
+            GLSMDepthStencilAlpha.enableDepthTest();
+            GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_ALWAYS);
+            GLSMDepthStencilAlpha.glDepthMask(true);
+            GLSMBlend.disableBlend();
+            GLSMBlend.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE);
+            GLSMRasterizer.enableCull();
+            GLSMRasterizer.glCullFace(GL11.GL_FRONT);
+            GLSMRasterizer.glFrontFace(GL11.GL_CW);
+            GLSMRasterizer.enableScissorTest();
+            GLSMRasterizer.glScissor(0, 0, SIZE, SIZE);
+            GLSMRasterizer.glPolygonMode(GL11.GL_FRONT, GL11.GL_FILL);
+            GLSMRasterizer.glPolygonMode(GL11.GL_BACK, GL11.GL_LINE);
+            GLSMRasterizer.glLineWidth(3.0F);
+            GLSMPrograms.glUseProgram(program);
 
-            final long drawCalls = GLStateManager.drawCalls;
+            final long drawCalls = GLSMDraws.drawCalls;
             scope.beginWorld();
             try {
                 drawMeshPasses(false, 0.0);
-                GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, glyphs);
+                GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, glyphs);
             } finally {
                 scope.end();
             }
 
-            assertTrue(GLStateManager.drawCalls > drawCalls);
-            assertTrue(GLStateManager.getDepthTest().isEnabled());
-            assertEquals(GL11.GL_ALWAYS, GLStateManager.getDepthState().getFunc());
-            assertTrue(GLStateManager.getDepthState().isEnabled());
-            assertFalse(GLStateManager.getBlendMode().isEnabled());
-            final BlendState blend = GLStateManager.getBlendState();
+            assertTrue(GLSMDraws.drawCalls > drawCalls);
+            assertTrue(GLSMDepthStencilAlpha.getDepthTest().isEnabled());
+            assertEquals(GL11.GL_ALWAYS, GLSMDepthStencilAlpha.getDepthState().getFunc());
+            assertTrue(GLSMDepthStencilAlpha.getDepthState().isEnabled());
+            assertFalse(GLSMBlend.getBlendMode().isEnabled());
+            final BlendState blend = GLSMBlend.getBlendState();
             assertEquals(GL11.GL_ONE, blend.getSrcRgb());
             assertEquals(GL11.GL_ONE, blend.getDstRgb());
             assertEquals(GL11.GL_ZERO, blend.getSrcAlpha());
             assertEquals(GL11.GL_ONE, blend.getDstAlpha());
-            assertTrue(GLStateManager.getCullState().isEnabled());
-            assertEquals(GL11.GL_FRONT, GLStateManager.getPolygonState().getCullFaceMode());
-            assertEquals(GL11.GL_CW, GLStateManager.getPolygonState().getFrontFace());
-            assertTrue(GLStateManager.getScissorTest().isEnabled());
-            assertEquals(GL11.GL_FILL, GLStateManager.getPolygonState().getFrontMode());
-            assertEquals(GL11.GL_LINE, GLStateManager.getPolygonState().getBackMode());
-            assertEquals(3.0F, GLStateManager.getLineState().getWidth());
-            assertEquals(1, GLStateManager.getActiveTextureUnit());
-            assertEquals(ambient, GLStateManager.getTextures().getTextureUnitBindings(0).getBinding());
+            assertTrue(GLSMRasterizer.getCullState().isEnabled());
+            assertEquals(GL11.GL_FRONT, GLSMRasterizer.getPolygonState().getCullFaceMode());
+            assertEquals(GL11.GL_CW, GLSMRasterizer.getPolygonState().getFrontFace());
+            assertTrue(GLSMRasterizer.getScissorTest().isEnabled());
+            assertEquals(GL11.GL_FILL, GLSMRasterizer.getPolygonState().getFrontMode());
+            assertEquals(GL11.GL_LINE, GLSMRasterizer.getPolygonState().getBackMode());
+            assertEquals(3.0F, GLSMRasterizer.getLineState().getWidth());
+            assertEquals(1, GLSMTextures.getActiveTextureUnit());
+            assertEquals(ambient, GLSMTextures.getTextures().getTextureUnitBindings(0).getBinding());
             assertEquals(ambient, GlTestSupport.driverTextureBinding(0));
-            assertEquals(program, GLStateManager.getActiveProgram());
+            assertEquals(program, GLSMPrograms.getActiveProgram());
             assertEquals(program, GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM));
-            assertEquals(vao, GLStateManager.getBoundVAO());
-            assertEquals(vbo, GLStateManager.getBoundVBO());
+            assertEquals(vao, GLSMVertexInput.getBoundVAO());
+            assertEquals(vbo, GLSMBuffers.getBoundVBO());
             assertEquals(vao, GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING));
             assertEquals(vbo, GL11.glGetInteger(GL15.GL_ARRAY_BUFFER_BINDING));
             assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
         } finally {
-            GLStateManager.glUseProgram(0);
-            GLStateManager.glDeleteProgram(program);
-            GLStateManager.glLineWidth(1.0F);
-            GLStateManager.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
-            GLStateManager.disableScissorTest();
-            GLStateManager.glCullFace(GL11.GL_BACK);
-            GLStateManager.glFrontFace(GL11.GL_CCW);
-            GLStateManager.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE, GL11.GL_ZERO);
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-            GLStateManager.glDeleteTextures(ambient);
-            GLStateManager.glDeleteTextures(glyphs);
+            GLSMPrograms.glUseProgram(0);
+            GLSMPrograms.glDeleteProgram(program);
+            GLSMRasterizer.glLineWidth(1.0F);
+            GLSMRasterizer.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
+            GLSMRasterizer.disableScissorTest();
+            GLSMRasterizer.glCullFace(GL11.GL_BACK);
+            GLSMRasterizer.glFrontFace(GL11.GL_CCW);
+            GLSMBlend.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE, GL11.GL_ZERO);
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+            GLSMTextures.glDeleteTextures(ambient);
+            GLSMTextures.glDeleteTextures(glyphs);
         }
     }
 
@@ -277,14 +285,14 @@ class DebugMeshGLTest {
         final int colorOffset = DebugGeometry.offsetOf(format, VertexFormatElement.Usage.COLOR);
         final ByteBuffer texels = BufferUtils.createByteBuffer(2 * 2 * 4);
         texels.put(new byte[] { (byte) 255, 0, 0, (byte) 255, 0, (byte) 255, 0, (byte) 255, 0, 0, (byte) 255, (byte) 255, (byte) 255, (byte) 255, 0, (byte) 255 }).flip();
-        final int texture = GLStateManager.glGenTextures();
+        final int texture = GLSMTextures.glGenTextures();
         final NativeScratch vertices = new NativeScratch(4 * stride);
         try {
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-            GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, 2, 2, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels);
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+            GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, 2, 2, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels);
             vertices.ensure(4 * stride);
             final long p = vertices.address();
             texturedVertex(p, -1.0F, -1.0F, 0.0F, 0.0F, uvOffset, colorOffset);
@@ -310,8 +318,8 @@ class DebugMeshGLTest {
             assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
         } finally {
             vertices.free();
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-            GLStateManager.glDeleteTextures(texture);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+            GLSMTextures.glDeleteTextures(texture);
         }
     }
 

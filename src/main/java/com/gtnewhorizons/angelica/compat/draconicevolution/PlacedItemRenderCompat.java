@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.compat.draconicevolution;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import com.gtnewhorizons.angelica.rendering.tesr.BatchEligibility;
 import net.minecraft.client.renderer.entity.RenderItem;
 import net.minecraft.item.ItemBlock;
@@ -21,24 +23,24 @@ public final class PlacedItemRenderCompat {
 
     public static void render(double x, double y, double z, Runnable draw) {
         final boolean inFrame = RenderItem.renderInFrame;
-        GLStateManager.glPushMatrix();
-        GLStateManager.glPushAttrib(GL11.GL_ENABLE_BIT);
+        GLSMMatrices.glPushMatrix();
+        GLSMAttribStack.glPushAttrib(GL11.GL_ENABLE_BIT);
         try {
-            GLStateManager.glTranslated(x, y, z);
+            GLSMMatrices.glTranslated(x, y, z);
             draw.run();
         } finally {
             RenderItem.renderInFrame = inFrame;
-            GLStateManager.glPopAttrib();
-            GLStateManager.glPopMatrix();
+            GLSMAttribStack.glPopAttrib();
+            GLSMMatrices.glPopMatrix();
         }
     }
 
     public static byte renderWithBatchState(double x, double y, double z, byte state, Runnable draw) {
-        BatchEligibility.beginIsolated(state, GLStateManager.drawCalls);
+        BatchEligibility.beginIsolated(state, GLSMDraws.drawCalls);
         try {
             render(x, y, z, draw);
         } finally {
-            state = BatchEligibility.endIsolated(state, GLStateManager.drawCalls);
+            state = BatchEligibility.endIsolated(state, GLSMDraws.drawCalls);
         }
         return state;
     }

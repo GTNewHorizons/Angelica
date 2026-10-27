@@ -1,7 +1,11 @@
 package com.gtnewhorizons.angelica.rendering.tesr;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.ffp.CubeInstancedAttribs;
@@ -112,7 +116,7 @@ final class InstancedTemplateRenderer {
         int draws = 0;
         long recordOffset = ringBase;
         neutralizeExtendedAttribs();
-        GLStateManager.setFfpInstancing(Instancing.TEMPLATE);
+        GLSMPrograms.setFfpInstancing(Instancing.TEMPLATE);
         for (int b = 0, n = liveBuckets.size(); b < n; b++) {
             final Bucket bucket = liveBuckets.get(b);
             final TemplateMesh mesh = bucket.mesh;
@@ -122,16 +126,16 @@ final class InstancedTemplateRenderer {
             }
             bindRingTo(mesh.vao, TEMPLATE_FLAGS);
             InstancedAttribs.pointTemplate(recordOffset);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-            GLStateManager.glDrawArraysInstanced(mesh.drawMode, 0, mesh.vertexCount, bucket.indices.size());
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            GLSMDraws.glDrawArraysInstanced(mesh.drawMode, 0, mesh.vertexCount, bucket.indices.size());
             draws++;
             recordOffset += (long) bucket.indices.size() * InstancedAttribs.STRIDE;
             bucket.indices.clear();
             bucket.mesh = null;
             bucketPool.add(bucket);
         }
-        GLStateManager.setFfpInstancing(Instancing.NONE);
-        GLStateManager.glBindVertexArray(0);
+        GLSMPrograms.setFfpInstancing(Instancing.NONE);
+        GLSMVertexInput.glBindVertexArray(0);
         liveBuckets.clear();
         return draws;
     }
@@ -142,26 +146,26 @@ final class InstancedTemplateRenderer {
     int redrawTemplates(TexRun base, int colorABGR) {
         long recordOffset = base.uploadOffset;
         neutralizeExtendedAttribs();
-        GLStateManager.setFfpInstancing(Instancing.TEMPLATE);
+        GLSMPrograms.setFfpInstancing(Instancing.TEMPLATE);
         for (int b = 0, n = base.uploadMeshes.size(); b < n; b++) {
             final TemplateMesh mesh = (TemplateMesh) base.uploadMeshes.get(b);
             final int count = base.uploadCounts.getInt(b);
             bindRingTo(mesh.vao, TEMPLATE_FLAGS);
             InstancedAttribs.pointTemplate(recordOffset);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
             setConstantColor(colorABGR);
-            GLStateManager.glDrawArraysInstanced(mesh.drawMode, 0, mesh.vertexCount, count);
-            GLStateManager.glEnableVertexAttribArray(InstancedAttribs.LOC_COLOR);
+            GLSMDraws.glDrawArraysInstanced(mesh.drawMode, 0, mesh.vertexCount, count);
+            GLSMVertexInput.glEnableVertexAttribArray(InstancedAttribs.LOC_COLOR);
             recordOffset += (long) count * InstancedAttribs.STRIDE;
         }
-        GLStateManager.setFfpInstancing(Instancing.NONE);
-        GLStateManager.glBindVertexArray(0);
+        GLSMPrograms.setFfpInstancing(Instancing.NONE);
+        GLSMVertexInput.glBindVertexArray(0);
         return base.uploadMeshes.size();
     }
 
     private static void setConstantColor(int colorABGR) {
-        GLStateManager.glDisableVertexAttribArray(InstancedAttribs.LOC_COLOR);
-        GLStateManager.glVertexAttrib4f(InstancedAttribs.LOC_COLOR, (colorABGR & 0xFF) / 255.0f, (colorABGR >>> 8 & 0xFF) / 255.0f, (colorABGR >>> 16 & 0xFF) / 255.0f, (colorABGR >>> 24) / 255.0f);
+        GLSMVertexInput.glDisableVertexAttribArray(InstancedAttribs.LOC_COLOR);
+        GLSMCurrentAttribs.glVertexAttrib4f(InstancedAttribs.LOC_COLOR, (colorABGR & 0xFF) / 255.0f, (colorABGR >>> 8 & 0xFF) / 255.0f, (colorABGR >>> 16 & 0xFF) / 255.0f, (colorABGR >>> 24) / 255.0f);
     }
 
     /** Returns the ring offset of the uploaded instances, for {@link #redrawCubes}. */
@@ -195,11 +199,11 @@ final class InstancedTemplateRenderer {
         neutralizeExtendedAttribs();
         bindRingTo(UnitCubeMesh.vao(), UnitCubeMesh.VERTEX_FLAGS);
         CubeInstancedAttribs.pointInstanceAttribs(ringBase);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-        GLStateManager.setFfpInstancing(Instancing.CUBE);
-        GLStateManager.glDrawArraysInstanced(GL11.GL_QUADS, 0, UnitCubeMesh.VERTEX_COUNT, run.instances);
-        GLStateManager.setFfpInstancing(Instancing.NONE);
-        GLStateManager.glBindVertexArray(0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLSMPrograms.setFfpInstancing(Instancing.CUBE);
+        GLSMDraws.glDrawArraysInstanced(GL11.GL_QUADS, 0, UnitCubeMesh.VERTEX_COUNT, run.instances);
+        GLSMPrograms.setFfpInstancing(Instancing.NONE);
+        GLSMVertexInput.glBindVertexArray(0);
         return ringBase;
     }
 
@@ -219,13 +223,13 @@ final class InstancedTemplateRenderer {
         neutralizeExtendedAttribs();
         bindRingTo(UnitCubeMesh.vao(), UnitCubeMesh.VERTEX_FLAGS);
         CubeInstancedAttribs.pointInstanceAttribs(offset);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         setConstantColor(colorABGR);
-        GLStateManager.setFfpInstancing(Instancing.CUBE);
-        GLStateManager.glDrawArraysInstanced(GL11.GL_QUADS, 0, UnitCubeMesh.VERTEX_COUNT, instances);
-        GLStateManager.setFfpInstancing(Instancing.NONE);
-        GLStateManager.glEnableVertexAttribArray(InstancedAttribs.LOC_COLOR);
-        GLStateManager.glBindVertexArray(0);
+        GLSMPrograms.setFfpInstancing(Instancing.CUBE);
+        GLSMDraws.glDrawArraysInstanced(GL11.GL_QUADS, 0, UnitCubeMesh.VERTEX_COUNT, instances);
+        GLSMPrograms.setFfpInstancing(Instancing.NONE);
+        GLSMVertexInput.glEnableVertexAttribArray(InstancedAttribs.LOC_COLOR);
+        GLSMVertexInput.glBindVertexArray(0);
     }
 
     private long uploadStaging(long base, long end, int stride) {
@@ -237,9 +241,9 @@ final class InstancedTemplateRenderer {
     }
 
     private void bindRingTo(int vao, int vertexFlags) {
-        GLStateManager.glBindVertexArray(vao);
+        GLSMVertexInput.glBindVertexArray(vao);
         VAOManager.setCurrentVertexFlags(vertexFlags);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, ring.bufferId());
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, ring.bufferId());
     }
 
     private static void neutralizeExtendedAttribs() {
@@ -263,32 +267,32 @@ final class InstancedTemplateRenderer {
         final TemplateMesh mesh = new TemplateMesh();
         mesh.vertexCount = template.vertexCount;
         mesh.drawMode = template.drawMode;
-        mesh.vao = GLStateManager.glGenVertexArrays();
-        GLStateManager.glBindVertexArray(mesh.vao);
-        mesh.vbo = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, mesh.vbo);
-        GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, template.data, GL15.GL_STATIC_DRAW);
+        mesh.vao = GLSMVertexInput.glGenVertexArrays();
+        GLSMVertexInput.glBindVertexArray(mesh.vao);
+        mesh.vbo = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, mesh.vbo);
+        GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, template.data, GL15.GL_STATIC_DRAW);
 
-        GLStateManager.glEnableVertexAttribArray(0);
-        GLStateManager.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, TEMPLATE_STRIDE, 0L);
-        GLStateManager.glEnableVertexAttribArray(1);
-        GLStateManager.glVertexAttribPointer(1, 4, GL11.GL_UNSIGNED_BYTE, true, TEMPLATE_STRIDE, COLOR_INDEX * 4L);
-        GLStateManager.glEnableVertexAttribArray(2);
-        GLStateManager.glVertexAttribPointer(2, 2, GL11.GL_FLOAT, false, TEMPLATE_STRIDE, TEX_X_INDEX * 4L);
-        GLStateManager.glEnableVertexAttribArray(4);
-        GLStateManager.glVertexAttribPointer(4, 3, GL11.GL_BYTE, true, TEMPLATE_STRIDE, NORMAL_INDEX * 4L);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLSMVertexInput.glEnableVertexAttribArray(0);
+        GLSMVertexInput.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, TEMPLATE_STRIDE, 0L);
+        GLSMVertexInput.glEnableVertexAttribArray(1);
+        GLSMVertexInput.glVertexAttribPointer(1, 4, GL11.GL_UNSIGNED_BYTE, true, TEMPLATE_STRIDE, COLOR_INDEX * 4L);
+        GLSMVertexInput.glEnableVertexAttribArray(2);
+        GLSMVertexInput.glVertexAttribPointer(2, 2, GL11.GL_FLOAT, false, TEMPLATE_STRIDE, TEX_X_INDEX * 4L);
+        GLSMVertexInput.glEnableVertexAttribArray(4);
+        GLSMVertexInput.glVertexAttribPointer(4, 3, GL11.GL_BYTE, true, TEMPLATE_STRIDE, NORMAL_INDEX * 4L);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
 
         mesh.extVbo = buildExt(template);
         if (mesh.extVbo != 0) {
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, mesh.extVbo);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, mesh.extVbo);
             ImmediateExtendedAttribHandler.setupExtAttribPointers(0L, ImmediateExtendedAttribHandler.EXT_STRIDE);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         }
 
         InstancedAttribs.enableHeadArrays();
         VAOManager.setCurrentVertexFlags(TEMPLATE_FLAGS);
-        GLStateManager.glBindVertexArray(0);
+        GLSMVertexInput.glBindVertexArray(0);
         return mesh;
     }
 
@@ -303,10 +307,10 @@ final class InstancedTemplateRenderer {
         handler.build(template.data, template.vertexCount, extPrim,
             ImmediateExtendedAttribHandler.RAW_NORMAL_INDEX, memAddress0(ext), extStride);
 
-        final int extVbo = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, extVbo);
+        final int extVbo = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, extVbo);
         ext.position(0).limit(template.vertexCount * extStride);
-        GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, ext, GL15.GL_STATIC_DRAW);
+        GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, ext, GL15.GL_STATIC_DRAW);
         memFree(ext);
         return extVbo;
     }
@@ -347,9 +351,9 @@ final class InstancedTemplateRenderer {
     }
 
     private static void delete(TemplateMesh mesh) {
-        GLStateManager.glDeleteBuffers(mesh.vbo);
-        if (mesh.extVbo != 0) GLStateManager.glDeleteBuffers(mesh.extVbo);
-        GLStateManager.glDeleteVertexArrays(mesh.vao);
+        GLSMBuffers.glDeleteBuffers(mesh.vbo);
+        if (mesh.extVbo != 0) GLSMBuffers.glDeleteBuffers(mesh.extVbo);
+        GLSMVertexInput.glDeleteVertexArrays(mesh.vao);
     }
 
     int meshCount() {

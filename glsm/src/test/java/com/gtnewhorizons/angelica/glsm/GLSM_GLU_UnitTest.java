@@ -39,27 +39,27 @@ public class GLSM_GLU_UnitTest {
 
     @Test
     void gluPerspective_accumulates() {
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glScalef(2.0f, 1.0f, 1.0f);
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glScalef(2.0f, 1.0f, 1.0f);
 
-        GLStateManager.gluPerspective(90.0f, 1.0f, 1.0f, 100.0f);
+        GLSMMatrices.gluPerspective(90.0f, 1.0f, 1.0f, 100.0f);
 
         Matrix4f expected = new Matrix4f()
             .scale(2.0f, 1.0f, 1.0f)
             .perspective((float) Math.toRadians(90.0f), 1.0f, 1.0f, 100.0f);
         assertMatrixEquals(expected, getProjectionMatrix(), "gluPerspective after scale");
 
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
     }
 
     @Test
     void gluLookAt_accumulates() {
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glTranslatef(10.0f, 0.0f, 0.0f);
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glTranslatef(10.0f, 0.0f, 0.0f);
 
-        GLStateManager.gluLookAt(
+        GLSMMatrices.gluLookAt(
             0.0f, 0.0f, 5.0f,
             0.0f, 0.0f, 0.0f,
             0.0f, 1.0f, 0.0f);
@@ -74,15 +74,15 @@ public class GLSM_GLU_UnitTest {
 
     @Test
     void gluOrtho2D_matchesJOML() {
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glLoadIdentity();
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glLoadIdentity();
 
-        GLStateManager.gluOrtho2D(0.0f, 800.0f, 0.0f, 600.0f);
+        GLSMMatrices.gluOrtho2D(0.0f, 800.0f, 0.0f, 600.0f);
 
         Matrix4f expected = new Matrix4f().ortho(0.0f, 800.0f, 0.0f, 600.0f, -1.0f, 1.0f);
         assertMatrixEquals(expected, getProjectionMatrix(), "gluOrtho2D");
 
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
     }
 
     @ParameterizedTest(name = "{0}")
@@ -91,36 +91,36 @@ public class GLSM_GLU_UnitTest {
         "gluPickMatrix off-center viewport, 100, 50, 640, 480, 200, 150, 10",
     })
     void gluPickMatrix_matchesManual(String label, int vx, int vy, int vw, int vh, float x, float y, float delta) {
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glLoadIdentity();
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glLoadIdentity();
 
         IntBuffer viewport = BufferUtils.createIntBuffer(4);
         viewport.put(0, vx).put(1, vy).put(2, vw).put(3, vh);
 
-        GLStateManager.gluPickMatrix(x, y, delta, delta, viewport);
+        GLSMMatrices.gluPickMatrix(x, y, delta, delta, viewport);
 
         Matrix4f expected = new Matrix4f()
             .translate((vw - 2 * (x - vx)) / delta, (vh - 2 * (y - vy)) / delta, 0.0f)
             .scale(vw / delta, vh / delta, 1.0f);
         assertMatrixEquals(expected, getProjectionMatrix(), label);
 
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
     }
 
     @Test
     void gluPickMatrix_zeroSize_noOp() {
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glLoadIdentity();
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glLoadIdentity();
 
         IntBuffer viewport = BufferUtils.createIntBuffer(4);
         viewport.put(0, 0).put(1, 0).put(2, 800).put(3, 600);
 
-        GLStateManager.gluPickMatrix(400.0f, 300.0f, 0.0f, 5.0f, viewport);
+        GLSMMatrices.gluPickMatrix(400.0f, 300.0f, 0.0f, 5.0f, viewport);
 
         // deltaX <= 0 should be a no-op, matrix stays identity
         assertMatrixEquals(new Matrix4f(), getProjectionMatrix(), "gluPickMatrix zero deltaX is no-op");
 
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
     }
 
     static Stream<Arguments> errorStrings() {
@@ -139,7 +139,7 @@ public class GLSM_GLU_UnitTest {
     @ParameterizedTest(name = "{1}")
     @MethodSource("errorStrings")
     void gluErrorString(int code, String expected) {
-        assertEquals(expected, GLStateManager.gluErrorString(code));
+        assertEquals(expected, GLSMMatrices.gluErrorString(code));
     }
 
     static Stream<Arguments> gluUnProject_roundTrips() {
@@ -167,7 +167,7 @@ public class GLSM_GLU_UnitTest {
         viewport.put(0, 0).put(1, 0).put(2, 800).put(3, 600);
 
         FloatBuffer result = BufferUtils.createFloatBuffer(3);
-        assertTrue(GLStateManager.gluUnProject(winX, winY, winZ, modelBuf, projBuf, viewport, result), "gluUnProject should succeed");
+        assertTrue(GLSMMatrices.gluUnProject(winX, winY, winZ, modelBuf, projBuf, viewport, result), "gluUnProject should succeed");
         assertEquals(0.0f, result.get(0), tolerance, "X should unproject back to 0");
         assertEquals(0.0f, result.get(1), tolerance, "Y should unproject back to 0");
         assertEquals(0.0f, result.get(2), tolerance, "Z should unproject back to 0");
@@ -186,14 +186,14 @@ public class GLSM_GLU_UnitTest {
         viewport.put(0, 0).put(1, 0).put(2, 800).put(3, 600);
 
         FloatBuffer result = BufferUtils.createFloatBuffer(3);
-        assertFalse(GLStateManager.gluUnProject(400, 300, 0.5f, model, proj, viewport, result));
+        assertFalse(GLSMMatrices.gluUnProject(400, 300, 0.5f, model, proj, viewport, result));
     }
 
 
     @Test
     void gluBuild2DMipmaps_invalidSize() {
-        assertEquals(100901, GLStateManager.gluBuild2DMipmaps(GL11.GL_TEXTURE_2D, GL11.GL_RGBA, 0, 10, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, BufferUtils.createByteBuffer(1)));
-        assertEquals(100901, GLStateManager.gluBuild2DMipmaps(GL11.GL_TEXTURE_2D, GL11.GL_RGBA, 10, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, BufferUtils.createByteBuffer(1)));
+        assertEquals(100901, GLSMMatrices.gluBuild2DMipmaps(GL11.GL_TEXTURE_2D, GL11.GL_RGBA, 0, 10, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, BufferUtils.createByteBuffer(1)));
+        assertEquals(100901, GLSMMatrices.gluBuild2DMipmaps(GL11.GL_TEXTURE_2D, GL11.GL_RGBA, 10, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, BufferUtils.createByteBuffer(1)));
     }
 
     @Test
@@ -205,7 +205,7 @@ public class GLSM_GLU_UnitTest {
         for (int i = 0; i < 4 * 4 * 4; i++) pixels.put((byte) 0xFF);
         pixels.flip();
 
-        int result = GLStateManager.gluBuild2DMipmaps(GL11.GL_TEXTURE_2D, GL11.GL_RGBA, 4, 4, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
+        int result = GLSMMatrices.gluBuild2DMipmaps(GL11.GL_TEXTURE_2D, GL11.GL_RGBA, 4, 4, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
         assertEquals(0, result, "gluBuild2DMipmaps should return 0 on success");
         assertEquals(4, GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH));
         assertEquals(1, GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 2, GL11.GL_TEXTURE_WIDTH));

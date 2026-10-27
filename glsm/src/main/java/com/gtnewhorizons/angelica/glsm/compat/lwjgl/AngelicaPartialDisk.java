@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.compat.lwjgl;
 
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.lwjgl.util.glu.PartialDisk;
 
@@ -63,7 +65,7 @@ public class AngelicaPartialDisk extends PartialDisk {
         }
 
         switch (super.normals) {
-            case GLU_FLAT, GLU_SMOOTH -> GLStateManager.glNormal3f(0.0f, 0.0f, (super.orientation == GLU_OUTSIDE) ? 1.0f : -1.0f);
+            case GLU_FLAT, GLU_SMOOTH -> GLSMCurrentAttribs.glNormal3f(0.0f, 0.0f, (super.orientation == GLU_OUTSIDE) ? 1.0f : -1.0f);
             default -> {
             }
         }
@@ -73,11 +75,11 @@ public class AngelicaPartialDisk extends PartialDisk {
                 if (innerRadius == .0f) {
                     finish = loops - 1;
                     /* Triangle strip for inner polygons */
-                    GLStateManager.glBegin(GL_TRIANGLE_FAN);
+                    GLSMDraws.glBegin(GL_TRIANGLE_FAN);
                     if (super.textureFlag) {
-                        GLStateManager.glTexCoord2f(0.5f, 0.5f);
+                        GLSMCurrentAttribs.glTexCoord2f(0.5f, 0.5f);
                     }
-                    GLStateManager.glVertex3f(0.0f, 0.0f, 0.0f);
+                    GLSMDraws.glVertex3f(0.0f, 0.0f, 0.0f);
                     radiusLow = outerRadius - deltaRadius * ((float) (loops - 1) / loops);
                     if (super.textureFlag) {
                         texLow = radiusLow / outerRadius / 2;
@@ -86,19 +88,19 @@ public class AngelicaPartialDisk extends PartialDisk {
                     if (super.orientation == GLU_OUTSIDE) {
                         for (int i = slices; i >= 0; i--) {
                             if (super.textureFlag) {
-                                GLStateManager.glTexCoord2f(texLow * sinCache[i] + 0.5f, texLow * cosCache[i] + 0.5f);
+                                GLSMCurrentAttribs.glTexCoord2f(texLow * sinCache[i] + 0.5f, texLow * cosCache[i] + 0.5f);
                             }
-                            GLStateManager.glVertex3f(radiusLow * sinCache[i], radiusLow * cosCache[i], 0.0f);
+                            GLSMDraws.glVertex3f(radiusLow * sinCache[i], radiusLow * cosCache[i], 0.0f);
                         }
                     } else {
                         for (int i = 0; i <= slices; i++) {
                             if (super.textureFlag) {
-                                GLStateManager.glTexCoord2f(texLow * sinCache[i] + 0.5f, texLow * cosCache[i] + 0.5f);
+                                GLSMCurrentAttribs.glTexCoord2f(texLow * sinCache[i] + 0.5f, texLow * cosCache[i] + 0.5f);
                             }
-                            GLStateManager.glVertex3f(radiusLow * sinCache[i], radiusLow * cosCache[i], 0.0f);
+                            GLSMDraws.glVertex3f(radiusLow * sinCache[i], radiusLow * cosCache[i], 0.0f);
                         }
                     }
-                    GLStateManager.glEnd();
+                    GLSMDraws.glEnd();
                 } else {
                     finish = loops;
                 }
@@ -110,35 +112,35 @@ public class AngelicaPartialDisk extends PartialDisk {
                         texHigh = radiusHigh / outerRadius / 2;
                     }
 
-                    GLStateManager.glBegin(GL_TRIANGLE_STRIP);
+                    GLSMDraws.glBegin(GL_TRIANGLE_STRIP);
                     for (int i = 0; i <= slices; i++) {
                         if (super.orientation == GLU_OUTSIDE) {
                             if (super.textureFlag) {
-                                GLStateManager.glTexCoord2f(texLow * sinCache[i] + 0.5f, texLow * cosCache[i] + 0.5f);
+                                GLSMCurrentAttribs.glTexCoord2f(texLow * sinCache[i] + 0.5f, texLow * cosCache[i] + 0.5f);
                             }
-                            GLStateManager.glVertex3f(radiusLow * sinCache[i], radiusLow * cosCache[i], 0.0f);
+                            GLSMDraws.glVertex3f(radiusLow * sinCache[i], radiusLow * cosCache[i], 0.0f);
 
                             if (super.textureFlag) {
-                                GLStateManager.glTexCoord2f(texHigh * sinCache[i] + 0.5f, texHigh * cosCache[i] + 0.5f);
+                                GLSMCurrentAttribs.glTexCoord2f(texHigh * sinCache[i] + 0.5f, texHigh * cosCache[i] + 0.5f);
                             }
-                            GLStateManager.glVertex3f(radiusHigh * sinCache[i], radiusHigh * cosCache[i], 0.0f);
+                            GLSMDraws.glVertex3f(radiusHigh * sinCache[i], radiusHigh * cosCache[i], 0.0f);
                         } else {
                             if (super.textureFlag) {
-                                GLStateManager.glTexCoord2f(texHigh * sinCache[i] + 0.5f, texHigh * cosCache[i] + 0.5f);
+                                GLSMCurrentAttribs.glTexCoord2f(texHigh * sinCache[i] + 0.5f, texHigh * cosCache[i] + 0.5f);
                             }
-                            GLStateManager.glVertex3f(radiusHigh * sinCache[i], radiusHigh * cosCache[i], 0.0f);
+                            GLSMDraws.glVertex3f(radiusHigh * sinCache[i], radiusHigh * cosCache[i], 0.0f);
 
                             if (super.textureFlag) {
-                                GLStateManager.glTexCoord2f(texLow * sinCache[i] + 0.5f, texLow * cosCache[i] + 0.5f);
+                                GLSMCurrentAttribs.glTexCoord2f(texLow * sinCache[i] + 0.5f, texLow * cosCache[i] + 0.5f);
                             }
-                            GLStateManager.glVertex3f(radiusLow * sinCache[i], radiusLow * cosCache[i], 0.0f);
+                            GLSMDraws.glVertex3f(radiusLow * sinCache[i], radiusLow * cosCache[i], 0.0f);
                         }
                     }
-                    GLStateManager.glEnd();
+                    GLSMDraws.glEnd();
                 }
             }
             case GLU_POINT -> {
-                GLStateManager.glBegin(GL_POINTS);
+                GLSMDraws.glBegin(GL_POINTS);
                 for (int i = 0; i < slices2; i++) {
                     sintemp = sinCache[i];
                     costemp = cosCache[i];
@@ -148,24 +150,24 @@ public class AngelicaPartialDisk extends PartialDisk {
                         if (super.textureFlag) {
                             texLow = radiusLow / outerRadius / 2;
 
-                            GLStateManager.glTexCoord2f(texLow * sinCache[i] + 0.5f, texLow * cosCache[i] + 0.5f);
+                            GLSMCurrentAttribs.glTexCoord2f(texLow * sinCache[i] + 0.5f, texLow * cosCache[i] + 0.5f);
                         }
-                        GLStateManager.glVertex3f(radiusLow * sintemp, radiusLow * costemp, 0.0f);
+                        GLSMDraws.glVertex3f(radiusLow * sintemp, radiusLow * costemp, 0.0f);
                     }
                 }
-                GLStateManager.glEnd();
+                GLSMDraws.glEnd();
             }
             case GLU_LINE -> {
                 if (innerRadius == outerRadius) {
-                    GLStateManager.glBegin(GL_LINE_STRIP);
+                    GLSMDraws.glBegin(GL_LINE_STRIP);
 
                     for (int i = 0; i <= slices; i++) {
                         if (super.textureFlag) {
-                            GLStateManager.glTexCoord2f(sinCache[i] / 2 + 0.5f, cosCache[i] / 2 + 0.5f);
+                            GLSMCurrentAttribs.glTexCoord2f(sinCache[i] / 2 + 0.5f, cosCache[i] / 2 + 0.5f);
                         }
-                        GLStateManager.glVertex3f(innerRadius * sinCache[i], innerRadius * cosCache[i], 0.0f);
+                        GLSMDraws.glVertex3f(innerRadius * sinCache[i], innerRadius * cosCache[i], 0.0f);
                     }
-                    GLStateManager.glEnd();
+                    GLSMDraws.glEnd();
                     break;
                 }
                 for (int j = 0; j <= loops; j++) {
@@ -174,19 +176,19 @@ public class AngelicaPartialDisk extends PartialDisk {
                         texLow = radiusLow / outerRadius / 2;
                     }
 
-                    GLStateManager.glBegin(GL_LINE_STRIP);
+                    GLSMDraws.glBegin(GL_LINE_STRIP);
                     for (int i = 0; i <= slices; i++) {
                         if (super.textureFlag) {
-                            GLStateManager.glTexCoord2f(texLow * sinCache[i] + 0.5f, texLow * cosCache[i] + 0.5f);
+                            GLSMCurrentAttribs.glTexCoord2f(texLow * sinCache[i] + 0.5f, texLow * cosCache[i] + 0.5f);
                         }
-                        GLStateManager.glVertex3f(radiusLow * sinCache[i], radiusLow * cosCache[i], 0.0f);
+                        GLSMDraws.glVertex3f(radiusLow * sinCache[i], radiusLow * cosCache[i], 0.0f);
                     }
-                    GLStateManager.glEnd();
+                    GLSMDraws.glEnd();
                 }
                 for (int i = 0; i < slices2; i++) {
                     sintemp = sinCache[i];
                     costemp = cosCache[i];
-                    GLStateManager.glBegin(GL_LINE_STRIP);
+                    GLSMDraws.glBegin(GL_LINE_STRIP);
                     for (int j = 0; j <= loops; j++) {
                         radiusLow = outerRadius - deltaRadius * ((float) j / loops);
                         if (super.textureFlag) {
@@ -194,11 +196,11 @@ public class AngelicaPartialDisk extends PartialDisk {
                         }
 
                         if (super.textureFlag) {
-                            GLStateManager.glTexCoord2f(texLow * sinCache[i] + 0.5f, texLow * cosCache[i] + 0.5f);
+                            GLSMCurrentAttribs.glTexCoord2f(texLow * sinCache[i] + 0.5f, texLow * cosCache[i] + 0.5f);
                         }
-                        GLStateManager.glVertex3f(radiusLow * sintemp, radiusLow * costemp, 0.0f);
+                        GLSMDraws.glVertex3f(radiusLow * sintemp, radiusLow * costemp, 0.0f);
                     }
-                    GLStateManager.glEnd();
+                    GLSMDraws.glEnd();
                 }
             }
             case GLU_SILHOUETTE -> {
@@ -206,17 +208,17 @@ public class AngelicaPartialDisk extends PartialDisk {
                     for (int i = 0; i <= slices; i += slices) {
                         sintemp = sinCache[i];
                         costemp = cosCache[i];
-                        GLStateManager.glBegin(GL_LINE_STRIP);
+                        GLSMDraws.glBegin(GL_LINE_STRIP);
                         for (int j = 0; j <= loops; j++) {
                             radiusLow = outerRadius - deltaRadius * ((float) j / loops);
 
                             if (super.textureFlag) {
                                 texLow = radiusLow / outerRadius / 2;
-                                GLStateManager.glTexCoord2f(texLow * sinCache[i] + 0.5f, texLow * cosCache[i] + 0.5f);
+                                GLSMCurrentAttribs.glTexCoord2f(texLow * sinCache[i] + 0.5f, texLow * cosCache[i] + 0.5f);
                             }
-                            GLStateManager.glVertex3f(radiusLow * sintemp, radiusLow * costemp, 0.0f);
+                            GLSMDraws.glVertex3f(radiusLow * sintemp, radiusLow * costemp, 0.0f);
                         }
-                        GLStateManager.glEnd();
+                        GLSMDraws.glEnd();
                     }
                 }
                 for (int j = 0; j <= loops; j += loops) {
@@ -225,14 +227,14 @@ public class AngelicaPartialDisk extends PartialDisk {
                         texLow = radiusLow / outerRadius / 2;
                     }
 
-                    GLStateManager.glBegin(GL_LINE_STRIP);
+                    GLSMDraws.glBegin(GL_LINE_STRIP);
                     for (int i = 0; i <= slices; i++) {
                         if (super.textureFlag) {
-                            GLStateManager.glTexCoord2f(texLow * sinCache[i] + 0.5f, texLow * cosCache[i] + 0.5f);
+                            GLSMCurrentAttribs.glTexCoord2f(texLow * sinCache[i] + 0.5f, texLow * cosCache[i] + 0.5f);
                         }
-                        GLStateManager.glVertex3f(radiusLow * sinCache[i], radiusLow * cosCache[i], 0.0f);
+                        GLSMDraws.glVertex3f(radiusLow * sinCache[i], radiusLow * cosCache[i], 0.0f);
                     }
-                    GLStateManager.glEnd();
+                    GLSMDraws.glEnd();
                     if (innerRadius == outerRadius) break;
                 }
             }

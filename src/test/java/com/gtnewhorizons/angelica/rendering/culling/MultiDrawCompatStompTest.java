@@ -2,7 +2,11 @@ package com.gtnewhorizons.angelica.rendering.culling;
 
 import com.gtnewhorizons.angelica.glsm.CompatUniformManager;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.GlTestSupport;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import org.joml.Matrix4f;
@@ -48,7 +52,7 @@ class MultiDrawCompatStompTest {
 
     private static Matrix4f readUniform(int program, int location) {
         final FloatBuffer buf = BufferUtils.createFloatBuffer(16);
-        GLStateManager.glGetUniform(program, location, buf);
+        GLSMPrograms.glGetUniform(program, location, buf);
         return new Matrix4f(buf);
     }
 
@@ -56,60 +60,60 @@ class MultiDrawCompatStompTest {
     void armSentinel() {
         program = GlTestSupport.program(IRIS_MVM_VS, GlTestSupport.TRIVIAL_FS);
         assertTrue(CompatUniformManager.hasProgram(program), "program with iris_ModelViewMatrix was not registered by CompatUniformManager at link");
-        location = GLStateManager.glGetUniformLocation(program, "iris_ModelViewMatrix");
+        location = GLSMPrograms.glGetUniformLocation(program, "iris_ModelViewMatrix");
         assertTrue(location >= 0, "iris_ModelViewMatrix location not found");
 
-        vao = GLStateManager.glGenVertexArrays();
-        GLStateManager.glBindVertexArray(vao);
-        elementBuffer = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, elementBuffer);
-        GLStateManager.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, BufferUtils.createByteBuffer(12), GL15.GL_STATIC_DRAW);
-        indirectBuffer = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL40.GL_DRAW_INDIRECT_BUFFER, indirectBuffer);
+        vao = GLSMVertexInput.glGenVertexArrays();
+        GLSMVertexInput.glBindVertexArray(vao);
+        elementBuffer = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, elementBuffer);
+        GLSMBuffers.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, BufferUtils.createByteBuffer(12), GL15.GL_STATIC_DRAW);
+        indirectBuffer = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL40.GL_DRAW_INDIRECT_BUFFER, indirectBuffer);
         final ByteBuffer zeroCommand = BufferUtils.createByteBuffer(20).order(ByteOrder.nativeOrder());
-        GLStateManager.glBufferData(GL40.GL_DRAW_INDIRECT_BUFFER, zeroCommand, GL15.GL_STATIC_DRAW);
+        GLSMBuffers.glBufferData(GL40.GL_DRAW_INDIRECT_BUFFER, zeroCommand, GL15.GL_STATIC_DRAW);
 
         final FloatBuffer matBuf = BufferUtils.createFloatBuffer(16);
-        GLStateManager.glUseProgram(program);
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMPrograms.glUseProgram(program);
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
         putMatrix(LEGACY_CAMERA, matBuf);
-        GLStateManager.glLoadMatrix(matBuf);
+        GLSMMatrices.glLoadMatrix(matBuf);
         putMatrix(SENTINEL, matBuf);
-        GLStateManager.glUniformMatrix4(location, false, matBuf);
+        GLSMPrograms.glUniformMatrix4(location, false, matBuf);
         assertEquals(SENTINEL, readUniform(program, location), "sentinel upload did not take");
     }
 
     @AfterEach
     void tearDown() {
-        GLStateManager.glBindBuffer(GL40.GL_DRAW_INDIRECT_BUFFER, 0);
-        GLStateManager.glBindVertexArray(0);
-        GLStateManager.glUseProgram(0);
-        if (vao != 0) GLStateManager.glDeleteVertexArrays(vao);
-        if (indirectBuffer != 0) GLStateManager.glDeleteBuffers(indirectBuffer);
-        if (elementBuffer != 0) GLStateManager.glDeleteBuffers(elementBuffer);
-        GLStateManager.glDeleteProgram(program);
+        GLSMBuffers.glBindBuffer(GL40.GL_DRAW_INDIRECT_BUFFER, 0);
+        GLSMVertexInput.glBindVertexArray(0);
+        GLSMPrograms.glUseProgram(0);
+        if (vao != 0) GLSMVertexInput.glDeleteVertexArrays(vao);
+        if (indirectBuffer != 0) GLSMBuffers.glDeleteBuffers(indirectBuffer);
+        if (elementBuffer != 0) GLSMBuffers.glDeleteBuffers(elementBuffer);
+        GLSMPrograms.glDeleteProgram(program);
         final FloatBuffer identity = BufferUtils.createFloatBuffer(16);
         new Matrix4f().get(identity);
-        GLStateManager.glLoadMatrix(identity);
+        GLSMMatrices.glLoadMatrix(identity);
     }
 
     @Test
     void multiDrawIndirectDoesNotStompIrisMatrix() {
         assumeTrue(RenderSystem.supportsMultiDrawIndirect(), "glMultiDrawElementsIndirect needs GL 4.3 / ARB_multi_draw_indirect; macOS core profile caps at 4.1");
 
-        GLStateManager.glMultiDrawElementsIndirect(GL11.GL_TRIANGLES, GL11.GL_UNSIGNED_INT, 0L, 1, 0);
+        GLSMDraws.glMultiDrawElementsIndirect(GL11.GL_TRIANGLES, GL11.GL_UNSIGNED_INT, 0L, 1, 0);
         assertEquals(SENTINEL, readUniform(program, location), "glMultiDrawElementsIndirect stomped iris_ModelViewMatrix from the legacy matrix stack; celeritas-managed programs own this uniform and the shadow pass renders with the camera view if it is overwritten");
     }
 
     @Test
     void baseVertexDrawsDoNotStompIrisMatrixButRegularDrawDoes() {
-        GLStateManager.glDrawElementsBaseVertex(GL11.GL_TRIANGLES, 0, GL11.GL_UNSIGNED_INT, 0L, 0);
+        GLSMDraws.glDrawElementsBaseVertex(GL11.GL_TRIANGLES, 0, GL11.GL_UNSIGNED_INT, 0L, 0);
         assertEquals(SENTINEL, readUniform(program, location), "glDrawElementsBaseVertex stomped iris_ModelViewMatrix; the Individual draw emitter renders shadows with the camera view if it is overwritten");
 
-        GLStateManager.glDrawRangeElementsBaseVertex(GL11.GL_TRIANGLES, 0, 0, 0, GL11.GL_UNSIGNED_INT, 0L, 0);
+        GLSMDraws.glDrawRangeElementsBaseVertex(GL11.GL_TRIANGLES, 0, 0, 0, GL11.GL_UNSIGNED_INT, 0L, 0);
         assertEquals(SENTINEL, readUniform(program, location), "glDrawRangeElementsBaseVertex stomped iris_ModelViewMatrix");
 
-        GLStateManager.glDrawElements(GL11.GL_TRIANGLES, 0, GL11.GL_UNSIGNED_INT, 0L);
+        GLSMDraws.glDrawElements(GL11.GL_TRIANGLES, 0, GL11.GL_UNSIGNED_INT, 0L);
         final Matrix4f afterRegularDraw = readUniform(program, location);
         assertNotEquals(SENTINEL, afterRegularDraw, "regular glDrawElements no longer refreshes compat uniforms; entity/hand programs rely on the legacy-stack upload");
         assertTrue(afterRegularDraw.equals(LEGACY_CAMERA, 1e-6f), "regular draw refreshed iris_ModelViewMatrix but not from the legacy modelview stack");

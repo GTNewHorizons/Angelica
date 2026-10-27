@@ -2,7 +2,7 @@ package net.coderbot.iris.gl.program;
 
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import java.nio.IntBuffer;
@@ -72,7 +72,7 @@ public class ProgramUniforms {
 	public void update() {
 		// glUseProgram is only recorded during GL_COMPILE
 		if (DisplayListManager.getRecordMode() == DisplayListManager.RecordMode.COMPILE
-			|| GLStateManager.getActiveProgram() != program) {
+			|| GLSMPrograms.getActiveProgram() != program) {
 			hasDeferredUploads = true;
 			return;
 		}
@@ -128,7 +128,7 @@ public class ProgramUniforms {
 	}
 
 	public static boolean isActiveProgramBound() {
-		return active != null && GLStateManager.getActiveProgram() == active.program;
+		return active != null && GLSMPrograms.getActiveProgram() == active.program;
 	}
 
 	public static void markActiveDeferred() {
@@ -212,7 +212,7 @@ public class ProgramUniforms {
 
 		public ProgramUniforms buildUniforms() {
 			// Check for any unsupported uniforms and warn about them so that we can easily figure out what uniforms we need to add.
-			final int activeUniforms = GLStateManager.glGetProgrami(program, GL20.GL_ACTIVE_UNIFORMS);
+			final int activeUniforms = GLSMPrograms.glGetProgrami(program, GL20.GL_ACTIVE_UNIFORMS);
 			IntBuffer sizeType = BufferUtils.createIntBuffer(2);
 
 			for (int index = 0; index < activeUniforms; index++) {

@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.recording.commands;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Matrix4f;
 import org.lwjgl.BufferUtils;
@@ -26,7 +26,7 @@ public record MultMatrixCmd(Matrix4f matrix, FloatBuffer buffer) implements Disp
     @Override
     public void execute() {
         buffer.rewind();
-        GLStateManager.glMultMatrix(buffer);
+        GLSMMatrices.glMultMatrix(buffer);
     }
 
     @Override

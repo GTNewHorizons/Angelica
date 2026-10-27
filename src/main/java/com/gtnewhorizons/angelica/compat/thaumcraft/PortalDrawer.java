@@ -3,6 +3,15 @@ package com.gtnewhorizons.angelica.compat.thaumcraft;
 import com.gtnewhorizons.angelica.client.rendering.GlUniformFloat2v;
 import com.gtnewhorizons.angelica.client.rendering.GlUniformFloat3Array;
 import com.gtnewhorizons.angelica.client.rendering.GlUniformFloat4Array;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMFog;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMQueries;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.ffp.FragmentKey;
@@ -62,7 +71,7 @@ final class PortalDrawer {
         for (int i = 0; i < LAYERS; i++) {
             LAYER_DEPTH[i] = i == 0 ? 65.0F : 16 - i;
             LAYER_SCALE[i] = i == 0 ? 0.125F : i == 1 ? 0.5F : 0.0625F;
-            // GLStateManager.glRotatef's float radians
+            // GLSMMatrices.glRotatef's float radians
             LAYER_ANGLE[i] = (float) Math.toRadians((float) (i * i * 4321 + i * 9) * 2.0F);
         }
     }
@@ -78,7 +87,7 @@ final class PortalDrawer {
 
     static int maxPlanes() {
         if (maxPlanes == 0) {
-            final int vectors = GLStateManager.glGetInteger(GL20.GL_MAX_VERTEX_UNIFORM_COMPONENTS) / 4;
+            final int vectors = GLSMQueries.glGetInteger(GL20.GL_MAX_VERTEX_UNIFORM_COMPONENTS) / 4;
             maxPlanes = Math.clamp((vectors - 128) / 12, 1, 64);
         }
         return maxPlanes;
@@ -105,7 +114,7 @@ final class PortalDrawer {
     }
 
     private static void uploadFog(Uniforms uniforms, int fogMode) {
-        final FogState fog = GLStateManager.getFogState();
+        final FogState fog = GLSMFog.getFogState();
         FOG_PARAMS[0] = fog.linearScale();
         FOG_PARAMS[1] = fog.linearBias();
         FOG_PARAMS[2] = fog.expScale();
@@ -117,9 +126,9 @@ final class PortalDrawer {
     }
 
     private static void instanced(int attribute, int size, int floatOffset) {
-        GLStateManager.glEnableVertexAttribArray(attribute);
-        GLStateManager.glVertexAttribPointer(attribute, size, GL11.GL_FLOAT, false, FACE_BYTES, (long) floatOffset * Float.BYTES);
-        GLStateManager.glVertexAttribDivisor(attribute, 1);
+        GLSMVertexInput.glEnableVertexAttribArray(attribute);
+        GLSMVertexInput.glVertexAttribPointer(attribute, size, GL11.GL_FLOAT, false, FACE_BYTES, (long) floatOffset * Float.BYTES);
+        GLSMVertexInput.glVertexAttribDivisor(attribute, 1);
     }
 
     private static GlProgram<Uniforms> buildProgram(boolean capturing, boolean fogged) {
@@ -137,15 +146,15 @@ final class PortalDrawer {
             frag.delete();
         }
 
-        final int previous = GLStateManager.getActiveProgram();
+        final int previous = GLSMPrograms.getActiveProgram();
         final int handle = program.handle();
-        GLStateManager.glUseProgram(handle);
-        GLStateManager.glUniform1i(GLStateManager.glGetUniformLocation(handle, "u_Tunnel"), TUNNEL_UNIT);
-        GLStateManager.glUniform1i(GLStateManager.glGetUniformLocation(handle, "u_Lightmap"), LIGHTMAP_UNIT);
-        GLStateManager.glUniform1i(GLStateManager.glGetUniformLocation(handle, "u_Field"), FIELD_UNIT);
-        GLStateManager.glUniform4f(GLStateManager.glGetUniformLocation(handle, "u_ObjectPlaneR"), 0.0F, 0.0F, 0.0F, 1.0F);
-        GLStateManager.glUniform3(GLStateManager.glGetUniformLocation(handle, "u_LayerColor"), floatBuffer(layerColors()));
-        GLStateManager.glUseProgram(previous);
+        GLSMPrograms.glUseProgram(handle);
+        GLSMPrograms.glUniform1i(GLSMPrograms.glGetUniformLocation(handle, "u_Tunnel"), TUNNEL_UNIT);
+        GLSMPrograms.glUniform1i(GLSMPrograms.glGetUniformLocation(handle, "u_Lightmap"), LIGHTMAP_UNIT);
+        GLSMPrograms.glUniform1i(GLSMPrograms.glGetUniformLocation(handle, "u_Field"), FIELD_UNIT);
+        GLSMPrograms.glUniform4f(GLSMPrograms.glGetUniformLocation(handle, "u_ObjectPlaneR"), 0.0F, 0.0F, 0.0F, 1.0F);
+        GLSMPrograms.glUniform3(GLSMPrograms.glGetUniformLocation(handle, "u_LayerColor"), floatBuffer(layerColors()));
+        GLSMPrograms.glUseProgram(previous);
         return program;
     }
 
@@ -191,20 +200,20 @@ final class PortalDrawer {
 
     GlFramebuffer atlasFramebuffer() {
         if (atlasFramebuffer == null) {
-            atlasTexture = GLStateManager.glGenTextures();
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, atlasTexture);
-            GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, ATLAS_SIZE, ATLAS_SIZE, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
+            atlasTexture = GLSMTextures.glGenTextures();
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, atlasTexture);
+            GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, ATLAS_SIZE, ATLAS_SIZE, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
             atlasFramebuffer = new GlFramebuffer();
             atlasFramebuffer.addColorAttachment(0, atlasTexture);
             atlasFramebuffer.drawBuffers(new int[]{0});
             atlasFramebuffer.readBuffer(0);
             if (!atlasFramebuffer.isComplete()) {
                 atlasFramebuffer.destroy();
-                GLStateManager.glDeleteTextures(atlasTexture);
+                GLSMTextures.glDeleteTextures(atlasTexture);
                 atlasFramebuffer = null;
                 atlasTexture = 0;
                 throw new IllegalStateException("Incomplete Thaumcraft portal atlas framebuffer");
@@ -222,23 +231,23 @@ final class PortalDrawer {
         if (directFogged != null) directFogged.delete();
         if (capture != null) capture.delete();
         direct = directFogged = capture = null;
-        if (vao != 0) GLStateManager.glDeleteVertexArrays(vao);
-        if (vbo != 0) GLStateManager.glDeleteBuffers(vbo);
-        if (ebo != 0) GLStateManager.glDeleteBuffers(ebo);
+        if (vao != 0) GLSMVertexInput.glDeleteVertexArrays(vao);
+        if (vbo != 0) GLSMBuffers.glDeleteBuffers(vbo);
+        if (ebo != 0) GLSMBuffers.glDeleteBuffers(ebo);
         vao = vbo = ebo = 0;
         if (atlasFramebuffer != null) atlasFramebuffer.destroy();
-        if (atlasTexture != 0) GLStateManager.glDeleteTextures(atlasTexture);
+        if (atlasTexture != 0) GLSMTextures.glDeleteTextures(atlasTexture);
         atlasFramebuffer = null;
         atlasTexture = 0;
     }
 
     private void draw(GlProgram<Uniforms> program, float[] faces, int first, int count, int tunnelTexture, int fieldTexture, Frame frame, int fogMode) {
-        final int previousProgram = GLStateManager.getActiveProgram();
-        final int previousVao = GLStateManager.getBoundVAO();
-        final int depth = GLStateManager.pushState(StateSet.forMask(GL11.GL_ENABLE_BIT | GL11.GL_COLOR_BUFFER_BIT | GL11.GL_TEXTURE_BIT));
+        final int previousProgram = GLSMPrograms.getActiveProgram();
+        final int previousVao = GLSMVertexInput.getBoundVAO();
+        final int depth = GLSMAttribStack.pushState(StateSet.forMask(GL11.GL_ENABLE_BIT | GL11.GL_COLOR_BUFFER_BIT | GL11.GL_TEXTURE_BIT));
         try {
-            GLStateManager.disableBlend();
-            GLStateManager.glUseProgram(program.handle());
+            GLSMBlend.disableBlend();
+            GLSMPrograms.glUseProgram(program.handle());
             final Uniforms uniforms = program.getInterface();
             if (uniforms.modelViewProjection != null) uniforms.modelViewProjection.set(frame.modelViewProjection);
             if (uniforms.uploadedFrame != frame || uniforms.uploadedVersion != frame.version) {
@@ -263,18 +272,18 @@ final class PortalDrawer {
             if (uniforms.atlasSize != null) uniforms.atlasSize.setFloat(ATLAS_SIZE);
             if (fogMode != FragmentKey.FOG_NONE) uploadFog(uniforms, fogMode);
 
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + FIELD_UNIT);
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, fieldTexture);
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + TUNNEL_UNIT);
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tunnelTexture);
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0 + FIELD_UNIT);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, fieldTexture);
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0 + TUNNEL_UNIT);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, tunnelTexture);
 
             uploadFaces(faces, first, count);
-            GLStateManager.glDrawElementsInstanced(GL11.GL_TRIANGLES, 6, GL11.GL_UNSIGNED_INT, 0L, count);
+            GLSMDraws.glDrawElementsInstanced(GL11.GL_TRIANGLES, 6, GL11.GL_UNSIGNED_INT, 0L, count);
         } finally {
-            GLStateManager.glBindVertexArray(previousVao);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-            GLStateManager.glUseProgram(previousProgram);
-            GLStateManager.popStateTo(depth);
+            GLSMVertexInput.glBindVertexArray(previousVao);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            GLSMPrograms.glUseProgram(previousProgram);
+            GLSMAttribStack.popStateTo(depth);
         }
     }
 
@@ -286,24 +295,24 @@ final class PortalDrawer {
         upload.put(faces, first * FLOATS_PER_FACE, count * FLOATS_PER_FACE).flip();
 
         if (vao == 0) createBuffers();
-        GLStateManager.glBindVertexArray(vao);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-        GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, upload, GL15.GL_STREAM_DRAW);
+        GLSMVertexInput.glBindVertexArray(vao);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, upload, GL15.GL_STREAM_DRAW);
     }
 
     private void createBuffers() {
-        vao = GLStateManager.glGenVertexArrays();
-        vbo = GLStateManager.glGenBuffers();
-        ebo = GLStateManager.glGenBuffers();
-        GLStateManager.glBindVertexArray(vao);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        vao = GLSMVertexInput.glGenVertexArrays();
+        vbo = GLSMBuffers.glGenBuffers();
+        ebo = GLSMBuffers.glGenBuffers();
+        GLSMVertexInput.glBindVertexArray(vao);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
         for (int corner = 0; corner < 4; corner++) {
             instanced(corner, 4, corner * 4);
         }
         final IntBuffer indices = BufferUtils.createIntBuffer(6);
         indices.put(0).put(1).put(2).put(0).put(2).put(3).flip();
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
-        GLStateManager.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, indices, GL15.GL_STATIC_DRAW);
+        GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
+        GLSMBuffers.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, indices, GL15.GL_STATIC_DRAW);
     }
 
     static final class Frame {
@@ -367,7 +376,7 @@ final class PortalDrawer {
         }
 
         void readLightmap(int blockLight) {
-            final TextureUnitArray textures = GLStateManager.getTextures();
+            final TextureUnitArray textures = GLSMTextures.getTextures();
             lightmapEnabled = textures.getTextureUnitStates(LIGHTMAP_UNIT).isEnabled() && textures.getTextureUnitBindings(LIGHTMAP_UNIT).getBinding() != 0;
             textures.getTextureUnitMatrix(LIGHTMAP_UNIT).transform(lightmapCoord.set(blockLight, 0.0F, 0.0F, 1.0F));
             lightmapU = lightmapCoord.x / lightmapCoord.w;

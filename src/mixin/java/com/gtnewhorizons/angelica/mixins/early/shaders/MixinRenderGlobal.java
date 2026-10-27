@@ -2,7 +2,7 @@ package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.ITessellatorInstance;
 import com.gtnewhorizons.angelica.experimental.surround.Surround;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
@@ -60,7 +60,7 @@ public class MixinRenderGlobal {
     @Inject(method = "renderSky", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/WorldClient;getCelestialAngle(F)F"),
         slice = @Slice(from = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/WorldClient;getRainStrength(F)F")))
     private void iris$renderSky$tiltSun(float p_72714_1_, CallbackInfo ci) {
-        GLStateManager.glRotatef(Iris.getPipelineManager().getPipelineNullable().getSunPathRotation(), 0.0F, 0.0F, 1.0F);
+        GLSMMatrices.glRotatef(Iris.getPipelineManager().getPipelineNullable().getSunPathRotation(), 0.0F, 0.0F, 1.0F);
     }
 
     // Sky disc: wrap the glCallList(glSkyList) call — the first glCallList in the surface world branch

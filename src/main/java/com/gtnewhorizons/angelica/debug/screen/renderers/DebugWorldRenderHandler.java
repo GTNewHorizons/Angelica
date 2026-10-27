@@ -5,6 +5,10 @@ import com.gtnewhorizons.angelica.debug.render.DebugProgram;
 import com.gtnewhorizons.angelica.debug.render.NativeScratch;
 import com.gtnewhorizons.angelica.debug.screen.DebugRegistry;
 import com.gtnewhorizons.angelica.glsm.GLContextState;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -126,8 +130,8 @@ public final class DebugWorldRenderHandler {
         } catch (RuntimeException | LinkageError e) {
             slots.fail(slot, e);
         } finally {
-            GLStateManager.glBindVertexArray(vao);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+            GLSMVertexInput.glBindVertexArray(vao);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
         }
     }
 
@@ -143,8 +147,8 @@ public final class DebugWorldRenderHandler {
         final int n = slots.count;
         if (nextDrawable(0) == n) return;
 
-        base.set(GLStateManager.getModelViewMatrix());
-        projBase.set(GLStateManager.getProjectionMatrix()).mul(base);
+        base.set(GLSMMatrices.getModelViewMatrix());
+        projBase.set(GLSMMatrices.getProjectionMatrix()).mul(base);
         scope.beginWorld();
         try {
             for (int i = nextDrawable(0); i < n; i = nextDrawable(i + 1)) {
@@ -166,7 +170,7 @@ public final class DebugWorldRenderHandler {
                 }
             }
 
-            GLStateManager.disableDepthTest();
+            GLSMDepthStencilAlpha.disableDepthTest();
             drawPass(true);
         } finally {
             scope.end();
@@ -215,7 +219,7 @@ public final class DebugWorldRenderHandler {
     private void drawLabels(Minecraft mc, GLContextState glCtx, double camX, double camY, double camZ) {
         final int n = slots.count;
         try {
-            labels.begin(mc.fontRenderer, GLStateManager.getProjectionMatrix(), glCtx.viewportState.height);
+            labels.begin(mc.fontRenderer, GLSMMatrices.getProjectionMatrix(), glCtx.viewportState.height);
             for (int i = nextDrawable(0); i < n; i = nextDrawable(i + 1)) {
                 final DebugMesh mesh = meshes[i];
                 if (mesh.labels.count == 0) continue;

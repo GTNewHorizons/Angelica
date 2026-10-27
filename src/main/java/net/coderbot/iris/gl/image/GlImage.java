@@ -1,6 +1,6 @@
 package net.coderbot.iris.gl.image;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.texture.InternalTextureFormat;
 import com.gtnewhorizons.angelica.glsm.texture.PixelFormat;
@@ -39,14 +39,14 @@ public class GlImage extends GlObject {
 
 		GLDebug.nameObject(GL11.GL_TEXTURE, handle(), name);
 
-		GLStateManager.glBindTexture(target.getGlType(), handle());
+		GLSMTextures.glBindTexture(target.getGlType(), handle());
 		target.apply(handle(), width, height, depth, internalFormat.getGlFormat(), format.getGlFormat(), pixelType.getGlFormat(), null);
 
 		final int texture = handle();
 
 		setup(texture, width, height, depth);
 
-		GLStateManager.glBindTexture(target.getGlType(), 0);
+		GLSMTextures.glBindTexture(target.getGlType(), 0);
 
 		BY_NAME.put(name, this);
 	}
@@ -112,7 +112,7 @@ public class GlImage extends GlObject {
 
 	@Override
 	protected void destroyInternal() {
-		GLStateManager.glDeleteTextures(handle());
+		GLSMTextures.glDeleteTextures(handle());
 		BY_NAME.remove(name, this);
 	}
 
@@ -147,14 +147,14 @@ public class GlImage extends GlObject {
 
 		@Override
 		public void updateNewSize(int width, int height) {
-			GLStateManager.glBindTexture(target.getGlType(), handle());
+			GLSMTextures.glBindTexture(target.getGlType(), handle());
 			target.apply(handle(), (int) (width * relativeWidth), (int) (height * relativeHeight), 0, internalTextureFormat.getGlFormat(), format.getGlFormat(), pixelType.getGlFormat(), null);
 
 			final int texture = handle();
 
 			setup(texture, width, height, 0);
 
-			GLStateManager.glBindTexture(target.getGlType(), 0);
+			GLSMTextures.glBindTexture(target.getGlType(), 0);
 		}
 	}
 }

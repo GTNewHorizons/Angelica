@@ -21,7 +21,7 @@ class CompatUniformManagerTest {
     void cleanup() {
         if (program != 0) {
             GL20.glUseProgram(0);
-            GLStateManager.glDeleteProgram(program);
+            GLSMPrograms.glDeleteProgram(program);
             program = 0;
         }
     }

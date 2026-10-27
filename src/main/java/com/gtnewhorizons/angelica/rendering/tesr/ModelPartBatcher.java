@@ -9,6 +9,16 @@ import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard;
@@ -243,13 +253,13 @@ public final class ModelPartBatcher {
         int id, glintSlot;
 
         void capture() {
-            id = GLStateManager.getBoundTextureForServerState(0);
+            id = GLSMTextures.getBoundTextureForServerState(0);
             location = id == lastBoundGlId ? lastBoundLocation : null;
             glintSlot = id == lastBoundGlId ? lastBoundGlintSlot : ShaderGlint.NO_TINT;
         }
 
         void apply() {
-            if (GLStateManager.getBoundTextureForServerState(0) != id) return;
+            if (GLSMTextures.getBoundTextureForServerState(0) != id) return;
             lastBoundLocation = location;
             lastBoundGlId = id;
             lastBoundGlintSlot = glintSlot;
@@ -374,15 +384,15 @@ public final class ModelPartBatcher {
         if (Tracy.ENABLED) Tracy.beginZone(Z_ENTITY_DEFERRED);
         try {
             final EntityRenderer entityRenderer = Minecraft.getMinecraft().entityRenderer;
-            final int deferredDepth = GLStateManager.pushState(StateSet.BATCH);
+            final int deferredDepth = GLSMAttribStack.pushState(StateSet.BATCH);
             try {
-                GLStateManager.glDepthMask(true);
-                GLStateManager.enableDepthTest();
-                GLStateManager.enableBlend();
-                GLStateManager.defaultBlendFunc();
+                GLSMDepthStencilAlpha.glDepthMask(true);
+                GLSMDepthStencilAlpha.enableDepthTest();
+                GLSMBlend.enableBlend();
+                GLSMBlend.defaultBlendFunc();
                 entityRenderer.enableLightmap(0);
-                GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-                GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+                GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+                GLSMEnable.glEnable(GL11.GL_TEXTURE_2D);
                 final boolean wrap = Iris.enabled && GbufferPrograms.getCurrentPhase() == WorldRenderingPhase.NONE;
                 if (wrap) GbufferPrograms.beginEntities();
                 try {
@@ -394,7 +404,7 @@ public final class ModelPartBatcher {
                     entityRenderer.disableLightmap(0);
                 }
             } finally {
-                GLStateManager.popStateTo(deferredDepth);
+                GLSMAttribStack.popStateTo(deferredDepth);
             }
         } finally {
             if (Tracy.ENABLED) Tracy.endZone();
@@ -450,22 +460,22 @@ public final class ModelPartBatcher {
     }
 
     private boolean passProgramBound() {
-        return GLStateManager.getActiveProgram() == (shaderPipeline != null ? shaderPipeline.getActivePassProgramId() : 0);
+        return GLSMPrograms.getActiveProgram() == (shaderPipeline != null ? shaderPipeline.getActivePassProgramId() : 0);
     }
 
     public boolean replayGlint(GlintCapture capture) {
-        return replayGlint(capture, GLStateManager.getTextures().getTextureUnitMatrix(0));
+        return replayGlint(capture, GLSMTextures.getTextures().getTextureUnitMatrix(0));
     }
 
     public boolean queueSecondArmorGlint(GlintCapture capture) {
-        final Matrix4f second = GlintClock.secondArmorMatrix(GLStateManager.getTextures().getTextureUnitMatrix(0));
+        final Matrix4f second = GlintClock.secondArmorMatrix(GLSMTextures.getTextures().getTextureUnitMatrix(0));
         if (second == null || !replayGlint(capture, second)) return false;
         armorLoopSkips++;
         return true;
     }
 
     private boolean replayGlint(GlintCapture capture, Matrix4f textureMatrix) {
-        if (!active || shaderPipeline != null || shadow || !BatchEligibility.batchingAllowed() || GLStateManager.getActiveProgram() != 0 || GLStateManager.isRecordingDisplayList()) return false;
+        if (!active || shaderPipeline != null || shadow || !BatchEligibility.batchingAllowed() || GLSMPrograms.getActiveProgram() != 0 || GLStateManager.isRecordingDisplayList()) return false;
         if (!capture.replay(activeGroups, textureMatrix)) return false;
         glintPassReuses++;
         BatchEligibility.onPartQueued();
@@ -511,7 +521,7 @@ public final class ModelPartBatcher {
     }
 
     public boolean queueSkippedArmorGlint(GlintCapture base, ResourceLocation glintTexture) {
-        if (cannotQueueOrRecordGlint() || GLStateManager.getActiveTextureUnit() != 0 || !GLStateManager.getTextures().getTextureUnitStates(0).isEnabled()) return false;
+        if (cannotQueueOrRecordGlint() || GLSMTextures.getActiveTextureUnit() != 0 || !GLSMTextures.getTextures().getTextureUnitStates(0).isEnabled()) return false;
         if (!(shadow ? base.recordBothLayers(this, activeGroups, glintTexture) : base.queueBothLayers(this, activeGroups, glintTexture))) return false;
         if (!shadow) {
             armorBaseReuses++;
@@ -523,7 +533,7 @@ public final class ModelPartBatcher {
     }
 
     public boolean queueSkippedItemGlint(TemplateBuffer template, TesrMaterial material) {
-        if (cannotQueueOrRecordGlint() || GLStateManager.getActiveTextureUnit() != 0 || !activeGroups.canCopyInstances(material) || !MatrixHelper.isIdentity(GLStateManager.getTextures().getTextureUnitMatrix(0))) return false;
+        if (cannotQueueOrRecordGlint() || GLSMTextures.getActiveTextureUnit() != 0 || !activeGroups.canCopyInstances(material) || !MatrixHelper.isIdentity(GLSMTextures.getTextures().getTextureUnitMatrix(0))) return false;
         final EntityRenderCommands.DrawInputs inputs = glintInputs(ItemGlint.texture(), material, ShaderGlint.NO_TINT, false);
         if (shadow) {
             if (material == EntityMaterials.ITEM_GLINT && !ItemGlint.canResetStencil()) return false;
@@ -553,15 +563,15 @@ public final class ModelPartBatcher {
 
     private EntityRenderCommands.DrawInputs liveInputs(ResourceLocation texture, int textureId, TesrMaterial material, PassOverride pass,
         int glintSlot, int cull, boolean lit, boolean lightmap, boolean afterGlint) {
-        final PolygonState polygon = GLStateManager.getPolygonState();
-        return drawInputs.set(texture, textureId, material, pass, GLStateManager.getPolygonOffsetFillState().isEnabled(),
+        final PolygonState polygon = GLSMRasterizer.getPolygonState();
+        return drawInputs.set(texture, textureId, material, pass, GLSMRasterizer.getPolygonOffsetFillState().isEnabled(),
             polygon.getOffsetFactor(), polygon.getOffsetUnits(), glintSlot, cull, lit, lightmap, afterGlint);
     }
 
     private Matrix4f currentModelView() {
-        final int mvGen = GLStateManager.getMvGeneration();
+        final int mvGen = GLSMMatrices.getMvGeneration();
         if (!mvCaptured || mvGen != lastMvGeneration) {
-            modelView.set(GLStateManager.getModelViewMatrix());
+            modelView.set(GLSMMatrices.getModelViewMatrix());
             lastMvGeneration = mvGen;
             mvCaptured = true;
         }
@@ -574,13 +584,13 @@ public final class ModelPartBatcher {
 
     int currentOverlay() {
         return shaderPipeline != null ? AngelicaBufferSource.packEntityColor(CapturedRenderingState.INSTANCE.getCurrentEntityColor())
-            : AngelicaBufferSource.packAbgr(GLStateManager.getOverlayR(), GLStateManager.getOverlayG(), GLStateManager.getOverlayB(), GLStateManager.getOverlayA());
+            : AngelicaBufferSource.packAbgr(GLSMCurrentAttribs.getOverlayR(), GLSMCurrentAttribs.getOverlayG(), GLSMCurrentAttribs.getOverlayB(), GLSMCurrentAttribs.getOverlayA());
     }
 
     boolean prepareArmorGlint() {
-        if (GLStateManager.getBoundTextureForServerState() != lastBoundGlId || lastBoundLocation == null) return false;
-        final Color4 color = GLStateManager.getColor();
-        setArmorGlint(lastBoundLocation, lastBoundGlintSlot, DrawState.liveLit(EntityMaterials.GLINT), GLStateManager.getTextures().getTextureUnitMatrix(0),
+        if (GLSMTextures.getBoundTextureForServerState() != lastBoundGlId || lastBoundLocation == null) return false;
+        final Color4 color = GLSMCurrentAttribs.getColor();
+        setArmorGlint(lastBoundLocation, lastBoundGlintSlot, DrawState.liveLit(EntityMaterials.GLINT), GLSMTextures.getTextures().getTextureUnitMatrix(0),
             AngelicaBufferSource.packAbgr(color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha()));
         return true;
     }
@@ -683,7 +693,7 @@ public final class ModelPartBatcher {
             bail(BailReason.INACTIVE);
             return false;
         }
-        if (shaderPipeline != null && GLStateManager.getActiveProgram() != shaderPipeline.getActivePassProgramId()) {
+        if (shaderPipeline != null && GLSMPrograms.getActiveProgram() != shaderPipeline.getActivePassProgramId()) {
             bail(BailReason.FOREIGN_PROGRAM);
             return false;
         }
@@ -700,7 +710,7 @@ public final class ModelPartBatcher {
         if (material == EntityMaterials.OVERLAY) {
             texture = null;
         } else {
-            if (GLStateManager.getBoundTextureForServerState() != lastBoundGlId) {
+            if (GLSMTextures.getBoundTextureForServerState() != lastBoundGlId) {
                 bail(BailReason.TEXTURE);
                 return false;
             }
@@ -726,7 +736,7 @@ public final class ModelPartBatcher {
         final RenderLayer layer = layerFor(atlasSlot != null ? Objects.requireNonNull(atlasSlot.page).location : texture, inputs);
         // Entities nested inside a TESR (mob spawner, OpenBlocks trophy) run in the block entity pass but carry an entity id
         final int entityId = groupId(shaderPipeline != null, mode == Mode.ENTITIES || pass.isEntityPhase(), CapturedRenderingState.INSTANCE.getCurrentRenderedEntity(), CapturedRenderingState.INSTANCE.getCurrentRenderedBlockEntity());
-        final Color4 color = GLStateManager.getColor();
+        final Color4 color = GLSMCurrentAttribs.getColor();
         final int colorABGR = AngelicaBufferSource.packAbgr(color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha());
         final int overlayABGR = currentOverlay();
         final long entityInfo = currentEntityInfo(CapturedRenderingState.INSTANCE.getCurrentRenderedItem());
@@ -753,8 +763,8 @@ public final class ModelPartBatcher {
 
     void beginReplay(Matrix4fc mainFromShadow) {
         replayTransform = mainFromShadow;
-        final PolygonState polygon = GLStateManager.getPolygonState();
-        replayOffsetEnabled = GLStateManager.getPolygonOffsetFillState().isEnabled();
+        final PolygonState polygon = GLSMRasterizer.getPolygonState();
+        replayOffsetEnabled = GLSMRasterizer.getPolygonOffsetFillState().isEnabled();
         replayOffsetFactor = polygon.getOffsetFactor();
         replayOffsetUnits = polygon.getOffsetUnits();
     }
@@ -848,11 +858,11 @@ public final class ModelPartBatcher {
                 return result;
             }
             case DRAW_NOW_EXPECTED -> {
-                BatchEligibility.beginExpectedDraws(GLStateManager.drawCalls);
+                BatchEligibility.beginExpectedDraws(GLSMDraws.drawCalls);
                 try {
                     return TessellatorStreamingDrawer.draw(tess);
                 } finally {
-                    BatchEligibility.endExpectedDraws(GLStateManager.drawCalls);
+                    BatchEligibility.endExpectedDraws(GLSMDraws.drawCalls);
                 }
             }
             default -> {
@@ -870,11 +880,11 @@ public final class ModelPartBatcher {
         if (!entityFire && (mode != Mode.BLOCK_ENTITIES || !BatchEligibility.insideRenderer())) return TessellatorRoute.DRAW_NOW;
         if (!tess.isDrawing || tess.drawMode != GL11.GL_QUADS || tess.vertexCount == 0 || (tess.vertexCount & 3) != 0) return TessellatorRoute.DRAW_NOW;
         if (shaderPipeline != null && TessellatorEntityIds.hasIdChanges(tess)) return TessellatorRoute.DRAW_NOW;
-        if (DisplayListManager.isRecording() || !GLStateManager.getDepthTest().isEnabled() || !unitTexIdentity()) return TessellatorRoute.DRAW_NOW;
+        if (DisplayListManager.isRecording() || !GLSMDepthStencilAlpha.getDepthTest().isEnabled() || !unitTexIdentity()) return TessellatorRoute.DRAW_NOW;
         if (!passProgramBound()) return TessellatorRoute.DRAW_NOW;
         final TesrMaterial material = EntityMaterials.fromCurrentState(true);
         if (material == null || material == EntityMaterials.OVERLAY) return TessellatorRoute.DRAW_NOW;
-        if (lastBoundLocation == null || GLStateManager.getBoundTextureForServerState() != lastBoundGlId) return TessellatorRoute.DRAW_NOW;
+        if (lastBoundLocation == null || GLSMTextures.getBoundTextureForServerState() != lastBoundGlId) return TessellatorRoute.DRAW_NOW;
         if (!entityFire && !BatchEligibility.batchingAllowed()) return TessellatorRoute.DRAW_NOW_EXPECTED;
 
         GLStateManager.requireExitDrawState(false);
@@ -901,13 +911,13 @@ public final class ModelPartBatcher {
     private void logMaterialBail() {
         final Class<?> cls = TesrAttribution.currentRenderable;
         if (cls == null || !loggedMaterialBails.add(cls)) return;
-        final boolean textured = GLStateManager.getTextures().getTextureUnitStates(0).isEnabled();
-        final BlendState blendState = GLStateManager.getEffectiveBlendState(bailBlend);
-        final AlphaState alphaState = GLStateManager.getEffectiveAlphaState(bailAlpha);
+        final boolean textured = GLSMTextures.getTextures().getTextureUnitStates(0).isEnabled();
+        final BlendState blendState = GLSMBlend.getEffectiveBlendState(bailBlend);
+        final AlphaState alphaState = GLSMDepthStencilAlpha.getEffectiveAlphaState(bailAlpha);
         AngelicaMod.LOGGER.info("TESR MATERIAL bail: cls={} shadow={} textured={} texAnimated={} blend={} src={} dst={} alphaTest={} alphaFunc={} alphaRef={} depthFunc={} depthMask={}",
-            cls.getName(), shadow, textured, textured && !unitTexIdentity(), GLStateManager.isEffectiveBlendEnabled(), blendState.getSrcRgb(),
-            blendState.getDstRgb(), GLStateManager.isEffectiveAlphaTestEnabled(), alphaState.getFunction(), alphaState.getReference(),
-            GLStateManager.getDepthState().getFunc(), GLStateManager.isEffectiveDepthMaskEnabled());
+            cls.getName(), shadow, textured, textured && !unitTexIdentity(), GLSMBlend.isEffectiveBlendEnabled(), blendState.getSrcRgb(),
+            blendState.getDstRgb(), GLSMDepthStencilAlpha.isEffectiveAlphaTestEnabled(), alphaState.getFunction(), alphaState.getReference(),
+            GLSMDepthStencilAlpha.getDepthState().getFunc(), GLSMDepthStencilAlpha.isEffectiveDepthMaskEnabled());
     }
 
     static int groupId(boolean piped, boolean entityPhase, int entityId, int blockEntityId) {
@@ -916,9 +926,9 @@ public final class ModelPartBatcher {
     }
 
     private boolean unitTexIdentity() {
-        final int generation = GLStateManager.getTexMatrixGeneration();
+        final int generation = GLSMMatrices.getTexMatrixGeneration();
         if (!texCaptured || generation != texGeneration) {
-            final Matrix4f unitMatrix = GLStateManager.getTextures().getTextureUnitMatrix(0);
+            final Matrix4f unitMatrix = GLSMTextures.getTextures().getTextureUnitMatrix(0);
             texIdentity = MatrixHelper.isIdentity(unitMatrix);
             if (!texIdentity) texMatrixScratch.set(unitMatrix);
             texGeneration = generation;
@@ -928,7 +938,7 @@ public final class ModelPartBatcher {
     }
 
     private static boolean isDepthEqualDecalState() {
-        return GLStateManager.getDepthState().getFunc() == GL11.GL_EQUAL && !GLStateManager.isEffectiveDepthMaskEnabled();
+        return GLSMDepthStencilAlpha.getDepthState().getFunc() == GL11.GL_EQUAL && !GLSMDepthStencilAlpha.isEffectiveDepthMaskEnabled();
     }
 
     private PartTemplate templateFor(ModelRenderer part, float scale, ModelPartMeshBuilder builder) {

@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.entity;
 
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
 import com.gtnewhorizons.angelica.mixins.interfaces.IBatchEligibility;
 import com.gtnewhorizons.angelica.rendering.tesr.BatchEligibility;
 import com.gtnewhorizons.angelica.rendering.tesr.EntityShadowReplay;
@@ -20,13 +20,13 @@ public class MixinRenderManager_BatchEligibility {
         final IBatchEligibility holder = (IBatchEligibility) render;
         final byte state = holder.angelica$batchState();
         final boolean recording = AngelicaConfig.entityShadowReplayEnabled() && EntityShadowReplay.beginRenderer(render, entity, partialTicks, state);
-        BatchEligibility.begin(state, GLStateManager.drawCalls);
+        BatchEligibility.begin(state, GLSMDraws.drawCalls);
         boolean completed = false;
         try {
             render.doRender(entity, x, y, z, yaw, partialTicks);
             completed = true;
         } finally {
-            final byte next = BatchEligibility.end(state, GLStateManager.drawCalls);
+            final byte next = BatchEligibility.end(state, GLSMDraws.drawCalls);
             if (recording) EntityShadowReplay.endRenderer(completed, next);
             if (next != state) {
                 holder.angelica$setBatchState(next);

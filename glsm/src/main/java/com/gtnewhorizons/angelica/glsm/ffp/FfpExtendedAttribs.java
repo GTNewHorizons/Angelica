@@ -3,6 +3,9 @@ package com.gtnewhorizons.angelica.glsm.ffp;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.api.util.NormI8;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement.Usage;
 import com.gtnewhorizons.angelica.glsm.GLContextState;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
@@ -213,24 +216,24 @@ public final class FfpExtendedAttribs {
         final int extVbo = getOrBuild(h, pos, uv, normal, first, count, extPrim, mode);
         if (extVbo == 0) return false;
 
-        final int savedVBO = GLStateManager.getBoundVBO();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, extVbo);
+        final int savedVBO = GLSMBuffers.getBoundVBO();
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, extVbo);
         ImmediateExtendedAttribHandler.setupExtAttribPointers(0L, ImmediateExtendedAttribHandler.EXT_STRIDE);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, savedVBO);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, savedVBO);
         return true;
     }
 
     public static void unbind() {
-        GLStateManager.glDisableVertexAttribArray(ImmediateExtendedAttribHandler.LOC_MID_TEX);
-        GLStateManager.glDisableVertexAttribArray(ImmediateExtendedAttribHandler.LOC_TANGENT);
+        GLSMVertexInput.glDisableVertexAttribArray(ImmediateExtendedAttribHandler.LOC_MID_TEX);
+        GLSMVertexInput.glDisableVertexAttribArray(ImmediateExtendedAttribHandler.LOC_TANGENT);
         setNeutralCurrentValues();
     }
 
     public static void setNeutralCurrentValues() {
         BatchStateGuard.suspend();
         try {
-            GLStateManager.glVertexAttrib2f(ImmediateExtendedAttribHandler.LOC_MID_TEX, 0.5f, 0.5f);
-            GLStateManager.glVertexAttrib4f(ImmediateExtendedAttribHandler.LOC_TANGENT, 1.0f, 0.0f, 0.0f, 1.0f);
+            GLSMCurrentAttribs.glVertexAttrib2f(ImmediateExtendedAttribHandler.LOC_MID_TEX, 0.5f, 0.5f);
+            GLSMCurrentAttribs.glVertexAttrib4f(ImmediateExtendedAttribHandler.LOC_TANGENT, 1.0f, 0.0f, 0.0f, 1.0f);
         } finally {
             BatchStateGuard.resume();
         }
@@ -372,22 +375,22 @@ public final class FfpExtendedAttribs {
         final int newCap = Math.min(MAX_EXT_VERTS, Math.max(neededVerts, buf.capacityVerts * 2));
         beginInternalGl();
         try {
-            final int vbo = GLStateManager.glGenBuffers();
+            final int vbo = GLSMBuffers.glGenBuffers();
             if (vbo == 0) return false;
-            final int savedVBO = GLStateManager.getBoundVBO();
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-            GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, (long) newCap * extStride, GL15.GL_STATIC_DRAW);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, savedVBO);
+            final int savedVBO = GLSMBuffers.getBoundVBO();
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+            GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, (long) newCap * extStride, GL15.GL_STATIC_DRAW);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, savedVBO);
             if (buf.vbo != 0) {
-                final int savedRead = GLStateManager.getBoundCopyReadBuffer();
-                final int savedWrite = GLStateManager.getBoundCopyWriteBuffer();
-                GLStateManager.glBindBuffer(GL31.GL_COPY_READ_BUFFER, buf.vbo);
-                GLStateManager.glBindBuffer(GL31.GL_COPY_WRITE_BUFFER, vbo);
-                GLStateManager.glCopyBufferSubData(GL31.GL_COPY_READ_BUFFER, GL31.GL_COPY_WRITE_BUFFER, 0L, 0L,
+                final int savedRead = GLSMBuffers.getBoundCopyReadBuffer();
+                final int savedWrite = GLSMBuffers.getBoundCopyWriteBuffer();
+                GLSMBuffers.glBindBuffer(GL31.GL_COPY_READ_BUFFER, buf.vbo);
+                GLSMBuffers.glBindBuffer(GL31.GL_COPY_WRITE_BUFFER, vbo);
+                GLSMBuffers.glCopyBufferSubData(GL31.GL_COPY_READ_BUFFER, GL31.GL_COPY_WRITE_BUFFER, 0L, 0L,
                     (long) buf.capacityVerts * extStride);
-                GLStateManager.glBindBuffer(GL31.GL_COPY_READ_BUFFER, savedRead);
-                GLStateManager.glBindBuffer(GL31.GL_COPY_WRITE_BUFFER, savedWrite);
-                GLStateManager.glDeleteBuffers(buf.vbo);
+                GLSMBuffers.glBindBuffer(GL31.GL_COPY_READ_BUFFER, savedRead);
+                GLSMBuffers.glBindBuffer(GL31.GL_COPY_WRITE_BUFFER, savedWrite);
+                GLSMBuffers.glDeleteBuffers(buf.vbo);
             }
             buf.vbo = vbo;
             buf.capacityVerts = newCap;
@@ -433,11 +436,11 @@ public final class FfpExtendedAttribs {
 
         beginInternalGl();
         try {
-            final int savedVBO = GLStateManager.getBoundVBO();
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, extVbo);
+            final int savedVBO = GLSMBuffers.getBoundVBO();
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, extVbo);
             ext.position(0).limit(count * extStride);
-            GLStateManager.glBufferSubData(GL15.GL_ARRAY_BUFFER, (long) first * extStride, ext);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, savedVBO);
+            GLSMBuffers.glBufferSubData(GL15.GL_ARRAY_BUFFER, (long) first * extStride, ext);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, savedVBO);
         } finally {
             endInternalGl();
         }
@@ -454,10 +457,10 @@ public final class FfpExtendedAttribs {
         final int bytes = (count - 1) * stride + elementBytes;
         final ByteBuffer dst = memAlloc(bytes).order(ByteOrder.nativeOrder());
         dst.position(0).limit(bytes);
-        final int savedVBO = GLStateManager.getBoundVBO();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, a.vboId);
+        final int savedVBO = GLSMBuffers.getBoundVBO();
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, a.vboId);
         RENDER_BACKEND.getBufferSubData(GL15.GL_ARRAY_BUFFER, a.offset + (long) first * stride, dst);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, savedVBO);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, savedVBO);
         dst.position(0).limit(bytes);
         return dst;
     }
@@ -484,7 +487,7 @@ public final class FfpExtendedAttribs {
         beginInternalGl();
         try {
             for (int i = 0; i < vbos.size(); i++) {
-                GLStateManager.glDeleteBuffers(vbos.getInt(i));
+                GLSMBuffers.glDeleteBuffers(vbos.getInt(i));
             }
         } finally {
             endInternalGl();

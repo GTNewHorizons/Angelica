@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.textures;
 
 import com.gtnewhorizons.angelica.experimental.surround.Surround;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.gtnewhorizons.angelica.rendering.TextureSamplers;
@@ -22,7 +22,7 @@ public class MixinRenderItem_GuiSampler {
     )
     private void angelica$beginGuiSampling() {
         @Surround.Carry("gui") final boolean gui = !RenderingState.INSTANCE.isRenderingWorld();
-        @Surround.Carry("sampler") final int sampler = gui ? GLStateManager.getSamplerBinding(0) : 0;
+        @Surround.Carry("sampler") final int sampler = gui ? GLSMTextures.getSamplerBinding(0) : 0;
         if (gui) RenderSystem.bindSamplerToUnit(0, TextureSamplers.getGuiSampler().getId());
     }
 

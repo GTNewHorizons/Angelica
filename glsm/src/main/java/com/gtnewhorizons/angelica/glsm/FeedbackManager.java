@@ -121,7 +121,7 @@ public class FeedbackManager {
         final float ndcY = clipVec.y / w;
         final float ndcZ = clipVec.z / w;
 
-        final ViewportState vp = GLStateManager.getViewportState();
+        final ViewportState vp = GLSMRasterizer.getViewportState();
         final float winX = vp.x + vp.width * (ndcX + 1.0f) * 0.5f;
         final float winY = vp.y + vp.height * (ndcY + 1.0f) * 0.5f;
         final float winZ = (float) ((vp.depthRangeFar - vp.depthRangeNear) * ndcZ + (vp.depthRangeFar + vp.depthRangeNear)) * 0.5f;
@@ -229,7 +229,7 @@ public class FeedbackManager {
     }
 
     private static void computeMVP() {
-        mvpMatrix.set(GLStateManager.getProjectionMatrix()).mul(GLStateManager.getModelViewMatrix());
+        mvpMatrix.set(GLSMMatrices.getProjectionMatrix()).mul(GLSMMatrices.getModelViewMatrix());
     }
 
     private static int computeMask(int type) {
@@ -277,13 +277,13 @@ public class FeedbackManager {
         final int previousVbo = glCtx.boundVBO;
 
         if (positionVbo != 0 && positionVbo != previousVbo) {
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, positionVbo);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, positionVbo);
         }
         try {
             RENDER_BACKEND.getBufferSubData(GL15.GL_ARRAY_BUFFER, offset, destination);
         } finally {
             if (positionVbo != 0 && positionVbo != previousVbo) {
-                GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, previousVbo);
+                GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, previousVbo);
             }
         }
     }

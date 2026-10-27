@@ -2,7 +2,7 @@ package com.gtnewhorizons.angelica.glsm.stacks;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
 import com.gtnewhorizons.angelica.glsm.GLContextState;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
 
 /**
  *            __n__n__
@@ -56,7 +56,7 @@ public interface CowStateStack<T> extends IStateStack<T> {
         final int depth = o.attribDepth;
         if (depth == 0 || d.claimedAt(depth) || !o.savesState(d.id)) return;
         captureSlot(d.claim(depth));
-        GLStateManager.registerModifiedState(o, d.id);
+        GLSMAttribStack.registerModifiedState(o, d.id);
     }
 
     @Override

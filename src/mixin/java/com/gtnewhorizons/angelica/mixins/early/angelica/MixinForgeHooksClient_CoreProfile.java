@@ -5,7 +5,7 @@ import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.GLVersionChoice;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMQueries;
 import net.minecraftforge.client.ForgeHooksClient;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -189,13 +189,13 @@ public abstract class MixinForgeHooksClient_CoreProfile {
 
     @Unique
     private static int angelica$validateContext(int major, int minor) {
-        final String glVersion = GLStateManager.glGetString(GL11.GL_VERSION);
+        final String glVersion = GLSMQueries.glGetString(GL11.GL_VERSION);
         final int actual = RenderSystem.parseMajorMinor(glVersion);
-        final boolean core = (GLStateManager.glGetInteger(GL32.GL_CONTEXT_PROFILE_MASK) & GL32.GL_CONTEXT_CORE_PROFILE_BIT) != 0;
+        final boolean core = (GLSMQueries.glGetInteger(GL32.GL_CONTEXT_PROFILE_MASK) & GL32.GL_CONTEXT_CORE_PROFILE_BIT) != 0;
         if (RenderSystem.isContextValid(major, minor, actual, core)) {
             return 0;
         }
-        final String renderer = GLStateManager.glGetString(GL11.GL_RENDERER);
+        final String renderer = GLSMQueries.glGetString(GL11.GL_RENDERER);
         LOGGER.warn("Requested GL {}.{} core context but driver returned \"{}\" (core profile: {}, GPU: {}); falling back to a lower version", major, minor, glVersion, core, renderer);
         angelica$lastRejection = "requested GL " + major + "." + minor + " core, driver returned \"" + glVersion + "\" (core profile: " + core + ", GPU: " + renderer + ")";
         try { Display.destroy(); } catch (Exception ignored) {}
@@ -218,7 +218,7 @@ public abstract class MixinForgeHooksClient_CoreProfile {
         LOGGER.error("FATAL: {}", message);
         if (Display.isCreated()) {
             try {
-                LOGGER.error("GPU: {}, Driver: {}", GLStateManager.glGetString(GL11.GL_RENDERER), GLStateManager.glGetString(GL11.GL_VERSION));
+                LOGGER.error("GPU: {}, Driver: {}", GLSMQueries.glGetString(GL11.GL_RENDERER), GLSMQueries.glGetString(GL11.GL_VERSION));
             } catch (Exception ignored) {}
         } else {
             LOGGER.error("GPU info: not available (no GL context)");

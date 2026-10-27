@@ -49,7 +49,7 @@ public final class StateSet {
         this.restore = restore;
         this.bump = bump;
         this.blendSnapshot = blendSnapshot;
-        this.pushCommand = () -> GLStateManager.pushStateLive(this);
+        this.pushCommand = () -> GLSMAttribStack.pushStateLive(this);
     }
 
     public boolean contains(int id) {
@@ -83,18 +83,18 @@ public final class StateSet {
     private static StateSet buildBatch() {
         return new StateSet(0,
             ids(
-                GLStateManager.getBlendState(), GLStateManager.getAlphaState(), GLStateManager.getDepthState(),
-                GLStateManager.getColorMask(), GLStateManager.getPolygonState(),
-                GLStateManager.getTextures().getTextureUnitBindings(0), GLStateManager.getTextures().getTextureUnitBindings(1),
-                GLStateManager.getActiveTextureUnitStack(),
-                GLStateManager.getBlendMode(), GLStateManager.getAlphaTest(), GLStateManager.getDepthTest(),
-                GLStateManager.getLightingState(), GLStateManager.getCullState(), GLStateManager.getPolygonOffsetFillState(),
-                GLStateManager.getTextures().getTextureUnitStates(0), GLStateManager.getTextures().getTextureUnitStates(1),
-                GLStateManager.getLightStates()[0], GLStateManager.getLightStates()[1],
-                GLStateManager.getLightDataStates()[0], GLStateManager.getLightDataStates()[1],
-                GLStateManager.getColorMaterial(), GLStateManager.getColorMaterialFace(), GLStateManager.getColorMaterialParameter(),
-                GLStateManager.getLightModel(), GLStateManager.getFrontMaterial(), GLStateManager.getBackMaterial(),
-                GLStateManager.getNormalizeState(), GLStateManager.getRescaleNormalState()
+                GLSMBlend.getBlendState(), GLSMDepthStencilAlpha.getAlphaState(), GLSMDepthStencilAlpha.getDepthState(),
+                GLSMBlend.getColorMask(), GLSMRasterizer.getPolygonState(),
+                GLSMTextures.getTextures().getTextureUnitBindings(0), GLSMTextures.getTextures().getTextureUnitBindings(1),
+                GLSMTextures.getActiveTextureUnitStack(),
+                GLSMBlend.getBlendMode(), GLSMDepthStencilAlpha.getAlphaTest(), GLSMDepthStencilAlpha.getDepthTest(),
+                GLSMLighting.getLightingState(), GLSMRasterizer.getCullState(), GLSMRasterizer.getPolygonOffsetFillState(),
+                GLSMTextures.getTextures().getTextureUnitStates(0), GLSMTextures.getTextures().getTextureUnitStates(1),
+                GLSMLighting.getLightStates()[0], GLSMLighting.getLightStates()[1],
+                GLSMLighting.getLightDataStates()[0], GLSMLighting.getLightDataStates()[1],
+                GLSMLighting.getColorMaterial(), GLSMLighting.getColorMaterialFace(), GLSMLighting.getColorMaterialParameter(),
+                GLSMLighting.getLightModel(), GLSMLighting.getFrontMaterial(), GLSMLighting.getBackMaterial(),
+                GLSMLighting.getNormalizeState(), GLSMLighting.getRescaleNormalState()
             ),
             R_BLEND | R_DEPTH | R_COLOR_MASK | R_POLYGON | R_TEXTURE | R_ACTIVE_UNIT,
             B_FRAG_COLORBUF | B_LIGHTING,
@@ -104,13 +104,13 @@ public final class StateSet {
     private static StateSet buildFont() {
         return new StateSet(0,
             ids(
-                GLStateManager.getBlendState(), GLStateManager.getDepthState(), GLStateManager.getShadeModelState(),
-                GLStateManager.getTextures().getTextureUnitBindings(0), GLStateManager.getTextures().getTextureUnitBindings(1),
-                GLStateManager.getActiveTextureUnitStack(), GLStateManager.getProgramStack(),
-                GLStateManager.getBlendMode(), GLStateManager.getAlphaTest(), GLStateManager.getDepthTest(),
-                GLStateManager.getTextures().getTextureUnitStates(0),
-                GLStateManager.getColorMask(), GLStateManager.getCullState(),
-                GLStateManager.getPolygonState(), GLStateManager.getPolygonOffsetFillState()
+                GLSMBlend.getBlendState(), GLSMDepthStencilAlpha.getDepthState(), GLSMRasterizer.getShadeModelState(),
+                GLSMTextures.getTextures().getTextureUnitBindings(0), GLSMTextures.getTextures().getTextureUnitBindings(1),
+                GLSMTextures.getActiveTextureUnitStack(), GLSMPrograms.getProgramStack(),
+                GLSMBlend.getBlendMode(), GLSMDepthStencilAlpha.getAlphaTest(), GLSMDepthStencilAlpha.getDepthTest(),
+                GLSMTextures.getTextures().getTextureUnitStates(0),
+                GLSMBlend.getColorMask(), GLSMRasterizer.getCullState(),
+                GLSMRasterizer.getPolygonState(), GLSMRasterizer.getPolygonOffsetFillState()
             ),
             R_BLEND | R_DEPTH | R_COLOR_MASK | R_TEXTURE | R_ACTIVE_UNIT | R_PROGRAM | R_POLYGON,
             0,
@@ -120,13 +120,13 @@ public final class StateSet {
     private static StateSet buildFontPipeline() {
         return new StateSet(0,
             ids(
-                GLStateManager.getBlendState(), GLStateManager.getDepthState(),
-                GLStateManager.getTextures().getTextureUnitBindings(0), GLStateManager.getTextures().getTextureUnitBindings(1),
-                GLStateManager.getActiveTextureUnitStack(),
-                GLStateManager.getBlendMode(), GLStateManager.getAlphaTest(), GLStateManager.getDepthTest(),
-                GLStateManager.getTextures().getTextureUnitStates(0),
-                GLStateManager.getColorMask(), GLStateManager.getCullState(),
-                GLStateManager.getPolygonState(), GLStateManager.getPolygonOffsetFillState()
+                GLSMBlend.getBlendState(), GLSMDepthStencilAlpha.getDepthState(),
+                GLSMTextures.getTextures().getTextureUnitBindings(0), GLSMTextures.getTextures().getTextureUnitBindings(1),
+                GLSMTextures.getActiveTextureUnitStack(),
+                GLSMBlend.getBlendMode(), GLSMDepthStencilAlpha.getAlphaTest(), GLSMDepthStencilAlpha.getDepthTest(),
+                GLSMTextures.getTextures().getTextureUnitStates(0),
+                GLSMBlend.getColorMask(), GLSMRasterizer.getCullState(),
+                GLSMRasterizer.getPolygonState(), GLSMRasterizer.getPolygonOffsetFillState()
             ),
             R_BLEND | R_DEPTH | R_COLOR_MASK | R_TEXTURE | R_ACTIVE_UNIT | R_POLYGON,
             0,
@@ -136,8 +136,8 @@ public final class StateSet {
     private static StateSet buildHand() {
         return new StateSet(0,
             ids(
-                GLStateManager.getBlendState(), GLStateManager.getAlphaState(), GLStateManager.getDepthState(),
-                GLStateManager.getBlendMode(), GLStateManager.getAlphaTest(), GLStateManager.getTextures().getTextureUnitStates(1)
+                GLSMBlend.getBlendState(), GLSMDepthStencilAlpha.getAlphaState(), GLSMDepthStencilAlpha.getDepthState(),
+                GLSMBlend.getBlendMode(), GLSMDepthStencilAlpha.getAlphaTest(), GLSMTextures.getTextures().getTextureUnitStates(1)
             ),
             R_BLEND | R_DEPTH,
             B_FRAG_COLORBUF,
@@ -146,7 +146,7 @@ public final class StateSet {
 
     private static StateSet buildBlend() {
         return new StateSet(0,
-            ids(GLStateManager.getBlendState(), GLStateManager.getBlendMode()),
+            ids(GLSMBlend.getBlendState(), GLSMBlend.getBlendMode()),
             R_BLEND,
             0,
             true);
@@ -154,7 +154,7 @@ public final class StateSet {
 
     private static StateSet buildAlpha() {
         return new StateSet(0,
-            ids(GLStateManager.getAlphaState(), GLStateManager.getAlphaTest()),
+            ids(GLSMDepthStencilAlpha.getAlphaState(), GLSMDepthStencilAlpha.getAlphaTest()),
             0,
             B_FRAG_COLORBUF,
             false);
@@ -162,7 +162,7 @@ public final class StateSet {
 
     private static StateSet buildCutout() {
         return new StateSet(0,
-            ids(GLStateManager.getAlphaState(), GLStateManager.getAlphaTest(), GLStateManager.getTextures().getTextureUnitStates(1)),
+            ids(GLSMDepthStencilAlpha.getAlphaState(), GLSMDepthStencilAlpha.getAlphaTest(), GLSMTextures.getTextures().getTextureUnitStates(1)),
             0,
             B_FRAG_COLORBUF,
             false);
@@ -170,7 +170,7 @@ public final class StateSet {
 
     private static StateSet buildMasks() {
         return new StateSet(0,
-            ids(GLStateManager.getDepthState(), GLStateManager.getColorMask()),
+            ids(GLSMDepthStencilAlpha.getDepthState(), GLSMBlend.getColorMask()),
             R_DEPTH | R_COLOR_MASK,
             0,
             false);
@@ -178,7 +178,7 @@ public final class StateSet {
 
     private static StateSet buildCull() {
         return new StateSet(0,
-            ids(GLStateManager.getPolygonState(), GLStateManager.getCullState()),
+            ids(GLSMRasterizer.getPolygonState(), GLSMRasterizer.getCullState()),
             R_POLYGON,
             0,
             false);

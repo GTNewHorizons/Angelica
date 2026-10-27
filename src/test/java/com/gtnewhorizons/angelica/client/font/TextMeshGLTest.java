@@ -2,7 +2,13 @@ package com.gtnewhorizons.angelica.client.font;
 
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMLighting;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import com.gtnewhorizons.angelica.glsm.ffp.FFPVertexLighting;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
@@ -68,12 +74,12 @@ class TextMeshGLTest {
     @BeforeEach
     void projection() {
         shadow = false;
-        GLStateManager.glViewport(0, 0, VIEW_W, VIEW_H);
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glOrtho(0.0, VIEW_W, VIEW_H, 0.0, -1.0, 1.0);
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glLoadIdentity();
+        GLSMRasterizer.glViewport(0, 0, VIEW_W, VIEW_H);
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glOrtho(0.0, VIEW_W, VIEW_H, 0.0, -1.0, 1.0);
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glLoadIdentity();
     }
 
     @AfterEach
@@ -85,15 +91,15 @@ class TextMeshGLTest {
         endFrames();
         BatchingFontRenderer.exitButtonSection(false);
         BatchingFontRenderer.exitRecolorSection(false);
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.disableDepthTest();
-        GLStateManager.disableLighting();
-        GLStateManager.disableColorMaterial();
-        GLStateManager.glColorMask(true, true, true, true);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glLoadIdentity();
+        GLSMDepthStencilAlpha.disableDepthTest();
+        GLSMLighting.disableLighting();
+        GLSMLighting.disableColorMaterial();
+        GLSMBlend.glColorMask(true, true, true, true);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
     }
 
     private static void draw(String s, float y) {
@@ -130,8 +136,8 @@ class TextMeshGLTest {
     }
 
     private static byte[] frame(Runnable body) {
-        GLStateManager.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        GLSMBlend.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
         body.run();
         final ByteBuffer pixels = BufferUtils.createByteBuffer(VIEW_W * VIEW_H * 4);
         GL11.glReadPixels(0, 0, VIEW_W, VIEW_H, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
@@ -243,12 +249,12 @@ class TextMeshGLTest {
             Named.of("plain lines", TextMeshGLTest::drawLines),
             Named.of("matrix change seals a segment", () -> {
                 draw("before", 2.0f);
-                GLStateManager.glTranslatef(1.0f, 0.0f, 0.0f);
+                GLSMMatrices.glTranslatef(1.0f, 0.0f, 0.0f);
                 draw("after", 11.0f);
             }),
             Named.of("draw state change seals a segment", () -> {
                 draw("before", 2.0f);
-                GLStateManager.glColorMask(false, false, false, false);
+                GLSMBlend.glColorMask(false, false, false, false);
                 draw("after", 11.0f);
             }));
     }
@@ -294,11 +300,11 @@ class TextMeshGLTest {
         return List.of(
             refused("matrix change mid-capture", false, () -> {
                 draw("before", 2.0f);
-                GLStateManager.glTranslatef(1.0f, 0.0f, 0.0f);
+                GLSMMatrices.glTranslatef(1.0f, 0.0f, 0.0f);
                 draw("after", 11.0f);
             }),
             refused("draw state change before the first glyph", false, () -> {
-                GLStateManager.enableDepthTest();
+                GLSMDepthStencilAlpha.enableDepthTest();
                 draw("depth", 2.0f);
             }),
             refused("another renderer flushes mid-capture", false, () -> {
@@ -340,17 +346,17 @@ class TextMeshGLTest {
     @ParameterizedTest(name = "{0} fillRect={1}")
     @CsvSource({ "none, false", "lit, false", "lit, true", "button, false", "darkMode, false" })
     void replayIsRefusedWhereADirectDrawWouldDiffer(String context, boolean rect) {
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glFrustum(-1.0, 1.0, -1.0, 1.0, 1.0, 100.0);
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glFrustum(-1.0, 1.0, -1.0, 1.0, 1.0, 100.0);
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
         final Runnable body = rect ? () -> batcher.fillRect(0.0f, 0.0f, 4.0f, 4.0f, 0xFF00FF00) : () -> draw("text", 2.0f);
         final TextMesh outside = capture(body);
         assertTrue(outside.isValid(GlyphSettings.current()));
         switch (context) {
             case "lit" -> {
-                GLStateManager.enableLighting();
-                GLStateManager.enableColorMaterial();
+                GLSMLighting.enableLighting();
+                GLSMLighting.enableColorMaterial();
                 assertTrue(FFPVertexLighting.modulatesVertexColor(new Vector3f()));
                 assertTrue(capture(body).isAnimated());
             }

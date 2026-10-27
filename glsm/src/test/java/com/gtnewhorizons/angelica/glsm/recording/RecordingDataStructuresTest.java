@@ -4,7 +4,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.glsm.GLCompatTest;
 import com.gtnewhorizons.angelica.glsm.GLCompatTest;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL11;
@@ -26,7 +26,7 @@ class RecordingDataStructuresTest {
     @AfterEach
     void cleanup() {
         if (testList > 0) {
-            GLStateManager.glDeleteLists(testList, 1);
+            GLSMDraws.glDeleteLists(testList, 1);
             testList = -1;
         }
     }

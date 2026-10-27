@@ -43,21 +43,21 @@ public final class LegacyQueryFixture {
 
     public static void setEnabled(int cap, boolean on) {
         if (on) {
-            GLStateManager.glEnable(cap);
+            GLSMEnable.glEnable(cap);
         } else {
-            GLStateManager.glDisable(cap);
+            GLSMEnable.glDisable(cap);
         }
     }
 
     public static void popAttribTo(int base) {
-        while (GLStateManager.getAttribDepth() > base) {
-            GLStateManager.glPopAttrib();
+        while (GLSMAttribStack.getAttribDepth() > base) {
+            GLSMAttribStack.glPopAttrib();
         }
     }
 
     public static void drainClientAttribStack() {
-        while (GLStateManager.glGetInteger(GL11.GL_CLIENT_ATTRIB_STACK_DEPTH) > 0) {
-            GLStateManager.glPopClientAttrib();
+        while (GLSMQueries.glGetInteger(GL11.GL_CLIENT_ATTRIB_STACK_DEPTH) > 0) {
+            GLSMAttribStack.glPopClientAttrib();
         }
     }
 
@@ -65,20 +65,20 @@ public final class LegacyQueryFixture {
     public static void assertEnableRoundTrip(int cap, boolean clientState) {
         final String name = hex(cap);
         if (clientState) {
-            GLStateManager.glEnableClientState(cap);
+            GLSMVertexInput.glEnableClientState(cap);
         } else {
-            GLStateManager.glEnable(cap);
+            GLSMEnable.glEnable(cap);
         }
-        assertTrue(GLStateManager.glIsEnabled(cap), "enabled isEnabled " + name);
-        assertTrue(GLStateManager.glGetBoolean(cap), "enabled getBoolean " + name);
-        assertEquals(1, GLStateManager.glGetInteger(cap), "enabled getInteger " + name);
+        assertTrue(GLSMEnable.glIsEnabled(cap), "enabled isEnabled " + name);
+        assertTrue(GLSMQueries.glGetBoolean(cap), "enabled getBoolean " + name);
+        assertEquals(1, GLSMQueries.glGetInteger(cap), "enabled getInteger " + name);
         if (clientState) {
-            GLStateManager.glDisableClientState(cap);
+            GLSMVertexInput.glDisableClientState(cap);
         } else {
-            GLStateManager.glDisable(cap);
+            GLSMEnable.glDisable(cap);
         }
-        assertFalse(GLStateManager.glIsEnabled(cap), "disabled isEnabled " + name);
-        assertFalse(GLStateManager.glGetBoolean(cap), "disabled getBoolean " + name);
-        assertEquals(0, GLStateManager.glGetInteger(cap), "disabled getInteger " + name);
+        assertFalse(GLSMEnable.glIsEnabled(cap), "disabled isEnabled " + name);
+        assertFalse(GLSMQueries.glGetBoolean(cap), "disabled getBoolean " + name);
+        assertEquals(0, GLSMQueries.glGetInteger(cap), "disabled getInteger " + name);
     }
 }

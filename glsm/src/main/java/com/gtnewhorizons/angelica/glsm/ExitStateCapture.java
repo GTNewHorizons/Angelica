@@ -160,8 +160,8 @@ final class ExitStateCapture {
         textureInherited = true;
         modelView.set(context.modelViewMatrix);
         attribDepth = context.attribDepth;
-        modelViewDepth = GLStateManager.getMatrixStackDepth(context.modelViewMatrix);
-        textureDepth = GLStateManager.getMatrixStackDepth(context.textures.getTextureUnitMatrix(0));
+        modelViewDepth = GLSMMatrices.getMatrixStackDepth(context.modelViewMatrix);
+        textureDepth = GLSMMatrices.getMatrixStackDepth(context.textures.getTextureUnitMatrix(0));
         entryOverrides = overridesInControl();
     }
 
@@ -185,8 +185,8 @@ final class ExitStateCapture {
     }
 
     private boolean stacksMatchEntry() {
-        return context.attribDepth == attribDepth && GLStateManager.getMatrixStackDepth(context.modelViewMatrix) == modelViewDepth
-            && GLStateManager.getMatrixStackDepth(context.textures.getTextureUnitMatrix(0)) == textureDepth && modelView.equals(context.modelViewMatrix);
+        return context.attribDepth == attribDepth && GLSMMatrices.getMatrixStackDepth(context.modelViewMatrix) == modelViewDepth
+            && GLSMMatrices.getMatrixStackDepth(context.textures.getTextureUnitMatrix(0)) == textureDepth && modelView.equals(context.modelViewMatrix);
     }
 
     void cancel() {
@@ -448,7 +448,7 @@ final class ExitStateCapture {
         if (result == null) return;
         final int mode = context.matrixMode.getMode();
         if (mode == GL11.GL_TEXTURE && context.activeTextureUnit.getValue() == 0) {
-            final int depth = GLStateManager.getMatrixStackDepth(context.textures.getTextureUnitMatrix(0));
+            final int depth = GLSMMatrices.getMatrixStackDepth(context.textures.getTextureUnitMatrix(0));
             if (depth < matrixWrites.length) {
                 matrixWrites[depth] = result.writes;
                 matrixInherited[depth] = textureInherited;
@@ -476,7 +476,7 @@ final class ExitStateCapture {
             reject();
             return;
         }
-        final int depth = GLStateManager.getMatrixStackDepth(matrix);
+        final int depth = GLSMMatrices.getMatrixStackDepth(matrix);
         if (depth <= entryDepth) {
             result.valid = false;
             return;
@@ -549,34 +549,34 @@ final class ExitStateCapture {
         // Capabilities go first so the glColor4f below bakes into the material only if color material is on at exit.
         for (int field = 0; field < CAPS.length; field++) {
             if (!has(fields, field)) continue;
-            if (field == TEXTURE0 || field == TEXTURE1) GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + field - TEXTURE0);
+            if (field == TEXTURE0 || field == TEXTURE1) GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0 + field - TEXTURE0);
             // glEnable would bake the live color, not the exit color, into the material.
             if (field == COLOR_MATERIAL) {
                 context.colorMaterial.setEnabled((in.enabled & (1L << field)) != 0);
-            } else if ((in.enabled & (1L << field)) != 0) GLStateManager.glEnable(CAPS[field]);
-            else GLStateManager.glDisable(CAPS[field]);
+            } else if ((in.enabled & (1L << field)) != 0) GLSMEnable.glEnable(CAPS[field]);
+            else GLSMEnable.glDisable(CAPS[field]);
         }
-        if (has(fields, COLOR)) GLStateManager.glColor4f(in.color.getRed(), in.color.getGreen(), in.color.getBlue(), in.color.getAlpha());
-        if (has(fields, NORMAL)) GLStateManager.glNormal3f(in.normal.x, in.normal.y, in.normal.z);
-        if (has(fields, TEXCOORD)) GLStateManager.glTexCoord4f(in.texCoord.x, in.texCoord.y, in.texCoord.z, in.texCoord.w);
-        if (has(fields, LIGHTMAP)) GLStateManager.setLightmapTextureCoords(GL13.GL_TEXTURE1, in.lightmapX, in.lightmapY);
-        if (has(fields, SHADER_COLOR)) GLStateManager.setShaderColor(in.shaderColor.x, in.shaderColor.y, in.shaderColor.z, in.shaderColor.w);
-        if (has(fields, OVERLAY_COLOR)) GLStateManager.setOverlayColor(in.overlayColor.x, in.overlayColor.y, in.overlayColor.z, in.overlayColor.w);
-        if (has(fields, BLEND_FUNC)) GLStateManager.tryBlendFuncSeparate(in.blend.getSrcRgb(), in.blend.getDstRgb(), in.blend.getSrcAlpha(), in.blend.getDstAlpha());
-        if (has(fields, ALPHA_FUNC)) GLStateManager.glAlphaFunc(in.alpha.getFunction(), in.alpha.getReference());
-        if (has(fields, DEPTH_FUNC)) GLStateManager.glDepthFunc(in.depthFunction);
-        if (has(fields, DEPTH_MASK)) GLStateManager.glDepthMask(in.depthMask);
-        if (has(fields, COLOR_MASK)) GLStateManager.glColorMask(in.colorMask.red, in.colorMask.green, in.colorMask.blue, in.colorMask.alpha);
-        if (has(fields, CULL_FACE)) GLStateManager.glCullFace(in.cullFace);
-        if (has(fields, FRONT_FACE)) GLStateManager.glFrontFace(in.frontFace);
-        if (has(fields, SHADE_MODEL)) GLStateManager.glShadeModel(in.shadeModel);
-        if (has(fields, OFFSET_VALUES)) GLStateManager.glPolygonOffsetClamp(in.offsetFactor, in.offsetUnits, in.offsetClamp);
+        if (has(fields, COLOR)) GLSMCurrentAttribs.glColor4f(in.color.getRed(), in.color.getGreen(), in.color.getBlue(), in.color.getAlpha());
+        if (has(fields, NORMAL)) GLSMCurrentAttribs.glNormal3f(in.normal.x, in.normal.y, in.normal.z);
+        if (has(fields, TEXCOORD)) GLSMCurrentAttribs.glTexCoord4f(in.texCoord.x, in.texCoord.y, in.texCoord.z, in.texCoord.w);
+        if (has(fields, LIGHTMAP)) GLSMCurrentAttribs.setLightmapTextureCoords(GL13.GL_TEXTURE1, in.lightmapX, in.lightmapY);
+        if (has(fields, SHADER_COLOR)) GLSMCurrentAttribs.setShaderColor(in.shaderColor.x, in.shaderColor.y, in.shaderColor.z, in.shaderColor.w);
+        if (has(fields, OVERLAY_COLOR)) GLSMCurrentAttribs.setOverlayColor(in.overlayColor.x, in.overlayColor.y, in.overlayColor.z, in.overlayColor.w);
+        if (has(fields, BLEND_FUNC)) GLSMBlend.tryBlendFuncSeparate(in.blend.getSrcRgb(), in.blend.getDstRgb(), in.blend.getSrcAlpha(), in.blend.getDstAlpha());
+        if (has(fields, ALPHA_FUNC)) GLSMDepthStencilAlpha.glAlphaFunc(in.alpha.getFunction(), in.alpha.getReference());
+        if (has(fields, DEPTH_FUNC)) GLSMDepthStencilAlpha.glDepthFunc(in.depthFunction);
+        if (has(fields, DEPTH_MASK)) GLSMDepthStencilAlpha.glDepthMask(in.depthMask);
+        if (has(fields, COLOR_MASK)) GLSMBlend.glColorMask(in.colorMask.red, in.colorMask.green, in.colorMask.blue, in.colorMask.alpha);
+        if (has(fields, CULL_FACE)) GLSMRasterizer.glCullFace(in.cullFace);
+        if (has(fields, FRONT_FACE)) GLSMRasterizer.glFrontFace(in.frontFace);
+        if (has(fields, SHADE_MODEL)) GLSMRasterizer.glShadeModel(in.shadeModel);
+        if (has(fields, OFFSET_VALUES)) GLSMRasterizer.glPolygonOffsetClamp(in.offsetFactor, in.offsetUnits, in.offsetClamp);
         if (has(fields, TEXTURE_BINDING)) {
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, in.texture);
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, in.texture);
         }
-        if (has(fields, TEXTURE_MATRIX)) GLStateManager.setTextureMatrix(0, in.textureMatrix);
-        if (has(fields, COLOR_MATERIAL_SETTINGS)) GLStateManager.glColorMaterial(in.materialFace, in.materialParameter);
+        if (has(fields, TEXTURE_MATRIX)) GLSMMatrices.setTextureMatrix(0, in.textureMatrix);
+        if (has(fields, COLOR_MATERIAL_SETTINGS)) GLSMLighting.glColorMaterial(in.materialFace, in.materialParameter);
         boolean materialChanged = false;
         for (int field = FRONT_AMBIENT; field <= BACK_EMISSION; field++) {
             if (!has(fields, field)) continue;
@@ -590,8 +590,8 @@ final class ExitStateCapture {
             materialChanged = true;
         }
         if (materialChanged) context.lightingGeneration++;
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + (has(fields, ACTIVE_UNIT) ? in.activeUnit : liveUnit));
-        if (has(fields, CLIENT_ACTIVE_UNIT)) GLStateManager.glClientActiveTexture(GL13.GL_TEXTURE0 + in.clientActiveUnit);
-        if (has(fields, MATRIX_MODE)) GLStateManager.glMatrixMode(in.matrixMode);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0 + (has(fields, ACTIVE_UNIT) ? in.activeUnit : liveUnit));
+        if (has(fields, CLIENT_ACTIVE_UNIT)) GLSMTextures.glClientActiveTexture(GL13.GL_TEXTURE0 + in.clientActiveUnit);
+        if (has(fields, MATRIX_MODE)) GLSMMatrices.glMatrixMode(in.matrixMode);
     }
 }

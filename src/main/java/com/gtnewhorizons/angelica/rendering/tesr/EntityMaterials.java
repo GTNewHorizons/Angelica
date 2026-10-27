@@ -1,6 +1,9 @@
 package com.gtnewhorizons.angelica.rendering.tesr;
 
 import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.AlphaState;
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
@@ -45,26 +48,26 @@ public final class EntityMaterials {
 
     static TesrMaterial fromCurrentState(boolean texIdentity) {
         GLStateManager.requireExitDrawState(true);
-        final boolean textured = GLStateManager.getTextures().getTextureUnitStates(0).isEnabled();
-        final AlphaState alpha = GLStateManager.getEffectiveAlphaState(effectiveAlpha);
-        final ColorMask colorMask = GLStateManager.getEffectiveColorMask(effectiveColorMask);
+        final boolean textured = GLSMTextures.getTextures().getTextureUnitStates(0).isEnabled();
+        final AlphaState alpha = GLSMDepthStencilAlpha.getEffectiveAlphaState(effectiveAlpha);
+        final ColorMask colorMask = GLSMBlend.getEffectiveColorMask(effectiveColorMask);
         if (!colorMask.red && !colorMask.green && !colorMask.blue && !colorMask.alpha) {
-            return depthOnlyFromState(textured, GLStateManager.isEffectiveAlphaTestEnabled(), alpha.getFunction(), alpha.getReference(),
-                GLStateManager.getDepthState().getFunc(), GLStateManager.isEffectiveDepthMaskEnabled());
+            return depthOnlyFromState(textured, GLSMDepthStencilAlpha.isEffectiveAlphaTestEnabled(), alpha.getFunction(), alpha.getReference(),
+                GLSMDepthStencilAlpha.getDepthState().getFunc(), GLSMDepthStencilAlpha.isEffectiveDepthMaskEnabled());
         }
-        final BlendState blend = GLStateManager.getEffectiveBlendState(effectiveBlend);
-        return fromState(textured, textured && !texIdentity, GLStateManager.isEffectiveBlendEnabled(), blend.getSrcRgb(), blend.getDstRgb(),
-            GLStateManager.isEffectiveAlphaTestEnabled(), alpha.getFunction(), alpha.getReference(), GLStateManager.getDepthState().getFunc(),
-            GLStateManager.isEffectiveDepthMaskEnabled());
+        final BlendState blend = GLSMBlend.getEffectiveBlendState(effectiveBlend);
+        return fromState(textured, textured && !texIdentity, GLSMBlend.isEffectiveBlendEnabled(), blend.getSrcRgb(), blend.getDstRgb(),
+            GLSMDepthStencilAlpha.isEffectiveAlphaTestEnabled(), alpha.getFunction(), alpha.getReference(), GLSMDepthStencilAlpha.getDepthState().getFunc(),
+            GLSMDepthStencilAlpha.isEffectiveDepthMaskEnabled());
     }
 
     public static TesrMaterial itemFromCurrentState(boolean unfilteredAtlas) {
         GLStateManager.requireExitDrawState(true);
-        final BlendState blend = GLStateManager.getEffectiveBlendState(effectiveBlend);
-        final AlphaState alpha = GLStateManager.getEffectiveAlphaState(effectiveAlpha);
-        return itemFromState(unfilteredAtlas, GLStateManager.isEffectiveBlendEnabled(), blend.getSrcRgb(), blend.getDstRgb(),
-            GLStateManager.isEffectiveAlphaTestEnabled(), alpha.getFunction(), alpha.getReference(), GLStateManager.getDepthState().getFunc(),
-            GLStateManager.isEffectiveDepthMaskEnabled());
+        final BlendState blend = GLSMBlend.getEffectiveBlendState(effectiveBlend);
+        final AlphaState alpha = GLSMDepthStencilAlpha.getEffectiveAlphaState(effectiveAlpha);
+        return itemFromState(unfilteredAtlas, GLSMBlend.isEffectiveBlendEnabled(), blend.getSrcRgb(), blend.getDstRgb(),
+            GLSMDepthStencilAlpha.isEffectiveAlphaTestEnabled(), alpha.getFunction(), alpha.getReference(), GLSMDepthStencilAlpha.getDepthState().getFunc(),
+            GLSMDepthStencilAlpha.isEffectiveDepthMaskEnabled());
     }
 
     static TesrMaterial itemFromState(boolean unfilteredAtlas, boolean blend, int srcRgb, int dstRgb, boolean alphaTest, int alphaFunc, float alphaRef, int depthFunc, boolean depthMask) {

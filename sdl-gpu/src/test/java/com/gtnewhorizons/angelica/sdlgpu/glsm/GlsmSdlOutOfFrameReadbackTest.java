@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,9 +24,9 @@ class GlsmSdlOutOfFrameReadbackTest {
     void outOfFrameTexImageReadback() {
         final ByteBuffer pattern = pattern(TEX_SIZE, TEX_SIZE, 1);
         final int tex = GlsmSdlHeadlessRig.newNearestTexture();
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, TEX_SIZE, TEX_SIZE, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pattern);
+        GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, TEX_SIZE, TEX_SIZE, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pattern);
         assertReadback(tex, TEX_SIZE, TEX_SIZE, pattern);
-        GLStateManager.glDeleteTextures(tex);
+        GLSMTextures.glDeleteTextures(tex);
     }
 
     @ParameterizedTest(name = "in frame: {0}")
@@ -39,13 +39,13 @@ class GlsmSdlOutOfFrameReadbackTest {
     private static void copyAndReadBack(int seed) {
         final ByteBuffer pattern = pattern(TEX_SIZE, TEX_SIZE, seed);
         final int src = GlsmSdlHeadlessRig.newNearestTexture();
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, TEX_SIZE, TEX_SIZE, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pattern);
+        GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, TEX_SIZE, TEX_SIZE, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pattern);
         final int dst = GlsmSdlHeadlessRig.newNearestTexture();
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, TEX_SIZE, TEX_SIZE, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
-        GLStateManager.glCopyImageSubData(src, GL11.GL_TEXTURE_2D, 0, 0, 0, 0, dst, GL11.GL_TEXTURE_2D, 0, 0, 0, 0, TEX_SIZE, TEX_SIZE, 1);
+        GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, TEX_SIZE, TEX_SIZE, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+        GLSMTextures.glCopyImageSubData(src, GL11.GL_TEXTURE_2D, 0, 0, 0, 0, dst, GL11.GL_TEXTURE_2D, 0, 0, 0, 0, TEX_SIZE, TEX_SIZE, 1);
         assertReadback(dst, TEX_SIZE, TEX_SIZE, pattern);
-        GLStateManager.glDeleteTextures(src);
-        GLStateManager.glDeleteTextures(dst);
+        GLSMTextures.glDeleteTextures(src);
+        GLSMTextures.glDeleteTextures(dst);
     }
 
     private static ByteBuffer pattern(int w, int h, int seed) {
@@ -60,11 +60,11 @@ class GlsmSdlOutOfFrameReadbackTest {
     }
 
     private static void assertReadback(int tex, int w, int h, ByteBuffer expected) {
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, tex);
         final ByteBuffer got = BufferUtils.createByteBuffer(w * h * 4);
         for (int i = 0; i < got.capacity(); i++) got.put(i, (byte) 0xCD);
-        GLStateManager.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, got);
+        GLSMTextures.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, got);
 
         final int n = w * h * 4;
         int mismatches = 0;

@@ -5,7 +5,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.api.util.ColorABGR;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.client.rendering.ModelViewDelta;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
 import net.minecraft.client.renderer.Tessellator;
 import org.joml.Matrix4f;
@@ -53,7 +53,7 @@ public final class BakedTransformCapture extends DirectTessellator {
 
     @Override
     public int draw() {
-        final Color4 color = GLStateManager.getColor();
+        final Color4 color = GLSMCurrentAttribs.getColor();
         final int packed = ColorABGR.pack(color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha());
         if (!sawRun) {
             sawRun = true;
