@@ -2,37 +2,56 @@ package com.gtnewhorizons.angelica.rendering.celeritas;
 
 import org.embeddedt.embeddium.impl.render.chunk.RenderPassConfiguration;
 import org.embeddedt.embeddium.impl.render.chunk.compile.ChunkBuildBuffers;
+import org.embeddedt.embeddium.impl.render.chunk.compile.ChunkBuildOutput;
 import org.embeddedt.embeddium.impl.render.chunk.compile.ChunkTaskOutput;
+import org.embeddedt.embeddium.impl.render.chunk.compile.executor.ChunkBuilder;
+import org.embeddedt.embeddium.impl.render.chunk.compile.executor.ChunkJobCollector;
 import org.embeddedt.embeddium.impl.render.chunk.compile.executor.ChunkJobResult;
+import org.embeddedt.embeddium.impl.render.chunk.compile.executor.ChunkJobTyped;
 
+import com.gtnewhorizons.angelica.rendering.celeritas.DeferredSectionMesh.DeferredCapture;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.WorldSlice;
+import org.jetbrains.annotations.Nullable;
 
+import java.util.Comparator;
 import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public class DeferredMeshScheduler {
-    private final Supplier<AngelicaChunkBuildContext> mainContextFactory;
+    /** Must stay below every distance priority: queued finishes hold pooled buffers and slices. */
+    private static final long FINISH_PRIORITY = -1L;
+
+    private static final Comparator<DeferredSectionMesh> NEAREST_FIRST = Comparator.comparingLong(m -> m.priority);
+
+    private final ChunkBuilder builder;
     private final Consumer<Runnable> mainThreadQueue;
     private final Queue<ChunkJobResult<? extends ChunkTaskOutput>> results;
+    private final Consumer<ChunkJobResult<? extends ChunkTaskOutput>> resultSink;
     private final ObjectPool<ChunkBuildBuffers> buffers;
     private final ObjectPool<WorldSlice> slices;
+    private final ObjectPool<DeferredCapture> captures;
     private final ConcurrentLinkedQueue<DeferredSectionMesh> important = new ConcurrentLinkedQueue<>();
-    private final ConcurrentLinkedQueue<DeferredSectionMesh> normal = new ConcurrentLinkedQueue<>();
+    private final PriorityBlockingQueue<DeferredSectionMesh> normal = new PriorityBlockingQueue<>(11, NEAREST_FIRST);
+    private final Set<DeferredSectionMesh> inFlight = ConcurrentHashMap.newKeySet();
     private final Runnable runNext = this::runNext;
     private final AtomicInteger pending = new AtomicInteger();
 
-    private AngelicaChunkBuildContext mainContext;
     private boolean destroyed;
 
-    public DeferredMeshScheduler(RenderPassConfiguration<?> config, Supplier<AngelicaChunkBuildContext> mainContextFactory, Supplier<WorldSlice> sliceFactory, Consumer<Runnable> mainThreadQueue, Queue<ChunkJobResult<? extends ChunkTaskOutput>> results) {
-        this.mainContextFactory = mainContextFactory;
+    public DeferredMeshScheduler(RenderPassConfiguration<?> config, ChunkBuilder builder, Supplier<WorldSlice> sliceFactory, Consumer<Runnable> mainThreadQueue, Queue<ChunkJobResult<? extends ChunkTaskOutput>> results) {
+        this.builder = builder;
         this.mainThreadQueue = mainThreadQueue;
         this.results = results;
-        this.buffers = new ObjectPool<>(() -> new ChunkBuildBuffers(config));
-        this.slices = new ObjectPool<>(sliceFactory);
+        this.resultSink = results::add;
+        this.buffers = new ObjectPool<>(() -> new ChunkBuildBuffers(config), Integer.MAX_VALUE);
+        this.slices = new ObjectPool<>(sliceFactory, Integer.MAX_VALUE);
+        this.captures = new ObjectPool<>(DeferredCapture::new, Math.max(1, builder.getTotalThreadCount()) * 2);
     }
 
     public ChunkBuildBuffers acquireBuffers() {
@@ -59,17 +78,30 @@ public class DeferredMeshScheduler {
     }
 
     public void runImportant() {
+        if (important.isEmpty()) return;
+        final ChunkJobCollector collector = new ChunkJobCollector(Integer.MAX_VALUE, resultSink);
         DeferredSectionMesh m;
         while ((m = important.poll()) != null) {
-            run(m);
+            run(m, collector);
         }
+        collector.awaitCompletion(builder);
     }
 
     public void markDestroyed() {
         destroyed = true;
-        if (mainContext != null) {
-            mainContext.cleanup();
-            mainContext = null;
+    }
+
+    /** Call after the builder shut down: its queued jobs were dropped without reaching their consumers. */
+    public void releaseOrphans() {
+        DeferredSectionMesh m;
+        while ((m = important.poll()) != null) {
+            release(m);
+        }
+        while ((m = normal.poll()) != null) {
+            release(m);
+        }
+        for (final DeferredSectionMesh orphan : inFlight) {
+            if (inFlight.remove(orphan)) release(orphan);
         }
     }
 
@@ -77,29 +109,67 @@ public class DeferredMeshScheduler {
         return pending.get();
     }
 
-    private AngelicaChunkBuildContext mainContext() {
-        if (mainContext == null) {
-            mainContext = mainContextFactory.get();
+    public int finishingCount() {
+        return inFlight.size();
+    }
+
+    void finished(DeferredSectionMesh m, @Nullable ChunkJobResult<ChunkBuildOutput> result, @Nullable ChunkJobCollector collector) {
+        final long nanos = m.workerNanos + m.mainNanos;
+        ChunkJobResult<ChunkBuildOutput> out = result instanceof ChunkJobResult.Success<ChunkBuildOutput> success ? new ChunkJobResult.Success<>(success.output(), nanos + success.executionTimeNanos()) : result;
+        if (inFlight.remove(m)) {
+            // Runs as a celeritas job consumer on a worker, where an escaping throwable kills the worker thread.
+            try {
+                release(m);
+            } catch (Throwable t) {
+                out = new ChunkJobResult.Failure<>(t);
+            }
         }
-        return mainContext;
+        if (collector != null) {
+            collector.onJobFinished(out);
+        } else if (out != null) {
+            results.add(out);
+        }
     }
 
     private void runNext() {
         final DeferredSectionMesh m = normal.poll();
         if (m != null) {
-            run(m);
+            run(m, null);
         }
     }
 
-    private void run(DeferredSectionMesh m) {
+    private void run(DeferredSectionMesh m, @Nullable ChunkJobCollector collector) {
+        boolean scheduled = false;
         try {
             if (destroyed || m.isObsolete()) return;
-            results.add(m.complete(mainContext()));
+            m.capture = captures.acquire();
+            final ChunkJobResult<ChunkBuildOutput> failure = m.capture();
+            if (failure != null) {
+                results.add(failure);
+                return;
+            }
+            final DeferredFinishTask task = new DeferredFinishTask(m, this, collector);
+            inFlight.add(m);
+            final ChunkJobTyped<DeferredFinishTask, ChunkBuildOutput> job = builder.scheduleTask(task, m.important, FINISH_PRIORITY, task);
+            scheduled = true;
+            if (collector != null) collector.addSubmittedJob(job);
         } finally {
-            releaseBuffers(m.buffers);
-            m.slice.releaseContext();
-            slices.release(m.slice);
-            pending.decrementAndGet();
+            if (!scheduled) {
+                inFlight.remove(m);
+                release(m);
+            }
         }
+    }
+
+    private void release(DeferredSectionMesh m) {
+        releaseBuffers(m.buffers);
+        m.slice.releaseContext();
+        slices.release(m.slice);
+        if (m.capture != null) {
+            m.capture.clear();
+            captures.release(m.capture);
+            m.capture = null;
+        }
+        pending.decrementAndGet();
     }
 }
