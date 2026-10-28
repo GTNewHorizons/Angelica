@@ -1,0 +1,83 @@
+# Translucent TESR ordering scene for a generated superflat (windows-flyby-kit/make_world.py). Needs
+# -Dangelica.debug.testBlocks=true. $x $y $z is the flight start; ground-standing level is $y-2. Start facing south (yaw 0),
+# pitch 15. Blocks: test_tesr_provider (0 translucent red, 1 additive purple), test_tesr_model (0 box pane,
+# 1 Tessellator pane, 2 stacked A/B/A panes), test_tesr_decal, test_tesr_glow; metadata + 8 draws in the solid pass.
+
+gamerule doMobSpawning false
+
+# translucent pass: three rows, materials shifted per row so every column stacks three different ones
+setblock $x-2 $y $z+6 angelica:test_tesr_provider 0 replace
+setblock $x-1 $y $z+6 angelica:test_tesr_provider 1 replace
+setblock $x+0 $y $z+6 angelica:test_tesr_model 0 replace
+setblock $x+1 $y $z+6 angelica:test_tesr_model 1 replace
+setblock $x-2 $y $z+8 angelica:test_tesr_provider 1 replace
+setblock $x-1 $y $z+8 angelica:test_tesr_model 0 replace
+setblock $x+0 $y $z+8 angelica:test_tesr_model 1 replace
+setblock $x+1 $y $z+8 angelica:test_tesr_provider 0 replace
+setblock $x-2 $y $z+10 angelica:test_tesr_model 0 replace
+setblock $x-1 $y $z+10 angelica:test_tesr_model 1 replace
+setblock $x+0 $y $z+10 angelica:test_tesr_provider 0 replace
+setblock $x+1 $y $z+10 angelica:test_tesr_provider 1 replace
+
+# solid pass: the same rows two blocks higher
+setblock $x-2 $y+2 $z+6 angelica:test_tesr_provider 8 replace
+setblock $x-1 $y+2 $z+6 angelica:test_tesr_provider 9 replace
+setblock $x+0 $y+2 $z+6 angelica:test_tesr_model 8 replace
+setblock $x+1 $y+2 $z+6 angelica:test_tesr_model 9 replace
+setblock $x-2 $y+2 $z+8 angelica:test_tesr_provider 9 replace
+setblock $x-1 $y+2 $z+8 angelica:test_tesr_model 8 replace
+setblock $x+0 $y+2 $z+8 angelica:test_tesr_model 9 replace
+setblock $x+1 $y+2 $z+8 angelica:test_tesr_provider 8 replace
+setblock $x-2 $y+2 $z+10 angelica:test_tesr_model 8 replace
+setblock $x-1 $y+2 $z+10 angelica:test_tesr_model 9 replace
+setblock $x+0 $y+2 $z+10 angelica:test_tesr_provider 8 replace
+setblock $x+1 $y+2 $z+10 angelica:test_tesr_provider 9 replace
+
+# one tile entity submitting translucent A, additive B, translucent A; a depth-equal decal
+setblock $x-7 $y $z+8 angelica:test_tesr_model 2 replace
+setblock $x-7 $y+1 $z+8 angelica:test_tesr_decal 0 replace
+
+# light blue glass wall: glow and provider panes in front, a provider pane behind. The panes behind the wall and
+# under the water show only when block entities draw before translucent terrain.
+setblock $x+5 $y-1 $z+14 stained_glass 3 replace
+setblock $x+5 $y $z+14 stained_glass 3 replace
+setblock $x+5 $y+1 $z+14 stained_glass 3 replace
+setblock $x+6 $y-1 $z+14 stained_glass 3 replace
+setblock $x+6 $y $z+14 stained_glass 3 replace
+setblock $x+6 $y+1 $z+14 stained_glass 3 replace
+setblock $x+7 $y-1 $z+14 stained_glass 3 replace
+setblock $x+7 $y $z+14 stained_glass 3 replace
+setblock $x+7 $y+1 $z+14 stained_glass 3 replace
+setblock $x+8 $y-1 $z+14 stained_glass 3 replace
+setblock $x+8 $y $z+14 stained_glass 3 replace
+setblock $x+8 $y+1 $z+14 stained_glass 3 replace
+setblock $x+9 $y-1 $z+14 stained_glass 3 replace
+setblock $x+9 $y $z+14 stained_glass 3 replace
+setblock $x+9 $y+1 $z+14 stained_glass 3 replace
+setblock $x+6 $y $z+13 angelica:test_tesr_glow 0 replace
+setblock $x+8 $y $z+13 angelica:test_tesr_provider 0 replace
+setblock $x+7 $y $z+15 angelica:test_tesr_provider 0 replace
+
+# water pool with a provider pane under the surface
+setblock $x-10 $y-4 $z+12 water 0 replace
+setblock $x-10 $y-3 $z+12 water 0 replace
+setblock $x-10 $y-4 $z+13 water 0 replace
+setblock $x-10 $y-3 $z+13 water 0 replace
+setblock $x-10 $y-4 $z+14 water 0 replace
+setblock $x-10 $y-3 $z+14 water 0 replace
+setblock $x-9 $y-4 $z+12 water 0 replace
+setblock $x-9 $y-3 $z+12 water 0 replace
+setblock $x-9 $y-4 $z+13 water 0 replace
+setblock $x-9 $y-3 $z+13 water 0 replace
+setblock $x-9 $y-4 $z+14 water 0 replace
+setblock $x-9 $y-3 $z+14 water 0 replace
+setblock $x-8 $y-4 $z+12 water 0 replace
+setblock $x-8 $y-3 $z+12 water 0 replace
+setblock $x-8 $y-4 $z+13 water 0 replace
+setblock $x-8 $y-3 $z+13 water 0 replace
+setblock $x-8 $y-4 $z+14 water 0 replace
+setblock $x-8 $y-3 $z+14 water 0 replace
+setblock $x-9 $y-4 $z+13 angelica:test_tesr_provider 0 replace
+
+# control: a lone pane with sky behind it
+setblock $x+5 $y+2 $z+8 angelica:test_tesr_provider 0 replace
