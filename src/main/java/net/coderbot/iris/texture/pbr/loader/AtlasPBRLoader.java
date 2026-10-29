@@ -58,8 +58,8 @@ public class AtlasPBRLoader implements PBRTextureLoader<TextureMap> {
         PBRAtlasTexture specularAtlas = null;
         for (TextureAtlasSprite sprite : (Collection<TextureAtlasSprite>) texMap.mapUploadedSprites.values()) {
             if (!(sprite.getIconName().equals("missingno"))) {
-                TextureAtlasSprite normalSprite = createPBRSprite(sprite, resourceManager, texMap, atlasWidth, atlasHeight, mipLevel, PBRType.NORMAL);
-                TextureAtlasSprite specularSprite = createPBRSprite(sprite, resourceManager, texMap, atlasWidth, atlasHeight, mipLevel, PBRType.SPECULAR);
+                PBRTextureAtlasSprite normalSprite = createPBRSprite(sprite, resourceManager, texMap, atlasWidth, atlasHeight, mipLevel, PBRType.NORMAL);
+                PBRTextureAtlasSprite specularSprite = createPBRSprite(sprite, resourceManager, texMap, atlasWidth, atlasHeight, mipLevel, PBRType.SPECULAR);
                 if (normalSprite != null) {
                     if (normalAtlas == null) {
                         normalAtlas = new PBRAtlasTexture(texMap, PBRType.NORMAL);
@@ -115,7 +115,7 @@ public class AtlasPBRLoader implements PBRTextureLoader<TextureMap> {
     }
 
     @Nullable
-    protected TextureAtlasSprite createPBRSprite(TextureAtlasSprite sprite, IResourceManager resourceManager, TextureMap texMap, int atlasWidth, int atlasHeight, int mipLevel, PBRType pbrType) {
+    protected PBRTextureAtlasSprite createPBRSprite(TextureAtlasSprite sprite, IResourceManager resourceManager, TextureMap texMap, int atlasWidth, int atlasHeight, int mipLevel, PBRType pbrType) {
         final ResourceLocation spriteName = new ResourceLocation(sprite.getIconName());
         final ResourceLocation imageLocation = texMap.completeResourceLocation(spriteName, 0);
         final ResourceLocation pbrImageLocation = pbrType.appendToFileLocation(imageLocation);
@@ -124,7 +124,7 @@ public class AtlasPBRLoader implements PBRTextureLoader<TextureMap> {
             return null;
         }
 
-        TextureAtlasSprite pbrSprite = null;
+        PBRTextureAtlasSprite pbrSprite = null;
 
         try  {
             // This is no longer closable. Not sure about this.
@@ -174,7 +174,7 @@ public class AtlasPBRLoader implements PBRTextureLoader<TextureMap> {
             final int gutter = ((SpriteExtension) sprite).angelica$getGutterWidth();
 
             pbrSprite = new PBRTextureAtlasSprite(pbrSpriteInfo, animationMetadata, atlasWidth, atlasHeight,
-                sprite.getOriginX(), sprite.getOriginY(), gutter, nativeImage, false, mipLevel);
+                sprite.getOriginX(), sprite.getOriginY(), gutter, nativeImage, false, mipLevel, sprite);
             syncAnimation(sprite, pbrSprite);
         } catch (FileNotFoundException e) {
             //
@@ -234,12 +234,19 @@ public class AtlasPBRLoader implements PBRTextureLoader<TextureMap> {
 	}
 
     public static class PBRTextureAtlasSprite extends TextureAtlasSprite implements CustomMipmapGenerator.Provider {
+        protected final TextureAtlasSprite baseSprite;
+
         // This feels super janky
-        protected PBRTextureAtlasSprite(TextureAtlasSpriteInfo info, AnimationMetadataSection animationMetaDataSection, int atlasWidth, int atlasHeight, int x, int y, int gutter, NativeImage nativeImage, boolean useAnisotropicFiltering, int miplevel) {
+        protected PBRTextureAtlasSprite(TextureAtlasSpriteInfo info, AnimationMetadataSection animationMetaDataSection, int atlasWidth, int atlasHeight, int x, int y, int gutter, NativeImage nativeImage, boolean useAnisotropicFiltering, int miplevel, TextureAtlasSprite baseSprite) {
             super(info.name().toString());
+            this.baseSprite = baseSprite;
             ((SpriteExtension) this).angelica$setGutterWidth(gutter);
             super.loadSprite(Objects.requireNonNull(getMipmapGenerator(info, atlasWidth, atlasHeight)).generateMipLevels(nativeImage, miplevel), animationMetaDataSection, useAnisotropicFiltering);
             super.initSprite(atlasWidth, atlasHeight, x - gutter, y - gutter, false);
+        }
+
+        public TextureAtlasSprite getBaseSprite() {
+            return baseSprite;
         }
 
         @Override

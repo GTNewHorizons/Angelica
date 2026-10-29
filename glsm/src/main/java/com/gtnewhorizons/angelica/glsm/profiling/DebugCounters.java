@@ -7,6 +7,8 @@ public final class DebugCounters {
     public static final LongAdder TRANSFER_WAIT_NANOS = new LongAdder();
     public static final LongAdder PRESENTS = new LongAdder();
     public static final LongAdder EMPTY_ACQUIRES = new LongAdder();
+    public static final LongAdder PBR_ANIM_UPDATES = new LongAdder();
+    public static final LongAdder PBR_ANIM_DRY_RUNS = new LongAdder();
 
     private DebugCounters() {}
 }
