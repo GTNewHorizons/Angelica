@@ -149,19 +149,46 @@ public final class GLSMBlend {
     }
 
     static void issueBlendFunc(BlendStateStack blend) {
-        if (GLSMConfig.hudCacheOverride) {
-            RENDER_BACKEND.blendFuncSeparate(blend.getSrcRgb(), blend.getDstRgb(), GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
-        } else {
-            RENDER_BACKEND.blendFuncSeparate(blend.getSrcRgb(), blend.getDstRgb(), blend.getSrcAlpha(), blend.getDstAlpha());
-        }
+        RENDER_BACKEND.blendFuncSeparate(blend.getSrcRgb(), blend.getDstRgb(), emittedSrcAlpha(blend), emittedDstAlpha(blend));
+    }
+
+    private static boolean addsWithoutCoverage(BlendStateStack blend) {
+        return blend.getDstRgb() == GL11.GL_ONE;
+    }
+
+    private static int emittedSrcAlpha(BlendStateStack blend) {
+        if (GLSMConfig.layerBlending) return addsWithoutCoverage(blend) ? GL11.GL_ZERO : GL11.GL_ONE;
+        return GLSMConfig.hudCacheOverride ? GL11.GL_ONE : blend.getSrcAlpha();
+    }
+
+    private static int emittedDstAlpha(BlendStateStack blend) {
+        if (GLSMConfig.layerBlending) return addsWithoutCoverage(blend) ? GL11.GL_ONE : GL11.GL_ONE_MINUS_SRC_ALPHA;
+        return GLSMConfig.hudCacheOverride ? GL11.GL_ONE_MINUS_SRC_ALPHA : blend.getDstAlpha();
     }
 
     public static void setHudCacheOverride(boolean enabled) {
         if (GLSMConfig.hudCacheOverride == enabled) return;
         GLSMConfig.hudCacheOverride = enabled;
-        final DeferredBlendHandler bh = GLSMHooks.blendHandler;
-        if (bh != null && bh.isOverrideHeld()) return;
+        reissueBlendFunc();
+    }
+
+    public static void setLayerBlending(boolean enabled) {
+        if (GLSMConfig.layerBlending == enabled) return;
+        GLSMConfig.layerBlending = enabled;
+        reissueBlendFunc();
+    }
+
+    public static boolean isLayerBlending() {
+        return GLSMConfig.layerBlending;
+    }
+
+    private static void reissueBlendFunc() {
         final BlendStateStack blend = ctx().blendState;
+        final DeferredBlendHandler bh = GLSMHooks.blendHandler;
+        if (bh != null && bh.isOverrideHeld()) {
+            blend.setFuncUnknownState();
+            return;
+        }
         issueBlendFunc(blend);
         blend.clearFuncUnknownState();
     }
@@ -226,11 +253,10 @@ public final class GLSMBlend {
             glCtx.blendState.clearFuncUnknownState();
             issueBlendFunc(glCtx.blendState);
             if (GLSMHooks.BLEND_FUNC_CHANGE.hasListeners()) {
-                final boolean hudCache = GLSMConfig.hudCacheOverride;
                 GLSMHooks.blendFuncChangeEvent.srcRgb = srcRgb;
                 GLSMHooks.blendFuncChangeEvent.dstRgb = dstRgb;
-                GLSMHooks.blendFuncChangeEvent.srcAlpha = hudCache ? GL11.GL_ONE : srcAlpha;
-                GLSMHooks.blendFuncChangeEvent.dstAlpha = hudCache ? GL11.GL_ONE_MINUS_SRC_ALPHA : dstAlpha;
+                GLSMHooks.blendFuncChangeEvent.srcAlpha = emittedSrcAlpha(glCtx.blendState);
+                GLSMHooks.blendFuncChangeEvent.dstAlpha = emittedDstAlpha(glCtx.blendState);
                 GLSMHooks.BLEND_FUNC_CHANGE.post(GLSMHooks.blendFuncChangeEvent);
             }
         }
