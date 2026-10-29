@@ -2,10 +2,15 @@ package net.coderbot.iris.texture.pbr;
 
 import com.gtnewhorizons.angelica.compat.mojang.AutoClosableAbstractTexture;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.glsm.profiling.DebugCounters;
+import com.gtnewhorizons.angelica.mixins.interfaces.IPatchedTextureAtlasSprite;
+import com.gtnewhorizons.angelica.mixins.interfaces.ISpriteExt;
+import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.celeritas.SpriteExtension;
 import com.gtnewhorizons.angelica.utils.SpritePadding;
 import lombok.Getter;
 import net.coderbot.iris.Iris;
+import net.coderbot.iris.texture.pbr.loader.AtlasPBRLoader;
 import net.coderbot.iris.texture.util.TextureExporter;
 import net.coderbot.iris.texture.util.TextureManipulationUtil;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
@@ -20,10 +25,10 @@ import net.minecraft.util.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 	protected final TextureMap texMap;
@@ -31,7 +36,8 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
     protected final PBRType type;
 	protected final ResourceLocation id;
 	protected final Map<ResourceLocation, TextureAtlasSprite> sprites = new HashMap<>();
-	protected final Set<TextureAtlasSprite> animatedSprites = new HashSet<>();
+	protected final List<IPatchedTextureAtlasSprite> animatedSprites = new ArrayList<>();
+	protected final List<TextureAtlasSprite> alwaysAnimatedSprites = new ArrayList<>();
 
 	public PBRAtlasTexture(TextureMap textureMap, PBRType type) {
 		this.texMap = textureMap;
@@ -44,10 +50,15 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 		return id;
 	}
 
-	public void addSprite(TextureAtlasSprite sprite) {
+	public void addSprite(AtlasPBRLoader.PBRTextureAtlasSprite sprite) {
 		sprites.put(texMap.completeResourceLocation(new ResourceLocation(sprite.getIconName()), 0), sprite);
-		if (sprite.hasAnimationMetadata()) {
-			animatedSprites.add(sprite);
+		if (((ISpriteExt) sprite).isAnimation()) {
+			// Without the animation mixins, or for a base outside listAnimatedSprites, nothing consumes base visibility
+			if (sprite instanceof IPatchedTextureAtlasSprite patched && sprite.getBaseSprite().hasAnimationMetadata()) {
+				animatedSprites.add(patched);
+			} else {
+				alwaysAnimatedSprites.add(sprite);
+			}
 		}
 	}
 
@@ -59,6 +70,7 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 	public void clear() {
 		sprites.clear();
 		animatedSprites.clear();
+		alwaysAnimatedSprites.clear();
 	}
 
 	public void upload(int atlasWidth, int atlasHeight, int mipLevel, float anisotropicFiltering) {
@@ -78,7 +90,7 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 			}
 		}
 
-		if (!animatedSprites.isEmpty()) {
+		if (!animatedSprites.isEmpty() || !alwaysAnimatedSprites.isEmpty()) {
 			final PBRAtlasHolder pbrHolder = ((TextureAtlasExtension) texMap).getOrCreatePBRHolder();
 			switch (type) {
 			case NORMAL:
@@ -128,10 +140,17 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 	}
 
 	public void cycleAnimationFrames() {
+		final boolean onlyVisible = ClientProxy.options().performance.animateOnlyVisibleTextures;
 		bind();
-		for (TextureAtlasSprite sprite : animatedSprites) {
-            sprite.updateAnimation();
+		int updated = alwaysAnimatedSprites.size();
+		for (int i = 0; i < animatedSprites.size(); i++) {
+			if (animatedSprites.get(i).angelica$tickAnimation(onlyVisible)) updated++;
 		}
+		for (int i = 0; i < alwaysAnimatedSprites.size(); i++) {
+			alwaysAnimatedSprites.get(i).updateAnimation();
+		}
+		DebugCounters.PBR_ANIM_UPDATES.add(updated);
+		DebugCounters.PBR_ANIM_DRY_RUNS.add(animatedSprites.size() + alwaysAnimatedSprites.size() - updated);
 	}
 
 	@Override

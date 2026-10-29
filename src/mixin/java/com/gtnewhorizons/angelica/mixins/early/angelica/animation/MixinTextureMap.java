@@ -36,16 +36,7 @@ public abstract class MixinTextureMap extends AbstractTexture {
 
         final int size = listAnimatedSprites.size();
         for (int i = 0; i < size; i++) {
-            final TextureAtlasSprite sprite = listAnimatedSprites.get(i);
-            final IPatchedTextureAtlasSprite patched = (IPatchedTextureAtlasSprite) sprite;
-
-            // needsAnimationUpdate() is one-shot: returns true if marked, then auto-resets
-            if (!renderVisible || patched.angelica$needsAnimationUpdate()) {
-                sprite.updateAnimation();
-            } else {
-                // Keep frame counters in sync for sprites not being updated
-                patched.angelica$updateAnimationsDryRun();
-            }
+            ((IPatchedTextureAtlasSprite) listAnimatedSprites.get(i)).angelica$tickAnimation(renderVisible);
         }
         Minecraft.getMinecraft().mcProfiler.endSection();
     }

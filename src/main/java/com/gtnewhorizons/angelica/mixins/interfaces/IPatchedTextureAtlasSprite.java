@@ -5,5 +5,5 @@ public interface IPatchedTextureAtlasSprite {
     void angelica$markNeedsAnimationUpdate();
     boolean angelica$needsAnimationUpdate();
     void angelica$unmarkNeedsAnimationUpdate();
-    void angelica$updateAnimationsDryRun();
+    boolean angelica$tickAnimation(boolean onlyVisible);
 }

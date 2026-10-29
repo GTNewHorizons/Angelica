@@ -138,6 +138,8 @@ public final class FlybyRunner {
     private long transferWaitStartNs;
     private long presentsStart;
     private long emptyAcquiresStart;
+    private long pbrAnimUpdatesStart;
+    private long pbrAnimDryRunsStart;
     private long allocClientStart;
     private long allocProcessStart;
     private int frameCount;
@@ -557,6 +559,8 @@ public final class FlybyRunner {
         this.transferWaitStartNs = DebugCounters.TRANSFER_WAIT_NANOS.sum();
         this.presentsStart = DebugCounters.PRESENTS.sum();
         this.emptyAcquiresStart = DebugCounters.EMPTY_ACQUIRES.sum();
+        this.pbrAnimUpdatesStart = DebugCounters.PBR_ANIM_UPDATES.sum();
+        this.pbrAnimDryRunsStart = DebugCounters.PBR_ANIM_DRY_RUNS.sum();
         this.allocClientStart = AllocBean.allocatedBytes();
         this.allocProcessStart = AllocBean.totalAllocatedBytes();
         this.frameCount = 0;
@@ -944,6 +948,9 @@ public final class FlybyRunner {
             sb.append(String.format(", presents %d, empty acquires %d",
                 DebugCounters.PRESENTS.sum() - this.presentsStart,
                 DebugCounters.EMPTY_ACQUIRES.sum() - this.emptyAcquiresStart));
+            sb.append(String.format(", pbr anim updates %d, dry runs %d",
+                DebugCounters.PBR_ANIM_UPDATES.sum() - this.pbrAnimUpdatesStart,
+                DebugCounters.PBR_ANIM_DRY_RUNS.sum() - this.pbrAnimDryRunsStart));
         }
         if (this.framesSeen > this.frameCount) sb.append(" (frame samples truncated)");
         for (int i = 0; i < this.phaseCount; i++) {
