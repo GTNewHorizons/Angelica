@@ -47,6 +47,7 @@ import me.jellysquid.mods.sodium.client.gui.options.named.MultiDrawMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.ParticleMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.TexelSampling;
 import me.jellysquid.mods.sodium.client.gui.options.named.TextureFilterMode;
+import me.jellysquid.mods.sodium.client.gui.options.named.TranslucencyMode;
 import me.jellysquid.mods.sodium.client.gui.options.storage.AngelicaOptionsStorage;
 import me.jellysquid.mods.sodium.client.gui.options.storage.CubicChunksOptionStorage;
 import me.jellysquid.mods.sodium.client.gui.options.storage.MinecraftOptionsStorage;
@@ -403,11 +404,11 @@ public class SodiumGameOptionPages {
                         .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                         .build()
                 )
-                .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
-                    .setName(I18n.format("sodium.options.translucency_sorting.name"))
-                    .setTooltip(I18n.format("sodium.options.translucency_sorting.tooltip"))
-                    .setControl(TickBoxControl::new)
-                    .setBinding((opts, value) -> opts.performance.translucencySorting = value, opts -> opts.performance.translucencySorting)
+                .add(OptionImpl.createBuilder(TranslucencyMode.class, sodiumOpts)
+                    .setName(I18n.format("sodium.options.translucency_mode.name"))
+                    .setTooltip(I18n.format("sodium.options.translucency_mode.tooltip"))
+                    .setControl(o -> new CyclingControl<>(o, TranslucencyMode.class))
+                    .setBinding((opts, value) -> opts.performance.translucencyMode = value, opts -> opts.performance.translucencyMode)
                     .setImpact(OptionImpact.MEDIUM)
                     .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                     .build()
