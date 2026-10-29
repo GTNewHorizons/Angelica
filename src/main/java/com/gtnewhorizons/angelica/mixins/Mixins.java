@@ -550,6 +550,8 @@ public enum Mixins implements IMixins {
             , "shaders.MixinEntityRenderer"
             , "shaders.MixinGuiIngameForge"
             , "shaders.MixinFramebuffer"
+            , "angelica.rendering.MixinEntityRenderer_TranslucencyLayers"
+            , "angelica.rendering.MixinFramebuffer_TranslucencyLayers"
             , "shaders.MixinItem"
             , "shaders.MixinItemRenderer_ItemId"
             , "shaders.MixinLocale"

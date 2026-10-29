@@ -21,6 +21,7 @@ import org.lwjgl.opengl.GL30;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @GLCoreTest
@@ -142,6 +143,11 @@ class TranslucencyCompositeGLTest {
         final FloatBuffer depth = BufferUtils.createFloatBuffer(WIDTH);
         GLSMFramebuffer.glReadPixels(0, 0, WIDTH, 1, GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, depth);
         return depth;
+    }
+
+    @Test
+    void sharedInstanceIsBuiltAfterTheConstantsItSizesFrom() {
+        assertDoesNotThrow(TranslucencyLayers.INSTANCE::destroy);
     }
 
     @Test

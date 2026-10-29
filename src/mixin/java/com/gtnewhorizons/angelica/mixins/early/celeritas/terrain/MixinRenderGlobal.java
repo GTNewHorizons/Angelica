@@ -17,6 +17,8 @@ import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasSetup;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
+import com.gtnewhorizons.angelica.rendering.translucency.TranslucencyLayers;
+import com.gtnewhorizons.angelica.rendering.translucency.TranslucentLayer;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.pipeline.HandRenderer;
@@ -190,8 +192,13 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
                 this.celeritas$renderer.drawChunkLayer(BlockRenderLayer.CUTOUT_MIPPED, camX, camY, camZ);
             } else {
                 mc.mcProfiler.endStartSection(shadow ? SECTION_SHADOW_TRANSLUCENT : SECTION_TRANSLUCENT);
-                this.celeritas$renderer.drawChunkLayer(BlockRenderLayer.TRANSLUCENT, camX, camY, camZ);
-                RenderChunkEvent.post();
+                final boolean layered = (this.celeritas$renderer.hasVisibleLayer(BlockRenderLayer.TRANSLUCENT) || RenderChunkEvent.BUS.hasListeners()) && TranslucencyLayers.INSTANCE.beginIfActive(TranslucentLayer.TERRAIN);
+                try {
+                    this.celeritas$renderer.drawChunkLayer(BlockRenderLayer.TRANSLUCENT, camX, camY, camZ);
+                    RenderChunkEvent.post();
+                } finally {
+                    if (layered) TranslucencyLayers.INSTANCE.end();
+                }
             }
         } finally {
             RenderDevice.exitManagedCode();
@@ -282,7 +289,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
     @Unique
     private void celeritas$renderBlockEntitiesBeforeTranslucent(double partialTicks) {
         if (ShadowRenderingState.areShadowsCurrentlyBeingRendered()) return;
-        if (!ClientProxy.options().performance.blockEntitiesBeforeTranslucentTerrain) return;
+        if (!ClientProxy.options().performance.blockEntitiesBeforeTranslucentTerrain && !TranslucencyLayers.INSTANCE.active()) return;
         if (this.mc.entityRenderer.debugViewDirection != 0) return;
         this.celeritas$renderer.renderBlockEntitiesBeforeTranslucent((float) partialTicks);
     }
