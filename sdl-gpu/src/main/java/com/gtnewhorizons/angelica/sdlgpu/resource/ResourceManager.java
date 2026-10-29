@@ -807,6 +807,7 @@ public final class ResourceManager {
         final ByteBuffer droppedPboStaging;
         final ByteBuffer droppedPlainStaging;
         final PersistentMapping droppedPm;
+        final boolean hadEboShadow;
         wLock.lock();
         try {
             final long handle = bufferHandles.remove(glId);
@@ -820,7 +821,7 @@ public final class ResourceManager {
             droppedPlainStaging = removePlainMappingLocked(glId);
             droppedPboStaging = pboStagingData.remove(glId);
             deleteUboShadow(glId);
-            deleteEboShadow(glId);
+            hadEboShadow = deleteEboShadow(glId);
             deleteArrayShadow(glId);
             if (handle != 0) {
                 returnBufferToPool(handle, usage, size);
@@ -829,6 +830,7 @@ public final class ResourceManager {
         } finally {
             wLock.unlock();
         }
+        if (hadEboShadow) invalidateSplitCacheFor(glId);
         if (droppedPboStaging != null) {
             memFree(droppedPboStaging);
         }
@@ -1277,11 +1279,12 @@ public final class ResourceManager {
         try { return eboShadowVersions.get(bufferGlId); } finally { rLock.unlock(); }
     }
 
-    private void deleteEboShadow(int bufferGlId) {
+    private boolean deleteEboShadow(int bufferGlId) {
         final ByteBuffer existing = eboShadows.remove(bufferGlId);
         if (existing != null) memFree(existing);
         eboShadowVersions.remove(bufferGlId);
         eboShadowWanted.remove(bufferGlId);
+        return existing != null;
     }
 
     public boolean canShadowArrayBuffer(int size) {

@@ -306,6 +306,11 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
     }
 
     @Override
+    protected SectionRenderDataStorage.BatchCacheParams batchCacheParams(boolean useBlockFaceCulling) {
+        return SectionRenderDataStorage.BatchCacheParams.of(useBlockFaceCulling, ShadowRenderingState.areShadowsCurrentlyBeingRendered() ? 1 : 0);
+    }
+
+    @Override
     protected @Nullable CachedBatch getRegionBatch(CommandList commandList, RenderRegion region,
                                                    SectionRenderDataStorage storage, ChunkRenderList renderList,
                                                    CameraTransform occlusionCamera, TerrainRenderPass renderPass,
@@ -327,7 +332,7 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
         try {
             final CachedBatch cached = super.getRegionBatch(commandList, region, storage, renderList, occlusionCamera,
                 renderPass, useBlockFaceCulling, cacheParams);
-            if (cached != before) TerrainDrawStats.recordRebuild();
+            if (cached != before) TerrainDrawStats.recordRebuild(renderPass.isSorted());
             final MultiDrawBatch batch = cached != null ? cached.getBatch() : null;
             if (batch != null && !batch.isEmpty()) TerrainDrawStats.recordBatch(batch.size());
             return cached;

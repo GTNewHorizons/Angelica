@@ -110,7 +110,7 @@ public final class GLSMAttribStack {
         if (!vaos.vaoMap.containsKey(saved.boundVAO)) return;
         GLSMVertexInput.bindVertexArrayInternal(glCtx, saved.boundVAO);
         glCtx.clientActiveTextureUnit = saved.clientActiveTextureUnit;
-        if (vaos.isBufferLive(saved.boundVBO, saved)) {
+        if (vaos.isSavedVboLive(saved)) {
             final int changed = vaos.restoreClientArrays(saved);
             for (int pointers = changed & 0xFFFF; pointers != 0; pointers &= pointers - 1) {
                 GLSMVertexInput.pointAttrib(glCtx, Integer.numberOfTrailingZeros(pointers));
@@ -120,7 +120,7 @@ public final class GLSMAttribStack {
             }
             if (glCtx.boundVBO != saved.boundVBO) GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, saved.boundVBO);
         }
-        if (vaos.boundEBO != saved.boundEBO && vaos.isBufferLive(saved.boundEBO, saved)) GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, saved.boundEBO);
+        if (vaos.boundEBO != saved.boundEBO && vaos.isSavedEboLive(saved)) GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, saved.boundEBO);
     }
 
     public static void pushState(int mask) {

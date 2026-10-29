@@ -514,7 +514,6 @@ public enum Mixins implements IMixins {
             , "celeritas.terrain.MixinShaderLoader"
             , "celeritas.terrain.MixinGlUniformMatrix4f"
             , "celeritas.terrain.MixinGlUniformMatrix3f"
-            , "celeritas.terrain.MixinDefaultChunkRenderer"
         )
     ),
 

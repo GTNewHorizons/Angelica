@@ -64,9 +64,12 @@ public final class GLSMBuffers {
         }
     }
 
+    public static long bufferDeletes;
+
     private static void invalidateDeletedBuffer(int buffer) {
         final GLContextState glCtx = ctx();
         if (buffer == 0) return;
+        bufferDeletes++;
         final boolean locked = acquireDrawLock();
         try {
             FfpExtendedAttribs.onDeleteBuffer(glCtx, buffer);
@@ -87,7 +90,7 @@ public final class GLSMBuffers {
             }
             writeMappedBuffers.remove(buffer);
 
-            glCtx.vaos.onDeleteBuffer(buffer);
+            glCtx.vaos.onDeleteBuffer(buffer, glCtx.clientAttribSavedArrays);
         } finally {
             if (locked) releaseDrawLock();
         }
