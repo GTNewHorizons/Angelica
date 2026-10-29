@@ -504,7 +504,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             this.teTransform = null;
             if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_DISPATCH);
             try {
-                if (ClientProxy.options().performance.translucencySorting) {
+                if (ClientProxy.options().performance.translucencyMode.sorts()) {
                     depthOrder.sortBackToFront(frameTEs, teCamX, teCamY, teCamZ);
                 }
                 for (int i = 0; i < frameTEs.size(); i++) {
