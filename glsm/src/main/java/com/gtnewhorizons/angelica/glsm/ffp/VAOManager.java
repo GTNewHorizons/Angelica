@@ -123,15 +123,63 @@ public final class VAOManager {
     private int clientSideEnabledCount = 0;
     private int arrayVersion = 0;
     private int versionClock = 0;
+    private static final int DELETED_NAME_PRUNE_THRESHOLD = 4096;
+    private static final int DEAD_EPOCH = -1;
+    private final int pruneThreshold;
     private int bufferEpoch = 0;
     private final Int2IntOpenHashMap bufferDeletedAt = new Int2IntOpenHashMap();
+
+    public VAOManager() {
+        this(DELETED_NAME_PRUNE_THRESHOLD);
+    }
+
+    VAOManager(int pruneThreshold) {
+        this.pruneThreshold = pruneThreshold;
+    }
 
     private void touch() {
         arrayVersion = ++versionClock;
     }
 
     private boolean isBufferLive(int buffer, int sinceEpoch) {
-        return bufferDeletedAt.get(buffer) <= sinceEpoch;
+        return buffer == 0 || bufferDeletedAt.get(buffer) <= sinceEpoch;
+    }
+
+    private int retiredEpoch(int buffer, int epoch, boolean rebase) {
+        if (rebase) return epoch == DEAD_EPOCH ? DEAD_EPOCH : 0;
+        return isBufferLive(buffer, epoch) ? epoch : DEAD_EPOCH;
+    }
+
+    private void retire(@Nullable Attrib[] slots, boolean rebase) {
+        if (slots == null) return;
+        for (final Attrib a : slots) {
+            if (a != null) a.epoch = retiredEpoch(a.vboId, a.epoch, rebase);
+        }
+    }
+
+    private void retireAll(ClientArrays[] savedStack, boolean rebase) {
+        for (final VAOData data : vaoMap.values()) {
+            retire(data.attribs, rebase);
+            retire(data.generic, rebase);
+            retire(data.conventional, rebase);
+        }
+        retire(currentAttribs, rebase);
+        retire(currentGeneric, rebase);
+        retire(currentConventional, rebase);
+        for (final ClientArrays saved : savedStack) {
+            if (saved == null) continue;
+            saved.vboEpoch = retiredEpoch(saved.boundVBO, saved.vboEpoch, rebase);
+            saved.eboEpoch = retiredEpoch(saved.boundEBO, saved.eboEpoch, rebase);
+            retire(saved.generic, rebase);
+            retire(saved.conventional, rebase);
+        }
+    }
+
+    private void pruneDeletedNames(ClientArrays[] savedStack) {
+        retireAll(savedStack, false);
+        bufferDeletedAt.clear();
+        retireAll(savedStack, true);
+        bufferEpoch = 0;
     }
 
     public boolean isBufferLive(Attrib a) {
@@ -206,9 +254,10 @@ public final class VAOManager {
         return detached;
     }
 
-    public void onDeleteBuffer(int buffer) {
+    public void onDeleteBuffer(int buffer, ClientArrays[] savedStack) {
         if (buffer == 0) return;
         bufferDeletedAt.put(buffer, ++bufferEpoch);
+        if (bufferEpoch >= pruneThreshold) pruneDeletedNames(savedStack);
         if (currentAttribs != null) {
             boolean detached = detach(currentGeneric != null ? currentGeneric : currentAttribs, buffer);
             if (currentConventional != null) detached |= detach(currentConventional, buffer);
@@ -447,7 +496,8 @@ public final class VAOManager {
         public int boundEBO;
         public int clientActiveTextureUnit;
         int arrayVersion;
-        int bufferEpoch;
+        int vboEpoch;
+        int eboEpoch;
         int vertexFlags;
         int genericEnabled;
         int conventionalEnabled;
@@ -463,13 +513,18 @@ public final class VAOManager {
         saved[i].copyPointer(source);
     }
 
-    public boolean isBufferLive(int buffer, ClientArrays saved) {
-        return isBufferLive(buffer, saved.bufferEpoch);
+    public boolean isSavedVboLive(ClientArrays saved) {
+        return isBufferLive(saved.boundVBO, saved.vboEpoch);
+    }
+
+    public boolean isSavedEboLive(ClientArrays saved) {
+        return isBufferLive(saved.boundEBO, saved.eboEpoch);
     }
 
     public void saveClientArrays(ClientArrays out) {
         out.arrayVersion = arrayVersion;
-        out.bufferEpoch = bufferEpoch;
+        out.vboEpoch = bufferEpoch;
+        out.eboEpoch = bufferEpoch;
         out.vertexFlags = currentVertexFlags;
         out.genericEnabled = genericEnabled;
         out.conventionalEnabled = conventionalEnabled;

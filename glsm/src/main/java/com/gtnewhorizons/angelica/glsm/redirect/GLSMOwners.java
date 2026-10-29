@@ -158,6 +158,8 @@ final class GLSMOwners {
     static final String[][] FIELDS = {
         {"com/gtnewhorizons/angelica/glsm/GLSMAttribStack",
             "attribBackendCalls", "attribDiscards", "attribPushes", "attribSlotsSaved", "attribValueRestores"},
+        {"com/gtnewhorizons/angelica/glsm/GLSMBuffers",
+            "bufferDeletes"},
         {"com/gtnewhorizons/angelica/glsm/GLSMDraws",
             "drawCalls"},
         {"com/gtnewhorizons/angelica/glsm/GLSMFramebuffer",

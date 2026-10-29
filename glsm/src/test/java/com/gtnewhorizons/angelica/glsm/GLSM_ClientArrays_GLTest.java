@@ -487,29 +487,39 @@ public class GLSM_ClientArrays_GLTest {
     }
 
     @Test
-    void popKeepsCurrentArraysWhenTheSavedArrayBufferWasDeleted() {
+    void popKeepsCurrentStateWhenTheSavedBuffersWereDeleted() {
         final int vbo2 = GLSMBuffers.glGenBuffers();
+        final int ebo = GLSMBuffers.glGenBuffers();
+        final int ebo2 = GLSMBuffers.glGenBuffers();
         try {
             GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+            GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
             GLSMTextures.glClientActiveTexture(GL13.GL_TEXTURE0);
             GLSMVertexInput.glVertexPointer(3, GL11.GL_FLOAT, 12, 0L);
 
             GLSMAttribStack.glPushClientAttrib(GL11.GL_CLIENT_VERTEX_ARRAY_BIT);
             GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo2);
+            GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo2);
             GLSMVertexInput.glVertexPointer(2, GL11.GL_SHORT, 4, 0L);
             GLSMTextures.glClientActiveTexture(GL13.GL_TEXTURE1);
             GLSMBuffers.glDeleteBuffers(vbo);
+            GLSMBuffers.glDeleteBuffers(ebo);
             GLSMAttribStack.glPopClientAttrib();
 
             assertEquals(2, GLSMQueries.glGetInteger(GL11.GL_VERTEX_ARRAY_SIZE), "array state is not restored once its array buffer is gone");
             assertEquals(vbo2, GLSMQueries.glGetInteger(GL15.GL_ARRAY_BUFFER_BINDING));
             assertEquals(vbo2, GL11.glGetInteger(GL15.GL_ARRAY_BUFFER_BINDING));
+            assertEquals(ebo2, GLSMQueries.glGetInteger(GL15.GL_ELEMENT_ARRAY_BUFFER_BINDING), "a deleted element buffer is not rebound by the pop");
+            assertEquals(ebo2, GL11.glGetInteger(GL15.GL_ELEMENT_ARRAY_BUFFER_BINDING));
             assertEquals(GL13.GL_TEXTURE0, GLSMQueries.glGetInteger(GL13.GL_CLIENT_ACTIVE_TEXTURE));
         } finally {
             drainClientAttribStack();
             GLSMTextures.glClientActiveTexture(GL13.GL_TEXTURE0);
             GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
             GLSMBuffers.glDeleteBuffers(vbo2);
+            GLSMBuffers.glDeleteBuffers(ebo2);
+            GLSMBuffers.glDeleteBuffers(ebo);
         }
     }
 
