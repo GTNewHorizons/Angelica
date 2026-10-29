@@ -13,6 +13,7 @@ import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard;
+import com.gtnewhorizons.angelica.glsm.stacks.ColorMaskStack;
 import com.gtnewhorizons.angelica.glsm.texture.DepthBufferFormat;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
@@ -36,10 +37,10 @@ import java.nio.ByteBuffer;
 /// blending), and the composite writes the nearest layer depth.
 public final class TranslucencyLayers {
 
-    public static final TranslucencyLayers INSTANCE = new TranslucencyLayers(new MinecraftTarget());
-
     private static final int LAYERS = TranslucentLayer.values().length;
     private static final int FIRST_LAYER_UNIT = 1;
+
+    public static final TranslucencyLayers INSTANCE = new TranslucencyLayers(new MinecraftTarget());
 
     interface MainTarget {
         int framebuffer();
@@ -57,11 +58,13 @@ public final class TranslucencyLayers {
     private int depthVersion = -1;
     private DepthBufferFormat depthFormat;
 
+    private boolean decided;
     private boolean active;
     private int drawnMask;
     private TranslucentLayer open;
     private int savedDraw;
     private int savedRead;
+    private boolean alphaMasked;
 
     private GlProgram<Object> program;
     private int maskUniform;
@@ -73,18 +76,31 @@ public final class TranslucencyLayers {
         this.main = main;
     }
 
+    /// Whether layering applies is decided on the first [#active] call, once Iris has prepared the frame's pipeline.
     public void beginFrame() {
-        beginFrame(ClientProxy.options().performance.translucencyMode.composites() && Iris.enabled
-            && Iris.getPipelineManager().getPipelineNullable() instanceof FixedFunctionWorldRenderingPipeline);
+        decided = false;
+        drawnMask = 0;
     }
 
     void beginFrame(boolean active) {
         this.active = active;
-        this.drawnMask = 0;
+        decided = true;
+        drawnMask = 0;
     }
 
     public boolean active() {
+        if (!decided) {
+            active = ClientProxy.options().performance.translucencyMode.composites() && Iris.enabled
+                && Iris.getPipelineManager().getPipelineNullable() instanceof FixedFunctionWorldRenderingPipeline;
+            decided = true;
+        }
         return active;
+    }
+
+    public boolean beginIfActive(TranslucentLayer layer) {
+        if (!active()) return false;
+        begin(layer);
+        return true;
     }
 
     public void begin(TranslucentLayer layer) {
@@ -102,10 +118,17 @@ public final class TranslucencyLayers {
         target.framebuffer.bind();
         open = layer;
         GLSMBlend.setLayerBlending(true);
+        final ColorMaskStack mask = GLSMBlend.getColorMask();
+        alphaMasked = !mask.alpha;
+        if (alphaMasked) GLSMBlend.glColorMask(mask.red, mask.green, mask.blue, true);
     }
 
     public void end() {
         BatchStateGuard.beforeChange();
+        if (alphaMasked) {
+            final ColorMaskStack mask = GLSMBlend.getColorMask();
+            GLSMBlend.glColorMask(mask.red, mask.green, mask.blue, false);
+        }
         GLSMBlend.setLayerBlending(false);
         GLSMFramebuffer.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, savedDraw);
         GLSMFramebuffer.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, savedRead);
