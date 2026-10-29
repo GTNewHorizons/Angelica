@@ -234,6 +234,7 @@ public class SodiumGameOptions {
         public boolean useBlockFaceCulling = true;
         public boolean useCompactVertexFormat = true;
         public boolean translucencySorting = true;
+        public boolean blockEntitiesBeforeTranslucentTerrain = true;
         public boolean useRenderPassOptimization = true;
         public int cpuRenderAheadLimit = 3;
     }
