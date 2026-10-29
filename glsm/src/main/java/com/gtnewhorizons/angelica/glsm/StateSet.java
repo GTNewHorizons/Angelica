@@ -6,6 +6,8 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import org.lwjgl.opengl.GL11;
 
+import java.util.Arrays;
+
 public final class StateSet {
 
     public static final int R_DEPTH = 1;
@@ -79,25 +81,44 @@ public final class StateSet {
     public static final StateSet CUTOUT = buildCutout();
     public static final StateSet MASKS = buildMasks();
     public static final StateSet CULL = buildCull();
+    public static final StateSet BLOCK_ENTITY_PASS = buildBlockEntityPass();
+
+    private static CowStateStack<?>[] batchMembers() {
+        return new CowStateStack<?>[] {
+            GLSMBlend.getBlendState(), GLSMDepthStencilAlpha.getAlphaState(), GLSMDepthStencilAlpha.getDepthState(),
+            GLSMBlend.getColorMask(), GLSMRasterizer.getPolygonState(),
+            GLSMTextures.getTextures().getTextureUnitBindings(0), GLSMTextures.getTextures().getTextureUnitBindings(1),
+            GLSMTextures.getActiveTextureUnitStack(),
+            GLSMBlend.getBlendMode(), GLSMDepthStencilAlpha.getAlphaTest(), GLSMDepthStencilAlpha.getDepthTest(),
+            GLSMLighting.getLightingState(), GLSMRasterizer.getCullState(), GLSMRasterizer.getPolygonOffsetFillState(),
+            GLSMTextures.getTextures().getTextureUnitStates(0), GLSMTextures.getTextures().getTextureUnitStates(1),
+            GLSMLighting.getLightStates()[0], GLSMLighting.getLightStates()[1],
+            GLSMLighting.getLightDataStates()[0], GLSMLighting.getLightDataStates()[1],
+            GLSMLighting.getColorMaterial(), GLSMLighting.getColorMaterialFace(), GLSMLighting.getColorMaterialParameter(),
+            GLSMLighting.getLightModel(), GLSMLighting.getFrontMaterial(), GLSMLighting.getBackMaterial(),
+            GLSMLighting.getNormalizeState(), GLSMLighting.getRescaleNormalState()
+        };
+    }
 
     private static StateSet buildBatch() {
         return new StateSet(0,
-            ids(
-                GLSMBlend.getBlendState(), GLSMDepthStencilAlpha.getAlphaState(), GLSMDepthStencilAlpha.getDepthState(),
-                GLSMBlend.getColorMask(), GLSMRasterizer.getPolygonState(),
-                GLSMTextures.getTextures().getTextureUnitBindings(0), GLSMTextures.getTextures().getTextureUnitBindings(1),
-                GLSMTextures.getActiveTextureUnitStack(),
-                GLSMBlend.getBlendMode(), GLSMDepthStencilAlpha.getAlphaTest(), GLSMDepthStencilAlpha.getDepthTest(),
-                GLSMLighting.getLightingState(), GLSMRasterizer.getCullState(), GLSMRasterizer.getPolygonOffsetFillState(),
-                GLSMTextures.getTextures().getTextureUnitStates(0), GLSMTextures.getTextures().getTextureUnitStates(1),
-                GLSMLighting.getLightStates()[0], GLSMLighting.getLightStates()[1],
-                GLSMLighting.getLightDataStates()[0], GLSMLighting.getLightDataStates()[1],
-                GLSMLighting.getColorMaterial(), GLSMLighting.getColorMaterialFace(), GLSMLighting.getColorMaterialParameter(),
-                GLSMLighting.getLightModel(), GLSMLighting.getFrontMaterial(), GLSMLighting.getBackMaterial(),
-                GLSMLighting.getNormalizeState(), GLSMLighting.getRescaleNormalState()
-            ),
+            ids(batchMembers()),
             R_BLEND | R_DEPTH | R_COLOR_MASK | R_POLYGON | R_TEXTURE | R_ACTIVE_UNIT,
             B_FRAG_COLORBUF | B_LIGHTING,
+            true);
+    }
+
+    private static StateSet buildBlockEntityPass() {
+        final CowStateStack<?>[] batch = batchMembers();
+        final CowStateStack<?>[] all = Arrays.copyOf(batch, batch.length + 4);
+        all[batch.length] = GLSMCurrentAttribs.getColor();
+        all[batch.length + 1] = GLSMFog.getFogState();
+        all[batch.length + 2] = GLSMFog.getFogMode();
+        all[batch.length + 3] = GLSMRasterizer.getShadeModelState();
+        return new StateSet(0,
+            ids(all),
+            R_BLEND | R_DEPTH | R_COLOR_MASK | R_POLYGON | R_TEXTURE | R_ACTIVE_UNIT,
+            B_FRAG_COLORBUF | B_LIGHTING | B_CURRENT | B_FRAG_FOG,
             true);
     }
 

@@ -9,6 +9,7 @@ import com.gtnewhorizons.angelica.glsm.GLSMEnable;
 import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalExt;
+import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.gtnewhorizons.angelica.rendering.celeritas.BlockRenderLayer;
@@ -18,7 +19,6 @@ import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import net.coderbot.iris.Iris;
-import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.HandRenderer;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
@@ -34,6 +34,7 @@ import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraftforge.client.MinecraftForgeClient;
 import org.embeddedt.embeddium.impl.gl.device.RenderDevice;
 import org.embeddedt.embeddium.impl.render.terrain.SimpleWorldRenderer;
 import org.embeddedt.embeddium.impl.render.viewport.Viewport;
@@ -63,7 +64,6 @@ import static org.joml.Math.lerp;
  */
 @Mixin(value = RenderGlobal.class, priority = 900)
 public class MixinRenderGlobal implements IRenderGlobalExt {
-    @Unique private static final long P_BLOCK_ENTITIES_RENDERED = Tracy.plotHandle("blockEntitiesRendered");
     @Unique private static final Tracy.ZoneId Z_MT_QUEUE = Tracy.zoneId("mtQueue", Tracy.COLOR_TERRAIN);
 
     @Shadow public Minecraft mc;
@@ -146,10 +146,13 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
             pipeline = Iris.getPipelineManager().getPipelineNullable();
             if (pass == 0) {
                 pipeline.setPhase(WorldRenderingPhase.TERRAIN_SOLID);
-            } else if (pass == 1) {
-                if (!ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
-                    iris$beginTranslucents(pipeline, Camera.INSTANCE);
-                }
+            } else if (pass == 1 && !ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
+                iris$beginTranslucents(pipeline, Camera.INSTANCE);
+            }
+        }
+        if (pass == 1) {
+            celeritas$renderBlockEntitiesBeforeTranslucent(partialTicks);
+            if (pipeline != null) {
                 pipeline.setPhase(WorldRenderingPhase.TERRAIN_TRANSLUCENT);
                 this.renderEngine.bindTexture(TextureMap.locationBlocksTexture);
             }
@@ -276,17 +279,18 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderHelper;enableStandardItemLighting()V", ordinal = 0))
     private void celeritas$enterBlockEntities() {}
 
+    @Unique
+    private void celeritas$renderBlockEntitiesBeforeTranslucent(double partialTicks) {
+        if (ShadowRenderingState.areShadowsCurrentlyBeingRendered()) return;
+        if (!ClientProxy.options().performance.blockEntitiesBeforeTranslucentTerrain) return;
+        if (this.mc.entityRenderer.debugViewDirection != 0) return;
+        this.celeritas$renderer.renderBlockEntitiesBeforeTranslucent((float) partialTicks);
+    }
+
     @Surround.Return("blockEntities")
     private void celeritas$renderTileEntities(@Surround.Local(argsOnly = true) float partialTicks) {
-        if (Iris.enabled) {
-            GbufferPrograms.beginBlockEntities();
-            GbufferPrograms.setBlockEntityDefaults();
-        }
-        final int blockEntitiesRendered = this.celeritas$renderer.renderBlockEntities(partialTicks);
-        if (Tracy.ENABLED) Tracy.plotInt(P_BLOCK_ENTITIES_RENDERED, blockEntitiesRendered);
-        if (Iris.enabled) {
-            GbufferPrograms.endBlockEntities();
-        }
+        if (MinecraftForgeClient.getRenderPass() == 1 && !this.celeritas$renderer.takeLatePassOne()) return;
+        this.celeritas$renderer.renderBlockEntitiesInPhase(partialTicks);
     }
 
     @ModifyExpressionValue(method = "renderEntities", at = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/RenderGlobal;tileEntities:Ljava/util/List;", opcode = Opcodes.GETFIELD))
