@@ -80,7 +80,7 @@ public class AngelicaRenderPassConfiguration {
         TRANSLUCENT_PASS = builderForRenderType(1, false, translucentCutoff, vertexType)
             .name("translucent")
             .useReverseOrder(true)
-            .useTranslucencySorting(ClientProxy.options().performance.translucencySorting)
+            .useTranslucencySorting(ClientProxy.options().performance.translucencyMode.sorts())
             .build();
 
         TRANSLUCENT_MATERIAL = new Material(TRANSLUCENT_PASS, translucentCutoff, true);
