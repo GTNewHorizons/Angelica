@@ -291,7 +291,7 @@ public class AngelicaConfig {
     public static int menuBlurFadeTime;
 
     @Config.Comment("GUI classes that never get the menu blur.")
-    @Config.DefaultStringList({"net.minecraft.client.gui.GuiChat"})
+    @Config.DefaultStringList({"net.minecraft.client.gui.GuiChat", "net.coderbot.iris.gui.screen.ShaderPackScreen"})
     public static String[] menuBlurExcludedGuis;
 
     @Config.Comment("Top color of the GUI background gradient while the menu blur is showing, as ARGB hex.")
