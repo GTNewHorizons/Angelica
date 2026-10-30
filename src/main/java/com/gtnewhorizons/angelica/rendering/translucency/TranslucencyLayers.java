@@ -25,6 +25,7 @@ import net.coderbot.iris.rendertarget.IRenderTargetExt;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.shader.Framebuffer;
 import org.embeddedt.embeddium.impl.gl.shader.GlProgram;
+import org.embeddedt.embeddium.impl.gl.shader.ShaderConstants;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
@@ -35,10 +36,18 @@ import java.nio.ByteBuffer;
 /// Draws each [TranslucentLayer] into its own target, seeded with the main depth, and composites the drawn layers over
 /// the main framebuffer per pixel, farthest first. Layers hold premultiplied color with coverage alpha (GLSM layer
 /// blending), and the composite writes the nearest layer depth.
+///
+/// The terrain layer has a second sheet for fragments behind the block-entity layer, so a tile entity inside a
+/// block's own translucent model is covered only by the faces in front of it.
 public final class TranslucencyLayers {
 
     private static final int LAYERS = TranslucentLayer.values().length;
     private static final int FIRST_LAYER_UNIT = 1;
+    private static final int TERRAIN_BEHIND_UNIT = FIRST_LAYER_UNIT + 2 * LAYERS;
+    private static final int SPLIT_DEPTH_UNIT = TERRAIN_BEHIND_UNIT + 1;
+    private static final int[] SINGLE_BUFFER = { 0 };
+    private static final int[] SPLIT_BUFFERS = { 0, 1 };
+    private static final int[] BEHIND_BUFFER = { 1 };
 
     public static final TranslucencyLayers INSTANCE = new TranslucencyLayers(new MinecraftTarget());
 
@@ -66,8 +75,11 @@ public final class TranslucencyLayers {
     private int savedRead;
     private boolean alphaMasked;
 
-    private GlProgram<Object> program;
-    private int maskUniform;
+    private boolean splitting;
+    private boolean behindDrawn;
+
+    private CompositeProgram program;
+    private CompositeProgram behindProgram;
     private int vao;
     private StateSet prepareState;
     private StateSet compositeState;
@@ -80,12 +92,14 @@ public final class TranslucencyLayers {
     public void beginFrame() {
         decided = false;
         drawnMask = 0;
+        behindDrawn = false;
     }
 
     void beginFrame(boolean active) {
         this.active = active;
         decided = true;
         drawnMask = 0;
+        behindDrawn = false;
     }
 
     public boolean active() {
@@ -143,6 +157,33 @@ public final class TranslucencyLayers {
         layers[open.ordinal()].framebuffer.bind();
     }
 
+    public void beginTerrainSplit(int program) {
+        splitting = open == TranslucentLayer.TERRAIN && (drawnMask & (1 << TranslucentLayer.BLOCK_ENTITIES.ordinal())) != 0;
+        GLSMPrograms.glUniform1i(GLSMPrograms.glGetUniformLocation(program, "u_SplitEnabled"), splitting ? 1 : 0);
+        if (!splitting) return;
+        GLSMPrograms.glUniform1i(GLSMPrograms.glGetUniformLocation(program, "u_SplitDepth"), SPLIT_DEPTH_UNIT);
+        final Target terrain = layers[TranslucentLayer.TERRAIN.ordinal()];
+        if (!behindDrawn) {
+            behindDrawn = true;
+            terrain.attachBehind(width, height);
+            terrain.framebuffer.drawBuffers(BEHIND_BUFFER);
+            clear(terrain);
+        }
+        final int unit = GLSMTextures.getActiveTextureUnit();
+        bindTexture(SPLIT_DEPTH_UNIT, layers[TranslucentLayer.BLOCK_ENTITIES.ordinal()].depth);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0 + unit);
+        terrain.framebuffer.drawBuffers(SPLIT_BUFFERS);
+    }
+
+    public void endTerrainSplit() {
+        if (!splitting) return;
+        splitting = false;
+        layers[TranslucentLayer.TERRAIN.ordinal()].framebuffer.drawBuffers(SINGLE_BUFFER);
+        final int unit = GLSMTextures.getActiveTextureUnit();
+        bindTexture(SPLIT_DEPTH_UNIT, 0);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0 + unit);
+    }
+
     public void composite() {
         if (drawnMask == 0) return;
         BatchStateGuard.beforeChange();
@@ -172,8 +213,10 @@ public final class TranslucencyLayers {
                 bindTexture(FIRST_LAYER_UNIT + i, layers[i].color);
                 bindTexture(FIRST_LAYER_UNIT + LAYERS + i, layers[i].depth);
             }
-            GLSMPrograms.glUseProgram(program.handle());
-            GLSMPrograms.glUniform1i(maskUniform, drawnMask);
+            if (behindDrawn) bindTexture(TERRAIN_BEHIND_UNIT, layers[TranslucentLayer.TERRAIN.ordinal()].behind);
+            final CompositeProgram composite = behindDrawn ? behindProgram : program;
+            GLSMPrograms.glUseProgram(composite.program.handle());
+            GLSMPrograms.glUniform1i(composite.maskUniform, drawnMask);
             GLSMVertexInput.glBindVertexArray(vao);
             GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
         } finally {
@@ -183,34 +226,34 @@ public final class TranslucencyLayers {
             GLSMFramebuffer.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, read);
             GLSMAttribStack.popStateTo(depth);
             drawnMask = 0;
+            behindDrawn = false;
         }
     }
 
     public void destroy() {
         destroyTargets();
         if (program != null) {
-            program.delete();
+            program.program.delete();
+            behindProgram.program.delete();
             GLSMVertexInput.glDeleteVertexArrays(vao);
             program = null;
+            behindProgram = null;
         }
     }
 
     private void initProgram() {
-        program = PanoramaRenderer.loadProgram("angelica:translucency_composite", "angelica:panorama_blur", "angelica:translucency_composite", ctx -> ctx);
-        final int handle = program.handle();
-        GLSMPrograms.glUseProgram(handle);
-        GLSMPrograms.glUniform1i(GLSMPrograms.glGetUniformLocation(handle, "u_Depth"), 0);
-        for (int i = 0; i < LAYERS; i++) {
-            GLSMPrograms.glUniform1i(GLSMPrograms.glGetUniformLocation(handle, "u_Layer" + i), FIRST_LAYER_UNIT + i);
-            GLSMPrograms.glUniform1i(GLSMPrograms.glGetUniformLocation(handle, "u_LayerDepth" + i), FIRST_LAYER_UNIT + LAYERS + i);
-        }
-        maskUniform = GLSMPrograms.glGetUniformLocation(handle, "u_LayerMask");
-        GLSMPrograms.glUseProgram(0);
+        program = new CompositeProgram("angelica:translucency_composite", ShaderConstants.EMPTY);
+        behindProgram = new CompositeProgram("angelica:translucency_composite_behind", ShaderConstants.builder().add("TERRAIN_BEHIND").build());
         vao = GLSMVertexInput.glGenVertexArrays();
         compositeState = StateSet.forMask(GL11.GL_ALL_ATTRIB_BITS);
     }
 
     private void prepare(Target target) {
+        clear(target);
+        blit(main.framebuffer(), target.framebuffer.getId(), depthFormat.isCombinedStencil() ? GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT : GL11.GL_DEPTH_BUFFER_BIT);
+    }
+
+    private void clear(Target target) {
         if (prepareState == null) prepareState = StateSet.forMask(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_SCISSOR_BIT);
         final int depth = GLSMAttribStack.pushState(prepareState);
         try {
@@ -219,7 +262,6 @@ public final class TranslucencyLayers {
             target.framebuffer.bind();
             GLSMBlend.glClearColor(0f, 0f, 0f, 0f);
             GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
-            blit(main.framebuffer(), target.framebuffer.getId(), depthFormat.isCombinedStencil() ? GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT : GL11.GL_DEPTH_BUFFER_BIT);
         } finally {
             GLSMAttribStack.popStateTo(depth);
         }
@@ -264,12 +306,33 @@ public final class TranslucencyLayers {
         if (depthSnapshot != null) depthSnapshot.destroy();
         depthSnapshot = null;
         drawnMask = 0;
+        behindDrawn = false;
+    }
+
+    private static final class CompositeProgram {
+        final GlProgram<Object> program;
+        final int maskUniform;
+
+        CompositeProgram(String name, ShaderConstants constants) {
+            program = PanoramaRenderer.loadProgram(name, "angelica:panorama_blur", "angelica:translucency_composite", constants, ctx -> ctx);
+            final int handle = program.handle();
+            GLSMPrograms.glUseProgram(handle);
+            GLSMPrograms.glUniform1i(GLSMPrograms.glGetUniformLocation(handle, "u_Depth"), 0);
+            for (int i = 0; i < LAYERS; i++) {
+                GLSMPrograms.glUniform1i(GLSMPrograms.glGetUniformLocation(handle, "u_Layer" + i), FIRST_LAYER_UNIT + i);
+                GLSMPrograms.glUniform1i(GLSMPrograms.glGetUniformLocation(handle, "u_LayerDepth" + i), FIRST_LAYER_UNIT + LAYERS + i);
+            }
+            GLSMPrograms.glUniform1i(GLSMPrograms.glGetUniformLocation(handle, "u_TerrainBehind"), TERRAIN_BEHIND_UNIT);
+            maskUniform = GLSMPrograms.glGetUniformLocation(handle, "u_LayerMask");
+            GLSMPrograms.glUseProgram(0);
+        }
     }
 
     private static final class Target {
         final int color;
         final int depth;
         final GlFramebuffer framebuffer;
+        int behind;
 
         Target(int width, int height, DepthBufferFormat depthFormat, boolean withColor) {
             depth = texture(width, height, depthFormat.getGlInternalFormat(), depthFormat.getGlType(), depthFormat.getGlFormat());
@@ -278,13 +341,19 @@ public final class TranslucencyLayers {
             if (withColor) {
                 color = texture(width, height, GL11.GL_RGBA8, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE);
                 framebuffer.addColorAttachment(0, color);
-                framebuffer.drawBuffers(new int[] { 0 });
+                framebuffer.drawBuffers(SINGLE_BUFFER);
                 framebuffer.readBuffer(0);
             } else {
                 color = 0;
                 framebuffer.noDrawBuffers();
                 RenderSystem.readBuffer(framebuffer.getId(), GL11.GL_NONE);
             }
+        }
+
+        void attachBehind(int width, int height) {
+            if (behind != 0) return;
+            behind = texture(width, height, GL11.GL_RGBA8, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE);
+            framebuffer.addColorAttachment(1, behind);
         }
 
         private static int texture(int width, int height, int internalFormat, int format, int type) {
@@ -303,6 +372,7 @@ public final class TranslucencyLayers {
         void destroy() {
             framebuffer.destroy();
             if (color != 0) GLSMTextures.glDeleteTextures(color);
+            if (behind != 0) GLSMTextures.glDeleteTextures(behind);
             GLSMTextures.glDeleteTextures(depth);
         }
     }

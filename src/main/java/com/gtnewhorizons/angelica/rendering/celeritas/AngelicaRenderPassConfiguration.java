@@ -81,6 +81,7 @@ public class AngelicaRenderPassConfiguration {
             .name("translucent")
             .useReverseOrder(true)
             .useTranslucencySorting(ClientProxy.options().performance.translucencyMode.sorts())
+            .extraDefine("TRANSLUCENCY_SPLIT", "")
             .build();
 
         TRANSLUCENT_MATERIAL = new Material(TRANSLUCENT_PASS, translucentCutoff, true);
