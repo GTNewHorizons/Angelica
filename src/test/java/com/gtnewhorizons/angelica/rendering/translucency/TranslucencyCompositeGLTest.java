@@ -42,11 +42,25 @@ class TranslucencyCompositeGLTest {
         out vec4 color;
         void main() { color = u_Color; }
         """;
+    private static final String SPLIT_FS = """
+        #version 330 core
+        uniform vec4 u_Color;
+        uniform bool u_SplitEnabled;
+        uniform sampler2D u_SplitDepth;
+        layout(location = 0) out vec4 front;
+        layout(location = 1) out vec4 behind;
+        void main() {
+            bool back = u_SplitEnabled && gl_FragCoord.z > texelFetch(u_SplitDepth, ivec2(gl_FragCoord.xy), 0).r;
+            front = back ? vec4(0.0) : u_Color;
+            behind = back ? u_Color : vec4(0.0);
+        }
+        """;
 
     private int colorTex;
     private int depthTex;
     private GlFramebuffer main;
     private int quadProgram;
+    private int splitProgram;
     private int vao;
     private TranslucencyLayers layers;
 
@@ -62,6 +76,7 @@ class TranslucencyCompositeGLTest {
         main.bind();
         GLSMRasterizer.glViewport(0, 0, WIDTH, 1);
         quadProgram = GlTestSupport.program(QUAD_VS, QUAD_FS);
+        splitProgram = GlTestSupport.program(QUAD_VS, SPLIT_FS);
         vao = GLSMVertexInput.glGenVertexArrays();
         layers = new TranslucencyLayers(new TranslucencyLayers.MainTarget() {
             @Override public int framebuffer() { return main.getId(); }
@@ -87,6 +102,7 @@ class TranslucencyCompositeGLTest {
         GLSMTextures.glDeleteTextures(depthTex);
         GLSMPrograms.glUseProgram(0);
         GLSMPrograms.glDeleteProgram(quadProgram);
+        GLSMPrograms.glDeleteProgram(splitProgram);
         GLSMVertexInput.glDeleteVertexArrays(vao);
         GLSMBlend.disableBlend();
         GLSMDepthStencilAlpha.disableDepthTest();
@@ -105,20 +121,36 @@ class TranslucencyCompositeGLTest {
         return tex;
     }
 
+    private void drawInto(TranslucentLayer layer, int column, float depth, float r, float g, float b, float a) {
+        drawInto(layer, column, depth, r, g, b, a, GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+    }
+
     private void drawInto(TranslucentLayer layer, int column, float depth, float r, float g, float b, float a, int srcRgb, int dstRgb) {
         layers.begin(layer);
-        GLSMBlend.enableBlend();
-        GLSMBlend.glBlendFunc(srcRgb, dstRgb);
-        draw(column, depth, r, g, b, a);
-        GLSMBlend.disableBlend();
+        drawBlended(quadProgram, column, depth, r, g, b, a, srcRgb, dstRgb);
         layers.end();
     }
 
+    private void drawBlended(int program, int column, float depth, float r, float g, float b, float a, int srcRgb, int dstRgb) {
+        GLSMBlend.enableBlend();
+        GLSMBlend.glBlendFunc(srcRgb, dstRgb);
+        draw(program, column, depth, r, g, b, a);
+        GLSMBlend.disableBlend();
+    }
+
+    private void drawTerrain(int column, float depth, float r, float g, float b, float a) {
+        drawBlended(splitProgram, column, depth, r, g, b, a, GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+    }
+
     private void draw(int column, float depth, float r, float g, float b, float a) {
+        draw(quadProgram, column, depth, r, g, b, a);
+    }
+
+    private void draw(int program, int column, float depth, float r, float g, float b, float a) {
         GLSMRasterizer.glViewport(column, 0, 1, 1);
-        GLSMPrograms.glUseProgram(quadProgram);
-        GLSMPrograms.glUniform1f(GLSMPrograms.glGetUniformLocation(quadProgram, "u_Depth"), depth);
-        GLSMPrograms.glUniform4f(GLSMPrograms.glGetUniformLocation(quadProgram, "u_Color"), r, g, b, a);
+        GLSMPrograms.glUseProgram(program);
+        GLSMPrograms.glUniform1f(GLSMPrograms.glGetUniformLocation(program, "u_Depth"), depth);
+        GLSMPrograms.glUniform4f(GLSMPrograms.glGetUniformLocation(program, "u_Color"), r, g, b, a);
         GLSMVertexInput.glBindVertexArray(vao);
         GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
         GLSMVertexInput.glBindVertexArray(0);
@@ -153,11 +185,11 @@ class TranslucencyCompositeGLTest {
     @Test
     void compositesLayersByDepthAndWritesNearestDepth() {
         layers.beginFrame(true);
-        drawInto(TranslucentLayer.TERRAIN, 0, 0.3f, 0f, 1f, 0f, 0.5f, GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-        drawInto(TranslucentLayer.PARTICLES, 0, 0.5f, 0f, 0f, 1f, 0.5f, GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-        drawInto(TranslucentLayer.TERRAIN, 1, 0.95f, 0f, 0f, 1f, 0.5f, GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        drawInto(TranslucentLayer.TERRAIN, 0, 0.3f, 0f, 1f, 0f, 0.5f);
+        drawInto(TranslucentLayer.PARTICLES, 0, 0.5f, 0f, 0f, 1f, 0.5f);
+        drawInto(TranslucentLayer.TERRAIN, 1, 0.95f, 0f, 0f, 1f, 0.5f);
         drawInto(TranslucentLayer.CLOUDS, 2, 0.5f, 0f, 0.4f, 0f, 0f, GL11.GL_ONE, GL11.GL_ONE);
-        drawInto(TranslucentLayer.TERRAIN, 3, 0.5f, 0f, 1f, 0f, 0.5f, GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        drawInto(TranslucentLayer.TERRAIN, 3, 0.5f, 0f, 1f, 0f, 0.5f);
         draw(3, 0.2f, 0f, 0f, 1f, 1f);
         layers.composite();
 
@@ -173,5 +205,26 @@ class TranslucencyCompositeGLTest {
         layers.composite();
         final ByteBuffer again = readColor();
         for (int i = 0; i < WIDTH * 4; i++) assertEquals(color.get(i), again.get(i), "a composite with no new layer draws changes nothing");
+    }
+
+    @Test
+    void terrainBehindTheBlockEntityLayerCompositesBehindIt() {
+        layers.beginFrame(true);
+        drawInto(TranslucentLayer.BLOCK_ENTITIES, 0, 0.5f, 0f, 0f, 1f, 0.5f);
+        drawInto(TranslucentLayer.BLOCK_ENTITIES, 1, 0.5f, 0f, 0f, 1f, 0.5f);
+        drawInto(TranslucentLayer.PARTICLES, 1, 0.55f, 0f, 1f, 0f, 0.5f);
+        layers.begin(TranslucentLayer.TERRAIN);
+        GLSMPrograms.glUseProgram(splitProgram);
+        layers.beginTerrainSplit(splitProgram);
+        drawTerrain(0, 0.6f, 0f, 1f, 0f, 0.5f);
+        drawTerrain(0, 0.3f, 1f, 1f, 1f, 0.5f);
+        drawTerrain(1, 0.6f, 1f, 1f, 1f, 0.5f);
+        layers.endTerrainSplit();
+        layers.end();
+        layers.composite();
+
+        final ByteBuffer color = readColor();
+        assertColumn(color, 0, 159, 159, 191);
+        assertColumn(color, 1, 64, 96, 159);
     }
 }
