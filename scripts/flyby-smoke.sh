@@ -15,6 +15,7 @@
 #   SMOKE_PITCH     - camera pitch in degrees, positive looks down (default: 15).
 #   SMOKE_WARMUP_TICKS - ticks at the first pose before the pan (default: 100).
 #   SMOKE_ARGS      - extra -D flags for the client, word-split (default: none).
+#                     World-leak check: "-Dangelica.flyby.visits=3 -Dangelica.flyby.heapCheck=true" (FAIL/SKIPPED fails the variant).
 #   SMOKE_CHECK_ARGS - extra flyby-smoke-check.py flags, word-split (default: none).
 #   SMOKE_FULLSCREEN - 0 keeps options.txt's window mode (default: 1, fullscreen for the run).
 #
