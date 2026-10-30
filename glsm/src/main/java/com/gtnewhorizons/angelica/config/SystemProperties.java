@@ -77,6 +77,8 @@ public final class SystemProperties {
     public static final Boolean FLYBY_FPS_GRAPH = parseBooleanOverride("angelica.flyby.fpsGraph");
     public static final boolean FLYBY_DEBUG_DUMP = Boolean.getBoolean("angelica.flyby.debugDump");
     public static final String FLYBY_CRASH_TEST = System.getProperty("angelica.flyby.crashTest", "");
+    public static final boolean FLYBY_HEAP_CHECK = Boolean.getBoolean("angelica.flyby.heapCheck");
+    public static final int FLYBY_VISITS = Integer.getInteger("angelica.flyby.visits", 1);
 
     // Debug
     public static final boolean LWJGL_DEBUG = Boolean.getBoolean("org.lwjgl.util.Debug");

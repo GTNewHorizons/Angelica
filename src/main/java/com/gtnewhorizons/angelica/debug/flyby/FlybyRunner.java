@@ -13,15 +13,19 @@ import com.gtnewhorizons.angelica.glsm.profiling.DebugCounters;
 import com.gtnewhorizons.angelica.rendering.FpsReducer;
 import com.gtnewhorizons.angelica.rendering.FramePacer;
 import com.gtnewhorizons.angelica.rendering.IsbrhTestRenderer;
+import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
 import com.sun.management.OperatingSystemMXBean;
 import com.sun.management.ThreadMXBean;
+import cpw.mods.fml.client.FMLClientHandler;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityClientPlayerMP;
 import net.minecraft.client.gui.GuiMainMenu;
+import net.minecraft.client.gui.GuiSelectWorld;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.ChunkCoordinates;
@@ -60,12 +64,17 @@ public final class FlybyRunner {
 
     public static final FlybyRunner INSTANCE = new FlybyRunner();
 
-    private enum State { IDLE, WAITING, PREPARING, WARMUP, RUNNING, SETTLE, EXITING, DONE }
+    private enum State { IDLE, WAITING, PREPARING, WARMUP, RUNNING, SETTLE, EXITING, MENU, DONE }
 
     private static final int EXIT_TICKS = 20;
     private static final int SETTLE_TICKS = 40;
+    private static final int MENU_SETTLE_TICKS = 20;
 
+    private final FlybyHeapCheck heapCheck = new FlybyHeapCheck();
     private State state = State.IDLE;
+    private int visit;
+    private String rejoinFolder;
+    private String rejoinName;
     private FlybyRoute route;
     private int warmupTicks;
     private int runLength;
@@ -189,6 +198,14 @@ public final class FlybyRunner {
         this.waitForFocus = SystemProperties.FLYBY_WAIT_FOR_FOCUS;
         this.exitWhenDone = SystemProperties.FLYBY_EXIT_WHEN_DONE;
         this.jfr = SystemProperties.FLYBY_JFR;
+        if (this.jfr && SystemProperties.FLYBY_VISITS > 1) {
+            LOGGER.error("Flyby: angelica.flyby.jfr records one file per run and cannot cover {} visits; exiting instead of profiling only the first", SystemProperties.FLYBY_VISITS);
+            FMLCommonHandler.instance().exitJava(1, false);
+        }
+        if (!this.exitWhenDone && (SystemProperties.FLYBY_VISITS > 1 || SystemProperties.FLYBY_HEAP_CHECK)) {
+            LOGGER.error("Flyby: angelica.flyby.visits and angelica.flyby.heapCheck leave and rejoin the world, which needs angelica.flyby.exitWhenDone=true; exiting instead of ignoring them");
+            FMLCommonHandler.instance().exitJava(1, false);
+        }
         if (!SystemProperties.FLYBY_COMMANDS.isEmpty()) {
             this.sceneCommands = FlybyScene.load(SystemProperties.FLYBY_COMMANDS);
             LOGGER.info("Flyby scene '{}': {} commands", SystemProperties.FLYBY_COMMANDS, this.sceneCommands.length);
@@ -251,7 +268,16 @@ public final class FlybyRunner {
         if (this.state == State.EXITING) {
             if (++this.tick >= EXIT_TICKS) {
                 this.state = State.DONE;
-                this.exitGame(mc);
+                this.leave(mc);
+            }
+            return;
+        }
+
+        if (this.state == State.MENU) {
+            if (++this.tick >= MENU_SETTLE_TICKS) {
+                this.state = State.DONE;
+                this.checkHeapAtMenu();
+                this.afterMenu(mc);
             }
             return;
         }
@@ -892,14 +918,51 @@ public final class FlybyRunner {
         this.state = this.exitWhenDone ? State.EXITING : State.DONE;
     }
 
-    private void exitGame(Minecraft mc) {
+    private void leave(Minecraft mc) {
         this.stopRecording(mc);
-        LOGGER.info("Flyby complete, shutting down.");
+        this.rejoinFolder = null;
+        this.rejoinName = null;
+        if (++this.visit < SystemProperties.FLYBY_VISITS) {
+            final IntegratedServer server = mc.getIntegratedServer();
+            if (server != null) {
+                this.rejoinFolder = server.getFolderName();
+                this.rejoinName = server.getWorldName();
+                LOGGER.info("Flyby: visit {} of {} done, rejoining '{}'", this.visit, SystemProperties.FLYBY_VISITS, this.rejoinFolder);
+            } else {
+                LOGGER.error("Flyby: no singleplayer world to revisit, shutting down");
+            }
+        }
+        if (this.rejoinFolder == null) LOGGER.info("Flyby complete, shutting down.");
         if (mc.theWorld != null) {
             mc.theWorld.sendQuittingDisconnectingPacket();
             mc.loadWorld(null);
+            worldChangesDiscarded = false;
             mc.displayGuiScreen(new GuiMainMenu());
         }
+        if (SystemProperties.FLYBY_HEAP_CHECK) {
+            this.state = State.MENU;
+            this.tick = 0;
+        } else {
+            this.afterMenu(mc);
+        }
+    }
+
+    private void checkHeapAtMenu() {
+        final CeleritasWorldRenderer renderer = CeleritasWorldRenderer.getInstanceOrNull();
+        if (renderer != null && renderer.isActive()) this.heapCheck.skip("renderer still loaded: no unload hook");
+        else this.heapCheck.report("after visit " + this.visit);
+    }
+
+    private void afterMenu(Minecraft mc) {
+        if (this.rejoinFolder != null) {
+            FMLClientHandler.instance().tryLoadExistingWorld(new GuiSelectWorld(new GuiMainMenu()), this.rejoinFolder, this.rejoinName);
+            if (mc.getIntegratedServer() != null) {
+                this.startFromProperties();
+                return;
+            }
+            LOGGER.error("Flyby: could not rejoin '{}', shutting down", this.rejoinFolder);
+        }
+        if (SystemProperties.FLYBY_HEAP_CHECK) this.heapCheck.finish();
         mc.shutdown();
     }
 

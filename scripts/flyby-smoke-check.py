@@ -20,7 +20,8 @@ BAD_LINE = re.compile(
     r"Debug screen entry \S+ failed and is disabled|needs the batching font renderer|"
     r"Flyby debugEntries:|Flyby: debug entry list is not available|Flyby: unknown debugProfile|"
     r"Debug screen compat entry for \S+ failed to register|"
-    r"Failed to (?:load|save|set aside the unreadable) debug screen profile|toggle listeners kept changing"
+    r"Failed to (?:load|save|set aside the unreadable) debug screen profile|toggle listeners kept changing|"
+    r"Flyby heap check: (?:FAIL|SKIPPED)"
 )
 OVERLAY_RE = re.compile(r"Flyby debug overlay shot=(\d+) mode=(\w+)(?:.* renderers=(\S*))?")
 LINE_RE = re.compile(r"Flyby debug line shot=(\d+) id=(\S+) text=(.*)")
@@ -125,7 +126,7 @@ def check(variant_dir, exit_status, new_crashes, opts=None):
         else:
             bad = [l for l in lines if BAD_LINE.search(l)]
         if bad:
-            reasons.append(str(len(bad)) + " mixin/injection/scene failure line(s)")
+            reasons.append(str(len(bad)) + " mixin/injection/scene/heap-check failure line(s)")
             details.extend(["  " + l.strip()[:200] for l in bad[:3]])
 
         offending = []
@@ -209,6 +210,7 @@ def self_test():
             ("mixin-error", GOOD_LOG + ["[10:00:05] [main/ERROR]: InvalidInjectionException: bad"], {}, 1),
             ("small-shot", GOOD_LOG, {"shot_size": 100}, 1),
             ("bad-entries", GOOD_LOG + ["[10:00:06] [Client thread/ERROR]: Flyby debugEntries: unknown entry id 'test:nope'"], {}, 1),
+            ("heap-check-fail", GOOD_LOG + ["[10:00:06] [Client thread/WARN] [Angelica/Flyby/]: Flyby heap check: FAIL WorldClient=1"], {}, 1),
         ]
         for name, log, kw, want in cases:
             d = make_variant(root, name, log, **kw)

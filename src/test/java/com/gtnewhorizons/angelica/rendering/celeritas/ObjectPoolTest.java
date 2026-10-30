@@ -59,4 +59,27 @@ class ObjectPoolTest {
         pool.acquire();
         assertEquals(4, calls.get());
     }
+
+    @Test
+    void trimKeepsRecentPeakThenHalvesExcess() {
+        final long w = ObjectPool.TRIM_WINDOW_NANOS;
+        final int floor = 4;
+        ObjectPool<Object> pool = new ObjectPool<>(Object::new, Integer.MAX_VALUE);
+
+        Object[] burst = new Object[100];
+        for (int i = 0; i < burst.length; i++) burst[i] = pool.acquire();
+        pool.trim(0, floor);
+        for (int i = 1; i < burst.length; i++) pool.release(burst[i]);
+
+        for (long t : new long[] {w / 2, w, 2 * w}) {
+            pool.trim(t, floor);
+            assertEquals(99, pool.freeCount(), "peak from the last two windows still holds at t=" + t);
+        }
+
+        int[] expected = {51, 27, 15, 9, 6, 5, 4, 4};
+        for (int i = 0; i < expected.length; i++) {
+            pool.trim((3 + i) * w, floor);
+            assertEquals(expected[i], pool.freeCount(), "window " + (3 + i));
+        }
+    }
 }

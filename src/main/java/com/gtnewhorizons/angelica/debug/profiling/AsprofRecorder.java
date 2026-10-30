@@ -121,7 +121,7 @@ public final class AsprofRecorder {
         return opts.isEmpty() ? "start,jfr,file=" + file : "start,jfr," + opts + ",file=" + file;
     }
 
-    static String fileName(String tag, String ext, long nowMillis) {
+    public static String fileName(String tag, String ext, long nowMillis) {
         final SimpleDateFormat format = new SimpleDateFormat("yyyyMMdd-HHmmss", Locale.ROOT);
         return "angelica-" + tag + "-" + format.format(new Date(nowMillis)) + "." + ext;
     }

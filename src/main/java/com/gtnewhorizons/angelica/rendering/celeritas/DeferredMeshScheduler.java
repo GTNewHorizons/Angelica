@@ -28,9 +28,12 @@ public class DeferredMeshScheduler {
     private static final long FINISH_PRIORITY = -1L;
 
     private static final Comparator<DeferredSectionMesh> NEAREST_FIRST = Comparator.comparingLong(m -> m.priority);
+    private static final int CAPTURES_PER_WORKER = 2;
+    private static final int MIN_FREE_PER_WORKER = 2;
 
     private final ChunkBuilder builder;
     private final Consumer<Runnable> mainThreadQueue;
+    private final Consumer<Runnable> mainThreadUnqueue;
     private final Queue<ChunkJobResult<? extends ChunkTaskOutput>> results;
     private final Consumer<ChunkJobResult<? extends ChunkTaskOutput>> resultSink;
     private final ObjectPool<ChunkBuildBuffers> buffers;
@@ -41,17 +44,21 @@ public class DeferredMeshScheduler {
     private final Set<DeferredSectionMesh> inFlight = ConcurrentHashMap.newKeySet();
     private final Runnable runNext = this::runNext;
     private final AtomicInteger pending = new AtomicInteger();
+    private final int minFree;
 
     private boolean destroyed;
 
-    public DeferredMeshScheduler(RenderPassConfiguration<?> config, ChunkBuilder builder, Supplier<WorldSlice> sliceFactory, Consumer<Runnable> mainThreadQueue, Queue<ChunkJobResult<? extends ChunkTaskOutput>> results) {
+    public DeferredMeshScheduler(RenderPassConfiguration<?> config, ChunkBuilder builder, Supplier<WorldSlice> sliceFactory, Consumer<Runnable> mainThreadQueue, Consumer<Runnable> mainThreadUnqueue, Queue<ChunkJobResult<? extends ChunkTaskOutput>> results) {
         this.builder = builder;
         this.mainThreadQueue = mainThreadQueue;
+        this.mainThreadUnqueue = mainThreadUnqueue;
         this.results = results;
         this.resultSink = results::add;
+        final int workers = Math.max(1, builder.getTotalThreadCount());
+        this.minFree = workers * MIN_FREE_PER_WORKER;
         this.buffers = new ObjectPool<>(() -> new ChunkBuildBuffers(config), Integer.MAX_VALUE);
         this.slices = new ObjectPool<>(sliceFactory, Integer.MAX_VALUE);
-        this.captures = new ObjectPool<>(DeferredCapture::new, Math.max(1, builder.getTotalThreadCount()) * 2);
+        this.captures = new ObjectPool<>(DeferredCapture::new, workers * CAPTURES_PER_WORKER);
     }
 
     public ChunkBuildBuffers acquireBuffers() {
@@ -93,6 +100,7 @@ public class DeferredMeshScheduler {
 
     /** Call after the builder shut down: its queued jobs were dropped without reaching their consumers. */
     public void releaseOrphans() {
+        mainThreadUnqueue.accept(runNext);
         DeferredSectionMesh m;
         while ((m = important.poll()) != null) {
             release(m);
@@ -111,6 +119,16 @@ public class DeferredMeshScheduler {
 
     public int finishingCount() {
         return inFlight.size();
+    }
+
+    public int freeSliceCount() {
+        return slices.freeCount();
+    }
+
+    public void trimPools() {
+        final long now = System.nanoTime();
+        slices.trim(now, minFree);
+        buffers.trim(now, minFree);
     }
 
     void finished(DeferredSectionMesh m, @Nullable ChunkJobResult<ChunkBuildOutput> result, @Nullable ChunkJobCollector collector) {

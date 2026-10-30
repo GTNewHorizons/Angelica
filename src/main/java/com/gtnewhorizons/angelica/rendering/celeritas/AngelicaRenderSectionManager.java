@@ -56,6 +56,7 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
     private static final long P_MESH_DEVICE_ALLOCATED = Tracy.plotHandle("mesh.deviceAllocated", TracyBackend.PLOT_FORMAT_MEMORY);
     private static final long P_MESH_DEFERRED_PENDING = Tracy.plotHandle("mesh.deferredPending");
     private static final long P_MESH_DEFERRED_FINISHING = Tracy.plotHandle("mesh.deferredFinishing");
+    private static final long P_MESH_DEFERRED_FREE_SLICES = Tracy.plotHandle("mesh.deferredFreeSlices");
 
     private static final Tracy.ZoneId Z_BIOME_REBUILDS = Tracy.zoneId("biomeRebuilds", Tracy.COLOR_TERRAIN);
     private static final Tracy.ZoneId Z_GRAPH_SEARCH = Tracy.zoneId("graphSearch", Tracy.COLOR_TERRAIN);
@@ -73,7 +74,7 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
         this.world = world;
         this.sectionCache = new ClonedChunkSectionCache(world);
         this.taskProvider = taskProvider;
-        this.deferredScheduler = new DeferredMeshScheduler(configuration, getBuilder(), () -> new WorldSlice(world), AngelicaRenderQueue::submit, ((RenderSectionManagerAccessor) this).angelica$getBuildResults());
+        this.deferredScheduler = new DeferredMeshScheduler(configuration, getBuilder(), () -> new WorldSlice(world), AngelicaRenderQueue::submit, AngelicaRenderQueue::remove, ((RenderSectionManagerAccessor) this).angelica$getBuildResults());
     }
 
     public static AngelicaRenderSectionManager create(ChunkVertexType vertexType, WorldClient world, int renderDistance, CommandList commandList) {
@@ -211,6 +212,7 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
     @Override
     public void updateChunks(boolean updateImmediately) {
         this.sectionCache.cleanup();
+        this.deferredScheduler.trimPools();
         this.flushBiomeRebuilds();
         if (Tracy.ENABLED) Tracy.beginZone(Z_GRAPH_SEARCH);
         try {
@@ -353,5 +355,6 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
         Tracy.plotInt(P_DRAW_REGION_BUFFERS, mem.bufferCount);
         Tracy.plotInt(P_MESH_DEFERRED_PENDING, this.deferredScheduler.pendingCount());
         Tracy.plotInt(P_MESH_DEFERRED_FINISHING, this.deferredScheduler.finishingCount());
+        Tracy.plotInt(P_MESH_DEFERRED_FREE_SLICES, this.deferredScheduler.freeSliceCount());
     }
 }

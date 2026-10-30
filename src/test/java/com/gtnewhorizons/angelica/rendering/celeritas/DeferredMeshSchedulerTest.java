@@ -83,7 +83,7 @@ class DeferredMeshSchedulerTest {
             scheduler = new DeferredMeshScheduler(null, builder, () -> {
                 slicesCreated.incrementAndGet();
                 return Mockito.mock(WorldSlice.class);
-            }, queue::add, results);
+            }, queue::add, r -> queue.removeIf(t -> t == r), results);
         }
 
         DeferredSectionMesh submit(boolean important, long priority) {
@@ -213,6 +213,7 @@ class DeferredMeshSchedulerTest {
         assertEquals(0, h.scheduler.pendingCount());
         assertEquals(0, h.scheduler.finishingCount());
         assertEquals(0, h.results.size());
+        assertTrue(h.queue.isEmpty(), "queued runNext keeps the destroyed scheduler and its pools reachable");
         Mockito.verify(queued.slice, Mockito.times(1)).releaseContext();
         Mockito.verify(inFlight.slice, Mockito.times(1)).releaseContext();
         assertNull(inFlight.capture);

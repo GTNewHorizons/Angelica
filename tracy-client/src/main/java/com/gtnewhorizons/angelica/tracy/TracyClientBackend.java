@@ -18,8 +18,10 @@ import org.lwjgl.system.libffi.FFICIF;
 import org.lwjgl.system.libffi.FFIType;
 import org.lwjgl.system.libffi.LibFFI;
 
+import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.lwjgl.system.MemoryStack.stackPush;
 import static org.lwjgl.system.MemoryUtil.NULL;
@@ -138,11 +140,13 @@ public final class TracyClientBackend implements TracyBackend {
     private static final class SlotArena {
         private final long base;
         private final int strideShift;
+        private final AtomicReference<WeakReference<Thread>> owner;
         private int depth;
 
-        SlotArena(int stride) {
+        SlotArena(int stride, Thread owner) {
             this.strideShift = Integer.numberOfTrailingZeros(stride);
             this.base = nmemAllocChecked((long) stride * ZoneStack.MAX_DEPTH);
+            this.owner = new AtomicReference<>(new WeakReference<>(owner));
         }
 
         long top() {
@@ -155,11 +159,23 @@ public final class TracyClientBackend implements TracyBackend {
         }
     }
 
-    private final ThreadLocal<SlotArena> slots = ThreadLocal.withInitial(() -> {
-        final SlotArena arena = new SlotArena(ctxSize);
+    private final ThreadLocal<SlotArena> slots = ThreadLocal.withInitial(this::claimArena);
+
+    /** Arenas outlive their threads (chunk workers are recreated per world), so reuse a dead thread's arena; owners are weak because a dead thread still holds its Runnable and through it the old world. */
+    private SlotArena claimArena() {
+        final Thread self = Thread.currentThread();
+        for (SlotArena arena : ARENAS) {
+            final WeakReference<Thread> ref = arena.owner.get();
+            final Thread owner = ref.get();
+            if ((owner == null || !owner.isAlive()) && arena.owner.compareAndSet(ref, new WeakReference<>(self))) {
+                arena.depth = 0;
+                return arena;
+            }
+        }
+        final SlotArena arena = new SlotArena(ctxSize, self);
         ARENAS.add(arena);
         return arena;
-    });
+    }
 
     @Override
     public long beginZone(long srcLoc) {
