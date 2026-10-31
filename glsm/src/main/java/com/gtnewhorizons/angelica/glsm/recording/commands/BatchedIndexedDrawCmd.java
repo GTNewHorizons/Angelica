@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.recording.commands;
 
 import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 
 public final class BatchedIndexedDrawCmd implements DisplayListCommand {
     private IndexedDrawBatch batch;
@@ -25,8 +26,13 @@ public final class BatchedIndexedDrawCmd implements DisplayListCommand {
     @Override
     public void execute() {
         if (batch == null) return;
-        batch.bind();
-        GLSMDraws.glDrawElements(drawMode, indexCount, indexType, indexByteOffset);
+        final int prevVAO = GLSMVertexInput.getBoundVAO();
+        try {
+            batch.bind();
+            GLSMDraws.glDrawElements(drawMode, indexCount, indexType, indexByteOffset);
+        } finally {
+            GLSMVertexInput.glBindVertexArray(prevVAO);
+        }
     }
 
     @Override

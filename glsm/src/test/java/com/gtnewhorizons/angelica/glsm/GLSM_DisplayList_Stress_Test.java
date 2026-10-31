@@ -14,6 +14,7 @@ import static com.gtnewhorizons.angelica.glsm.DisplayListTestHelper.assertModelv
 import static com.gtnewhorizons.angelica.glsm.DisplayListTestHelper.modelviewAfterCall;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -207,6 +208,25 @@ class GLSM_DisplayList_Stress_Test {
         GLSMDraws.glEndList();
 
         assertEquals(10.0f, modelviewAfterCall(list).get(12), 0.0001f, "Recompilation should translate by 10");
+    }
+
+    @Test
+    void compiledNameOutsideGeneratedRangeIsNotReissued() {
+        final int base = GLSMDraws.glGenLists(1);
+        int extra = base + 1;
+        while (GLSMDraws.glIsList(extra)) extra++;
+        testLists.add(base);
+        testLists.add(extra);
+
+        GLSMDraws.glNewList(extra, GL11.GL_COMPILE);
+        GLSMMatrices.glTranslatef(5.0f, 0.0f, 0.0f);
+        GLSMDraws.glEndList();
+        final int next = GLSMDraws.glGenLists(1);
+        testLists.add(next);
+        assertNotEquals(extra, next, "glGenLists must not reissue a name installed by glEndList");
+
+        GLSMDraws.glDeleteLists(extra, 1);
+        assertFalse(GLSMDraws.glIsList(extra), "glDeleteLists must release a reserved name");
     }
 
     @Test

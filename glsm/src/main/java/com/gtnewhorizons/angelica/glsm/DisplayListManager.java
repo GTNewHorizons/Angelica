@@ -1046,9 +1046,12 @@ public class DisplayListManager {
         }
         final boolean locked = GLStateManager.acquireDrawLock();
         try {
-            final CompiledDisplayList previous = displayListCache.put(glListId, compiled);
-            if (previous != null && previous != CompiledDisplayList.EMPTY && previous != compiled) {
-                previous.delete();
+            synchronized (GLSMDraws.displayListIdAllocator) {
+                final CompiledDisplayList previous = displayListCache.put(glListId, compiled);
+                if (previous != null && previous != CompiledDisplayList.EMPTY && previous != compiled) {
+                    previous.delete();
+                }
+                GLSMDraws.displayListIdAllocator.reserve(glListId);
             }
         } finally {
             if (locked) GLStateManager.releaseDrawLock();
