@@ -323,42 +323,42 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     }
 
     @Override
-    public void drawArrays(int mode, int first, int count) {
+    protected void issueDrawArrays(int mode, int first, int count) {
         GL11.glDrawArrays(mode, first, count);
     }
 
     @Override
-    public void drawElements(int mode, int count, int type, long indices) {
+    protected void issueDrawElements(int mode, int count, int type, long indices) {
         GL11.glDrawElements(mode, count, type, indices);
     }
 
     @Override
-    public void drawElements(int mode, ByteBuffer indices) {
+    protected void issueDrawElements(int mode, ByteBuffer indices) {
         GL11.glDrawElements(mode, indices);
     }
 
     @Override
-    public void drawElements(int mode, IntBuffer indices) {
+    protected void issueDrawElements(int mode, IntBuffer indices) {
         GL11.glDrawElements(mode, indices);
     }
 
     @Override
-    public void drawElements(int mode, ShortBuffer indices) {
+    protected void issueDrawElements(int mode, ShortBuffer indices) {
         GL11.glDrawElements(mode, indices);
     }
 
     @Override
-    public void drawElements(int mode, int count, int type, ByteBuffer indices) {
+    protected void issueDrawElements(int mode, int count, int type, ByteBuffer indices) {
         GL11.glDrawElements(mode, count, type, indices);
     }
 
     @Override
-    public void drawElementsInstanced(int mode, int count, int type, long indices, int primcount) {
+    protected void issueDrawElementsInstanced(int mode, int count, int type, long indices, int primcount) {
         GL31.glDrawElementsInstanced(mode, count, type, indices, primcount);
     }
 
     @Override
-    public void drawArraysInstanced(int mode, int first, int count, int primcount) {
+    protected void issueDrawArraysInstanced(int mode, int first, int count, int primcount) {
         GL31.glDrawArraysInstanced(mode, first, count, primcount);
     }
 
@@ -368,7 +368,7 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     }
 
     @Override
-    public void multiDrawElementsIndirect(int mode, int type, long indirect, int drawcount, int stride) {
+    protected void issueMultiDrawElementsIndirect(int mode, int type, long indirect, int drawcount, int stride) {
         GL43.glMultiDrawElementsIndirect(mode, type, indirect, drawcount, stride);
     }
 
@@ -378,12 +378,12 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     }
 
     @Override
-    public void drawElementsBaseVertex(int mode, int count, int type, long indices, int baseVertex) {
+    protected void issueDrawElementsBaseVertex(int mode, int count, int type, long indices, int baseVertex) {
         GL32.glDrawElementsBaseVertex(mode, count, type, indices, baseVertex);
     }
 
     @Override
-    public void multiDrawElementsBaseVertex(int mode, long pCount, int type, long pIndices, int drawcount, long pBaseVertex) {
+    protected void issueMultiDrawElementsBaseVertex(int mode, long pCount, int type, long pIndices, int drawcount, long pBaseVertex) {
         for (int i = 0; i < drawcount; i++) {
             GL32.glDrawElementsBaseVertex(mode, memGetInt(pCount + 4L * i), type, memGetAddress(pIndices + (long) i * POINTER_SIZE), memGetInt(pBaseVertex + 4L * i));
         }
@@ -1715,7 +1715,7 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     }
 
     @Override
-    public void multiDrawArrays(int mode, IntBuffer firsts, IntBuffer counts) {
+    protected void issueMultiDrawArrays(int mode, IntBuffer firsts, IntBuffer counts) {
         GL14.glMultiDrawArrays(mode, firsts, counts);
     }
 
