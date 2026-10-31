@@ -503,8 +503,8 @@ public final class GLSMQueries {
         return RENDER_BACKEND.genQueries();
     }
     public static void glDeleteQueries(int id) { rejectExitCapture(); RENDER_BACKEND.deleteQueries(id); }
-    public static void glBeginQuery(int target, int id) { rejectExitCapture(); RENDER_BACKEND.beginQuery(target, id); }
-    public static void glEndQuery(int target) { rejectExitCapture(); RENDER_BACKEND.endQuery(target); }
+    public static void glBeginQuery(int target, int id) { rejectExitCapture(); if (!DepthEcho.replaying()) RENDER_BACKEND.beginQuery(target, id); }
+    public static void glEndQuery(int target) { rejectExitCapture(); if (!DepthEcho.replaying()) RENDER_BACKEND.endQuery(target); }
     public static void glGetQueryObjectui(int id, int pname, IntBuffer params) { rejectExitCapture(); RENDER_BACKEND.getQueryObjectui(id, pname, params); }
     public static int glGetQueryObjecti(int id, int pname) { rejectExitCapture(); return RENDER_BACKEND.getQueryObjecti(id, pname); }
     public static void glQueryCounter(int id, int target) { rejectExitCapture(); RENDER_BACKEND.queryCounter(id, target); }

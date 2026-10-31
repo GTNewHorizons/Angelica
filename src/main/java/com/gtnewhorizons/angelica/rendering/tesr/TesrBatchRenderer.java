@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
 import com.gtnewhorizons.angelica.api.tesr.TesrShader;
 import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
+import com.gtnewhorizons.angelica.glsm.DepthEcho;
 import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
 import com.gtnewhorizons.angelica.glsm.GLSMBlend;
 import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
@@ -194,6 +195,7 @@ public final class TesrBatchRenderer {
     }
 
     public void queue(TemplateBuffer template, ResourceLocation texture, TesrMaterial material) {
+        if (DepthEcho.replaying() && cannotBlend(material)) return;
         modelView.set(GLSMMatrices.getModelViewMatrix());
         final int packedLight = currentPackedLight(material);
         final int colorABGR = resolveColor(material);
@@ -214,6 +216,13 @@ public final class TesrBatchRenderer {
         } else {
             drawImmediate(template, texture, material, packedLight, colorABGR);
         }
+    }
+
+    private static boolean cannotBlend(TesrMaterial material) {
+        if (material == TesrMaterial.CURRENT_STATE) return false;
+        final TesrMaterial.Transparency transparency = material.transparency();
+        return transparency == TesrMaterial.Transparency.OPAQUE || transparency == TesrMaterial.Transparency.GLINT || material.special().isGlint()
+            || material.isDepthEqual() || material.isDepthOnly();
     }
 
     private static Matrix4f captureTextureMatrix() {
