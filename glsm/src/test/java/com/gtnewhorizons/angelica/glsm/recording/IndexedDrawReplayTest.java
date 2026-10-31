@@ -13,6 +13,7 @@ import com.gtnewhorizons.angelica.glsm.recording.support.DisplayListTestFixture;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
+import org.lwjgl.opengl.GL30;
 
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -112,7 +113,7 @@ class IndexedDrawReplayTest extends DisplayListTestFixture {
     }
 
     @Test
-    void execute_doesNotRestoreVAO_backToBackDraws() {
+    void execute_restoresRecordedVao_backToBackDraws() {
         final int vbo = defaultQuadVbo();
         final int ebo = uploadEbo(GL11.GL_UNSIGNED_SHORT, 0, 1, 2, 3);
         final int vao = setupPosColorVao(vbo);
@@ -137,7 +138,8 @@ class IndexedDrawReplayTest extends DisplayListTestFixture {
         assertSame(batchOf(cmds.getFirst()), batchOf(cmds.get(1)));
         final int sharedVAO = vaoOf(batchOf(cmds.getFirst()));
         assertNotEquals(0, sharedVAO);
-        assertEquals(sharedVAO, GLSMVertexInput.getBoundVAO());
+        assertEquals(vao, GLSMVertexInput.getBoundVAO());
+        assertEquals(vao, GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING));
         GLSMVertexInput.glBindVertexArray(0);
     }
 

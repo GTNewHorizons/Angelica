@@ -531,6 +531,12 @@ public class GLSM_ClientArrays_GLTest {
             GLSMDraws.glNewList(list, GL11.GL_COMPILE);
             GLSMAttribStack.glPushClientAttrib(GL11.GL_CLIENT_VERTEX_ARRAY_BIT);
             GLSMAttribStack.glPopClientAttrib();
+            GLSMDraws.glBegin(GL11.GL_QUADS);
+            GLSMDraws.glVertex2f(-1f, -1f);
+            GLSMDraws.glVertex2f(1f, -1f);
+            GLSMDraws.glVertex2f(1f, 1f);
+            GLSMDraws.glVertex2f(-1f, 1f);
+            GLSMDraws.glEnd();
             GLSMDraws.glEndList();
 
             GLSMVertexInput.glBindVertexArray(other);

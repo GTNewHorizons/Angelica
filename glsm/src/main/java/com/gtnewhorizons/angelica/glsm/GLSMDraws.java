@@ -481,7 +481,7 @@ public final class GLSMDraws {
         DisplayListManager.glEndList();
     }
 
-    private static final DisplayListIDAllocator displayListIdAllocator = new DisplayListIDAllocator();
+    static final DisplayListIDAllocator displayListIdAllocator = new DisplayListIDAllocator();
 
     public static int glGenLists(int range) {
         rejectExitCapture();

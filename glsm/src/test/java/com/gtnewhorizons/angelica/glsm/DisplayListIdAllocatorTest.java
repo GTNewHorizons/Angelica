@@ -241,4 +241,28 @@ class DisplayListIdAllocatorTest {
         int base2 = alloc.allocRange(64);
         assertEquals(base1, base2, "Freed range should be reused");
     }
+
+    @Test
+    void reserveRoutesByIdWithoutDisturbingLowIds() {
+        final DisplayListIDAllocator alloc = new DisplayListIDAllocator();
+        alloc.reserve(-5);
+        alloc.reserve(0);
+        alloc.reserve(Integer.MAX_VALUE);
+        assertTrue(alloc.isAllocated(Integer.MAX_VALUE));
+        assertFalse(alloc.isAllocated(Integer.MAX_VALUE & ((1 << 22) - 1)));
+        assertEquals(1, alloc.allocRange(1));
+        alloc.free(Integer.MAX_VALUE);
+        assertFalse(alloc.isAllocated(Integer.MAX_VALUE));
+    }
+
+    @Test
+    void rangeAllocationDoesNotSpanSegments() {
+        final DisplayListIDAllocator alloc = new DisplayListIDAllocator();
+        assertEquals(32, alloc.allocRange((1 << 22) - 64));
+        assertEquals(1 << 22, alloc.allocRange(64));
+        assertFalse(alloc.isAllocated((1 << 22) - 32));
+        assertTrue(alloc.isAllocated(1 << 22));
+        alloc.freeRange((1 << 22) - 1, 2);
+        assertFalse(alloc.isAllocated(1 << 22));
+    }
 }
