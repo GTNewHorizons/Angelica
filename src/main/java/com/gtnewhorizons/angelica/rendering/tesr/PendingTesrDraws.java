@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.rendering.tesr;
 
+import com.gtnewhorizons.angelica.glsm.DepthEcho;
 import net.minecraft.tileentity.TileEntity;
 
 /**
@@ -40,7 +41,12 @@ public final class PendingTesrDraws {
         final Pending owner = pending;
         if (owner == null) return;
         pending = null;
-        owner.flush();
+        DepthEcho.beginImmediate();
+        try {
+            owner.flush();
+        } finally {
+            DepthEcho.endImmediate();
+        }
     }
 
     public interface Pending {

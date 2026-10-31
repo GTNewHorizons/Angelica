@@ -1226,7 +1226,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         }
     }
 
-    @Override public void drawArrays(int mode, int first, int count) {
+    @Override protected void issueDrawArrays(int mode, int first, int count) {
         if (count <= 0) return;
         final ContextState st = s();
         if (st.rasterizerDiscard) return;
@@ -1248,7 +1248,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         captureVertexWrites(st, first, count, 1, 0, 0, 0);
     }
 
-    @Override public void drawElements(int mode, int count, int type, long indices) {
+    @Override protected void issueDrawElements(int mode, int count, int type, long indices) {
         final ContextState st = s();
         final long rp = prepareIndexedDrawBind(st, mode, type, "drawElements");
         if (rp == 0) return;
@@ -1258,7 +1258,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         captureVertexWrites(st, 0, count, 1, type, indices, 0);
     }
 
-    @Override public void drawElementsInstanced(int mode, int count, int type, long indices, int primcount) {
+    @Override protected void issueDrawElementsInstanced(int mode, int count, int type, long indices, int primcount) {
         final ContextState st = s();
         final long rp = prepareIndexedDrawBind(st, mode, type, "drawElementsInstanced");
         if (rp == 0) return;
@@ -1270,7 +1270,7 @@ public class SDLGPURenderBackend extends RenderBackend {
     }
 
 
-    @Override public void drawElementsBaseVertex(int mode, int count, int type, long indices, int baseVertex) {
+    @Override protected void issueDrawElementsBaseVertex(int mode, int count, int type, long indices, int baseVertex) {
         final ContextState st = s();
         final long rp = prepareIndexedDrawBind(st, mode, type, "drawElementsBaseVertex");
         if (rp == 0) return;
@@ -1295,7 +1295,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         return rp;
     }
 
-    @Override public void multiDrawElementsBaseVertex(int mode, long pCount, int type, long pIndices, int drawcount, long pBaseVertex) {
+    @Override protected void issueMultiDrawElementsBaseVertex(int mode, long pCount, int type, long pIndices, int drawcount, long pBaseVertex) {
         if (drawcount <= 0) return;
         final ContextState st = s();
         final long rp = prepareIndexedDrawBind(st, mode, type, "multiDrawElementsBaseVertex");
@@ -1315,7 +1315,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         }
     }
 
-    @Override public void multiDrawElementsIndirect(int mode, int type, long indirect, int drawcount, int stride) {
+    @Override protected void issueMultiDrawElementsIndirect(int mode, int type, long indirect, int drawcount, int stride) {
         final ContextState cs = s();
         if (drawcount <= 0) return;
         Tracy.beginZone(Z_SDL_INDIRECT_DRAW);
@@ -4641,7 +4641,7 @@ public class SDLGPURenderBackend extends RenderBackend {
     }
 
     @Override
-    public void drawArraysInstanced(int mode, int first, int count, int primcount) {
+    protected void issueDrawArraysInstanced(int mode, int first, int count, int primcount) {
         if (count <= 0 || primcount <= 0) return;
         final ContextState st = s();
         if (st.rasterizerDiscard) return;
@@ -4659,11 +4659,11 @@ public class SDLGPURenderBackend extends RenderBackend {
     }
 
     @Override
-    public void multiDrawArrays(int mode, IntBuffer firsts, IntBuffer counts) {
+    protected void issueMultiDrawArrays(int mode, IntBuffer firsts, IntBuffer counts) {
         if (firsts == null || counts == null) return;
         final int n = Math.min(firsts.remaining(), counts.remaining());
         for (int i = 0; i < n; i++) {
-            drawArrays(mode, firsts.get(firsts.position() + i), counts.get(counts.position() + i));
+            issueDrawArrays(mode, firsts.get(firsts.position() + i), counts.get(counts.position() + i));
         }
     }
 
