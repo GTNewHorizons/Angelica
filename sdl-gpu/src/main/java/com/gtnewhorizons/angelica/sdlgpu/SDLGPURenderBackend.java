@@ -18,6 +18,7 @@ import me.eigenraven.lwjgl3ify.client.MainThreadExec;
 import org.lwjglx.Lwjgl3ifyEventLoop;
 import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
+import com.gtnewhorizons.angelica.glsm.backend.ScreenCapture;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import com.gtnewhorizons.angelica.glsm.texture.TextureStaging;
@@ -42,6 +43,7 @@ import com.gtnewhorizons.angelica.sdlgpu.pipeline.PipelineStore;
 import com.gtnewhorizons.angelica.sdlgpu.pipeline.VertexAttribs;
 import com.gtnewhorizons.angelica.sdlgpu.resource.BufferParams;
 import com.gtnewhorizons.angelica.sdlgpu.resource.ByteRegionCopy;
+import com.gtnewhorizons.angelica.sdlgpu.resource.ColorSource;
 import com.gtnewhorizons.angelica.sdlgpu.resource.CopyRectClip;
 import com.gtnewhorizons.angelica.sdlgpu.resource.FBOClearTracker;
 import com.gtnewhorizons.angelica.sdlgpu.resource.FboState;
@@ -168,7 +170,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         new VoxelizationDispatcher(computeBinder);
     private final VertexAttribs vertexAttribs = new VertexAttribs();
     private final TextureOps textureOps = new TextureOps(device, frameManager, resourceManager, fboClearTracker);
-    private final ReadbackShadows readbackShadows = new ReadbackShadows(device);
+    private final ReadbackShadows readbackShadows = new ReadbackShadows(device, resourceManager, fenceTracker);
     private final PersistentBufferSync persistentSync = new PersistentBufferSync(frameManager, resourceManager,
         new PersistentBufferSync.UploadSink() {
             @Override public void enqueue(TransferThread.DeferredUpload upload) { enqueueUpload(upload); }
@@ -1378,8 +1380,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         }
         resourceManager.dropArrayShadow(dstGlId);
         resourceManager.dropEboShadow(dstGlId);
-        resourceManager.markBufferContentsDefined(dstGlId);
-        readbackShadows.invalidate(dstGlId, writeOffset);
+        onBufferContentsWritten(dstGlId);
 
         final ByteBuffer dstUboShadow = resourceManager.getUboShadow(dstGlId);
         if (dstUboShadow != null) {
@@ -1460,9 +1461,8 @@ public class SDLGPURenderBackend extends RenderBackend {
         }
         final long cp = frameManager.ensureCopyPass();
         if (cp == 0) return;
-        if (resourceManager.getBufferGlUsage(dstGlId) == GL15.GL_STREAM_READ
-                && readbackShadows.scheduleDownload(cp, srcHandle, readOffset, dstGlId, writeOffset, size)) {
-            return;
+        if (resourceManager.getBufferGlUsage(dstGlId) == GL15.GL_STREAM_READ && !isBoundAsSsbo(s(), dstGlId)) {
+            readbackShadows.scheduleDownload(cp, srcHandle, readOffset, dstGlId, writeOffset, size);
         }
         try (var stack = MemoryStack.stackPush()) {
             final SDL_GPUBufferLocation src = SDL_GPUBufferLocation.calloc(stack).buffer(srcHandle).offset((int) readOffset);
@@ -2195,6 +2195,32 @@ public class SDLGPURenderBackend extends RenderBackend {
         if (capacity < needed) throw new IllegalArgumentException("readback of " + width + "x" + height + " format 0x" + Integer.toHexString(format) + " type 0x" + Integer.toHexString(type) + " needs " + needed + " bytes, destination has " + capacity);
     }
 
+    @Override public ScreenCapture createScreenCapture(int width, int height) {
+        return new SDLScreenCapture(this, device, frameManager, resourceManager, textureOps, width, height);
+    }
+
+    ColorSource colorSourceForRead(int fboId) {
+        final FboState fbo = fboId != 0 ? resourceManager.getFbo(fboId) : null;
+        if (fbo == null) return null;
+        final ContextState cs = s();
+        final ColorSource source = resolveColorAttachment(fbo, cs.readColor);
+        if (source.texture == 0L || source.width <= 0 || source.height <= 0) return null;
+        fboClearTracker.materializePendingClearForRead(cs, frameManager.frame(), source.texture);
+        return source;
+    }
+
+    private ColorSource resolveColorAttachment(FboState fbo, ColorSource out) {
+        final int colorGlId = fbo.colorGlIds[fbo.readBufferIndex];
+        final ResourceManager.TextureMeta meta = resourceManager.getTextureMeta(colorGlId);
+        out.texture = resourceManager.getTextureHandle(colorGlId);
+        out.level = fbo.colorLevels[fbo.readBufferIndex];
+        out.sdlFormat = meta != null ? meta.sdlFormat() : SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
+        out.glBaseFormat = meta != null ? PixelPack.glBaseFormat(meta.glFormat()) : GL11.GL_RGBA;
+        out.width = meta != null ? PixelOps.mipLevelSize(meta.width(), out.level) : fbo.width;
+        out.height = meta != null ? PixelOps.mipLevelSize(meta.height(), out.level) : fbo.height;
+        return out;
+    }
+
     private void readPixelsInto(int x, int y, int width, int height, int format, int type, long dst, long capacity, int pbo, long pboOffset) {
         PixelPack.validate(format, type);
         if (width <= 0 || height <= 0) return;
@@ -2224,14 +2250,13 @@ public class SDLGPURenderBackend extends RenderBackend {
             final FboState fbo = resourceManager.getFbo(cs.boundReadFboId);
             if (fbo == null) return;
             if (kind == READBACK_COLOR) {
-                final int colorGlId = fbo.colorGlIds[fbo.readBufferIndex];
-                final ResourceManager.TextureMeta meta = resourceManager.getTextureMeta(colorGlId);
-                colorTex = resourceManager.getTextureHandle(colorGlId);
-                colorFormat = meta != null ? meta.sdlFormat() : SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
-                if (meta != null) colorBase = PixelPack.glBaseFormat(meta.glFormat());
-                srcLevel = fbo.colorLevels[fbo.readBufferIndex];
-                srcWidth = meta != null ? PixelOps.mipLevelSize(meta.width(), srcLevel) : fbo.width;
-                srcHeight = meta != null ? PixelOps.mipLevelSize(meta.height(), srcLevel) : fbo.height;
+                final ColorSource source = resolveColorAttachment(fbo, cs.readColor);
+                colorTex = source.texture;
+                colorFormat = source.sdlFormat;
+                colorBase = source.glBaseFormat;
+                srcLevel = source.level;
+                srcWidth = source.width;
+                srcHeight = source.height;
             } else {
                 if (fbo.depthLevel != 0) throw new UnsupportedOperationException("glReadPixels of a depth/stencil attachment at level " + fbo.depthLevel + " is not supported on SDL-GPU");
                 depthTex = fbo.depthTexture;
@@ -2348,7 +2373,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         } finally {
             region.clear();
         }
-        resourceManager.markBufferContentsDefined(pbo);
+        onBufferContentsWritten(pbo);
         flushAndSubmitMidFrame();
     }
 
@@ -2955,7 +2980,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             case GL31.GL_COPY_WRITE_BUFFER -> st.boundCopyWriteBuffer = buffer;
             case GL43.GL_SHADER_STORAGE_BUFFER -> {
                 st.boundSSBO = buffer;
-                resourceManager.markBufferContentsDefined(buffer);
+                onBufferContentsWritten(buffer);
             }
         }
     }
@@ -3044,8 +3069,8 @@ public class SDLGPURenderBackend extends RenderBackend {
 
     private void respecifyStore(ContextState cs, int target, int glId, long size, int usage) {
         freePlainMappingFor(glId, true);
-        resourceManager.recordBufferGlParams(glId, usage, BufferParams.MUTABLE_STORE);
         if (target == GL31.GL_UNIFORM_BUFFER) {
+            resourceManager.recordBufferGlParams(glId, usage, BufferParams.MUTABLE_STORE);
             if (resourceManager.getBufferSize(glId) == size) return;
             if (size > 0) {
                 resourceManager.recordBufferSizeOnly(glId, size);
@@ -3060,6 +3085,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         readbackShadows.release(glId);
         resourceManager.deleteBuffer(glId);
         resourceManager.createBuffer(glId, sdlUsage, size);
+        resourceManager.recordBufferGlParams(glId, usage, BufferParams.MUTABLE_STORE);
         if (target == GL15.GL_ARRAY_BUFFER) cs.bumpAttribStateGen();
     }
 
@@ -3099,8 +3125,8 @@ public class SDLGPURenderBackend extends RenderBackend {
     private void respecifyStore(ContextState cs, int target, int glId, ByteBuffer data, int usage) {
         final long dataSize = data.remaining();
         freePlainMappingFor(glId, true);
-        resourceManager.recordBufferGlParams(glId, usage, BufferParams.MUTABLE_STORE);
         if (target == GL31.GL_UNIFORM_BUFFER) {
+            resourceManager.recordBufferGlParams(glId, usage, BufferParams.MUTABLE_STORE);
             if (dataSize > 0) {
                 resourceManager.recordBufferSizeOnly(glId, dataSize);
                 final ByteBuffer shadow = resourceManager.getOrAllocUboShadow(glId, (int) dataSize);
@@ -3116,6 +3142,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         readbackShadows.release(glId);
         resourceManager.deleteBuffer(glId);
         final long handle = resourceManager.createBuffer(glId, sdlUsage, dataSize);
+        resourceManager.recordBufferGlParams(glId, usage, BufferParams.MUTABLE_STORE);
         if (target == GL15.GL_ARRAY_BUFFER) cs.bumpAttribStateGen();
         if (target == GL15.GL_ELEMENT_ARRAY_BUFFER && dataSize > 0
                 && (cs.primitiveRestartEnabled || resourceManager.hasEboShadow(glId))) {
@@ -3130,7 +3157,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             } else if (frameManager.getCommandBuffer() != 0) {
                 resourceManager.uploadToBuffer(frameManager.ensureCopyPass(), data, handle, 0, false);
             }
-            resourceManager.markBufferContentsDefined(glId);
+            onBufferContentsWritten(glId);
         }
     }
 
@@ -3220,7 +3247,7 @@ public class SDLGPURenderBackend extends RenderBackend {
                     FrameManager.warnDroppedOutsideFrame(droppedSsboWriteWarned, "bufferSubData(GL_SHADER_STORAGE_BUFFER)");
                     droppedSsboWriteWarned = true;
                 }
-                resourceManager.markBufferContentsDefined(glId);
+                onBufferContentsWritten(glId);
                 return;
             }
             final boolean cycle = target == GL40.GL_DRAW_INDIRECT_BUFFER;
@@ -3229,7 +3256,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             } else if (frameManager.getCommandBuffer() != 0) {
                 resourceManager.uploadToBuffer(frameManager.ensureCopyPass(), data, handle, offset, cycle);
             }
-            resourceManager.markBufferContentsDefined(glId);
+            onBufferContentsWritten(glId);
         }
     }
 
@@ -3294,7 +3321,7 @@ public class SDLGPURenderBackend extends RenderBackend {
                 } else if (frameManager.getCommandBuffer() != 0) {
                     resourceManager.uploadToBuffer(frameManager.ensureCopyPass(), staging, gpuHandle, m.offset, false);
                 }
-                resourceManager.markBufferContentsDefined(glId);
+                onBufferContentsWritten(glId);
             }
             final ByteBuffer old = resourceManager.putPboStaging(glId, staging);
             if (old != null) MemoryUtil.memFree(old);
@@ -3308,7 +3335,7 @@ public class SDLGPURenderBackend extends RenderBackend {
                 shadow.position((int) m.offset).limit((int) (m.offset + m.length));
                 shadow.put(staging);
                 shadow.position(0).limit(shadow.capacity());
-                resourceManager.markBufferContentsDefined(glId);
+                onBufferContentsWritten(glId);
                 cs.uboRangeGen++;
             }
             MemoryUtil.memFree(staging);
@@ -3353,7 +3380,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             } else if (frameManager.getCommandBuffer() != 0) {
                 resourceManager.uploadToBuffer(frameManager.ensureCopyPass(), staging, gpuHandle, m.offset, false);
             }
-            resourceManager.markBufferContentsDefined(glId);
+            onBufferContentsWritten(glId);
         }
 
         MemoryUtil.memFree(staging);
@@ -3406,6 +3433,10 @@ public class SDLGPURenderBackend extends RenderBackend {
 
         if (handle == 0 || resourceManager.hasUndefinedContents(glId)) {
             MemoryUtil.memSet(staging, 0);
+            return;
+        }
+        if (readbackShadows.serve(glId, offset, staging, len)) {
+            staging.position(0).limit(len);
             return;
         }
 
@@ -3522,6 +3553,20 @@ public class SDLGPURenderBackend extends RenderBackend {
         if (readBufferRangeCpuFirst(target, glId, handle, offset, data, rem)) return;
 
         downloadBufferBlocking(handle, (int) offset, rem, data);
+    }
+
+    private void onBufferContentsWritten(int glId) {
+        resourceManager.markBufferContentsDefined(glId);
+        readbackShadows.invalidateAll(glId);
+    }
+
+    // An SSBO-bound buffer can be written by any later GPU pass, so it is never shadowed.
+    private static boolean isBoundAsSsbo(ContextState st, int glId) {
+        if (st.boundSSBO == glId) return true;
+        for (int i = 0; i < ContextState.MAX_INDEXED_BUFFERS; i++) {
+            if (st.boundSsboByIndex[i] == glId) return true;
+        }
+        return false;
     }
 
     private boolean readUboStore(int glId, long offset, ByteBuffer dst, int len) {
@@ -4042,6 +4087,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         if (refuseImmutable(buffer, "glNamedBufferData on immutable storage")) return;
         final int sdlUsage = FormatMap.mapBufferUsage(GL15.GL_ARRAY_BUFFER);
         freePlainMappingFor(buffer, true);
+        readbackShadows.release(buffer);
         resourceManager.deleteBuffer(buffer);
         resourceManager.createBuffer(buffer, sdlUsage, size);
         resourceManager.recordBufferGlParams(buffer, usage, BufferParams.MUTABLE_STORE);
@@ -4051,12 +4097,13 @@ public class SDLGPURenderBackend extends RenderBackend {
         if (refuseImmutable(buffer, "glNamedBufferData on immutable storage")) return;
         final int sdlUsage = FormatMap.mapBufferUsage(GL15.GL_ARRAY_BUFFER);
         freePlainMappingFor(buffer, true);
+        readbackShadows.release(buffer);
         resourceManager.deleteBuffer(buffer);
         final long handle = resourceManager.createBuffer(buffer, sdlUsage, data.remaining());
         resourceManager.recordBufferGlParams(buffer, usage, BufferParams.MUTABLE_STORE);
         if (handle != 0 && frameManager.getCommandBuffer() != 0) {
             resourceManager.uploadToBuffer(frameManager.ensureCopyPass(), data, handle, 0, false);
-            resourceManager.markBufferContentsDefined(buffer);
+            onBufferContentsWritten(buffer);
         }
     }
     @Override public void namedBufferData(int buffer, FloatBuffer data, int usage) {
@@ -4067,7 +4114,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         final long handle = resourceManager.getBufferHandle(buffer);
         if (handle != 0 && frameManager.getCommandBuffer() != 0) {
             resourceManager.uploadToBuffer(frameManager.ensureCopyPass(), data, handle, offset, false);
-            resourceManager.markBufferContentsDefined(buffer);
+            onBufferContentsWritten(buffer);
         }
     }
     @Override public void copyTextureSubImage2D(int texture, int target, int level, int xoffset, int yoffset, int x, int y, int width, int height) {
@@ -4331,7 +4378,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         final int chunkBytes = (int) Math.min(size, defer ? CLEAR_CHUNK_BYTES : FILL_CHUNK_BYTES);
         final int alignedChunk = (chunkBytes / elemBytes) * elemBytes;
         if (alignedChunk == 0) return;
-        resourceManager.markBufferContentsDefined(glId);
+        onBufferContentsWritten(glId);
         final boolean zero = data == null || isAllZero(data, elemBytes);
         final ByteBuffer chunk = zero ? MemoryUtil.memCalloc(alignedChunk) : MemoryUtil.memAlloc(alignedChunk);
         try {

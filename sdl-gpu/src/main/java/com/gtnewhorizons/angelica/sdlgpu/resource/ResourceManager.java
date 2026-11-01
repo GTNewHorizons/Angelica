@@ -1572,9 +1572,13 @@ public final class ResourceManager {
     }
 
     public long createTransferBuffer(long size) {
+        return createTransferBuffer(size, SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD);
+    }
+
+    public long createTransferBuffer(long size, int usage) {
         try (var stack = stackPush()) {
             final SDL_GPUTransferBufferCreateInfo ci = SDL_GPUTransferBufferCreateInfo.calloc(stack)
-                .usage(SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD)
+                .usage(usage)
                 .size((int) size);
 
             final long handle = SDL_CreateGPUTransferBuffer(device.getDevice(), ci);
@@ -2067,23 +2071,42 @@ public final class ResourceManager {
     public void downloadFromTexture(long commandBuffer, long gpuTexture, int x, int y, int z, int w, int h, int d, int level, ByteBuffer output) {
         final int size = output.remaining();
 
+        final long xfer = createTransferBuffer(size, SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD);
+        if (xfer == 0) return;
+
+        final long copyPass = SDL_BeginGPUCopyPass(commandBuffer);
+        if (copyPass == 0) {
+            LOG.error("Failed to begin copy pass for texture download: {}", SDLError.SDL_GetError());
+            releaseTransferBuffer(xfer);
+            return;
+        }
+
+        recordTextureDownload(copyPass, gpuTexture, level, x, y, z, w, h, d, xfer);
+        SDL_EndGPUCopyPass(copyPass);
+
+        final long fence = Submits.submitAndAcquireFence(commandBuffer);
+        if (fence == 0) {
+            LOG.error("Failed to submit download command buffer: {}", SDLError.SDL_GetError());
+            releaseTransferBuffer(xfer);
+            return;
+        }
+        try {
+            FenceWait.await(device, fence, FenceWait.FOREVER);
+        } finally {
+            device.fenceReleaser().release(fence);
+        }
+
+        final long mappedPtr = nSDL_MapGPUTransferBuffer(device.getDevice(), xfer, false);
+        if (mappedPtr != 0) {
+            final ByteBuffer mapped = MemoryUtil.memByteBuffer(mappedPtr, size);
+            output.put(mapped);
+        }
+        SDL_UnmapGPUTransferBuffer(device.getDevice(), xfer);
+        releaseTransferBuffer(xfer);
+    }
+
+    public void recordTextureDownload(long copyPass, long gpuTexture, int level, int x, int y, int z, int w, int h, int d, long xfer) {
         try (var stack = stackPush()) {
-            final SDL_GPUTransferBufferCreateInfo xferCi = SDL_GPUTransferBufferCreateInfo.calloc(stack)
-                .usage(SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD)
-                .size(size);
-            final long xfer = SDL_CreateGPUTransferBuffer(device.getDevice(), xferCi);
-            if (xfer == 0) {
-                LOG.error("Failed to create download transfer buffer: {}", SDLError.SDL_GetError());
-                return;
-            }
-
-            final long copyPass = SDL_BeginGPUCopyPass(commandBuffer);
-            if (copyPass == 0) {
-                LOG.error("Failed to begin copy pass for texture download: {}", SDLError.SDL_GetError());
-                SDL_ReleaseGPUTransferBuffer(device.getDevice(), xfer);
-                return;
-            }
-
             final SDL_GPUTextureRegion src = SDL_GPUTextureRegion.calloc(stack)
                 .texture(gpuTexture)
                 .mip_level(level)
@@ -2095,45 +2118,18 @@ public final class ResourceManager {
                 .offset(0);
 
             SDL_DownloadFromGPUTexture(copyPass, src, dst);
-            SDL_EndGPUCopyPass(copyPass);
-
-            final long fence = Submits.submitAndAcquireFence(commandBuffer);
-            if (fence == 0) {
-                LOG.error("Failed to submit download command buffer: {}", SDLError.SDL_GetError());
-                SDL_ReleaseGPUTransferBuffer(device.getDevice(), xfer);
-                return;
-            }
-            try {
-                FenceWait.await(device, fence, FenceWait.FOREVER);
-            } finally {
-                device.fenceReleaser().release(fence);
-            }
-
-            final long mappedPtr = nSDL_MapGPUTransferBuffer(device.getDevice(), xfer, false);
-            if (mappedPtr != 0) {
-                final ByteBuffer mapped = MemoryUtil.memByteBuffer(mappedPtr, size);
-                output.put(mapped);
-            }
-            SDL_UnmapGPUTransferBuffer(device.getDevice(), xfer);
-            SDL_ReleaseGPUTransferBuffer(device.getDevice(), xfer);
         }
     }
 
     public void downloadFromBuffer(long commandBuffer, long gpuBuffer, int offset, int size, ByteBuffer output) {
         try (var stack = stackPush()) {
-            final SDL_GPUTransferBufferCreateInfo xferCi = SDL_GPUTransferBufferCreateInfo.calloc(stack)
-                .usage(SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD)
-                .size(size);
-            final long xfer = SDL_CreateGPUTransferBuffer(device.getDevice(), xferCi);
-            if (xfer == 0) {
-                LOG.error("Failed to create download transfer buffer for buffer readback: {}", SDLError.SDL_GetError());
-                return;
-            }
+            final long xfer = createTransferBuffer(size, SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD);
+            if (xfer == 0) return;
 
             final long copyPass = SDL_BeginGPUCopyPass(commandBuffer);
             if (copyPass == 0) {
                 LOG.error("Failed to begin copy pass for buffer download: {}", SDLError.SDL_GetError());
-                SDL_ReleaseGPUTransferBuffer(device.getDevice(), xfer);
+                releaseTransferBuffer(xfer);
                 return;
             }
 
@@ -2152,7 +2148,7 @@ public final class ResourceManager {
             final long fence = Submits.submitAndAcquireFence(commandBuffer);
             if (fence == 0) {
                 LOG.error("Failed to submit buffer download command buffer: {}", SDLError.SDL_GetError());
-                SDL_ReleaseGPUTransferBuffer(device.getDevice(), xfer);
+                releaseTransferBuffer(xfer);
                 return;
             }
             try {
@@ -2167,7 +2163,7 @@ public final class ResourceManager {
                 output.put(mapped);
             }
             SDL_UnmapGPUTransferBuffer(device.getDevice(), xfer);
-            SDL_ReleaseGPUTransferBuffer(device.getDevice(), xfer);
+            releaseTransferBuffer(xfer);
         }
     }
     private long defaultSampler;

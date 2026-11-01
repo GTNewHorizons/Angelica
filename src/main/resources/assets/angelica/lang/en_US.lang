@@ -381,6 +381,12 @@ options.angelica.tracy.captureAction.tooltip=Starts or stops a Tracy capture. Sa
 options.angelica.tracy.captureAction.start=Start capture
 options.angelica.tracy.captureAction.stop=Stop capture
 options.angelica.tracy.captureAction.saving=Saving...
+options.angelica.tracy.frameImages=Frame Images
+options.angelica.tracy.frameImages.tooltip=Attach small screenshots to Tracy frames for playback in Tracy Profiler. Only captured while a profiler is connected.
+options.angelica.tracy.frameImageRate=Frame Image Rate
+options.angelica.tracy.frameImageRate.tooltip=Frame images captured per second while connected.
+options.angelica.tracy.frameImageRate.value=%s/s
+options.angelica.tracy.frameImageRate.everyFrame=Every frame
 
 pack.iris.select.title=Select
 pack.iris.configure.title=Configure

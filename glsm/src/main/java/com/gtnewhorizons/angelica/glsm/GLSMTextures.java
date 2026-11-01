@@ -1211,6 +1211,14 @@ public final class GLSMTextures {
     public static void restorePixelUnpackState(PixelStoreState applied) {
         PixelStoreState.applyDiff(applied, ctx().pixelUnpackState, false);
     }
+
+    public static void forcePixelPackState(PixelStoreState target) {
+        PixelStoreState.applyDiff(ctx().pixelPackState, target, true);
+    }
+
+    public static void restorePixelPackState(PixelStoreState applied) {
+        PixelStoreState.applyDiff(applied, ctx().pixelPackState, true);
+    }
     public static boolean glIsTexture(int texture) { rejectExitCapture(); return !GLSMTextureLifetime.isDeferredDelete(texture) && RENDER_BACKEND.isTexture(texture); }
     public static boolean glIsSampler(int sampler) { rejectExitCapture(); return RENDER_BACKEND.isSampler(sampler); }
 

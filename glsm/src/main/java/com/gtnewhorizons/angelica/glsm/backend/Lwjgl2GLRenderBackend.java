@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.backend;
 
+import com.gtnewhorizons.angelica.glsm.GLScreenCapture;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import org.lwjgl.BufferUtils;
@@ -657,6 +658,11 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     @Override
     public void readBuffer(int mode) {
         GL11.glReadBuffer(mode);
+    }
+
+    @Override
+    public ScreenCapture createScreenCapture(int width, int height) {
+        return new GLScreenCapture(width, height);
     }
 
     @Override

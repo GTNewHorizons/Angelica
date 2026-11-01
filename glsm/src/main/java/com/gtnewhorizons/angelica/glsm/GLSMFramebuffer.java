@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizons.angelica.glsm.DisplayListManager.RecordMode;
+import com.gtnewhorizons.angelica.glsm.backend.ScreenCapture;
 import com.gtnewhorizons.angelica.glsm.stacks.IntegerStateStack;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
@@ -324,6 +325,11 @@ public final class GLSMFramebuffer {
     public static void glReadPixels(int x, int y, int width, int height, int format, int type, long pixels) {
         rejectExitCapture();
         RENDER_BACKEND.readPixels(x, y, width, height, format, GLSMTextures.remapPixelTypeForGLES(format, type), pixels);
+    }
+
+    public static ScreenCapture createScreenCapture(int width, int height) {
+        rejectExitCapture();
+        return RENDER_BACKEND.createScreenCapture(width, height);
     }
 
     public static int getDrawFramebufferGeneration() {

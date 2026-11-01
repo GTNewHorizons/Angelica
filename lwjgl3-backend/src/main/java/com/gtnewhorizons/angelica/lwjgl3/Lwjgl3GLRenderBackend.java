@@ -6,7 +6,9 @@ import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.backend.DebugMessageHandler;
 import com.gtnewhorizons.angelica.glsm.backend.MainThreadPump;
 import com.gtnewhorizons.retrofuturabootstrap.MainStartOnFirstThread;
+import com.gtnewhorizons.angelica.glsm.GLScreenCapture;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
+import com.gtnewhorizons.angelica.glsm.backend.ScreenCapture;
 import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import me.eigenraven.lwjgl3ify.client.MainThreadExec;
@@ -790,6 +792,11 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     @Override
     public void readBuffer(int mode) {
         GL11C.glReadBuffer(mode);
+    }
+
+    @Override
+    public ScreenCapture createScreenCapture(int width, int height) {
+        return new GLScreenCapture(width, height);
     }
 
     @Override

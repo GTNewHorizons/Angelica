@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -20,6 +21,35 @@ public final class GlTestSupport {
 
     public static void drainErrors() {
         while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
+    }
+
+    public static void fillQuadrants(int width, int height) {
+        GLSMRasterizer.glViewport(0, 0, width, height);
+        GLSMEnable.glEnable(GL11.GL_SCISSOR_TEST);
+        clearRect(0, 0, width / 2, height / 2, 1f, 0f, 0f);
+        clearRect(width / 2, 0, width / 2, height / 2, 0f, 1f, 0f);
+        clearRect(0, height / 2, width / 2, height / 2, 0f, 0f, 1f);
+        clearRect(width / 2, height / 2, width / 2, height / 2, 1f, 1f, 1f);
+        GLSMEnable.glDisable(GL11.GL_SCISSOR_TEST);
+    }
+
+    public static void assertQuadrantsBottomUp(long rgba, int width, int height) {
+        assertRgba(rgba, width, width / 4, height / 4, 0xFF0000FF, "bottom-left");
+        assertRgba(rgba, width, width * 3 / 4, height / 4, 0x00FF00FF, "bottom-right");
+        assertRgba(rgba, width, width / 4, height * 3 / 4, 0x0000FFFF, "top-left");
+        assertRgba(rgba, width, width * 3 / 4, height * 3 / 4, 0xFFFFFFFF, "top-right");
+    }
+
+    private static void clearRect(int x, int y, int width, int height, float r, float g, float b) {
+        GLSMRasterizer.glScissor(x, y, width, height);
+        GLSMBlend.glClearColor(r, g, b, 1f);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
+    }
+
+    private static void assertRgba(long rgba, int width, int x, int y, int expected, String where) {
+        final long at = rgba + ((long) y * width + x) * 4;
+        final int actual = (MemoryUtilities.memGetByte(at) & 0xFF) << 24 | (MemoryUtilities.memGetByte(at + 1) & 0xFF) << 16 | (MemoryUtilities.memGetByte(at + 2) & 0xFF) << 8 | (MemoryUtilities.memGetByte(at + 3) & 0xFF);
+        assertEquals(Integer.toHexString(expected), Integer.toHexString(actual), where + " quadrant at row " + y + " (rows bottom-up)");
     }
 
     public static int compile(int type, String source) {

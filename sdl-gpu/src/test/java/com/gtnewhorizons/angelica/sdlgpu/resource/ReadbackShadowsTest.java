@@ -1,12 +1,10 @@
 package com.gtnewhorizons.angelica.sdlgpu.resource;
 
-import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.sdlgpu.SdlAsserts;
 import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -19,7 +17,7 @@ class ReadbackShadowsTest {
     private static final int SLOT_STRIDE = 64;
 
     private static ReadbackShadows shadows() {
-        return new ReadbackShadows(null);
+        return new ReadbackShadows(null, null, null);
     }
 
     private static ByteBuffer out(int bytes) {
@@ -36,15 +34,24 @@ class ReadbackShadowsTest {
     }
 
     @Test
-    void invalidateTouchesOnlyItsOwnSlot() {
+    void invalidateAllTouchesOnlyItsBuffer() {
         final ReadbackShadows shadows = shadows();
         SdlReflect.putReadbackSlot(shadows, 7, 0, SENTINEL_HANDLE, 64, true);
         SdlReflect.putReadbackSlot(shadows, 7, 64, SENTINEL_HANDLE, 64, true);
+        SdlReflect.putReadbackSlot(shadows, 8, 0, SENTINEL_HANDLE, 64, true);
 
-        shadows.invalidate(7, 0);
+        shadows.invalidateAll(7);
 
-        assertFalse(shadows.serve(7, 0, out(64), 64), "the invalidated slot is still being served");
-        assertTrue(SdlReflect.readbackSlotValid(shadows, 7, 64), "invalidating one ring slot must not disturb the others");
+        assertFalse(shadows.serve(7, 0, out(64), 64), "an invalidated slot is still being served");
+        assertFalse(SdlReflect.readbackSlotValid(shadows, 7, 64), "every slot of the written buffer must be invalidated");
+        assertTrue(SdlReflect.readbackSlotValid(shadows, 8, 0), "a write to one buffer must not invalidate another's slots");
+    }
+
+    @Test
+    void invalidateAllOfAnUnshadowedBufferDoesNotAllocate() {
+        final ReadbackShadows shadows = shadows();
+        SdlReflect.putReadbackSlot(shadows, 8, 0, SENTINEL_HANDLE, 64, true);
+        SdlAsserts.assertAllocationFree(() -> shadows.invalidateAll(7), "buffer writes while another buffer is shadowed");
     }
 
     @Test
@@ -58,10 +65,6 @@ class ReadbackShadowsTest {
 
         assertFalse(shadows.hasSlotsFor(7), "deleting a buffer must drop all of its ring slots");
         assertTrue(shadows.hasSlotsFor(8), "deleting one buffer must not drop another's slots");
-    }
-
-    private static int slotCount(ReadbackShadows shadows) {
-        return Reflect.<Map<Long, Object>>get(shadows, "slots").size();
     }
 
     private static ReadbackShadows ringShadows(int... glIds) {
@@ -81,7 +84,7 @@ class ReadbackShadowsTest {
         shadows.release(2);
 
         assertFalse(shadows.hasSlotsFor(2));
-        assertEquals(2 * SLOTS_PER_BUFFER, slotCount(shadows));
+        assertEquals(2 * SLOTS_PER_BUFFER, SdlReflect.readbackSlotCount(shadows));
         for (int glId = 1; glId <= 3; glId += 2) {
             for (int i = 0; i < SLOTS_PER_BUFFER; i++) {
                 assertTrue(SdlReflect.readbackSlotValid(shadows, glId, (long) i * SLOT_STRIDE));

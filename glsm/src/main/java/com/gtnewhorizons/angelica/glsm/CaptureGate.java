@@ -25,11 +25,13 @@ public final class CaptureGate {
     public static final boolean FORCED = SystemProperties.DEBUG_MARKERS || SystemProperties.LWJGL_DEBUG;
     public static final boolean TOOL_ATTACHED = detectCaptureTool();
     public static boolean markersThisFrame = true;
+    public static boolean tracyConnected;
 
     private CaptureGate() {}
 
     public static void refresh() {
-        markersThisFrame = gateValue(FORCED, TOOL_ATTACHED, Tracy.isConnected());
+        tracyConnected = Tracy.isConnected();
+        markersThisFrame = gateValue(FORCED, TOOL_ATTACHED, tracyConnected);
     }
 
     static boolean gateValue(boolean forced, boolean toolAttached, boolean tracyConnected) {

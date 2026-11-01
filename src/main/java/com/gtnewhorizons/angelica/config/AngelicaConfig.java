@@ -556,6 +556,15 @@ public class AngelicaConfig {
     @Config.RangeInt(min = 0, max = 3600)
     public static int tracyCaptureSeconds;
 
+    @Config.Comment("If enabled, attaches downscaled screenshots to Tracy frames. Overridden by -Dangelica.tracy.frameImages")
+    @Config.DefaultBoolean(false)
+    public static boolean tracyFrameImages;
+
+    @Config.Comment("Tracy frame images captured per second. 0 = every frame. Overridden by -Dangelica.tracy.frameImageRate")
+    @Config.DefaultInt(10)
+    @Config.RangeInt(min = 0, max = 60)
+    public static int tracyFrameImageRate;
+
     public static void applyGpuCullingMode() {
         GpuCulling.setMode(gpuCullingMode == null ? GpuCullingMode.CPU_ONLY : gpuCullingMode);
     }

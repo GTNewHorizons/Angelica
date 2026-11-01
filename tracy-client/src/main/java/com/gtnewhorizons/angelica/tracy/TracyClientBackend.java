@@ -216,6 +216,11 @@ public final class TracyClientBackend implements TracyBackend {
     }
 
     @Override
+    public void frameImage(long rgba, int width, int height, int offset, boolean flip) {
+        JNI.invokePV(rgba, width, height, offset, flip ? 1 : 0, sym.frameImage);
+    }
+
+    @Override
     public long internFrameName(String name) {
         return memAddress(MemoryUtil.memUTF8(name));
     }
