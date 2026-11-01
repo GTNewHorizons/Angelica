@@ -15,6 +15,7 @@ import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.ffp.FragmentKey;
+import com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard;
 import com.gtnewhorizons.angelica.glsm.states.FogState;
 import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
@@ -181,6 +182,7 @@ final class PortalDrawer {
     }
 
     void drawDirect(float[] faces, int count, int tunnelTexture, int fieldTexture, Frame frame, boolean fogged) {
+        BatchStateGuard.beforeChange();
         final int fogMode = fogged ? FragmentKey.activeFogMode(GLStateManager.ctx()) : FragmentKey.FOG_NONE;
         final GlProgram<Uniforms> program;
         if (fogMode == FragmentKey.FOG_NONE) {
