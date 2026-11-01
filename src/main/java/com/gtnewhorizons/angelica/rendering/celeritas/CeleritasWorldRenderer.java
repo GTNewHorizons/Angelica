@@ -65,6 +65,7 @@ import com.gtnewhorizons.angelica.rendering.culling.GpuCulling;
 import com.gtnewhorizons.angelica.render.WeatherRenderer;
 import com.gtnewhorizons.angelica.rendering.culling.GpuTerrainCuller;
 import com.gtnewhorizons.angelica.rendering.tesr.AngelicaTesrMeshCache;
+import com.gtnewhorizons.angelica.rendering.tesr.GlowReplayExclusions;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.gtnewhorizons.angelica.rendering.tesr.PendingTesrDraws;
 import com.gtnewhorizons.angelica.rendering.tesr.SectionBuiltBlockEntity;
@@ -754,7 +755,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             final boolean attribute = Tracy.ENABLED && TesrAttribution.currentRenderable == null;
             if (attribute) TesrAttribution.currentRenderable = tileEntity.getClass();
             if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_RENDER_TE);
-            DepthEcho.beginTracking();
+            if (DepthEcho.armed() && !GlowReplayExclusions.excludes(tileEntity)) DepthEcho.beginTracking();
             try {
                 TileEntityRendererDispatcher.instance.renderTileEntity(tileEntity, partialTicks);
             } finally {
