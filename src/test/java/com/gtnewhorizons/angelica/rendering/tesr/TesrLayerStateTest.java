@@ -226,32 +226,8 @@ class TesrLayerStateTest {
                         GLSMMatrices.setTextureMatrix(0, new Matrix4f());
                     });
             }),
-            Arguments.of("foreign program and framebuffer", (Supplier<BatchScenario>) () -> {
-                final int program = GlTestSupport.program(GlTestSupport.TRIVIAL_VS, GlTestSupport.TRIVIAL_FS);
-                final int framebuffer = GLSMFramebuffer.glGenFramebuffers();
-                GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
-                BatchDrawDefaults.capturePassFramebuffer();
-                GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, framebuffer);
-                GLSMPrograms.glUseProgram(program);
-                return new BatchScenario(
-                    () -> {
-                        assertEquals(0, GLSMPrograms.getActiveProgram(), "program during batch draw");
-                        assertEquals(0, GLSMFramebuffer.getDrawFramebuffer(), "framebuffer during batch draw");
-                        assertEquals(0, GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING), "driver draw framebuffer during batch draw");
-                    },
-                    () -> {
-                        assertEquals(program, GLSMPrograms.getActiveProgram(), "caller program restored");
-                        assertEquals(framebuffer, GLSMFramebuffer.getDrawFramebuffer(), "caller framebuffer restored");
-                        assertEquals(program, GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM), "driver caller program restored");
-                        assertEquals(framebuffer, GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING), "driver caller framebuffer restored");
-                    },
-                    () -> {
-                        GLSMPrograms.glUseProgram(0);
-                        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
-                        GLSMFramebuffer.glDeleteFramebuffers(framebuffer);
-                        GLSMPrograms.glDeleteProgram(program);
-                    });
-            }),
+            Arguments.of("foreign program and framebuffer", (Supplier<BatchScenario>) () -> foreignProgram(false)),
+            Arguments.of("angelica-owned program and framebuffer", (Supplier<BatchScenario>) () -> foreignProgram(true)),
             Arguments.of("filter from before an item renderer's blur window", (Supplier<BatchScenario>) () -> {
                 final int texture = GLSMTextures.glGenTextures();
                 GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
@@ -279,6 +255,35 @@ class TesrLayerStateTest {
                         GLSMTextures.glDeleteTextures(texture);
                     });
             }));
+    }
+
+    private static BatchScenario foreignProgram(boolean owned) {
+        final int program = GlTestSupport.program(GlTestSupport.TRIVIAL_VS, GlTestSupport.TRIVIAL_FS);
+        if (owned) DepthColorStorage.registerOwnedProgram(program);
+        final int framebuffer = GLSMFramebuffer.glGenFramebuffers();
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+        BatchDrawDefaults.capturePassFramebuffer();
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, framebuffer);
+        GLSMPrograms.glUseProgram(program);
+        return new BatchScenario(
+            () -> {
+                assertEquals(0, GLSMPrograms.getActiveProgram(), "program during batch draw");
+                assertEquals(0, GLSMFramebuffer.getDrawFramebuffer(), "framebuffer during batch draw");
+                assertEquals(0, GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING), "driver draw framebuffer during batch draw");
+            },
+            () -> {
+                assertEquals(program, GLSMPrograms.getActiveProgram(), "caller program restored");
+                assertEquals(framebuffer, GLSMFramebuffer.getDrawFramebuffer(), "caller framebuffer restored");
+                assertEquals(program, GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM), "driver caller program restored");
+                assertEquals(framebuffer, GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING), "driver caller framebuffer restored");
+            },
+            () -> {
+                GLSMPrograms.glUseProgram(0);
+                DepthColorStorage.unregisterOwnedProgram(program);
+                GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+                GLSMFramebuffer.glDeleteFramebuffers(framebuffer);
+                GLSMPrograms.glDeleteProgram(program);
+            });
     }
 
     @ParameterizedTest(name = "{0}")
