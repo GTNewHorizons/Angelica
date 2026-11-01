@@ -152,11 +152,11 @@ public final class Tracy {
         return backend;
     }
 
-    private static final String ABI_SENTINEL = "sectionEnter";
+    private static final String ABI_SENTINEL = "frameImage";
 
     private static boolean implementsCurrentAbi(TracyBackend backend) {
         try {
-            backend.getClass().getMethod(ABI_SENTINEL, int.class, String.class);
+            backend.getClass().getMethod(ABI_SENTINEL, long.class, int.class, int.class, int.class, boolean.class);
             return true;
         } catch (NoSuchMethodException e) {
             LOGGER.warn("Tracy backend {} was built against an older TracyBackend interface; profiling disabled", backend.getClass().getName());
@@ -335,6 +335,12 @@ public final class Tracy {
             ptr = FRAME_NAMES.computeIfAbsent(name, BACKEND::internFrameName);
         }
         if (ptr != 0) BACKEND.frameMark(ptr);
+    }
+
+    /** Copies {@code rgba} before returning; width and height must be multiples of 4. */
+    public static void frameImage(long rgba, int width, int height, int offset, boolean flip) {
+        if (!ENABLED || SHUTTING_DOWN) return;
+        BACKEND.frameImage(rgba, width, height, offset, flip);
     }
 
     public static void plotInt(String name, long value) {

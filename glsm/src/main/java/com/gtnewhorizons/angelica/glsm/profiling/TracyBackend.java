@@ -32,6 +32,7 @@ public interface TracyBackend {
 
     void frameMark();
     void frameMark(long namePtr);
+    void frameImage(long rgba, int width, int height, int offset, boolean flip);
 
     long internFrameName(String name);
     long internPlotName(String name, int format);

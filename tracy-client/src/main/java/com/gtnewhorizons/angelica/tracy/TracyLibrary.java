@@ -21,6 +21,7 @@ final class TracyLibrary {
     final long zoneText;
     final long zoneValue;
     final long frameMark;
+    final long frameImage;
     final long plot;
     final long plotInt;
     final long plotConfig;
@@ -58,6 +59,7 @@ final class TracyLibrary {
         zoneText = req(lib, "ang_zone_text");
         zoneValue = req(lib, "ang_zone_value");
         frameMark = req(lib, "___tracy_emit_frame_mark");
+        frameImage = req(lib, "___tracy_emit_frame_image");
         plot = req(lib, "ang_plot");
         plotInt = req(lib, "___tracy_emit_plot_int");
         plotConfig = req(lib, "___tracy_emit_plot_config");

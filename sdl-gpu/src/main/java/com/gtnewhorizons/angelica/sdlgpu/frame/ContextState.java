@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.sdlgpu.frame;
 import com.gtnewhorizons.angelica.glsm.GLContextState;
 import com.gtnewhorizons.angelica.sdlgpu.SDLGPURenderBackend;
 import com.gtnewhorizons.angelica.sdlgpu.pipeline.PipelineCache;
+import com.gtnewhorizons.angelica.sdlgpu.resource.ColorSource;
 import com.gtnewhorizons.angelica.sdlgpu.resource.MappedRange;
 import com.gtnewhorizons.angelica.sdlgpu.resource.PackState;
 import com.gtnewhorizons.angelica.sdlgpu.shader.LogicOpVariant;
@@ -64,6 +65,7 @@ public final class ContextState {
 
     public final PixelStoreState pixelStore = new PixelStoreState();
     public final PackState packState = new PackState();
+    public final ColorSource readColor = new ColorSource();
 
     public static final class ProxyTextureState {
         public int target;

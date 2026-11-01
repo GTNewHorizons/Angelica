@@ -99,6 +99,22 @@ public class TracyOptionPages {
                         .build())
                 .add(new ActionOption(I18n.format("options.angelica.tracy.captureAction"), I18n.format("options.angelica.tracy.captureAction.tooltip"),
                         captureActionLabel, TracyCaptureNotifier.INSTANCE::toggle, () -> Tracy.ENABLED))
+                .build(),
+            OptionGroup.createBuilder()
+                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.tracy.frameImages"))
+                        .setTooltip(overrideTooltip("options.angelica.tracy.frameImages.tooltip", "angelica.tracy.frameImages", SystemProperties.TRACY_FRAME_IMAGES_OVERRIDE != null))
+                        .setControl(TickBoxControl::new)
+                        .setBinding((opts, value) -> AngelicaConfig.tracyFrameImages = value, opts -> AngelicaConfig.tracyFrameImages)
+                        .setEnabled(Tracy.ENABLED && SystemProperties.TRACY_FRAME_IMAGES_OVERRIDE == null)
+                        .build())
+                .add(OptionImpl.createBuilder(int.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.tracy.frameImageRate"))
+                        .setTooltip(overrideTooltip("options.angelica.tracy.frameImageRate.tooltip", "angelica.tracy.frameImageRate", SystemProperties.TRACY_FRAME_IMAGE_RATE_OVERRIDE != null))
+                        .setControl(o -> new SliderControl(o, 0, 60, 5, ControlValueFormatter.quantityOrDisabled("options.angelica.tracy.frameImageRate.value", "options.angelica.tracy.frameImageRate.everyFrame")))
+                        .setBinding((opts, value) -> AngelicaConfig.tracyFrameImageRate = value, opts -> AngelicaConfig.tracyFrameImageRate)
+                        .setEnabled(Tracy.ENABLED && SystemProperties.TRACY_FRAME_IMAGE_RATE_OVERRIDE == null)
+                        .build())
                 .build()));
     }
 

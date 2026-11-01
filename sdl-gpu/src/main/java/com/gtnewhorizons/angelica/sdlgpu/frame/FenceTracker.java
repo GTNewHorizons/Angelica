@@ -64,16 +64,20 @@ public final class FenceTracker {
         if (pendingFenceSyncs.isEmpty()) return;
         final long fence = frameManager.frame().lastAcquiredFence;
         frameManager.frame().lastAcquiredFence = 0;
+        boolean fenceTaken = false;
         for (int i = 0; i < pendingFenceSyncs.size(); i++) {
             final long id = pendingFenceSyncs.getLong(i);
+            if (!fenceMap.containsKey(id)) continue;
             if (fence != 0) {
                 fenceMap.put(id, fence);
                 fenceRefcounts.addTo(fence, 1);
+                fenceTaken = true;
             } else {
                 fenceMap.remove(id);
             }
         }
         pendingFenceSyncs.clear();
+        if (fence != 0 && !fenceTaken && device.getDevice() != 0) device.fenceReleaser().release(fence);
     }
 
     public int clientWaitSync(long sync, int flags, long timeout) {
