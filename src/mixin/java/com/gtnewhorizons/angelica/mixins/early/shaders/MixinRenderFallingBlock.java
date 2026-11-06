@@ -65,7 +65,7 @@ public class MixinRenderFallingBlock {
         tessellator.setTranslation(-x - 0.5D, -y - 0.5D, -z - 0.5D);
 
         try {
-            renderBlocks.renderStandardBlock(block, x, y, z);
+            renderBlocks.renderBlockByRenderType(block, x, y, z);
         } finally {
             tessellator.setTranslation(0.0D, 0.0D, 0.0D);
             tessellator.draw();
