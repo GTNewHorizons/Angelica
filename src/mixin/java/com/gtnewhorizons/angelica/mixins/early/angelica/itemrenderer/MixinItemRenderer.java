@@ -30,6 +30,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.rendering.items.ItemRenderListManager;
+import com.gtnewhorizons.angelica.rendering.tesr.FlattenedItemLighting;
 import net.minecraft.client.renderer.ItemRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -44,7 +45,7 @@ public abstract class MixinItemRenderer {
     @Surround(method = "renderItemIn2D")
     private static void angelica$cacheItem(Tessellator tessellator, float minU, float minV, float maxU, float maxV, int widthSubdivisions, int heightSubdivisions, float thickness) {
         @Surround.Skip
-        final boolean cached = !(GLStateManager.isRecordingDisplayList() || TessellatorManager.isCurrentlyCapturing() || TessellatorManager.shouldInterceptDraw(Tessellator.instance));
+        final boolean cached = !(GLStateManager.isRecordingDisplayList() || TessellatorManager.isCurrentlyCapturing() || TessellatorManager.shouldInterceptDraw(Tessellator.instance) || FlattenedItemLighting.applies());
         if (cached) {
             final ItemRenderListManager.CachedVBO vbo = ItemRenderListManager.pre(minU, minV, maxU, maxV, widthSubdivisions, heightSubdivisions, thickness);
             if (vbo != null) {

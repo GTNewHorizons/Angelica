@@ -27,10 +27,12 @@ import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL15;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.stream.Stream;
 
 import static com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags.COLOR_BIT;
 import static com.gtnewhorizons.angelica.glsm.GlTestSupport.floats;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -82,6 +84,7 @@ class FFPVertexLightingGLTest {
         GLSMEnable.glDisable(GL11.GL_LIGHT1);
         GLSMEnable.glDisable(GL11.GL_LIGHT2);
         GLSMEnable.glDisable(GL11.GL_COLOR_MATERIAL);
+        GLSMCurrentAttribs.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
         final ShaderManager sm = ShaderManager.getInstance();
         if (sm.isActive()) sm.deactivate();
         GLSMVertexInput.glBindVertexArray(0);
@@ -126,7 +129,7 @@ class FFPVertexLightingGLTest {
             + " light1=" + GLSMLighting.getLightStates()[1].isEnabled();
     }
 
-    private void buildTriangle() {
+    private void buildTriangle(boolean withColor) {
         vao = GLSMVertexInput.glGenVertexArrays();
         GLSMVertexInput.glBindVertexArray(vao);
 
@@ -141,9 +144,13 @@ class FFPVertexLightingGLTest {
         GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, data, GL15.GL_STATIC_DRAW);
         GLSMVertexInput.glEnableVertexAttribArray(POSITION_LOC);
         GLSMVertexInput.glVertexAttribPointer(POSITION_LOC, 3, GL11.GL_FLOAT, false, STRIDE, 0L);
-        GLSMVertexInput.glEnableVertexAttribArray(COLOR_LOC);
-        GLSMVertexInput.glVertexAttribPointer(COLOR_LOC, 4, GL11.GL_UNSIGNED_BYTE, true, STRIDE, 12L);
-        VAOManager.setCurrentVertexFlags(COLOR_BIT);
+        if (withColor) {
+            GLSMVertexInput.glEnableVertexAttribArray(COLOR_LOC);
+            GLSMVertexInput.glVertexAttribPointer(COLOR_LOC, 4, GL11.GL_UNSIGNED_BYTE, true, STRIDE, 12L);
+            VAOManager.setCurrentVertexFlags(COLOR_BIT);
+        } else {
+            VAOManager.setCurrentVertexFlags(0);
+        }
     }
 
     private static void putVertex(ByteBuffer buf, float x, float y) {
@@ -154,7 +161,11 @@ class FFPVertexLightingGLTest {
     }
 
     private float[] drawAndReadCenter() {
-        buildTriangle();
+        return drawAndReadCenter(true);
+    }
+
+    private float[] drawAndReadCenter(boolean withColor) {
+        buildTriangle(withColor);
         final ShaderManager sm = ShaderManager.getInstance();
         ShaderManager.enable();
         sm.activate();
@@ -233,6 +244,64 @@ class FFPVertexLightingGLTest {
         state.run();
         assertFalse(FFPVertexLighting.modulatesVertexColor(factor), reason);
         assertEquals(IDENTITY_FACTOR, factor, "a rejected solve must leave an identity factor");
+        assertBakeRejected(reason);
+    }
+
+    private static void assertBakeRejected(String reason) {
+        final int[] raw = new int[8];
+        Arrays.fill(raw, 0x5A3C1E0F);
+        final int[] before = raw.clone();
+        assertFalse(FFPVertexLighting.bakeColors(raw, 1, true, true), reason + ": bake must be rejected");
+        assertArrayEquals(before, raw, reason + ": a rejected bake must leave the buffer untouched");
+    }
+
+    @Test
+    void positionalLightIsNotBaked() {
+        GLSMLighting.glLight(GL11.GL_LIGHT0, GL11.GL_POSITION, floats(0.0f, 0.0f, 1.0f, 1.0f));
+        assertBakeRejected("a positional light has a per-vertex direction");
+        assertTrue(FFPVertexLighting.modulatesVertexColor(factor), "text keeps the object-origin approximation for positional lights");
+    }
+
+    static Stream<Arguments> bakeCases() {
+        return Stream.of(
+            Arguments.of("flattened face-on", -1.0e-4f, 0.0f, 0.0f, 1.0f, true, true),
+            Arguments.of("flattened top", -1.0e-4f, 0.0f, 1.0f, 0.0f, true, true),
+            Arguments.of("flattened side", -1.0e-4f, 1.0f, 0.0f, 0.0f, true, true),
+            Arguments.of("unflattened tilted", 1.0f, 0.3f, 0.8f, 0.5f, true, true),
+            Arguments.of("current color", -1.0e-4f, 0.0f, 1.0f, 0.0f, true, false),
+            Arguments.of("current normal", -1.0e-4f, 0.0f, 1.0f, 0.0f, false, true));
+    }
+
+    private static int packNormal(float x, float y, float z) {
+        return ((byte) (x * 127.0f) & 0xFF) | (((byte) (y * 127.0f) & 0xFF) << 8) | (((byte) (z * 127.0f) & 0xFF) << 16);
+    }
+
+    private static float unpackNormal(int packed, int shift) {
+        return (byte) (packed >> shift) / 127.0f;
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("bakeCases")
+    void bakedColorMatchesGeneratedShader(String name, float zScale, float nx, float ny, float nz, boolean hasNormals, boolean hasColor) {
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glScalef(1.0f, 1.0f, zScale);
+        standardItemLighting();
+        if (!hasColor) GLSMCurrentAttribs.glColor4f(0.5f, 0.5f, 0.5f, 1.0f);
+
+        final int packedNormal = packNormal(nx, ny, nz);
+        final int[] raw = new int[8];
+        raw[5] = VERTEX_COLOR;
+        if (hasNormals) raw[6] = packedNormal;
+        GLSMCurrentAttribs.glNormal3f(unpackNormal(packedNormal, 0), unpackNormal(packedNormal, 8), unpackNormal(packedNormal, 16));
+        assertTrue(FFPVertexLighting.bakeColors(raw, 1, hasNormals, hasColor), name + ": expected a bakeable state, " + gateState());
+
+        final float[] actual = drawAndReadCenter(hasColor);
+        for (int c = 0; c < 3; c++) {
+            final int baked = (raw[5] >>> (c * 8)) & 0xFF;
+            final int shader = Math.round(actual[c] * 255.0f);
+            assertEquals(baked, shader, name + ": channel " + c + " baked=" + baked + " shader=" + shader);
+        }
     }
 
     @Test

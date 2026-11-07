@@ -386,6 +386,38 @@ class TesrLayerStateTest {
         });
     }
 
+    @Test
+    void flattenedLitDrawsBakeOnlyWhenThePackDrawsAndTheTextIsNotPreLit() {
+        withPack(true, drawing -> {
+            GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+            GLSMMatrices.glPushMatrix();
+            try {
+                GLSMMatrices.glScalef(1.0f, 1.0f, -1.0e-4f);
+                assertFalse(FlattenedItemLighting.applies(), "no bake outside a TESR dispatch");
+
+                TesrBatchRenderer.INSTANCE.beginScope();
+                try {
+                    assertTrue(FlattenedItemLighting.applies(), "a lit, flattened draw inside a TESR while the pack draws the world is baked");
+
+                    FlattenedItemLighting.setPreLitText(true);
+                    try {
+                        assertFalse(FlattenedItemLighting.applies(), "text the font already lit must not be lit a second time");
+                    } finally {
+                        FlattenedItemLighting.setPreLitText(false);
+                    }
+                    assertTrue(FlattenedItemLighting.applies(), "clearing the pre-lit flag restores the bake");
+
+                    drawing[0] = false;
+                    assertFalse(FlattenedItemLighting.applies(), "no bake while the pack is not drawing the world");
+                } finally {
+                    TesrBatchRenderer.INSTANCE.endScope();
+                }
+            } finally {
+                GLSMMatrices.glPopMatrix();
+            }
+        });
+    }
+
     private static void withPack(boolean initiallyDrawing, Consumer<boolean[]> body) {
         final PipelineManager manager = Iris.getPipelineManager();
         final WorldRenderingPipeline previous = manager.getPipelineNullable();
