@@ -23,6 +23,7 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard;
 import com.gtnewhorizons.angelica.glsm.ffp.CubeParams;
+import com.gtnewhorizons.angelica.glsm.ffp.FFPVertexLighting;
 import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
@@ -850,6 +851,7 @@ public final class ModelPartBatcher {
     private enum TessellatorRoute { DRAW_NOW, DRAW_NOW_EXPECTED, QUEUE }
 
     public static int drawTessellator(Tessellator tess) {
+        if (FlattenedItemLighting.applies() && FFPVertexLighting.bakeColors(tess.rawBuffer, tess.vertexCount, tess.hasNormals, tess.hasColor)) tess.hasColor = true;
         switch (INSTANCE.routeTessellatorDraw(tess)) {
             case QUEUE -> {
                 tess.isDrawing = false;

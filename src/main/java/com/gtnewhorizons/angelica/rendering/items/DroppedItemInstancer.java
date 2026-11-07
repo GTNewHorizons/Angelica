@@ -17,6 +17,7 @@ import com.gtnewhorizons.angelica.rendering.tesr.EntityMaterials;
 import com.gtnewhorizons.angelica.rendering.tesr.GlintCapture;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.gtnewhorizons.angelica.rendering.tesr.EntityShadowReplay;
+import com.gtnewhorizons.angelica.rendering.tesr.FlattenedItemLighting;
 import com.gtnewhorizons.angelica.rendering.tesr.TemplateBuffer;
 import com.gtnewhorizons.angelica.utils.AnimationsRenderUtils;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
@@ -25,6 +26,8 @@ import net.minecraft.client.renderer.ItemRenderer;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.item.ItemStack;
+
+import static com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil.VERTEX_SIZE;
 
 public final class DroppedItemInstancer {
 
@@ -93,7 +96,8 @@ public final class DroppedItemInstancer {
 
     private static boolean glintEligible(ItemStack stack) {
         return stack != null && stack.getItem() != null && ModelPartBatcher.INSTANCE.isActive() && !GLStateManager.isRecordingDisplayList()
-            && !TessellatorManager.isCurrentlyCapturing() && !TessellatorManager.shouldInterceptDraw(Tessellator.instance);
+            && !TessellatorManager.isCurrentlyCapturing() && !TessellatorManager.shouldInterceptDraw(Tessellator.instance)
+            && !FlattenedItemLighting.applies();
     }
 
     static TesrMaterial material(ItemStack stack, boolean unfilteredAtlas) {
@@ -219,6 +223,29 @@ public final class DroppedItemInstancer {
         return material != null ? batchBlock(material, rb, block, meta, brightness) : GLSMDraws.drawCalls;
     }
 
+    public static boolean drawFlattenedBlock(RenderBlocks rb, Block block, int meta, float brightness) {
+        final BlockMesh mesh = blockMesh(rb, block, meta, brightness);
+        final TemplateBuffer template = mesh.template();
+        if (template == null) return false;
+        mesh.sprites().markUsed();
+        final Tessellator tess = Tessellator.instance;
+        final int ints = template.vertexCount * VERTEX_SIZE;
+        tess.startDrawing(template.drawMode);
+        if (tess.rawBuffer == null || tess.rawBufferSize < ints) {
+            tess.rawBufferSize = Math.max(0x10000, ints);
+            tess.rawBuffer = new int[tess.rawBufferSize];
+        }
+        System.arraycopy(template.data, 0, tess.rawBuffer, 0, ints);
+        tess.vertexCount = template.vertexCount;
+        tess.rawBufferIndex = ints;
+        tess.hasTexture = true;
+        tess.hasNormals = true;
+        tess.hasColor = false;
+        tess.hasBrightness = false;
+        tess.draw();
+        return true;
+    }
+
     private static long itemBlock(ItemStack stack, RenderBlocks rb, Block block, int meta, float brightness, boolean unfilteredAtlas) {
         final TesrMaterial material = material(stack, unfilteredAtlas);
         if (material == null) {
@@ -236,12 +263,7 @@ public final class DroppedItemInstancer {
     static long batchBlock(TesrMaterial material, RenderBlocks rb, Block block, int meta, float brightness) {
         final long drawsBefore = GLSMDraws.drawCalls;
         if (BatchEligibility.batchingAllowed()) {
-            BlockMesh mesh = lookupBlock(block, meta);
-            if (mesh == null) {
-                mesh = captureBlock(rb, block, meta, brightness);
-            } else if (mesh.template() != null) {
-                GLSMCurrentAttribs.glColor4f(mesh.red(), mesh.green(), mesh.blue(), mesh.alpha());
-            }
+            final BlockMesh mesh = blockMesh(rb, block, meta, brightness);
             if (mesh.template() == null) {
                 fallback++;
                 bail(BailReason.TEMPLATE);
@@ -336,6 +358,13 @@ public final class DroppedItemInstancer {
         final BlockMesh mesh = new BlockMesh(template, color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha(), sprites);
         blocks.put(new BlockMeta(block, meta), mesh);
         return mesh;
+    }
+
+    private static BlockMesh blockMesh(RenderBlocks rb, Block block, int meta, float brightness) {
+        final BlockMesh hit = lookupBlock(block, meta);
+        if (hit == null) return captureBlock(rb, block, meta, brightness);
+        if (hit.template() != null) GLSMCurrentAttribs.glColor4f(hit.red(), hit.green(), hit.blue(), hit.alpha());
+        return hit;
     }
 
     private static BlockMesh lookupBlock(Block block, int meta) {

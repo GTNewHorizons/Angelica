@@ -95,6 +95,10 @@ public final class TesrBatchRenderer {
         if (scopeDepth++ == 0) currentScope = ++scopeCounter;
     }
 
+    public boolean inScope() {
+        return scopeDepth != 0;
+    }
+
     public void endScope() {
         if (--scopeDepth == 0) currentScope = 0;
     }

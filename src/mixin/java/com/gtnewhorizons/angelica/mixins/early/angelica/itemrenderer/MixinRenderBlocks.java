@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.rendering.items.BlockRenderListManager;
 import com.gtnewhorizons.angelica.rendering.items.DroppedItemInstancer;
+import com.gtnewhorizons.angelica.rendering.tesr.FlattenedItemLighting;
 import net.minecraft.block.Block;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
@@ -22,12 +23,15 @@ public abstract class MixinRenderBlocks {
             || GLStateManager.isRecordingDisplayList()
             || TessellatorManager.isCurrentlyCapturing()
             || TessellatorManager.shouldInterceptDraw(Tessellator.instance);
+        final boolean bake = !uncacheable && FlattenedItemLighting.applies();
+        final boolean drawn = bake && DroppedItemInstancer.drawFlattenedBlock(self, block, meta, brightness);
+        final boolean live = uncacheable || bake;
         @Surround.Carry
-        final long part = uncacheable ? DroppedItemInstancer.RUN : DroppedItemInstancer.directBlock(self, block, meta, brightness);
+        final long part = live ? DroppedItemInstancer.RUN : DroppedItemInstancer.directBlock(self, block, meta, brightness);
         @Surround.Carry
-        final int list = uncacheable ? 0 : part == DroppedItemInstancer.SKIP ? -1 : BlockRenderListManager.callOrStartCompiling(BlockRenderListManager.getDisplayList(block, meta));
+        final int list = live ? 0 : part == DroppedItemInstancer.SKIP ? -1 : BlockRenderListManager.callOrStartCompiling(BlockRenderListManager.getDisplayList(block, meta));
         @Surround.Skip
-        final boolean cached = list < 0;
+        final boolean cached = drawn || list < 0;
     }
 
     @Surround.Return

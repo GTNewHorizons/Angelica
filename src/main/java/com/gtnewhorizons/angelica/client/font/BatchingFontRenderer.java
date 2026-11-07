@@ -28,6 +28,7 @@ import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.rendering.tesr.BatchDrawDefaults;
 import com.gtnewhorizons.angelica.rendering.tesr.EntityShadowReplay;
+import com.gtnewhorizons.angelica.rendering.tesr.FlattenedItemLighting;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -1194,6 +1195,7 @@ public class BatchingFontRenderer {
         final Tessellator tessellator = Tessellator.instance;
         int lastTexture = INVALID_TEXTURE;
         boolean drawing = false;
+        FlattenedItemLighting.setPreLitText(true);
         try {
             for (int i = from; i < to; i++) {
                 final FontDrawCmd cmd = cmdsData[i];
@@ -1219,8 +1221,12 @@ public class BatchingFontRenderer {
                 owner.emitCommand(tessellator, cmd);
             }
         } finally {
-            if (drawing) {
-                tessellator.draw();
+            try {
+                if (drawing) {
+                    tessellator.draw();
+                }
+            } finally {
+                FlattenedItemLighting.setPreLitText(false);
             }
         }
     }
