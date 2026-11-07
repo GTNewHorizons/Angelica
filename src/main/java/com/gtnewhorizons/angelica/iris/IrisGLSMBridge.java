@@ -274,6 +274,13 @@ public class IrisGLSMBridge {
             refreshBlendCondition();
         });
 
+        GLSMHooks.CLIP_PLANES_IN_USE.addListener(event -> {
+            if (!Iris.enabled) return;
+            if (Iris.getPipelineManager().getPipelineNullable() instanceof DeferredWorldRenderingPipeline drp) {
+                drp.onClipPlanesInUseChanged();
+            }
+        });
+
         GLSMHooks.FOREIGN_DRAW_END.addListener(event -> {
             if (!Iris.enabled) return;
             if (programRestoreDeferred) {
@@ -336,12 +343,13 @@ public class IrisGLSMBridge {
             WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
             if (pipeline instanceof DeferredWorldRenderingPipeline drp) {
                 DeferredWorldRenderingPipeline.Pass activePass = drp.getActivePassProgram();
-                if (activePass != null && activePass.getProgram() != null && activePass.getProgram().getProgramId() == event.newProgram) {
+                final Program bound = activePass != null ? activePass.boundProgram() : null;
+                if (bound != null && bound.getProgramId() == event.newProgram) {
                     final int frame = SystemTimeUniforms.COUNTER.getAsInt();
                     if (programLastUpdatedFrame.get(event.newProgram) != frame
                         || !ProgramUniforms.isActiveProgramBound()
                         || ProgramUniforms.activeHasDeferredUploads()) {
-                        activePass.getProgram().getUniforms().update();
+                        bound.getUniforms().update();
                         programLastUpdatedFrame.put(event.newProgram, frame);
                     }
                 }

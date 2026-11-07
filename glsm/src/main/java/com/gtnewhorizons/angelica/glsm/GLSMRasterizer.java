@@ -509,6 +509,14 @@ public final class GLSMRasterizer {
         return glCtx.clipPlaneEnabledMask != 0;
     }
 
+    public static boolean clipEmulationActive() {
+        return RenderSystem.isClipDistanceEmulated() && anyClipPlaneEnabled();
+    }
+
+    public static boolean clipEmulationActive(GLContextState glCtx) {
+        return RenderSystem.isClipDistanceEmulated() && anyClipPlaneEnabled(glCtx);
+    }
+
     public static void glSampleCoverage(float value, boolean invert) {
         if (DisplayListManager.isRecording()) {
             throw DisplayListManager.unsupportedInList("glSampleCoverage");

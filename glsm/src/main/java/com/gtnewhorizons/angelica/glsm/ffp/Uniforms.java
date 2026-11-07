@@ -2,7 +2,6 @@ package com.gtnewhorizons.angelica.glsm.ffp;
 
 import com.gtnewhorizons.angelica.glsm.GLContextState;
 import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.ClipPlaneState;
 import com.gtnewhorizons.angelica.glsm.states.FogState;
 import com.gtnewhorizons.angelica.glsm.states.LightState;
@@ -330,9 +329,7 @@ public class Uniforms {
     private void stageClipPlanes(GLContextState glCtx) {
         final ClipPlaneState cps = glCtx.clipPlaneState;
         clipPlaneBuf.clear();
-        for (int i = 0; i < GLStateManager.MAX_CLIP_PLANES; i++) {
-            cps.putEyePlane(i, clipPlaneBuf);
-        }
+        cps.putEffectivePlanes(glCtx.clipPlaneEnabledMask, clipPlaneBuf);
         final long src = memAddress0(clipPlaneBuf);
         for (int i = 0; i < 32 * 4; i += 4) {
             putInt(FFPUniformBlock.CLIP_PLANES + i, memGetInt(src + i));

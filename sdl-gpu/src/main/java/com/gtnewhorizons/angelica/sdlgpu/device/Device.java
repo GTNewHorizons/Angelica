@@ -45,6 +45,7 @@ public final class Device {
 
     private long device;
     private boolean claimed;
+    private boolean clipDistance = true;
     private int supportedShaderFormats;
     private String driverName;
     private boolean fencePollEnabled;
@@ -116,6 +117,10 @@ public final class Device {
     }
 
     public boolean createDevice() {
+        return createDevice(!SystemProperties.EMULATE_CLIP_DISTANCES);
+    }
+
+    boolean createDevice(boolean requestClipDistance) {
         if (device != 0) return true;
 
         installLogCallback();
@@ -130,9 +135,9 @@ public final class Device {
         }
 
         final boolean gpuDebug = SystemProperties.LWJGL_DEBUG || SystemProperties.SDL_GPU_DEBUG;
-        device = createGPUDevice(gpuDebug, candidates);
+        device = createGPUDevice(gpuDebug, candidates, requestClipDistance);
         if (device == 0 && VideoDriverRecovery.shouldRetryOnX11(SDL_GetCurrentVideoDriver(), vulkanLoaderAvailable(), System.getenv("DISPLAY"))) {
-            device = VideoDriverRecovery.retryUnderX11(() -> createGPUDevice(gpuDebug, candidates));
+            device = VideoDriverRecovery.retryUnderX11(() -> createGPUDevice(gpuDebug, candidates, requestClipDistance));
         }
         if (device == 0) {
             logDeviceCreationFailure(REQUESTED_SHADER_FORMATS);
@@ -206,19 +211,44 @@ public final class Device {
         }
     }
 
-    private long createGPUDevice(boolean gpuDebug, String[] candidates) {
+    private long createGPUDevice(boolean gpuDebug, String[] candidates, boolean requestClipDistance) {
         final boolean macos = Platform.get() == Platform.MACOSX;
         for (final String driver : candidates) {
             final boolean macVulkan = macos && isVulkan(driver);
             if (macVulkan) useMoltenVk();
-            final long dev = SDL_CreateGPUDevice(REQUESTED_SHADER_FORMATS, gpuDebug, driver);
-            if (dev != 0) return dev;
+            long dev = createWithProperties(gpuDebug, driver, requestClipDistance);
+            boolean clip = requestClipDistance;
+            if (dev == 0 && clip && isVulkan(driver)) {
+                LOG.info("SDL GPU Vulkan device creation failed with shaderClipDistance ({}); the device may lack it, retrying without it, clip distances will be emulated", SDLError.SDL_GetError());
+                dev = createWithProperties(gpuDebug, driver, false);
+                clip = false;
+            }
+            if (dev != 0) {
+                clipDistance = clip;
+                return dev;
+            }
             LOG.warn("Failed to create a '{}' SDL GPU device: {}", driver, SDLError.SDL_GetError());
             if (macVulkan && MoltenVK.locate() == null) {
                 LOG.warn("Vulkan on macOS needs MoltenVK. Add {} to the mods folder or install MoltenVK.", MoltenVK.JAR_NAME);
             }
         }
         return 0;
+    }
+
+    private static long createWithProperties(boolean gpuDebug, String driver, boolean clipDistance) {
+        final int props = SDLProperties.SDL_CreateProperties();
+        try {
+            SDLProperties.SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_SPIRV_BOOLEAN, (REQUESTED_SHADER_FORMATS & SDL_GPU_SHADERFORMAT_SPIRV) != 0);
+            SDLProperties.SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_DXBC_BOOLEAN, (REQUESTED_SHADER_FORMATS & SDL_GPU_SHADERFORMAT_DXBC) != 0);
+            SDLProperties.SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_DXIL_BOOLEAN, (REQUESTED_SHADER_FORMATS & SDL_GPU_SHADERFORMAT_DXIL) != 0);
+            SDLProperties.SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_MSL_BOOLEAN, (REQUESTED_SHADER_FORMATS & SDL_GPU_SHADERFORMAT_MSL) != 0);
+            SDLProperties.SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_DEBUGMODE_BOOLEAN, gpuDebug);
+            SDLProperties.SDL_SetStringProperty(props, SDL_PROP_GPU_DEVICE_CREATE_NAME_STRING, driver);
+            SDLProperties.SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_FEATURE_CLIP_DISTANCE_BOOLEAN, clipDistance);
+            return SDL_CreateGPUDeviceWithProperties(props);
+        } finally {
+            SDLProperties.SDL_DestroyProperties(props);
+        }
     }
 
     public void claimWindow(long window) {
@@ -298,6 +328,7 @@ public final class Device {
         driverVersion = null;
         driverInfo = null;
         supportedShaderFormats = 0;
+        clipDistance = true;
     }
 
     private void logWindowDiagnostics(long window) {
@@ -349,6 +380,10 @@ public final class Device {
 
     public long getDevice() {
         return device;
+    }
+
+    public boolean hasClipDistance() {
+        return clipDistance;
     }
 
     public String getDriverName() {

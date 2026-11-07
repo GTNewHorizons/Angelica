@@ -3,21 +3,21 @@ package com.gtnewhorizons.angelica.glsm.ffp;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
 import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
 import com.gtnewhorizons.angelica.glsm.GLSMFog;
 import com.gtnewhorizons.angelica.glsm.GLSMLighting;
 import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
 import com.gtnewhorizons.angelica.glsm.GLSMTexEnvGen;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.testutil.ClipTestSupport;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
-import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL31;
 
-import java.nio.DoubleBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,12 +30,6 @@ class FfpUniformBlockDedupTest {
 
     private static int boundRangeStart() {
         return GL30.glGetInteger(GL31.GL_UNIFORM_BUFFER_START, FFPUniformBlock.BINDING_POINT);
-    }
-
-    private static DoubleBuffer doubles(double... values) {
-        final DoubleBuffer buf = BufferUtils.createDoubleBuffer(values.length);
-        buf.put(values).flip();
-        return buf;
     }
 
     private static void resetState() {
@@ -58,7 +52,8 @@ class FfpUniformBlockDedupTest {
         GLSMLighting.glLight(GL11.GL_LIGHT0, GL11.GL_DIFFUSE, floats(1.0f, 1.0f, 1.0f, 1.0f));
         GLSMLighting.glMaterialf(GL11.GL_FRONT, GL11.GL_SHININESS, 0.0f);
         GLSMTexEnvGen.glTexGen(GL11.GL_S, GL11.GL_OBJECT_PLANE, floats(1.0f, 0.0f, 0.0f, 0.0f));
-        GLSMRasterizer.glClipPlane(GL11.GL_CLIP_PLANE0, doubles(0.0, 0.0, 0.0, 0.0));
+        GLSMEnable.glDisable(GL11.GL_CLIP_PLANE0);
+        ClipTestSupport.setPlane(0, 0.0, 0.0, 0.0, 0.0);
         GLSMRasterizer.glLineStipple(1, (short) 0xFFFF);
         GLSMRasterizer.glViewport(0, 0, 854, 480);
     }
@@ -149,7 +144,10 @@ class FfpUniformBlockDedupTest {
         addCategory(tests, "currentTexCoord", () -> GLSMCurrentAttribs.glTexCoord2f(0.125f, 0.375f));
         addCategory(tests, "lightmapCoord", () -> GLStateManager.ctx().lastBrightnessX = 96.0f);
         addCategory(tests, "texGenPlane", () -> GLSMTexEnvGen.glTexGen(GL11.GL_S, GL11.GL_OBJECT_PLANE, floats(0.5f, 0.0f, 0.0f, 0.25f)));
-        addCategory(tests, "clipPlane", () -> GLSMRasterizer.glClipPlane(GL11.GL_CLIP_PLANE0, doubles(0.0, 1.0, 0.0, 7.0)));
+        addCategory(tests, "clipPlane", () -> {
+            GLSMEnable.glEnable(GL11.GL_CLIP_PLANE0);
+            ClipTestSupport.setPlane(0, 0.0, 1.0, 0.0, 7.0);
+        });
         addCategory(tests, "alphaRef", () -> GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, 0.35f));
         addCategory(tests, "fogColor", () -> GLSMFog.glFog(GL11.GL_FOG_COLOR, floats(0.1f, 0.2f, 0.3f, 0.4f)));
         addCategory(tests, "fogDensity", () -> GLSMFog.glFogf(GL11.GL_FOG_DENSITY, 0.75f));

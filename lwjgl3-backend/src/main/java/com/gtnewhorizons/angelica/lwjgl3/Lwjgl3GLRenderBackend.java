@@ -288,7 +288,7 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     public void finish() {GL11C.glFinish();}
 
     private static boolean capAllowed(int cap) {
-        return GLESCaps.isCapAllowed(cap, RenderSystem.isGLES(), RenderSystem.hasClipCullDistance());
+        return GLESCaps.isCapAllowed(cap, RenderSystem.isGLES());
     }
 
     @Override

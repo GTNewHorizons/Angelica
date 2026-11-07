@@ -1,7 +1,9 @@
 package com.gtnewhorizons.angelica.proxy;
 
+import com.gtnewhorizons.angelica.common.BlockClipPlaneTest;
 import com.gtnewhorizons.angelica.common.BlockIsbrhTest;
 import com.gtnewhorizons.angelica.common.BlockTest;
+import com.gtnewhorizons.angelica.common.TileEntityClipPlaneTest;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
@@ -14,6 +16,8 @@ public class CommonProxy {
         if (AngelicaConfig.enableTestBlocks) {
             GameRegistry.registerBlock(new BlockTest(), "test_block");
             GameRegistry.registerBlock(new BlockIsbrhTest(), "test_isbrh");
+            GameRegistry.registerBlock(new BlockClipPlaneTest(), "test_clip_plane");
+            GameRegistry.registerTileEntity(TileEntityClipPlaneTest.class, "angelica:test_clip_plane");
         }
     }
 

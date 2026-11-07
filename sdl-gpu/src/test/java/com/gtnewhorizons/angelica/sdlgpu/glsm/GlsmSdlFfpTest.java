@@ -10,6 +10,7 @@ import com.gtnewhorizons.angelica.glsm.ffp.CubeParityFixture;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpFixture;
 import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
 import com.gtnewhorizons.angelica.glsm.ffp.ParticleParityFixture;
+import com.gtnewhorizons.angelica.glsm.testutil.ClipTestSupport;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
@@ -125,6 +126,30 @@ class GlsmSdlFfpTest {
         lists.position(0);
         GLSMDraws.glCallLists(lists);
         assertTexelEverywhere("two units, glCallLists");
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void disabledClipPlaneDoesNotClip(boolean emulated) {
+        try (var ignored = ClipTestSupport.emulation(emulated)) {
+            bindBaseTexture();
+            try {
+                ClipTestSupport.setPlane(1, 0.0, 0.0, 0.0, -1.0);
+                GLSMEnable.glDisable(GL11.GL_CLIP_PLANE1);
+                ClipTestSupport.setPlane(0, 1.0, 0.0, 0.0, 0.0);
+                GLSMEnable.glEnable(GL11.GL_CLIP_PLANE0);
+                quadUnit0Only();
+
+                final int[] pixels = GlsmSdlHeadlessRig.readTarget();
+                final int left = pixelAt(pixels, SIZE, SIZE / 4, SIZE / 2);
+                final int right = pixelAt(pixels, SIZE, 3 * SIZE / 4, SIZE / 2);
+                assertTrue(left != TEXEL, () -> "left quarter must be clipped by enabled plane 0: " + describe(left));
+                assertEquals(TEXEL, right, () -> "right quarter must survive; disabled plane 1 must not clip: " + describe(right));
+            } finally {
+                GLSMEnable.glDisable(GL11.GL_CLIP_PLANE0);
+                GLSMEnable.glDisable(GL11.GL_CLIP_PLANE1);
+            }
+        }
     }
 
     @Test

@@ -1,11 +1,13 @@
 package net.coderbot.iris.pipeline.transform;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement;
+import com.gtnewhorizons.angelica.glsm.ffp.ClipDistanceGlsl;
 import com.gtnewhorizons.angelica.glsm.ffp.CubeInstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
 import com.gtnewhorizons.angelica.glsm.ffp.ParticleInstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
+import com.gtnewhorizons.angelica.glsm.testutil.ClipTestSupport;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.pipeline.transform.parameter.AttributeParameters;
 import org.junit.jupiter.api.AfterAll;
@@ -466,5 +468,55 @@ class AttributeTransformerInstancedTest {
         final Map<PatchShaderType, String> entityResult = TransformPatcher.patchAttributes(VERTEX_ENTITY, null, null, null, FRAGMENT_ENTITY, TEX_LM, false);
         assertNotNull(entityResult);
         assertHas(entityResult.get(PatchShaderType.VERTEX), "layout(location = " + ImmediateExtendedAttribHandler.LOC_ENTITY_IDS + ") in vec4 iris_Entity;");
+    }
+
+    private static final String[] CLIP_NAMES = {"gl_ClipDistance", "angelica_ClipDist", "angelica_ClipPlane"};
+
+    private static Map<PatchShaderType, String> clipStages(boolean emulated, boolean clipDiscard) {
+        try (var ignored = ClipTestSupport.emulation(emulated)) {
+            final Map<PatchShaderType, String> result = TransformPatcher.patchAttributesInstanced(VERTEX, null, null, null, FRAGMENT, TEX_LM, false, Instancing.NONE, clipDiscard);
+            assertNotNull(result);
+            for (String stage : result.values()) {
+                if (stage != null) ShaderParser.parseShader(stage);
+            }
+            return result;
+        }
+    }
+
+    @Test
+    void nativeClipDistancesWrittenByTheVertexStage() {
+        final Map<PatchShaderType, String> result = clipStages(false, false);
+        assertHas(result.get(PatchShaderType.VERTEX), "gl_ClipDistance[7] = dot(angelica_ClipPlane[7], _cp_ep);");
+        assertLacks(result.get(PatchShaderType.VERTEX), "angelica_ClipDist0");
+        assertLacks(result.get(PatchShaderType.FRAGMENT), "angelica_ClipDist0");
+    }
+
+    @Test
+    void emulatedUnclippedVariantCarriesNoClipCode() {
+        final Map<PatchShaderType, String> result = clipStages(true, false);
+        for (String stage : result.values()) {
+            if (stage == null) continue;
+            for (String name : CLIP_NAMES) assertLacks(stage, name);
+        }
+    }
+
+    @Test
+    void emulatedClippedVariantDiscardsFirstInFragmentMain() {
+        final Map<PatchShaderType, String> result = clipStages(true, true);
+        final String v = result.get(PatchShaderType.VERTEX);
+        assertHas(v, "uniform vec4 angelica_ClipPlane[8];");
+        assertHas(v, "out vec4 angelica_ClipDist0;");
+        assertHas(v, "out vec4 angelica_ClipDist1;");
+        assertHas(v, "angelica_ClipDist0 = vec4(dot(angelica_ClipPlane[0], _cp_ep), dot(angelica_ClipPlane[1], _cp_ep), dot(angelica_ClipPlane[2], _cp_ep), dot(angelica_ClipPlane[3], _cp_ep));");
+        assertHas(v, "angelica_ClipDist1 = vec4(dot(angelica_ClipPlane[4], _cp_ep), dot(angelica_ClipPlane[5], _cp_ep), dot(angelica_ClipPlane[6], _cp_ep), dot(angelica_ClipPlane[7], _cp_ep));");
+        assertLacks(v, "gl_ClipDistance");
+
+        final String f = result.get(PatchShaderType.FRAGMENT);
+        assertHas(f, "in vec4 angelica_ClipDist0;");
+        assertHas(f, "in vec4 angelica_ClipDist1;");
+        final String body = squash(f);
+        final int mainIdx = body.indexOf("voidmain(){");
+        assertTrue(mainIdx >= 0, f);
+        assertTrue(body.startsWith(squash(ClipDistanceGlsl.FS_DISCARD), mainIdx + "voidmain(){".length()), "discard is not the first statement of main:\n" + f);
     }
 }

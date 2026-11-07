@@ -11,6 +11,7 @@ import com.gtnewhorizons.angelica.sdlgpu.shader.LogicOpVariant;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
 import com.gtnewhorizons.angelica.sdlgpu.shader.UniformStaging;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.longs.Long2FloatOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
@@ -183,6 +184,7 @@ public final class ContextState {
     private final Reference2ObjectOpenHashMap<ShaderManager.ProgramObject, UniformStaging> uniformStagingByProgram = new Reference2ObjectOpenHashMap<>();
     private ShaderManager.ProgramObject stagingProg;
     private UniformStaging currentUniformStaging;
+    public final Int2ObjectOpenHashMap<float[]> uniformArrayScratch = new Int2ObjectOpenHashMap<>();
 
     public UniformStaging uniformStaging(ShaderManager.ProgramObject prog) {
         if (prog == stagingProg) return currentUniformStaging;

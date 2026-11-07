@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.util.shaderc.Shaderc;
@@ -53,6 +54,30 @@ class FFPUniformBlockSpirvLayoutTest {
         final SpirvCompiler.Result result = SpirvCompiler.compile(glsl, Shaderc.shaderc_vertex_shader, label, SpirvCompiler.Options.vulkanForced460Core());
         assertNotNull(result.spirv(), () -> "SPIR-V compile failed: " + result.error() + "\n" + glsl);
         MemoryUtil.memFree(result.spirv());
+    }
+
+    @ParameterizedTest(name = "emulated={0}")
+    @ValueSource(booleans = {false, true})
+    void clipDistanceCapabilityFollowsEmulation(boolean emulated) {
+        long vbits = bit("BIT_CLIP_PLANES");
+        if (emulated) vbits |= bit("BIT_CLIP_EMULATED");
+        final String vs = VertexShaderGenerator.generate(VertexKey.fromPacked(vbits));
+        assertEquals(!emulated, declaresClipDistance(vs, Shaderc.shaderc_vertex_shader), "vertex ClipDistance capability");
+    }
+
+    private static boolean declaresClipDistance(String glsl, int shaderKind) {
+        final SpirvCompiler.Result result = SpirvCompiler.compile(glsl, shaderKind, "clip-emulation-test", SpirvCompiler.Options.vulkanForced460Core());
+        assertNotNull(result.spirv(), () -> "SPIR-V compile failed: " + result.error() + "\n" + glsl);
+        try {
+            final IntBuffer words = result.spirv().asIntBuffer();
+            for (int i = 5; i < words.limit(); i += Math.max(1, words.get(i) >>> 16)) {
+                final int word = words.get(i);
+                if ((word & 0xFFFF) == 17 && words.get(i + 1) == 32) return true;
+            }
+            return false;
+        } finally {
+            MemoryUtil.memFree(result.spirv());
+        }
     }
 
     private static VertexKey cubeKey(boolean lightmapUnit, boolean unit0TextureMatrix, boolean texGen) {

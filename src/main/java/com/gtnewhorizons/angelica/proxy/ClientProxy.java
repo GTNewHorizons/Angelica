@@ -39,6 +39,7 @@ import com.gtnewhorizons.angelica.commands.AngelicaCommand;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.common.BlockError;
 import com.gtnewhorizons.angelica.common.BlockIsbrhTest;
+import com.gtnewhorizons.angelica.common.TileEntityClipPlaneTest;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.bettercrashes.BetterCrashesCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
@@ -70,6 +71,7 @@ import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
 import com.gtnewhorizons.angelica.render.EmissiveTextureAutoloader;
 import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
+import com.gtnewhorizons.angelica.rendering.ClipPlaneTestRenderer;
 import com.gtnewhorizons.angelica.rendering.FpsReducer;
 import com.gtnewhorizons.angelica.rendering.FramePacer;
 import com.gtnewhorizons.angelica.rendering.IsbrhTestRenderer;
@@ -86,6 +88,7 @@ import com.gtnewhorizons.angelica.utils.AngelicaJar;
 import com.gtnewhorizons.angelica.utils.AnimationMode;
 import com.gtnewhorizons.angelica.utils.ManagedEnum;
 import com.gtnewhorizons.angelica.zoom.Zoom;
+import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.client.registry.RenderingRegistry;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
@@ -146,6 +149,7 @@ public final class ClientProxy extends CommonProxy {
         if (AngelicaConfig.enableTestBlocks) {
             BlockIsbrhTest.renderId = RenderingRegistry.getNextAvailableRenderId();
             RenderingRegistry.registerBlockHandler(BlockIsbrhTest.renderId, new IsbrhTestRenderer());
+            ClientRegistry.bindTileEntitySpecialRenderer(TileEntityClipPlaneTest.class, new ClipPlaneTestRenderer());
         }
         AngelicaJar.configureShaderDiskCache(event.getSourceFile());
         if (AngelicaConfig.enableIris) {

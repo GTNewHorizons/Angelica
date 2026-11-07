@@ -30,7 +30,6 @@ public final class GLSMEnable {
         // Handle clip planes dynamically (supports up to MAX_CLIP_PLANES)
         if (cap >= GL11.GL_CLIP_PLANE0 && cap < GL11.GL_CLIP_PLANE0 + MAX_CLIP_PLANES) {
             glCtx.clipPlaneStates[cap - GL11.GL_CLIP_PLANE0].enable();
-            glCtx.clipPlaneGeneration++;
             return;
         }
 
@@ -119,7 +118,6 @@ public final class GLSMEnable {
         // Handle clip planes dynamically (supports up to MAX_CLIP_PLANES)
         if (cap >= GL11.GL_CLIP_PLANE0 && cap < GL11.GL_CLIP_PLANE0 + MAX_CLIP_PLANES) {
             glCtx.clipPlaneStates[cap - GL11.GL_CLIP_PLANE0].disable();
-            glCtx.clipPlaneGeneration++;
             return;
         }
 

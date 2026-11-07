@@ -31,6 +31,7 @@ public final class GLSMHooks {
     public static final EventBus<ProgramDeleteEvent> PROGRAM_DELETE = EventBus.create(ProgramDeleteEvent.class);
     public static final EventBus<BlendFuncChangeEvent> BLEND_FUNC_CHANGE = EventBus.create(BlendFuncChangeEvent.class);
     public static final EventBus<FogStateChangeEvent> FOG_STATE_CHANGE = EventBus.create(FogStateChangeEvent.class);
+    public static final EventBus<ClipPlanesInUseEvent> CLIP_PLANES_IN_USE = EventBus.create(ClipPlanesInUseEvent.class);
     public static final EventBus<LightmapCoordsEvent> LIGHTMAP_COORDS = EventBus.create(LightmapCoordsEvent.class);
     public static final EventBus<AlphaStateChangeEvent> ALPHA_STATE_CHANGE = EventBus.create(AlphaStateChangeEvent.class);
     public static final EventBus<ShaderColorChangeEvent> SHADER_COLOR_CHANGE = EventBus.create(ShaderColorChangeEvent.class);
@@ -46,6 +47,7 @@ public final class GLSMHooks {
     public static final ProgramDeleteEvent programDeleteEvent = new ProgramDeleteEvent();
     public static final BlendFuncChangeEvent blendFuncChangeEvent = new BlendFuncChangeEvent();
     public static final FogStateChangeEvent fogStateChangeEvent = new FogStateChangeEvent();
+    public static final ClipPlanesInUseEvent clipPlanesInUseEvent = new ClipPlanesInUseEvent();
     public static final LightmapCoordsEvent lightmapCoordsEvent = new LightmapCoordsEvent();
     public static final AlphaStateChangeEvent alphaStateChangeEvent = new AlphaStateChangeEvent();
     public static final ShaderColorChangeEvent shaderColorChangeEvent = new ShaderColorChangeEvent();

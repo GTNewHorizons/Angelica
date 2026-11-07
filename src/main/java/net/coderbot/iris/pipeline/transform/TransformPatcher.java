@@ -143,11 +143,15 @@ public class TransformPatcher {
     }
 
     public static Map<PatchShaderType, String> patchAttributesInstanced(String vertex, String geometry, String tessControl, String tessEval, String fragment, InputAvailability inputs, boolean scrollGlint, Instancing instancing) {
-        return transform(vertex, geometry, tessControl, tessEval, fragment, new AttributeParameters(Patch.ATTRIBUTES, geometry != null, tessControl != null, inputs, scrollGlint, instancing));
+        return patchAttributesInstanced(vertex, geometry, tessControl, tessEval, fragment, inputs, scrollGlint, instancing, false);
     }
 
-    public static Map<PatchShaderType, String> patchAttributesWideLines(String vertex, String geometry, String tessControl, String tessEval, String fragment, InputAvailability inputs) {
-        return transform(vertex, geometry, tessControl, tessEval, fragment, new AttributeParameters(Patch.ATTRIBUTES, geometry != null, tessControl != null, inputs, false, Instancing.NONE, true));
+    public static Map<PatchShaderType, String> patchAttributesInstanced(String vertex, String geometry, String tessControl, String tessEval, String fragment, InputAvailability inputs, boolean scrollGlint, Instancing instancing, boolean clipDiscard) {
+        return transform(vertex, geometry, tessControl, tessEval, fragment, new AttributeParameters(Patch.ATTRIBUTES, geometry != null, tessControl != null, inputs, scrollGlint, instancing, false, clipDiscard));
+    }
+
+    public static Map<PatchShaderType, String> patchAttributesWideLines(String vertex, String geometry, String tessControl, String tessEval, String fragment, InputAvailability inputs, boolean clipDiscard) {
+        return transform(vertex, geometry, tessControl, tessEval, fragment, new AttributeParameters(Patch.ATTRIBUTES, geometry != null, tessControl != null, inputs, false, Instancing.NONE, true, clipDiscard));
     }
 
     public static Map<PatchShaderType, String> patchAttributes(String vertex, String geometry, String tessControl, String tessEval, String fragment, InputAvailability inputs) {

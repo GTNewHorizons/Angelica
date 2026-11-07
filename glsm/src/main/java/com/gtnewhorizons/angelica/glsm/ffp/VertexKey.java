@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.glsm.GLContextState;
 import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
 import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.states.TexGenState;
 import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
 import org.joml.Matrix4f;
@@ -53,6 +54,7 @@ public final class VertexKey {
     private static final int BIT_UNIT23_UV_FROM_UNIT0 = BIT_UNIT_TEXMAT_BASE + MAX_UNITS;
     private static final int BIT_LINE_STIPPLE        = BIT_UNIT23_UV_FROM_UNIT0 + 1;
     private static final int BIT_INSTANCING          = BIT_LINE_STIPPLE + 1;
+    private static final int BIT_CLIP_EMULATED       = BIT_INSTANCING + 3;
     private static final long INSTANCING_MASK        = 0x7L;
 
     static {
@@ -105,6 +107,7 @@ public final class VertexKey {
     public int texGenModeQ()              { return (int)((packed >> BIT_TEXGEN_Q) & 0x7); }
     public boolean texGenEnabled()        { return texGenModeS() != TG_NONE || texGenModeT() != TG_NONE || texGenModeR() != TG_NONE || texGenModeQ() != TG_NONE; }
     public boolean clipPlanesEnabled()    { return bit(BIT_CLIP_PLANES); }
+    public boolean clipEmulated()         { return bit(BIT_CLIP_EMULATED); }
     public boolean lineStipple()          { return bit(BIT_LINE_STIPPLE); }
     public boolean lineQuads()            { return bit(BIT_LINE_QUADS); }
     public Instancing instancing()         { return Instancing.VALUES[(int) ((packed >> BIT_INSTANCING) & INSTANCING_MASK)]; }
@@ -238,6 +241,7 @@ public final class VertexKey {
 
         if (GLSMRasterizer.anyClipPlaneEnabled(glCtx)) {
             bits |= (1L << BIT_CLIP_PLANES);
+            if (RenderSystem.isClipDistanceEmulated()) bits |= 1L << BIT_CLIP_EMULATED;
         }
 
         if (glCtx.lineStippleActive) {
@@ -279,6 +283,6 @@ public final class VertexKey {
 
     @Override
     public String toString() {
-        return String.format("FFPVertexKey[0x%012X: lit=%b l0=%b l1=%b cm=%b fog=%b tex=%d%d%d%d texmat=%d%d%d%d col=%b nrm=%b vtex=%b vlm=%b tg=%d/%d/%d/%d clip=%b lquads=%b inst=%s]", packed,lightingEnabled(), lightEnabled(0), lightEnabled(1), colorMaterialEnabled(), fogEnabled(), unitTexCoordEnabled(0)?1:0, unitTexCoordEnabled(1)?1:0, unitTexCoordEnabled(2)?1:0, unitTexCoordEnabled(3)?1:0, unitTexMatEnabled(0)?1:0, unitTexMatEnabled(1)?1:0, unitTexMatEnabled(2)?1:0, unitTexMatEnabled(3)?1:0, hasVertexColor(), hasVertexNormal(), hasVertexTexCoord(), hasVertexLightmap(), texGenModeS(), texGenModeT(), texGenModeR(), texGenModeQ(), clipPlanesEnabled(), lineQuads(), instancing());
+        return String.format("FFPVertexKey[0x%012X: lit=%b l0=%b l1=%b cm=%b fog=%b tex=%d%d%d%d texmat=%d%d%d%d col=%b nrm=%b vtex=%b vlm=%b tg=%d/%d/%d/%d clip=%b clipEmu=%b lquads=%b inst=%s]", packed,lightingEnabled(), lightEnabled(0), lightEnabled(1), colorMaterialEnabled(), fogEnabled(), unitTexCoordEnabled(0)?1:0, unitTexCoordEnabled(1)?1:0, unitTexCoordEnabled(2)?1:0, unitTexCoordEnabled(3)?1:0, unitTexMatEnabled(0)?1:0, unitTexMatEnabled(1)?1:0, unitTexMatEnabled(2)?1:0, unitTexMatEnabled(3)?1:0, hasVertexColor(), hasVertexNormal(), hasVertexTexCoord(), hasVertexLightmap(), texGenModeS(), texGenModeT(), texGenModeR(), texGenModeQ(), clipPlanesEnabled(), clipEmulated(), lineQuads(), instancing());
     }
 }

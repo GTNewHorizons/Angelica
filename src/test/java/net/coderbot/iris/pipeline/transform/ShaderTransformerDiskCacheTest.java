@@ -1,11 +1,15 @@
 package net.coderbot.iris.pipeline.transform;
 
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
 import com.gtnewhorizons.angelica.glsm.shader.ShaderDiskCache;
+import com.gtnewhorizons.angelica.glsm.testutil.ClipTestSupport;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.glsm.texture.TextureType;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.helpers.Tri;
+import net.coderbot.iris.pipeline.transform.parameter.AttributeParameters;
 import net.coderbot.iris.pipeline.transform.parameter.ComputeParameters;
 import net.coderbot.iris.pipeline.transform.parameter.TextureStageParameters;
 import net.coderbot.iris.shaderpack.texture.TextureStage;
@@ -95,6 +99,23 @@ class ShaderTransformerDiskCacheTest {
         Reflect.setStatic(RenderSystem.class, "maxGlslVersion", 330);
         final String after = ShaderTransformer.diskKey(Patch.COMPOSITE, compositeInputs(), compositeParams()).hex();
         assertNotEquals(before, after);
+    }
+
+    @Test
+    void keyChangesWithClipEmulationAndClipDiscard() {
+        final InputAvailability avail = InputAvailability.of(true, true);
+        final AttributeParameters unclipped = new AttributeParameters(Patch.ATTRIBUTES, false, false, avail, false, Instancing.NONE, false, false);
+        final AttributeParameters clipped = new AttributeParameters(Patch.ATTRIBUTES, false, false, avail, false, Instancing.NONE, false, true);
+        final String nativeKey;
+        try (var ignored = ClipTestSupport.emulation(false)) {
+            nativeKey = ShaderTransformer.diskKey(Patch.ATTRIBUTES, compositeInputs(), unclipped).hex();
+        }
+        try (var ignored = ClipTestSupport.emulation(true)) {
+            final String emulatedKey = ShaderTransformer.diskKey(Patch.ATTRIBUTES, compositeInputs(), unclipped).hex();
+            final String clippedKey = ShaderTransformer.diskKey(Patch.ATTRIBUTES, compositeInputs(), clipped).hex();
+            assertNotEquals(nativeKey, emulatedKey);
+            assertNotEquals(emulatedKey, clippedKey);
+        }
     }
 
     private static Object2ObjectOpenHashMap<Tri<String, TextureType, TextureStage>, String> textureMap(int capacity) {

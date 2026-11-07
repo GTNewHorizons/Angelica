@@ -238,7 +238,7 @@ public class ShaderTransformer {
         final ShaderDiskCache.Key k = ShaderDiskCache.key("iris-transform").str(patch.name());
         parameters.appendDiskKey(k);
         k.i(RenderSystem.getMaxGlslVersion()).b(RenderSystem.supportsSSBO()).b(RenderSystem.supportsImageLoadStore())
-            .b(RenderSystem.isGLES()).b(BackendManager.RENDER_BACKEND.isSDLGPU()).b(BackendManager.RENDER_BACKEND.supportsComputeImageAtomics()).str(RwImageStoreExtractor.atomicCustomImagesKey())
+            .b(RenderSystem.isGLES()).b(RenderSystem.isClipDistanceEmulated()).b(BackendManager.RENDER_BACKEND.isSDLGPU()).b(BackendManager.RENDER_BACKEND.supportsComputeImageAtomics()).str(RwImageStoreExtractor.atomicCustomImagesKey())
             .i(maxSupportedHoistVersion);
         if (enabledRequirements == null) {
             k.i(-1);

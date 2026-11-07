@@ -2,11 +2,13 @@ package com.gtnewhorizons.angelica.sdlgpu.device;
 
 import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -45,5 +47,13 @@ class DeviceLifecycleGpuTest {
         assertEquals(0L, device.getDevice());
         device.destroyDevice();
         assertEquals(0L, device.getDevice());
+    }
+
+    @Test
+    void createsVulkanDeviceWithoutClipDistance() {
+        device = new Device();
+        assertTrue(device.createDevice(false), "no SDL GPU device on this machine");
+        Assumptions.assumeTrue(device.isVulkan(), "test needs the vulkan driver, got " + device.getDriverName());
+        assertFalse(device.hasClipDistance());
     }
 }
