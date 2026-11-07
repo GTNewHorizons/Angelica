@@ -13,13 +13,14 @@ public class AttributeParameters extends Parameters {
 	public final boolean scrollGlint;
 	public final Instancing instancing;
 	public final boolean wideLines;
+	public final boolean clipDiscard;
 	// WARNING: adding new fields requires updating hashCode and equals methods!
 
 	public AttributeParameters(Patch patch, boolean hasGeometry, boolean hasTesselation, InputAvailability inputs, boolean scrollGlint, Instancing instancing) {
-		this(patch, hasGeometry, hasTesselation, inputs, scrollGlint, instancing, false);
+		this(patch, hasGeometry, hasTesselation, inputs, scrollGlint, instancing, false, false);
 	}
 
-	public AttributeParameters(Patch patch, boolean hasGeometry, boolean hasTesselation, InputAvailability inputs, boolean scrollGlint, Instancing instancing, boolean wideLines) {
+	public AttributeParameters(Patch patch, boolean hasGeometry, boolean hasTesselation, InputAvailability inputs, boolean scrollGlint, Instancing instancing, boolean wideLines, boolean clipDiscard) {
 		super(patch, null);
 		this.hasGeometry = hasGeometry;
 		this.hasTesselation = hasTesselation;
@@ -27,6 +28,7 @@ public class AttributeParameters extends Parameters {
 		this.scrollGlint = scrollGlint;
 		this.instancing = instancing;
 		this.wideLines = wideLines;
+		this.clipDiscard = clipDiscard;
 	}
 
 	@Override
@@ -37,7 +39,7 @@ public class AttributeParameters extends Parameters {
 	@Override
 	public void appendDiskKey(ShaderDiskCache.Key k) {
 		super.appendDiskKey(k);
-		k.b(hasGeometry).b(hasTesselation).str(inputs == null ? null : inputs.name()).b(scrollGlint).str(instancing.name()).b(wideLines);
+		k.b(hasGeometry).b(hasTesselation).str(inputs == null ? null : inputs.name()).b(scrollGlint).str(instancing.name()).b(wideLines).b(clipDiscard);
 	}
 
 	@Override
@@ -49,6 +51,7 @@ public class AttributeParameters extends Parameters {
 		result = prime * result + (scrollGlint ? 1231 : 1237);
 		result = prime * result + instancing.ordinal();
 		result = prime * result + (wideLines ? 1231 : 1237);
+		result = prime * result + (clipDiscard ? 1231 : 1237);
 		result = prime * result + ((inputs == null) ? 0 : inputs.hashCode());
 		return result;
 	}
@@ -71,6 +74,8 @@ public class AttributeParameters extends Parameters {
 		if (instancing != other.instancing)
 			return false;
 		if (wideLines != other.wideLines)
+			return false;
+		if (clipDiscard != other.clipDiscard)
 			return false;
 		if (inputs == null) {
             return other.inputs == null;

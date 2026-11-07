@@ -12,11 +12,14 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
+import com.gtnewhorizons.angelica.glsm.testutil.ClipTestSupport;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL11C;
 import org.lwjgl.opengl.GL12C;
@@ -153,6 +156,32 @@ class GlesSmokeTest {
         assertEquals(GL11C.GL_NO_ERROR, GL11C.glGetError());
     }
 
+    @ParameterizedTest(name = "emulated={0}")
+    @ValueSource(booleans = {false, true})
+    void clipPlaneKeepsOnlyTheEnabledHalfSpace(boolean emulated) {
+        try (var ignored = ClipTestSupport.emulation(emulated)) {
+            try {
+                bindClearedTarget();
+                ClipTestSupport.setPlane(1, 0.0, 0.0, 0.0, -1.0);
+                ClipTestSupport.setPlane(0, 1.0, 0.0, 0.0, 0.0);
+                GLSMEnable.glEnable(GL30C.GL_CLIP_DISTANCE0);
+                GLSMDraws.glBegin(GL11C.GL_QUADS);
+                GLSMCurrentAttribs.glColor4f(0.0f, 1.0f, 0.0f, 1.0f);
+                GLSMDraws.glVertex3f(-1.0f, -1.0f, 0.0f);
+                GLSMDraws.glVertex3f(1.0f, -1.0f, 0.0f);
+                GLSMDraws.glVertex3f(1.0f, 1.0f, 0.0f);
+                GLSMDraws.glVertex3f(-1.0f, 1.0f, 0.0f);
+                GLSMDraws.glEnd();
+
+                assertEquals(0xFF000000, readPixel(SIZE / 4, SIZE / 2), "x < 0 must be clipped by plane 0");
+                assertEquals(0xFF00FF00, readPixel(3 * SIZE / 4, SIZE / 2), "x >= 0 must survive; plane 1 set but not enabled must not clip");
+                assertEquals(GL11C.GL_NO_ERROR, GL11C.glGetError());
+            } finally {
+                GLSMEnable.glDisable(GL30C.GL_CLIP_DISTANCE0);
+            }
+        }
+    }
+
     @Test
     void proxyTextureProbeFindsTheMaxTextureSize() {
         final int maxSize = Integer.highestOneBit(GL11C.glGetInteger(GL11C.GL_MAX_TEXTURE_SIZE));
@@ -173,9 +202,13 @@ class GlesSmokeTest {
     }
 
     private static int readCenterPixel() {
+        return readPixel(SIZE / 2, SIZE / 2);
+    }
+
+    private static int readPixel(int x, int y) {
         final ByteBuffer pixel = MemoryUtil.memAlloc(4);
         try {
-            GLSMFramebuffer.glReadPixels(SIZE / 2, SIZE / 2, 1, 1, GL11C.GL_RGBA, GL11C.GL_UNSIGNED_BYTE, pixel);
+            GLSMFramebuffer.glReadPixels(x, y, 1, 1, GL11C.GL_RGBA, GL11C.GL_UNSIGNED_BYTE, pixel);
             return (pixel.get(3) & 0xFF) << 24 | (pixel.get(0) & 0xFF) << 16 | (pixel.get(1) & 0xFF) << 8 | pixel.get(2) & 0xFF;
         } finally {
             MemoryUtil.memFree(pixel);

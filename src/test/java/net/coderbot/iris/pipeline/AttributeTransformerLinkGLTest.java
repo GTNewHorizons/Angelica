@@ -99,7 +99,7 @@ class AttributeTransformerLinkGLTest {
 
     @Test
     void wideLineVariantLinksWithLineUniformsLive() {
-        final Map<PatchShaderType, String> result = TransformPatcher.patchAttributesWideLines(COMPAT_VERTEX, null, null, null, COMPAT_FRAGMENT, InputAvailability.NONE);
+        final Map<PatchShaderType, String> result = TransformPatcher.patchAttributesWideLines(COMPAT_VERTEX, null, null, null, COMPAT_FRAGMENT, InputAvailability.NONE, false);
         final int program = link("wideLines", result);
         try {
             assertNotEquals(-1, GLSMPrograms.glGetUniformLocation(program, "iris_LineWidth"), () -> result.get(PatchShaderType.VERTEX));

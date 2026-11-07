@@ -34,6 +34,9 @@ public final class FragmentShaderGenerator {
         }
 
         sb.append("void main() {\n");
+        if (key.clipDiscard()) {
+            sb.append(ClipDistanceGlsl.FS_DISCARD);
+        }
         emitLineStipple(sb, key);
         emitTextureSampling(sb, key);
         emitTexEnvChain(sb, key);
@@ -49,6 +52,9 @@ public final class FragmentShaderGenerator {
     private static void emitInputs(StringBuilder sb, FragmentKey key) {
         sb.append("// Inputs from vertex shader\n");
         sb.append("in vec4 v_Color;\n");
+        if (key.clipDiscard()) {
+            sb.append(ClipDistanceGlsl.FS_IN_DIST0).append('\n').append(ClipDistanceGlsl.FS_IN_DIST1).append('\n');
+        }
         if (key.overlayInstanced()) {
             sb.append("in vec4 v_Overlay;\n");
         }

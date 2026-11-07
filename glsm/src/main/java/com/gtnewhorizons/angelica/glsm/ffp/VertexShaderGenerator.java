@@ -111,6 +111,9 @@ public final class VertexShaderGenerator {
         if (key.lineStipple()) {
             sb.append("flat out vec2 v_LineStart;\n");
         }
+        if (key.clipEmulated()) {
+            sb.append(ClipDistanceGlsl.VS_OUT_DIST0).append('\n').append(ClipDistanceGlsl.VS_OUT_DIST1).append('\n');
+        }
         if (key.separateSpecular()) {
             sb.append("out vec3 v_SpecularColor;\n");
         }
@@ -398,10 +401,19 @@ public final class VertexShaderGenerator {
 
     private static void emitClipDistances(StringBuilder sb, VertexKey key) {
         sb.append("  // Clip distances\n");
+        final boolean emulated = key.clipEmulated();
+        final String[] distances = emulated ? new String[8] : null;
         for (int i = 0; i < 8; i++) {
             final String own = "dot(u_ClipPlane[" + i + "], eyePos)";
             final String distance = key.lineQuads() ? acrossLine(own, "dot(u_ClipPlane[" + i + "], lineEyeOther)") : own;
-            sb.append("  gl_ClipDistance[").append(i).append("] = ").append(distance).append(";\n");
+            if (emulated) {
+                distances[i] = distance;
+            } else {
+                sb.append("  gl_ClipDistance[").append(i).append("] = ").append(distance).append(";\n");
+            }
+        }
+        if (emulated) {
+            ClipDistanceGlsl.appendVsAssign(sb, distances);
         }
     }
 

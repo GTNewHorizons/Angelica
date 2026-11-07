@@ -23,8 +23,12 @@ public class BooleanState implements ISettableState<BooleanState> {
         this.ffpStateOnly = ffpStateOnly;
     }
 
+    protected boolean forwardsToBackend() {
+        return !ffpStateOnly;
+    }
+
     public void applyToBackend() {
-        if (ffpStateOnly) return;
+        if (!forwardsToBackend()) return;
         if (enabled) {
             RENDER_BACKEND.enable(glCap);
         } else {
@@ -51,7 +55,7 @@ public class BooleanState implements ISettableState<BooleanState> {
             stateUnknown = false;
             this.enabled = enabled;
             onEnabledChanged();
-            if (!ffpStateOnly) {
+            if (forwardsToBackend()) {
                 if (enabled) {
                     RENDER_BACKEND.enable(this.glCap);
                 } else {

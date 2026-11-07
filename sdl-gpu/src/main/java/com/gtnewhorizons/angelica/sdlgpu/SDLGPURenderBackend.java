@@ -114,6 +114,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
+import org.lwjgl.util.spvc.Spvc;
 import org.lwjgl.sdl.SDLGPU;
 import org.lwjgl.sdl.SDL_GPUBlitInfo;
 import org.lwjgl.sdl.SDLTimer;
@@ -2547,17 +2548,23 @@ public class SDLGPURenderBackend extends RenderBackend {
             if (length != null && length.remaining() > 0) length.put(0, 0);
             return;
         }
-        if (s == null) return;
-        final byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
-        final int n = Math.min(bytes.length, out.remaining());
-        out.put(bytes, 0, n);
+        final byte[] bytes = (s == null ? "" : s).getBytes(StandardCharsets.UTF_8);
+        final int pos = out.position();
+        final int max = out.remaining();
+        final int n = Math.max(0, Math.min(bytes.length, max - 1));
+        for (int i = 0; i < n; i++) out.put(pos + i, bytes[i]);
+        if (max > 0) out.put(pos + n, (byte) 0);
         if (length != null && length.remaining() > 0) length.put(0, n);
+    }
+    private static int glStringLength(String s) {
+        return s == null || s.isEmpty() ? 0 : s.getBytes(StandardCharsets.UTF_8).length + 1;
     }
     @Override public int getShaderi(int shader, int pname) {
         return switch (pname) {
             case GL20.GL_COMPILE_STATUS  ->  shaderManager.isCompiled(shader) ? 1 : 0;
             case GL20.GL_SHADER_TYPE     ->  shaderManager.getShaderType(shader);
-            case GL20.GL_INFO_LOG_LENGTH ->  shaderManager.getShaderInfoLog(shader).length();
+            case GL20.GL_INFO_LOG_LENGTH ->  glStringLength(shaderManager.getShaderInfoLog(shader));
+            case GL20.GL_SHADER_SOURCE_LENGTH -> glStringLength(shaderManager.getShaderSource(shader));
             default -> 0;
         };
     }
@@ -2565,7 +2572,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         return switch (pname) {
             case GL20.GL_LINK_STATUS -> shaderManager.isLinked(program) ? 1 : 0;
             case GL20.GL_VALIDATE_STATUS -> shaderManager.isLinked(program) ? 1 : 0;
-            case GL20.GL_INFO_LOG_LENGTH -> shaderManager.getProgramInfoLog(program).length();
+            case GL20.GL_INFO_LOG_LENGTH -> glStringLength(shaderManager.getProgramInfoLog(program));
             case GL20.GL_ATTACHED_SHADERS -> shaderManager.getAttachedShaderCount(program);
             case GL20.GL_ACTIVE_UNIFORMS -> {
                 final var entries = getOrBuildUniformEntries(program);
@@ -2605,6 +2612,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             final int loc = e.getValue();
             int glType;
             int arrayLen = 1;
+            boolean array = false;
             if (prog.allSamplerNames.contains(name)) {
                 glType = GL20.GL_SAMPLER_2D;
             } else {
@@ -2613,6 +2621,7 @@ public class SDLGPURenderBackend extends RenderBackend {
                 if (umi != null) {
                     glType = FormatMap.mapMemberInfoToGlType(umi);
                     arrayLen = Math.max(1, umi.arrayLen());
+                    array = umi.arrayStride() > 0;
                 } else {
                     glType = GL20.GL_FLOAT_VEC4;
                 }
@@ -2620,7 +2629,7 @@ public class SDLGPURenderBackend extends RenderBackend {
                     glType = FormatMap.remapUnsignedIntToBool(glType);
                 }
             }
-            result.add(new UniformEntry(name, glType, arrayLen));
+            result.add(new UniformEntry(array ? name + "[0]" : name, glType, arrayLen));
         }
         result.sort(Comparator.comparing(UniformEntry::name));
         final List<UniformEntry> immutable = Collections.unmodifiableList(result);
@@ -2678,6 +2687,78 @@ public class SDLGPURenderBackend extends RenderBackend {
     }
     @Override public int getUniformLocation(int program, ByteBuffer name) {
         return shaderManager.getUniformLocation(program, MemoryUtil.memASCII(name));
+    }
+    @Override public void getUniformfv(int program, int location, FloatBuffer params) {
+        final Readback rb = readback(program, location);
+        if (rb == null) return;
+        final int pos = params.position();
+        final int count = Math.min(rb.count(), params.remaining());
+        for (int i = 0; i < count; i++) {
+            final float raw = rb.raw(i);
+            final int bits = Float.floatToRawIntBits(raw);
+            params.put(pos + i, switch (rb.type()) {
+                case FLOAT -> raw;
+                case INT -> (float) bits;
+                case UINT -> (float) (bits & 0xFFFFFFFFL);
+                case BOOL -> bits != 0 ? 1f : 0f;
+                case OPAQUE -> rb.opaqueValue();
+            });
+        }
+    }
+    @Override public void getUniformiv(int program, int location, IntBuffer params) {
+        final Readback rb = readback(program, location);
+        if (rb == null) return;
+        final int pos = params.position();
+        final int count = Math.min(rb.count(), params.remaining());
+        for (int i = 0; i < count; i++) {
+            final float raw = rb.raw(i);
+            final int bits = Float.floatToRawIntBits(raw);
+            params.put(pos + i, switch (rb.type()) {
+                case FLOAT -> roundHalfAwayFromZero(raw);
+                case BOOL -> bits != 0 ? 1 : 0;
+                case INT, UINT -> bits;
+                case OPAQUE -> rb.opaqueValue();
+            });
+        }
+    }
+    private enum ReadType { FLOAT, INT, UINT, BOOL, OPAQUE }
+    private record Readback(float[] storage, int start, int count, ReadType type, int opaqueValue) {
+        float raw(int i) {
+            return storage != null && start + i < storage.length ? storage[start + i] : 0f;
+        }
+    }
+    private Readback readback(int program, int location) {
+        final ShaderManager.ProgramObject prog = shaderManager.getProgram(program);
+        if (prog == null || !prog.linked || location < 0 || location >= prog.uniformSlotCount) return null;
+        final int kind = prog.locationKind[location];
+        if (kind != ShaderManager.ProgramObject.LOCATION_KIND_PLAIN) {
+            return new Readback(null, 0, 1, ReadType.OPAQUE, opaqueUnit(prog, location, kind));
+        }
+        final ShaderManager.UniformMemberInfo info = prog.memberInfo(location);
+        if (info == null) return null;
+        final int perElement = info.vectorSize() * info.columns();
+        final int index = prog.arrayIndexBySlot[location];
+        final int base = location - index;
+        final float[] storage = s().uniformStaging(prog).uniformDataBySlot[base];
+        return new Readback(storage, index * perElement, perElement, readType(prog, base, info), 0);
+    }
+    private static ReadType readType(ShaderManager.ProgramObject prog, int base, ShaderManager.UniformMemberInfo info) {
+        if (info.baseType() == Spvc.SPVC_BASETYPE_FP32) return ReadType.FLOAT;
+        if (info.baseType() != Spvc.SPVC_BASETYPE_UINT32) return ReadType.INT;
+        final String name = prog.locationName[base];
+        return name != null && prog.boolUniforms.contains(name) ? ReadType.BOOL : ReadType.UINT;
+    }
+    private static int roundHalfAwayFromZero(float f) {
+        final double r = Math.floor(Math.abs((double) f) + 0.5);
+        return (int) (f < 0 ? -r : r);
+    }
+    private static int opaqueUnit(ShaderManager.ProgramObject prog, int location, int kind) {
+        final String name = prog.locationName[location];
+        if (name == null) return 0;
+        final int unit = kind == ShaderManager.ProgramObject.LOCATION_KIND_SAMPLER
+            ? prog.samplerTextureUnits.getInt(name)
+            : prog.imageTextureUnits.getInt(name);
+        return Math.max(unit, 0);
     }
     @Override public void getShaderSource(int shader, IntBuffer length, ByteBuffer source) {
         writeUtf8(shaderManager.getShaderSource(shader), length, source);
@@ -4131,6 +4212,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             case GL20.GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS -> 32;
             case GL20.GL_MAX_VERTEX_ATTRIBS -> 16;
             case GL20.GL_MAX_DRAW_BUFFERS -> 8;
+            case GL30.GL_MAX_CLIP_DISTANCES -> device.hasClipDistance() ? GLStateManager.MAX_CLIP_PLANES : 0;
             case GL30.GL_MAX_COLOR_ATTACHMENTS -> 8;
             case GL15.GL_ARRAY_BUFFER_BINDING -> cs.boundArrayBuffer;
             case GL15.GL_ELEMENT_ARRAY_BUFFER_BINDING -> cs.currentVao.elementBuffer;

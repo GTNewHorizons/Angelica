@@ -249,7 +249,7 @@ public class CompatUniformManager {
             final int cpGen = glCtx.clipPlaneGeneration;
             if (cpGen != pu.lastClipPlaneGen) {
                 pu.lastClipPlaneGen = cpGen;
-                uploadClipPlanes(locs);
+                uploadClipPlanes(locs, glCtx.clipPlaneEnabledMask);
             }
         }
 
@@ -468,16 +468,14 @@ public class CompatUniformManager {
             RENDER_BACKEND.uniform1f(locs[LOC_MAT_BASE + MF_SHININESS], mat.shininess);
     }
 
-    private static void uploadClipPlanes(int[] locs) {
+    private static void uploadClipPlanes(int[] locs, int enabledMask) {
         if (locs[LOC_CLIP_PLANES_ENABLED] != -1) {
-            RENDER_BACKEND.uniform1i(locs[LOC_CLIP_PLANES_ENABLED], GLSMRasterizer.anyClipPlaneEnabled() ? 1 : 0);
+            RENDER_BACKEND.uniform1i(locs[LOC_CLIP_PLANES_ENABLED], enabledMask != 0 ? 1 : 0);
         }
         if (locs[LOC_CLIP_PLANES] != -1) {
             final ClipPlaneState cps = GLSMRasterizer.getClipPlaneState();
             clipPlaneBuf.clear();
-            for (int i = 0; i < GLStateManager.MAX_CLIP_PLANES; i++) {
-                cps.putEyePlane(i, clipPlaneBuf);
-            }
+            cps.putEffectivePlanes(enabledMask, clipPlaneBuf);
             clipPlaneBuf.flip();
             RENDER_BACKEND.uniform4(locs[LOC_CLIP_PLANES], clipPlaneBuf);
         }

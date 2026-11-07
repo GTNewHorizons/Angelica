@@ -29,6 +29,7 @@ import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
 import com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.PendingProgramSelection;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.gtnewhorizons.angelica.rendering.tesr.BatchEligibility;
@@ -141,6 +142,7 @@ import java.util.OptionalInt;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
@@ -148,6 +150,8 @@ import java.util.function.Supplier;
  * Encapsulates the compiled shader program objects for the currently loaded shaderpack.
  */
 public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, RenderTargetStateListener, TesrInstancingPipeline, PendingProgramSelection {
+	private static final Tracy.ZoneId Z_CLIP_VARIANT = Tracy.zoneId("irisClipVariant", Tracy.COLOR_IRIS);
+
 	private final RenderTargets renderTargets;
 
 	@Nullable
@@ -202,7 +206,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private final EnumMap<Instancing, Map<Pair<String, InputAvailability>, Map<PatchShaderType, String>>> instancedAttributeTransforms = new EnumMap<>(Instancing.class);
 	private final boolean[] supportsInstancing = initialInstancingSupport();
 	private final Map<Pair<String, InputAvailability>, Map<PatchShaderType, String>> wideLineTransforms = new HashMap<>();
-	private final Map<SharedProgramKey, WideLineProgram> wideLinePrograms = new HashMap<>();
+	private final Map<WideLineKey, WideLineProgram> wideLinePrograms = new HashMap<>();
 	private final boolean packWidensLines;
 	private final ParityFlipState parityState = new ParityFlipState(AngelicaConfig.shaderParityFlip);
 	private final Supplier<ImmutableSet<Integer>> flippedGbuffers;
@@ -965,7 +969,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	public int getActivePassProgramId() {
 		if (current == null) return -1;
-		final Program p = current.getProgram();
+		final Program p = current.boundProgram();
 		return p != null ? p.getProgramId() : -1;
 	}
 
@@ -1044,6 +1048,29 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		}
 	}
 
+	private boolean clipRebindPending;
+
+	public void onClipPlanesInUseChanged() {
+		if (current == null) return;
+		clipRebindPending = true;
+		GLSMHooks.pendingProgramSelection = this;
+	}
+
+	private void resolveClipRebind() {
+		if (!clipRebindPending) return;
+		if (DisplayListManager.isRecording()) {
+			GLSMHooks.pendingProgramSelection = this;
+			return;
+		}
+		clipRebindPending = false;
+		final Pass pass = current;
+		if (pass == null) return;
+		final Program live = pass.liveProgram;
+		if (live != null && GLSMPrograms.getActiveProgram() == live.getProgramId() && pass.select(activeInstancing, GLSMRasterizer.clipEmulationActive()) != live) {
+			pass.rebindProgram();
+		}
+	}
+
 	private void clearPendingSelection() {
 		if (GLSMHooks.pendingProgramSelection == this) {
 			GLSMHooks.pendingProgramSelection = null;
@@ -1053,11 +1080,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private void matchPass() {
 		clearPendingSelection();
 
-		if (!shouldOverrideShaders()) {
-			return;
+		if (shouldOverrideShaders()) {
+			matchPass(getCondition(getPhase()));
 		}
-
-		matchPass(getCondition(getPhase()));
+		resolveClipRebind();
 	}
 
 	private void matchPass(RenderCondition condition) {
@@ -1139,7 +1165,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			}
 			return;
 		}
-		final Program program = pass.getProgram();
+		final Program program = pass.select(Instancing.NONE, GLSMRasterizer.clipEmulationActive());
 		final GlFramebuffer expected = isBeforeTranslucent ? pass.framebufferBeforeTranslucents : pass.framebufferAfterTranslucents;
 		if (program != null && GLSMPrograms.getActiveProgram() == program.getProgramId() && GLSMFramebuffer.getDrawFramebuffer() == expected.getId()) {
 			return;
@@ -1199,7 +1225,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		if (shared != null) {
 			final Pass pass = createPassInner(shared.program(), source.getDirectives(), shadow, id);
 			this.customUniforms.mapPassLike(shared.firstPass(), pass);
-			pass.setInstancingKey(source.getName(), availability, shadow);
+			pass.setVariantSource(source, id, availability, shadow);
 			return pass;
 		}
 
@@ -1224,7 +1250,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		final Pass pass = createPassInner(program, source.getDirectives(), shadow, id);
 		this.customUniforms.mapholderToPass(builder, pass);
-		pass.setInstancingKey(source.getName(), availability, shadow);
+		pass.setVariantSource(source, id, availability, shadow);
 		if (shareKey != null) {
 			builtPrograms.put(shareKey, new BuiltProgram(program, pass));
 		}
@@ -1432,18 +1458,24 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		private final List<BufferBlendOverride> bufferBlendOverrides;
 		private final boolean shadowViewport;
 
-		private String instancingSourceName;
-		private InputAvailability instancingAvailability;
-		private boolean instancingShadow;
-		private final Program[] instancedVariants = new Program[Instancing.VALUES.length];
-		private final boolean[] instancedVariantAttempted = new boolean[Instancing.VALUES.length];
+		private ProgramSource variantSource;
+		private ProgramId variantId;
+		private InputAvailability variantAvailability;
+		private boolean variantShadow;
+		private final Program[][] variants = new Program[Instancing.VALUES.length][2];
+		private final boolean[][] variantAttempted = new boolean[Instancing.VALUES.length][2];
 		@Nullable
-		private WideLineProgram wideLineProgram;
-		private boolean wideLineProgramAttempted;
+		private Program boundProgram;
+		@Nullable
+		private Program liveProgram;
+		private final WideLineProgram[] wideLineVariants = new WideLineProgram[2];
+		private final boolean[] wideLineProgramAttempted = new boolean[2];
 
 		private Pass(@Nullable Program program, GlFramebuffer framebufferBeforeTranslucents, GlFramebuffer framebufferAfterTranslucents,
 					 @Nullable AlphaTestOverride alphaTestOverride, @Nullable BlendModeOverride blendModeOverride, @Nullable List<BufferBlendOverride> bufferBlendOverrides, boolean shadowViewport) {
 			this.program = program;
+			this.variants[Instancing.NONE.ordinal()][0] = program;
+			this.variantAttempted[Instancing.NONE.ordinal()][0] = true;
 			this.framebufferBeforeTranslucents = framebufferBeforeTranslucents;
 			this.framebufferAfterTranslucents = framebufferAfterTranslucents;
 			this.alphaTestOverride = alphaTestOverride;
@@ -1457,13 +1489,20 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		}
 
 		void rebindProgram() {
-			if (program != null) program.use();
 			final boolean suspended = GLStateManager.suspendExitCapture();
 			try {
-				DeferredWorldRenderingPipeline.this.customUniforms.push(this);
+				bindSelected();
 			} finally {
 				GLStateManager.resumeExitCapture(suspended);
 			}
+		}
+
+		private void bindSelected() {
+			final Program selected = select(activeInstancing, GLSMRasterizer.clipEmulationActive());
+			liveProgram = selected;
+			if (activeInstancing == Instancing.NONE) boundProgram = selected;
+			if (selected != null) selected.use();
+			DeferredWorldRenderingPipeline.this.customUniforms.push(selected == null || selected == program ? this : selected);
 		}
 
 		private void useNow() {
@@ -1511,12 +1550,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				bufferBlendOverrides.forEach(BufferBlendOverride::apply);
 			}
 
-			if (activeInstancing != Instancing.NONE && program != null) {
-				DeferredWorldRenderingPipeline.this.bindInstancedVariant(activeInstancing);
-			} else {
-				if (program != null) program.use();
-				DeferredWorldRenderingPipeline.this.customUniforms.push(this);
-			}
+			bindSelected();
 		}
 
 		public void stopUsing() {
@@ -1541,59 +1575,110 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			return program;
 		}
 
-		void setInstancingKey(String sourceName, InputAvailability availability, boolean shadow) {
-			this.instancingSourceName = sourceName;
-			this.instancingAvailability = availability;
-			this.instancingShadow = shadow;
+		@Nullable
+		public Program boundProgram() {
+			return boundProgram != null ? boundProgram : program;
+		}
+
+		void setVariantSource(ProgramSource source, ProgramId id, InputAvailability availability, boolean shadow) {
+			this.variantSource = source;
+			this.variantId = id;
+			this.variantAvailability = availability;
+			this.variantShadow = shadow;
 		}
 
 		@Nullable
-		Program instancedVariant(Instancing kind) {
+		Program select(Instancing kind, boolean clipped) {
 			final int i = kind.ordinal();
-			if (!instancedVariantAttempted[i]) {
-				instancedVariantAttempted[i] = true;
-				if (instancingSourceName != null && supportsInstancing[i]) {
-					instancedVariants[i] = sharedInstancedVariant(instancingSourceName, instancingAvailability, instancingShadow, kind);
+			if (!variantAttempted[i][0]) {
+				variantAttempted[i][0] = true;
+				if (variantSource != null && supportsInstancing[i]) {
+					variants[i][0] = sharedVariant(new InstancedVariantKey(variantSource.getName(), variantAvailability, variantShadow, kind, false),
+						() -> buildInstancedVariant(variantSource.getName(), variantAvailability, variantShadow, kind));
 				}
 			}
-			return instancedVariants[i];
+			final Program unclipped = variants[i][0];
+			if (!clipped || unclipped == null) return unclipped;
+			if (!variantAttempted[i][1]) {
+				variantAttempted[i][1] = true;
+				variants[i][1] = sharedVariant(new InstancedVariantKey(variantSource.getName(), variantAvailability, variantShadow, kind, true),
+					() -> buildClipVariant(variantSource, variantId, variantAvailability, variantShadow, kind));
+			}
+			return variants[i][1] != null ? variants[i][1] : unclipped;
 		}
 
 		@Nullable
-		WideLineProgram wideLineProgram() {
-			if (!wideLineProgramAttempted) {
-				wideLineProgramAttempted = true;
-				if (instancingSourceName != null) {
-					wideLineProgram = sharedWideLineProgram(instancingSourceName, instancingAvailability, instancingShadow);
+		WideLineProgram wideLineProgram(boolean clipped) {
+			final int c = clipped ? 1 : 0;
+			if (!wideLineProgramAttempted[c]) {
+				wideLineProgramAttempted[c] = true;
+				if (variantSource != null && (!clipped || wideLineProgram(false) != null)) {
+					wideLineVariants[c] = sharedWideLineProgram(variantSource, variantAvailability, variantShadow, clipped);
 				}
 			}
-			return wideLineProgram;
+			return wideLineVariants[c] != null || !clipped ? wideLineVariants[c] : wideLineVariants[0];
 		}
 
 		public void destroy() {
 			if (this.program != null) {
 				this.program.destroy();
 			}
-			for (int i = 0; i < instancedVariants.length; i++) {
-				if (instancedVariants[i] != null) {
-					instancedVariants[i].destroy();
-					instancedVariants[i] = null;
+			for (int i = 0; i < variants.length; i++) {
+				for (int c = 0; c < 2; c++) {
+					if ((i != Instancing.NONE.ordinal() || c != 0) && variants[i][c] != null) {
+						variants[i][c].destroy();
+						variants[i][c] = null;
+					}
 				}
 			}
 		}
 	}
 
-	private record InstancedVariantKey(String sourceName, InputAvailability availability, boolean shadow, Instancing kind) {}
+	private record InstancedVariantKey(String sourceName, InputAvailability availability, boolean shadow, Instancing kind, boolean clipped) {}
 
 	// Passes sharing a program also share its instanced variants
 	private final Map<InstancedVariantKey, Program> instancedVariantPrograms = new HashMap<>();
 
 	@Nullable
-	private Program sharedInstancedVariant(String sourceName, InputAvailability availability, boolean shadow, Instancing kind) {
-		final InstancedVariantKey key = new InstancedVariantKey(sourceName, availability, shadow, kind);
+	private Program sharedVariant(InstancedVariantKey key, Supplier<Program> build) {
 		if (instancedVariantPrograms.containsKey(key)) return instancedVariantPrograms.get(key);
-		final Program variant = buildInstancedVariant(sourceName, availability, shadow, kind);
+		final Program variant = build.get();
 		instancedVariantPrograms.put(key, variant);
+		return variant;
+	}
+
+	@Nullable
+	private Program buildClipVariant(ProgramSource source, ProgramId id, InputAvailability availability, boolean shadow, Instancing kind) {
+		final String name = source.getName() + kind.variantSuffix + "_clipped";
+		final boolean glint = GlintScrollInjector.shouldInject(id, source);
+		return buildClipped(source, name, (vertex, fragment) -> {
+			final Map<PatchShaderType, String> transformed = TransformPatcher.patchAttributesInstanced(vertex, null, null, null, fragment, availability, glint, kind, true);
+			return transformed != null ? linkVariant(name, transformed, availability, shadow) : null;
+		});
+	}
+
+	@Nullable
+	private static <T> T buildClipped(ProgramSource source, String name, BiFunction<String, String, T> build) {
+		if (source.getGeometrySource().isPresent() || source.getTessControlSource().isPresent() || source.getTessEvalSource().isPresent()) {
+			return null;
+		}
+		if (Tracy.ENABLED) Tracy.beginZone(Z_CLIP_VARIANT);
+		try {
+			return build.apply(source.getVertexSource().orElse(null), source.getFragmentSource().orElse(null));
+		} catch (Exception e) {
+			Iris.logger.warn("Clip plane variant failed for {}; clip planes stay unclipped there", name, e);
+			return null;
+		} finally {
+			if (Tracy.ENABLED) Tracy.endZone();
+		}
+	}
+
+	private Program linkVariant(String name, Map<PatchShaderType, String> transformed, InputAvailability availability, boolean shadow) {
+		final ProgramBuilder builder = beginBuilder(name, transformed);
+		wireGbufferProgram(builder, availability, shadow);
+		final Program variant = builder.build();
+		vertexWriteReplays.attach(name, variant, transformed, (samplers, images) -> wireGbufferResources(samplers, images, availability, shadow));
+		this.customUniforms.mapholderToPass(builder, variant);
 		return variant;
 	}
 
@@ -1605,12 +1690,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			return null;
 		}
 		try {
-			final ProgramBuilder builder = beginBuilder(sourceName + kind.variantSuffix, transformed);
-			wireGbufferProgram(builder, availability, shadow);
-			final Program variant = builder.build();
-			vertexWriteReplays.attach(sourceName + kind.variantSuffix, variant, transformed, (samplers, images) -> wireGbufferResources(samplers, images, availability, shadow));
-			this.customUniforms.mapholderToPass(builder, variant);
-			return variant;
+			return linkVariant(sourceName + kind.variantSuffix, transformed, availability, shadow);
 		} catch (Exception e) {
 			Iris.logger.warn("{} instanced variant link failed for {}; disabling it", kind, sourceName, e);
 			supportsInstancing[kind.ordinal()] = false;
@@ -1641,50 +1721,52 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	@Override
 	public boolean hasInstancedVariant(Instancing kind) {
-		return current != null && current.instancedVariant(kind) != null;
+		return current != null && current.select(kind, false) != null;
 	}
 
 	public boolean hasInstancedVariant(RenderCondition condition, InputAvailability availability, Instancing kind) {
 		final Pass pass = table.match(condition, availability);
-		return pass != null && pass.instancedVariant(kind) != null;
+		return pass != null && pass.select(kind, false) != null;
 	}
 
 	@Override
 	public void bindInstancedVariant(Instancing kind) {
 		activeInstancing = kind;
-		final Program variant = current.instancedVariant(kind);
-		variant.use();
-		this.customUniforms.push(variant);
+		current.bindSelected();
 	}
 
 	private record WideLineProgram(Program program, int lineWidthLocation, int screenSizeLocation) {}
 
+	private record WideLineKey(String sourceName, InputAvailability availability, boolean shadow, boolean clipped) {}
+
 	@Nullable
-	private WideLineProgram sharedWideLineProgram(String sourceName, InputAvailability availability, boolean shadow) {
-		final SharedProgramKey key = new SharedProgramKey(sourceName, availability, shadow);
+	private WideLineProgram sharedWideLineProgram(ProgramSource source, InputAvailability availability, boolean shadow, boolean clipped) {
+		final WideLineKey key = new WideLineKey(source.getName(), availability, shadow, clipped);
 		if (wideLinePrograms.containsKey(key)) return wideLinePrograms.get(key);
-		final WideLineProgram built = buildWideLineProgram(sourceName, availability, shadow);
+		final WideLineProgram built = clipped ? buildClippedWideLineProgram(source, availability, shadow)
+			: buildWideLineProgram(source.getName() + "_widelines", wideLineTransforms.get(Pair.of(source.getName(), availability)), availability, shadow);
 		wideLinePrograms.put(key, built);
 		return built;
 	}
 
 	@Nullable
-	private WideLineProgram buildWideLineProgram(String sourceName, InputAvailability availability, boolean shadow) {
-		final Map<PatchShaderType, String> transformed = wideLineTransforms.get(Pair.of(sourceName, availability));
+	private WideLineProgram buildClippedWideLineProgram(ProgramSource source, InputAvailability availability, boolean shadow) {
+		final String name = source.getName() + "_widelines_clipped";
+		return buildClipped(source, name, (vertex, fragment) ->
+			buildWideLineProgram(name, TransformPatcher.patchAttributesWideLines(vertex, null, null, null, fragment, availability, true), availability, shadow));
+	}
+
+	@Nullable
+	private WideLineProgram buildWideLineProgram(String name, @Nullable Map<PatchShaderType, String> transformed, InputAvailability availability, boolean shadow) {
 		if (transformed == null) {
 			return null;
 		}
-		final String name = sourceName + "_widelines";
 		try {
-			final ProgramBuilder builder = beginBuilder(name, transformed);
-			wireGbufferProgram(builder, availability, shadow);
-			final Program program = builder.build();
-			vertexWriteReplays.attach(name, program, transformed, (samplers, images) -> wireGbufferResources(samplers, images, availability, shadow));
-			this.customUniforms.mapholderToPass(builder, program);
+			final Program program = linkVariant(name, transformed, availability, shadow);
 			final int id = program.getProgramId();
 			return new WideLineProgram(program, GLSMPrograms.glGetUniformLocation(id, "iris_LineWidth"), GLSMPrograms.glGetUniformLocation(id, "iris_ScreenSize"));
 		} catch (Exception e) {
-			Iris.logger.warn("Wide line program link failed for {}; lines there stay 1 px wide", sourceName, e);
+			Iris.logger.warn("Wide line program link failed for {}; lines there stay 1 px wide", name, e);
 			return null;
 		}
 	}
@@ -1698,8 +1780,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		}
 		GLSMHooks.resolvePendingProgram();
 		final Pass pass = current;
-		if (pass == null || pass.getProgram() == null || activeInstancing != Instancing.NONE
-			|| GLSMPrograms.getActiveProgram() != pass.getProgram().getProgramId()) {
+		final Program bound = pass != null ? pass.boundProgram() : null;
+		if (bound == null || activeInstancing != Instancing.NONE || GLSMPrograms.getActiveProgram() != bound.getProgramId()) {
 			return false;
 		}
 
@@ -1709,7 +1791,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			return false;
 		}
 		final boolean needsWidening = shadow || !packWidensLines;
-		final WideLineProgram wide = needsWidening ? linePass.wideLineProgram() : null;
+		final WideLineProgram wide = needsWidening ? linePass.wideLineProgram(GLSMRasterizer.clipEmulationActive()) : null;
 		if (needsWidening && wide == null) {
 			return false;
 		}
@@ -1742,11 +1824,11 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	}
 
 	public void compileWideLinePrograms() {
-		table.match(RenderCondition.LINES, LINE_INPUTS).wideLineProgram();
+		table.match(RenderCondition.LINES, LINE_INPUTS).wideLineProgram(false);
 		final Pass shadowPass = table.match(RenderCondition.SHADOW, SHADOW_INPUTS);
-		if (shadowPass != null) shadowPass.wideLineProgram();
+		if (shadowPass != null) shadowPass.wideLineProgram(false);
 		final Pass shadowWaterPass = table.match(RenderCondition.SHADOW_TRANSLUCENT, SHADOW_INPUTS);
-		if (shadowWaterPass != null) shadowWaterPass.wideLineProgram();
+		if (shadowWaterPass != null) shadowWaterPass.wideLineProgram(false);
 	}
 
 	@Override
@@ -1851,7 +1933,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		table.forEach(pass -> {
 			if (pass == null || !visited.add(pass)) return;
 			for (Instancing kind : Instancing.VALUES) {
-				if (kind != Instancing.NONE) pass.instancedVariant(kind);
+				if (kind != Instancing.NONE) pass.select(kind, false);
 			}
 		});
 	}
@@ -2667,7 +2749,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			source.getTessControlSource().orElse(null),
 			source.getTessEvalSource().orElse(null),
 			source.getFragmentSource().orElse(null),
-			inputs)));
+			inputs, false)));
 	}
 
 	private static final ProgramId[] INSTANCED_PROGRAM_IDS = {

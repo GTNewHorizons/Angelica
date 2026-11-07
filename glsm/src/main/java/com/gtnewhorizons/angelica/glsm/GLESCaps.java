@@ -11,11 +11,8 @@ public final class GLESCaps {
 
     private GLESCaps() {}
 
-    public static boolean isCapAllowed(int cap, boolean isGLES, boolean hasClipCullDistance) {
+    public static boolean isCapAllowed(int cap, boolean isGLES) {
         if (!isGLES) return true;
-        if (cap >= GL11.GL_CLIP_PLANE0 && cap < GL11.GL_CLIP_PLANE0 + GLStateManager.MAX_CLIP_PLANES) {
-            return hasClipCullDistance;
-        }
         return switch (cap) {
             case GL11.GL_LINE_SMOOTH,
                  GL11.GL_POLYGON_SMOOTH,
