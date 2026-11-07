@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu.resource;
 
+import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
 import com.gtnewhorizons.angelica.sdlgpu.device.Device;
 import com.gtnewhorizons.angelica.sdlgpu.device.Submits;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
@@ -156,11 +157,11 @@ public final class TextureOps {
     }
 
     public static int levelWidth(ResourceManager.TextureMeta meta, int level) {
-        return meta != null ? PixelOps.mipLevelSize(meta.width(), level) : 0;
+        return meta != null ? TextureInfo.mipLevelSize(meta.width(), level) : 0;
     }
 
     public static int levelHeight(ResourceManager.TextureMeta meta, int level) {
-        return meta != null ? PixelOps.mipLevelSize(meta.height(), level) : 0;
+        return meta != null ? TextureInfo.mipLevelSize(meta.height(), level) : 0;
     }
 
     private void copyFromDefaultFramebuffer(ContextState st, int destGlId, long destTex, int level, int xoffset, int yoffset, int x, int y, int width, int height) {

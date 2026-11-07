@@ -15,6 +15,12 @@ public class TextureInfo {
     private static final int UNSET_INT = Integer.MIN_VALUE;
     private static final float UNSET_FLOAT = Float.NEGATIVE_INFINITY;
 
+    public static int mipLevelSize(int base, int level) {
+        if (base <= 0 || level < 0) return 0;
+        if (level >= Integer.SIZE - 1) return 1;
+        return Math.max(1, base >> level);
+    }
+
     @Getter protected final int id;
     @Getter @Setter protected int target = GL11.GL_TEXTURE_2D;
     protected int internalFormat = -1;

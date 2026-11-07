@@ -20,6 +20,7 @@ import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import com.gtnewhorizons.angelica.glsm.backend.ScreenCapture;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
+import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import com.gtnewhorizons.angelica.glsm.texture.TextureStaging;
 import com.gtnewhorizons.angelica.sdlgpu.compute.ComputeBinder;
@@ -1507,52 +1508,8 @@ public class SDLGPURenderBackend extends RenderBackend {
         return TextureInfoCache.isProxyTarget(target);
     }
 
-    private static boolean proxyLayersInHeight(int target) {
-        return target == GL30.GL_PROXY_TEXTURE_1D_ARRAY;
-    }
-
-    private static boolean proxyLayersInDepth(int target) {
-        return isProxyArrayTarget(target) && !proxyLayersInHeight(target);
-    }
-
-    private static boolean isProxyArrayTarget(int target) {
-        return target == GL30.GL_PROXY_TEXTURE_1D_ARRAY || target == GL30.GL_PROXY_TEXTURE_2D_ARRAY || target == GL32.GL_PROXY_TEXTURE_2D_MULTISAMPLE_ARRAY || target == GL40.GL_PROXY_TEXTURE_CUBE_MAP_ARRAY;
-    }
-
-    public static int proxyLevelSize(int base, int level) {
-        return PixelOps.mipLevelSize(base, level);
-    }
-
-    static int proxyDimensionLimit(int target) {
-        return switch (target) {
-            case GL12.GL_PROXY_TEXTURE_3D -> MAX_3D_TEXTURE_SIZE;
-            case GL13.GL_PROXY_TEXTURE_CUBE_MAP, GL40.GL_PROXY_TEXTURE_CUBE_MAP_ARRAY -> MAX_CUBE_MAP_TEXTURE_SIZE;
-            default -> MAX_TEXTURE_SIZE;
-        };
-    }
-
-    static int levelZeroEquivalentSize(int size, int level) {
-        if (size <= 0 || level < 0 || level >= Integer.SIZE - 1) return 0;
-        final long scaled = (long) size << level;
-        return scaled > Integer.MAX_VALUE ? 0 : (int) scaled;
-    }
-
     private void recordProxyTexImage(ContextState st, int target, int level, int internalFormat, int width, int height, int depth) {
-        final boolean layersInHeight = proxyLayersInHeight(target);
-        final boolean layersInDepth = proxyLayersInDepth(target);
-        final int dimLimit = proxyDimensionLimit(target);
-        final int w = levelZeroEquivalentSize(width, level);
-        final int h = layersInHeight ? height : levelZeroEquivalentSize(height, level);
-        final int d = layersInDepth ? depth : levelZeroEquivalentSize(depth, level);
-        final int hLimit = layersInHeight ? MAX_ARRAY_TEXTURE_LAYERS : dimLimit;
-        final int dLimit = layersInDepth ? MAX_ARRAY_TEXTURE_LAYERS : dimLimit;
-        final boolean fits = w >= 1 && w <= dimLimit && h >= 1 && h <= hLimit && d >= 1 && d <= dLimit
-            && resourceManager.isMappableTextureFormat(internalFormat);
-        if (fits) {
-            st.proxyTexture.accept(target, w, h, d, internalFormat);
-        } else {
-            st.proxyTexture.reject(target);
-        }
+        st.proxyTexture.record(target, level, internalFormat, width, height, depth, resourceManager.isMappableTextureFormat(internalFormat));
     }
 
     private static int boundTextureFor(ContextState st, int target) {
@@ -1816,23 +1773,13 @@ public class SDLGPURenderBackend extends RenderBackend {
     }
     @Override public int getTexLevelParameteri(int target, int level, int pname) {
         final ContextState cs = s();
-        if (isProxyTarget(target)) {
-            final ContextState.ProxyTextureState proxy = cs.proxyTexture;
-            if (proxy.target != target) return 0;
-            return switch (pname) {
-                case GL11.GL_TEXTURE_WIDTH -> proxyLevelSize(proxy.width, level);
-                case GL11.GL_TEXTURE_HEIGHT -> proxyLayersInHeight(target) ? proxy.height : proxyLevelSize(proxy.height, level);
-                case GL12.GL_TEXTURE_DEPTH -> proxyLayersInDepth(target) ? proxy.depth : proxyLevelSize(proxy.depth, level);
-                case GL11.GL_TEXTURE_INTERNAL_FORMAT -> proxy.internalFormat;
-                default -> 0;
-            };
-        }
+        if (isProxyTarget(target)) return cs.proxyTexture.levelParameter(target, level, pname);
         final int glId = cs.boundTextures[cs.activeTextureUnit];
         final ResourceManager.TextureMeta meta = resourceManager.getTextureMeta(glId);
         if (meta == null) return 0;
         return switch (pname) {
-            case GL11.GL_TEXTURE_WIDTH -> PixelOps.mipLevelSize(meta.width(), level);
-            case GL11.GL_TEXTURE_HEIGHT -> PixelOps.mipLevelSize(meta.height(), level);
+            case GL11.GL_TEXTURE_WIDTH -> TextureInfo.mipLevelSize(meta.width(), level);
+            case GL11.GL_TEXTURE_HEIGHT -> TextureInfo.mipLevelSize(meta.height(), level);
             case GL11.GL_TEXTURE_INTERNAL_FORMAT -> {
                 final int stored = meta.glFormat();
                 yield TextureInfoCache.isGenericCompressedInternalFormat(stored) ? GL11.GL_RGBA8 : stored;
@@ -1987,8 +1934,8 @@ public class SDLGPURenderBackend extends RenderBackend {
             if (meta != null) {
                 fbo.colorFormats[colorIdx] = meta.sdlFormat();
                 if (colorIdx == 0) {
-                    fbo.width = PixelOps.mipLevelSize(meta.width(), level);
-                    fbo.height = PixelOps.mipLevelSize(meta.height(), level);
+                    fbo.width = TextureInfo.mipLevelSize(meta.width(), level);
+                    fbo.height = TextureInfo.mipLevelSize(meta.height(), level);
                 }
             }
             fbo.colorAttachmentCount = Math.max(fbo.colorAttachmentCount, colorIdx + 1);
@@ -2216,8 +2163,8 @@ public class SDLGPURenderBackend extends RenderBackend {
         out.level = fbo.colorLevels[fbo.readBufferIndex];
         out.sdlFormat = meta != null ? meta.sdlFormat() : SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
         out.glBaseFormat = meta != null ? PixelPack.glBaseFormat(meta.glFormat()) : GL11.GL_RGBA;
-        out.width = meta != null ? PixelOps.mipLevelSize(meta.width(), out.level) : fbo.width;
-        out.height = meta != null ? PixelOps.mipLevelSize(meta.height(), out.level) : fbo.height;
+        out.width = meta != null ? TextureInfo.mipLevelSize(meta.width(), out.level) : fbo.width;
+        out.height = meta != null ? TextureInfo.mipLevelSize(meta.height(), out.level) : fbo.height;
         return out;
     }
 
@@ -2283,8 +2230,8 @@ public class SDLGPURenderBackend extends RenderBackend {
         final int glId = boundTextureFor(cs, target);
         final ResourceManager.TextureMeta meta = resourceManager.getTextureMeta(glId);
         if (meta == null || level < 0 || level >= meta.levels()) return;
-        final int width = PixelOps.mipLevelSize(meta.width(), level);
-        final int height = PixelOps.mipLevelSize(meta.height(), level);
+        final int width = TextureInfo.mipLevelSize(meta.width(), level);
+        final int height = TextureInfo.mipLevelSize(meta.height(), level);
         if (width <= 0 || height <= 0) return;
         checkReadbackCapacity(format, type, width, height, loadPackState(cs), capacity);
         final int kind = readbackKind(format);
@@ -4166,8 +4113,8 @@ public class SDLGPURenderBackend extends RenderBackend {
         final ResourceManager.TextureMeta meta = resourceManager.getTextureMeta(texture);
         if (meta == null) return 0;
         return switch (pname) {
-            case GL11.GL_TEXTURE_WIDTH -> PixelOps.mipLevelSize(meta.width(), level);
-            case GL11.GL_TEXTURE_HEIGHT -> PixelOps.mipLevelSize(meta.height(), level);
+            case GL11.GL_TEXTURE_WIDTH -> TextureInfo.mipLevelSize(meta.width(), level);
+            case GL11.GL_TEXTURE_HEIGHT -> TextureInfo.mipLevelSize(meta.height(), level);
             case GL11.GL_TEXTURE_INTERNAL_FORMAT -> {
                 final int stored = meta.glFormat();
                 yield TextureInfoCache.isGenericCompressedInternalFormat(stored) ? GL11.GL_RGBA8 : stored;
@@ -4246,10 +4193,10 @@ public class SDLGPURenderBackend extends RenderBackend {
     }
 
     static final int MAX_UNIFORM_COMPONENTS_PER_STAGE = 4096 / Float.BYTES;
-    static final int MAX_ARRAY_TEXTURE_LAYERS = 256;
-    static final int MAX_TEXTURE_SIZE = 16384;
-    static final int MAX_CUBE_MAP_TEXTURE_SIZE = 16384;
-    static final int MAX_3D_TEXTURE_SIZE = 2048;
+    public static final int MAX_ARRAY_TEXTURE_LAYERS = 256;
+    public static final int MAX_TEXTURE_SIZE = 16384;
+    public static final int MAX_CUBE_MAP_TEXTURE_SIZE = 16384;
+    public static final int MAX_3D_TEXTURE_SIZE = 2048;
     /** D3D12 and Metal both cap anisotropy at 16, and every desktop Vulkan driver reports 16. */
     static final float MAX_ANISOTROPY = 16.0f;
 
@@ -4412,9 +4359,9 @@ public class SDLGPURenderBackend extends RenderBackend {
         if (texHandle == 0 || frameManager.getCommandBuffer() == 0) return;
         final ResourceManager.TextureMeta meta = resourceManager.getTextureMeta(texture);
         if (meta == null || level >= meta.levels()) return;
-        final int mipW = PixelOps.mipLevelSize(meta.width(), level);
-        final int mipH = PixelOps.mipLevelSize(meta.height(), level);
-        final int mipD = PixelOps.mipLevelSize(meta.depth(), level);
+        final int mipW = TextureInfo.mipLevelSize(meta.width(), level);
+        final int mipH = TextureInfo.mipLevelSize(meta.height(), level);
+        final int mipD = TextureInfo.mipLevelSize(meta.depth(), level);
         final int bpp = PixelOps.sdlFormatTexelBytes(meta.sdlFormat());
         if (mipW <= 0 || mipH <= 0 || bpp <= 0) return;
 

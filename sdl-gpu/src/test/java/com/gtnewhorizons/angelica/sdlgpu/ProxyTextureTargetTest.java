@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu;
 
+import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -81,7 +82,7 @@ class ProxyTextureTargetTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("levelSizeCases")
     void levelSizeMatchesExpectation(String label, int base, int level, int expected) {
-        assertEquals(expected, SDLGPURenderBackend.proxyLevelSize(base, level), label);
+        assertEquals(expected, TextureInfo.mipLevelSize(base, level), label);
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu;
 
+import com.gtnewhorizons.angelica.glsm.texture.ProxyTexture;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -47,11 +48,11 @@ class ProxyTextureLimitsTest {
         assertEquals(2048, SDLGPURenderBackend.deviceLimit(GL12.GL_MAX_3D_TEXTURE_SIZE));
         assertEquals(16384, SDLGPURenderBackend.deviceLimit(GL13.GL_MAX_CUBE_MAP_TEXTURE_SIZE));
 
-        assertEquals(16384, SDLGPURenderBackend.proxyDimensionLimit(GL11.GL_PROXY_TEXTURE_2D));
-        assertEquals(16384, SDLGPURenderBackend.proxyDimensionLimit(GL11.GL_PROXY_TEXTURE_1D));
-        assertEquals(2048, SDLGPURenderBackend.proxyDimensionLimit(GL12.GL_PROXY_TEXTURE_3D));
-        assertEquals(16384, SDLGPURenderBackend.proxyDimensionLimit(GL13.GL_PROXY_TEXTURE_CUBE_MAP));
-        assertEquals(16384, SDLGPURenderBackend.proxyDimensionLimit(GL40.GL_PROXY_TEXTURE_CUBE_MAP_ARRAY));
+        assertEquals(16384, SdlTestRig.contextState().proxyTexture.dimensionLimit(GL11.GL_PROXY_TEXTURE_2D));
+        assertEquals(16384, SdlTestRig.contextState().proxyTexture.dimensionLimit(GL11.GL_PROXY_TEXTURE_1D));
+        assertEquals(2048, SdlTestRig.contextState().proxyTexture.dimensionLimit(GL12.GL_PROXY_TEXTURE_3D));
+        assertEquals(16384, SdlTestRig.contextState().proxyTexture.dimensionLimit(GL13.GL_PROXY_TEXTURE_CUBE_MAP));
+        assertEquals(16384, SdlTestRig.contextState().proxyTexture.dimensionLimit(GL40.GL_PROXY_TEXTURE_CUBE_MAP_ARRAY));
     }
 
     @Test
@@ -99,13 +100,13 @@ class ProxyTextureLimitsTest {
 
     @Test
     void levelZeroEquivalentSizeRejectsOverflowAndNonsense() {
-        assertEquals(4, SDLGPURenderBackend.levelZeroEquivalentSize(4, 0));
-        assertEquals(32, SDLGPURenderBackend.levelZeroEquivalentSize(4, 3));
-        assertEquals(0, SDLGPURenderBackend.levelZeroEquivalentSize(4, -1));
-        assertEquals(0, SDLGPURenderBackend.levelZeroEquivalentSize(0, 2));
-        assertEquals(0, SDLGPURenderBackend.levelZeroEquivalentSize(4, 31));
-        assertEquals(0, SDLGPURenderBackend.levelZeroEquivalentSize(4, 30));
-        assertEquals(1 << 30, SDLGPURenderBackend.levelZeroEquivalentSize(1, 30));
+        assertEquals(4, ProxyTexture.levelZeroEquivalentSize(4, 0));
+        assertEquals(32, ProxyTexture.levelZeroEquivalentSize(4, 3));
+        assertEquals(0, ProxyTexture.levelZeroEquivalentSize(4, -1));
+        assertEquals(0, ProxyTexture.levelZeroEquivalentSize(0, 2));
+        assertEquals(0, ProxyTexture.levelZeroEquivalentSize(4, 31));
+        assertEquals(0, ProxyTexture.levelZeroEquivalentSize(4, 30));
+        assertEquals(1 << 30, ProxyTexture.levelZeroEquivalentSize(1, 30));
     }
 
     @Test
