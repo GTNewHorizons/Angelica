@@ -106,7 +106,13 @@ val glsmSdlAgent = sourceSets.create("glsmSdlAgent") {
     java.srcDir("src/glsmSdlAgent/java")
 }
 
+val glsmLwjgl2Stubs: Configuration by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
 dependencies {
+    glsmLwjgl2Stubs(project(":glsm", "lwjgl2Stubs"))
     "glsmSdlAgentCompileOnly"(project(":glsm"))
     "glsmSdlAgentCompileOnly"(testFixtures(project(":glsm")))
     "glsmSdlAgentCompileOnly"(libs.asm.tree.test)
@@ -148,7 +154,7 @@ val glsmSdlTest by tasks.registering(Test::class) {
     description = "Runs the headless GLSM-on-SDL FFP rig in its own JVM, with the SDL GPU gate engaged."
     group = "verification"
     testClassesDirs = sourceSets["test"].output.classesDirs
-    classpath = glsmSdlStubs.output.classesDirs.plus(
+    classpath = glsmSdlStubs.output.classesDirs.plus(glsmLwjgl2Stubs).plus(
         sourceSets["test"].runtimeClasspath.filter { file ->
             !file.name.startsWith("lwjgl-2.") && !file.name.startsWith("lwjgl_util-") && !file.name.startsWith("lwjgl-platform-")
         }

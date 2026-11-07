@@ -26,7 +26,7 @@ jobs:
       - name: Install a software Vulkan driver
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y xvfb mesa-vulkan-drivers
+          sudo apt-get install -y xvfb mesa-vulkan-drivers libgl1-mesa-dri
       - uses: actions/checkout@v5
       - uses: actions/setup-java@v5
         with:
@@ -36,7 +36,7 @@ jobs:
             25
       - uses: gradle/actions/setup-gradle@v5
       - name: Run SDL-GPU tests
-        run: xvfb-run -a --server-args="-screen 0 1366x768x24" ./gradlew --build-cache --stacktrace --continue :sdl-gpu:glsmSdlTest :sdl-gpu:sdlGpuDeviceTest
+        run: xvfb-run -a --server-args="-screen 0 1366x768x24" ./gradlew --build-cache --stacktrace --continue :sdl-gpu:glsmSdlTest :sdl-gpu:sdlGpuDeviceTest :lwjgl3-backend:glesTest
       - name: Check LWJGL did not extract natives to the shared temp dir
         run: test ! -e "/tmp/lwjgl_$USER"
       - name: Attach SDL-GPU test results
@@ -48,3 +48,6 @@ jobs:
             sdl-gpu/build/test-results/
             sdl-gpu/build/reports/tests/
             sdl-gpu/hs_err_pid*.log
+            lwjgl3-backend/build/test-results/
+            lwjgl3-backend/build/reports/tests/
+            lwjgl3-backend/hs_err_pid*.log

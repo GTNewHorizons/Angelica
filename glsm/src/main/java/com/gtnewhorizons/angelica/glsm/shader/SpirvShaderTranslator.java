@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.glsm.shader;
 
 import com.gtnewhorizons.angelica.glsm.GlslTransformUtils;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess.Edit;
+import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess.UniformBlock;
 import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -26,8 +27,10 @@ import org.taumc.glsl.grammar.GLSLParserBaseListener;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess.startIdx;
@@ -65,13 +68,13 @@ public final class SpirvShaderTranslator {
         try {
             final String emitted = emitGlslEs(cr.spirv(), debugName, glShaderType, pre.explicitVsInputs());
             if (emitted == null) return null;
-            return postProcessEsOutput(emitted, pre.boolUniforms());
+            return postProcessEsOutput(emitted, pre.boolUniforms(), pre.uniformBlocks());
         } finally {
             memFree(cr.spirv());
         }
     }
 
-    private static @Nullable String postProcessEsOutput(String glslEs, Set<String> boolUniformNames) {
+    private static @Nullable String postProcessEsOutput(String glslEs, Set<String> boolUniformNames, Map<String, UniformBlock> uniformBlocks) {
         final GLSLParser.Translation_unitContext root;
         try {
             root = GlslTransformUtils.parseFullQuiet(glslEs);
@@ -80,21 +83,42 @@ public final class SpirvShaderTranslator {
             return null;
         }
 
-        final DefaultBlockInfo block = findDefaultBlock(root);
-        final List<Edit> edits = new ArrayList<>();
+        final BlockFinder finder = new BlockFinder(glslEs, uniformBlocks);
+        ParseTreeWalker.DEFAULT.walk(finder, root);
 
-        if (block != null) {
-            edits.add(new Edit(startIdx(block.structExternalDecl), stopIdx(block.structExternalDecl), buildLooseUniforms(block.members, boolUniformNames)));
+        final List<Edit> edits = new ArrayList<>();
+        BlockInfo defaultBlock = null;
+        final Map<String, Set<String>> bareMembersByVar = new HashMap<>();
+        for (BlockInfo block : finder.blocks) {
+            final String structReplacement;
+            if (block.source == null) {
+                defaultBlock = block;
+                structReplacement = buildLooseUniforms(block.members, boolUniformNames);
+                bareMembersByVar.put(block.varName, block.memberNames());
+            } else if (block.source.instanceName() == null) {
+                structReplacement = block.source.qualifierText() + " " + block.structName + " " + block.body + ";";
+                bareMembersByVar.put(block.varName, block.memberNames());
+            } else {
+                structReplacement = block.source.qualifierText() + " " + block.structName + " " + block.body + " " + block.declaratorText + ";";
+            }
+            edits.add(new Edit(startIdx(block.structExternalDecl), stopIdx(block.structExternalDecl), structReplacement));
             edits.add(new Edit(startIdx(block.uniformExternalDecl), stopIdx(block.uniformExternalDecl), ""));
         }
 
-        final UseSiteRewriter rewriter = new UseSiteRewriter(block, boolUniformNames, edits);
+        final Set<String> defaultMembers = defaultBlock == null ? Set.of() : bareMembersByVar.get(defaultBlock.varName);
+        final UseSiteRewriter rewriter = new UseSiteRewriter(defaultBlock, defaultMembers, boolUniformNames, bareMembersByVar, edits);
         ParseTreeWalker.DEFAULT.walk(rewriter, root);
 
         return GlslVulkanPreprocess.applyEdits(glslEs, edits);
     }
 
-    private record DefaultBlockInfo(ParserRuleContext structExternalDecl, ParserRuleContext uniformExternalDecl, String blockVarName, List<MemberInfo> members) {}
+    private record BlockInfo(String structName, @Nullable UniformBlock source, ParserRuleContext structExternalDecl, String body, List<MemberInfo> members, ParserRuleContext uniformExternalDecl, String varName, String declaratorText) {
+        Set<String> memberNames() {
+            final Set<String> names = new HashSet<>();
+            for (MemberInfo m : members) names.add(m.name);
+            return names;
+        }
+    }
 
     private record MemberInfo(String typePrefix, String name) {}
 
@@ -111,31 +135,38 @@ public final class SpirvShaderTranslator {
         return sb.toString();
     }
 
-    private static @Nullable DefaultBlockInfo findDefaultBlock(GLSLParser.Translation_unitContext root) {
-        final DefaultBlockFinder finder = new DefaultBlockFinder();
-        ParseTreeWalker.DEFAULT.walk(finder, root);
-        if (finder.structExternalDecl == null || finder.uniformExternalDecl == null) return null;
-        return new DefaultBlockInfo(finder.structExternalDecl, finder.uniformExternalDecl, finder.blockVarName, finder.members);
+    private static boolean isDefaultBlockStruct(String structName) {
+        return structName.startsWith("_RESERVED_IDENTIFIER_FIXUP_") && structName.endsWith("DefaultUniformBlock");
     }
 
-    private static final class DefaultBlockFinder extends GLSLParserBaseListener {
-        String structName;
-        ParserRuleContext structExternalDecl;
-        ParserRuleContext uniformExternalDecl;
-        String blockVarName;
-        final List<MemberInfo> members = new ArrayList<>();
+    private static final class BlockFinder extends GLSLParserBaseListener {
+        private record PendingStruct(@Nullable UniformBlock source, ParserRuleContext externalDecl, String body, List<MemberInfo> members) {}
+
+        private final String glslEs;
+        private final Map<String, UniformBlock> sourceBlocks;
+        private final Map<String, PendingStruct> pending = new HashMap<>();
+        final List<BlockInfo> blocks = new ArrayList<>();
+
+        BlockFinder(String glslEs, Map<String, UniformBlock> sourceBlocks) {
+            this.glslEs = glslEs;
+            this.sourceBlocks = sourceBlocks;
+        }
 
         @Override
         public void enterStruct_specifier(GLSLParser.Struct_specifierContext ctx) {
-            if (structExternalDecl != null) return;
             final TerminalNode id = ctx.IDENTIFIER();
             if (id == null) return;
             final String idText = id.getText();
-            if (!idText.startsWith("_RESERVED_IDENTIFIER_FIXUP_") || !idText.endsWith("DefaultUniformBlock")) return;
+            final UniformBlock source = sourceBlocks.get(idText);
+            if (source == null && !isDefaultBlockStruct(idText)) return;
 
-            structName = idText;
-            structExternalDecl = findExternalDeclaration(ctx);
+            final List<MemberInfo> members = source != null && source.instanceName() != null ? List.of() : collectMembers(ctx);
+            final String body = glslEs.substring(ctx.LEFT_BRACE().getSymbol().getStartIndex(), ctx.RIGHT_BRACE().getSymbol().getStopIndex() + 1);
+            pending.putIfAbsent(idText, new PendingStruct(source, findExternalDeclaration(ctx), body, members));
+        }
 
+        private static List<MemberInfo> collectMembers(GLSLParser.Struct_specifierContext ctx) {
+            final List<MemberInfo> members = new ArrayList<>();
             for (GLSLParser.Struct_declarationContext sd : ctx.struct_declaration_list().struct_declaration()) {
                 final StringBuilder typePrefix = new StringBuilder();
                 if (sd.type_qualifier() != null) typePrefix.append(textWithSpaces(sd.type_qualifier())).append(' ');
@@ -146,11 +177,12 @@ public final class SpirvShaderTranslator {
                     members.add(new MemberInfo(typePrefix + arraySuffix, decl.IDENTIFIER().getText()));
                 }
             }
+            return members;
         }
 
         @Override
         public void enterInit_declarator_list(GLSLParser.Init_declarator_listContext ctx) {
-            if (structName == null || uniformExternalDecl != null) return;
+            if (pending.isEmpty()) return;
             final GLSLParser.Single_declarationContext single = ctx.single_declaration();
             if (single == null || single.typeless_declaration() == null) return;
             final GLSLParser.Fully_specified_typeContext fst = single.fully_specified_type();
@@ -159,10 +191,14 @@ public final class SpirvShaderTranslator {
             if (fst.type_specifier() == null || fst.type_specifier().type_specifier_nonarray() == null) return;
             final GLSLParser.Type_specifier_nonarrayContext ts = fst.type_specifier().type_specifier_nonarray();
             if (ts.type_name() == null) return;
-            if (!structName.equals(ts.type_name().getText())) return;
+            final String structName = ts.type_name().getText();
+            final PendingStruct struct = pending.remove(structName);
+            if (struct == null) return;
 
-            blockVarName = single.typeless_declaration().IDENTIFIER().getText();
-            uniformExternalDecl = findExternalDeclaration(ctx);
+            final GLSLParser.Typeless_declarationContext declarator = single.typeless_declaration();
+            final String declaratorText = glslEs.substring(startIdx(declarator), stopIdx(declarator) + 1);
+            blocks.add(new BlockInfo(structName, struct.source, struct.externalDecl, struct.body, struct.members,
+                findExternalDeclaration(ctx), declarator.IDENTIFIER().getText(), declaratorText));
         }
 
         private static String textWithSpaces(ParseTree tree) {
@@ -192,17 +228,18 @@ public final class SpirvShaderTranslator {
     }
 
     private static final class UseSiteRewriter extends GLSLParserBaseListener {
-        private final @Nullable DefaultBlockInfo block;
+        private final @Nullable BlockInfo block;
         private final Set<String> boolNames;
+        private final Map<String, Set<String>> bareMembersByVar;
         private final List<Edit> edits;
         private final Set<String> memberNames;
 
-        UseSiteRewriter(@Nullable DefaultBlockInfo block, Set<String> boolNames, List<Edit> edits) {
+        UseSiteRewriter(@Nullable BlockInfo block, Set<String> memberNames, Set<String> boolNames, Map<String, Set<String>> bareMembersByVar, List<Edit> edits) {
             this.block = block;
+            this.memberNames = memberNames;
             this.boolNames = boolNames;
+            this.bareMembersByVar = bareMembersByVar;
             this.edits = edits;
-            this.memberNames = new HashSet<>();
-            if (block != null) for (MemberInfo m : block.members) memberNames.add(m.name);
         }
 
         @Override
@@ -240,11 +277,11 @@ public final class SpirvShaderTranslator {
                 }
             }
 
-            if (block != null && ctx.getChildCount() == 3 && ctx.DOT() != null && ctx.field_selection() != null) {
-                final ParseTree inner = ctx.getChild(0);
-                if (inner.getText().equals(block.blockVarName)) {
+            if (ctx.getChildCount() == 3 && ctx.DOT() != null && ctx.field_selection() != null) {
+                final Set<String> bareMembers = bareMembersByVar.get(ctx.getChild(0).getText());
+                if (bareMembers != null) {
                     final String member = ctx.field_selection().getText();
-                    if (memberNames.contains(member) && !coveredByAncestorBoolCompare(ctx)) {
+                    if (bareMembers.contains(member) && !coveredByAncestorBoolCompare(ctx)) {
                         edits.add(new Edit(startIdx(ctx), stopIdx(ctx), member));
                     }
                 }
@@ -254,8 +291,8 @@ public final class SpirvShaderTranslator {
         private @Nullable String resolveBoolOperand(ParseTree operand) {
             final String text = operand.getText();
             if (boolNames.contains(text)) return text;
-            if (block != null && text.startsWith(block.blockVarName + ".")) {
-                final String member = text.substring(block.blockVarName.length() + 1);
+            if (block != null && text.startsWith(block.varName + ".")) {
+                final String member = text.substring(block.varName.length() + 1);
                 if (boolNames.contains(member) && memberNames.contains(member)) return member;
             }
             return null;

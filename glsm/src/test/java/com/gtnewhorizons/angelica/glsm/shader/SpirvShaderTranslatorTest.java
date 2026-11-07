@@ -278,6 +278,39 @@ class SpirvShaderTranslatorTest {
     }
 
     @Test
+    void uniformBlock_staysABlockUnderGLES() {
+        final String src = """
+            #version 330 core
+            layout(std140) uniform Blk {
+                mat4 u_M;
+                vec4 u_C;
+            };
+            layout(std140) uniform Named {
+                vec4 u_N;
+            } named;
+            uniform float u_Loose;
+            struct L { vec4 c; };
+            uniform L u_Light;
+            in vec4 color;
+            out vec4 fragColor;
+            void main() {
+                fragColor = u_M * color * u_C * u_Loose + u_Light.c + named.u_N;
+            }
+            """;
+        final String es = SpirvShaderTranslator.glslToGlslEs(src, GL20.GL_FRAGMENT_SHADER, "uniform_block.frag");
+        dumpOnFailure("uniform_block.frag", src, es);
+
+        assertNotNull(es);
+        assertTrue(Pattern.compile("layout\\s*\\(\\s*std140\\s*\\)\\s*uniform\\s+Blk\\s*\\{").matcher(es).find(), "a source uniform block must reach GLSL ES as a block, so glUniformBlockBinding finds it by name\n\n" + es);
+        assertFalse(Pattern.compile("uniform\\s+Blk\\s+_").matcher(es).find(), "the block must not be left as a plain struct uniform\n\n" + es);
+        assertFalse(Pattern.compile("_[0-9]+\\.u_M").matcher(es).find(), "an unnamed source block's members must be accessed bare\n\n" + es);
+        assertTrue(Pattern.compile("layout\\s*\\(\\s*std140\\s*\\)\\s*uniform\\s+Named\\s*\\{[^}]*\\}\\s*named\\s*;").matcher(es).find(), "an instance-named block keeps its instance name\n\n" + es);
+        assertTrue(es.contains("named.u_N"), "members of an instance-named block stay qualified\n\n" + es);
+        assertContainsDecl(es, "float", "u_Loose");
+        assertTrue(Pattern.compile("uniform\\s+L\\s+u_Light\\s*;").matcher(es).find(), "a struct uniform is not a block and must stay a plain uniform\n\n" + es);
+    }
+
+    @Test
     void readonlyImage3D_staysAnImageUnderGLES() {
         final String src = """
             #version 420 core

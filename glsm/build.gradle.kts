@@ -67,6 +67,22 @@ artifacts {
     }
 }
 
+// LWJGL2-API stubs for test JVMs that strip the lwjgl-2 jars (glsmSdlTest, glesTest).
+val lwjgl2StubsSourceSet = sourceSets.create("lwjgl2Stubs") {
+    java.srcDir("src/lwjgl2Stubs/java")
+}
+
+val lwjgl2Stubs by configurations.creating {
+    isCanBeConsumed = true
+    isCanBeResolved = false
+}
+
+artifacts {
+    add(lwjgl2Stubs.name, lwjgl2StubsSourceSet.java.classesDirectory) {
+        builtBy(tasks.named("lwjgl2StubsClasses"))
+    }
+}
+
 repositories {
     maven {
         name = "Mojang"
@@ -111,6 +127,7 @@ val spirvTestRuntime by configurations.creating {
 dependencies {
     // MC compile stubs
     compileOnly(sourceSets["stubs"].output)
+    "lwjgl2StubsCompileOnly"(libs.lwjgl3.opengl)
 
     // LWJGL
     compileOnly(libs.lwjgl2)

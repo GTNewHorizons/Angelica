@@ -1,5 +1,7 @@
 package org.lwjgl.opengl;
 
+import java.lang.reflect.Field;
+
 public class ContextCapabilities {
 
     public boolean OpenGL30 = true;
@@ -21,11 +23,28 @@ public class ContextCapabilities {
     public boolean GL_ARB_sampler_objects = true;
     public boolean GL_ARB_shader_image_load_store = true;
     public boolean GL_ARB_shader_storage_buffer_object = true;
+    public boolean GL_ARB_stencil_texturing = false;
     public boolean GL_ARB_tessellation_shader = false;
+    public boolean GL_ARB_texture_storage = false;
 
     public boolean GL_EXT_direct_state_access = false;
     public boolean GL_EXT_gpu_shader4 = true;
     public boolean GL_EXT_shader_image_load_store = true;
 
     public boolean GL_NVX_gpu_memory_info = false;
+
+    public ContextCapabilities() {
+        if ("lwjgl3".equals(System.getProperty("glsm.stubs.capabilities"))) copyFromCurrentContext();
+    }
+
+    private void copyFromCurrentContext() {
+        final GLCapabilities caps = GL.getCapabilities();
+        for (Field field : ContextCapabilities.class.getFields()) {
+            try {
+                field.setBoolean(this, GLCapabilities.class.getField(field.getName()).getBoolean(caps));
+            } catch (ReflectiveOperationException e) {
+                throw new IllegalStateException("LWJGL3 GLCapabilities has no " + field.getName(), e);
+            }
+        }
+    }
 }

@@ -10,6 +10,9 @@ import com.gtnewhorizons.angelica.glsm.GLScreenCapture;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import com.gtnewhorizons.angelica.glsm.backend.ScreenCapture;
 import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
+import com.gtnewhorizons.angelica.glsm.texture.ProxyTexture;
+import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
+import org.jetbrains.annotations.Nullable;
 import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import me.eigenraven.lwjgl3ify.client.MainThreadExec;
 import org.lwjgl.PointerBuffer;
@@ -48,6 +51,7 @@ import org.lwjgl.sdl.SDLError;
 import org.lwjgl.sdl.SDLEvents;
 import org.lwjgl.sdl.SDLTimer;
 import org.lwjgl.sdl.SDLVideo;
+import org.lwjgl.system.FunctionProvider;
 import org.lwjgl.system.JNI;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
@@ -97,14 +101,45 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
                     || normalizedVendor.startsWith("advanced micro devices");
             }
         }
+        final FunctionProvider functions = GL.getFunctionProvider();
         if (RenderSystem.isGLES()) {
-            pfnClearDepthf = GL.getFunctionProvider().getFunctionAddress("glClearDepthf");
-            pfnDepthRangef = GL.getFunctionProvider().getFunctionAddress("glDepthRangef");
+            pfnClearDepthf = functions.getFunctionAddress("glClearDepthf");
+            pfnDepthRangef = functions.getFunctionAddress("glDepthRangef");
+            proxyTexture = new ProxyTexture(GL11C.glGetInteger(GL11C.GL_MAX_TEXTURE_SIZE), GL11C.glGetInteger(GL12C.GL_MAX_3D_TEXTURE_SIZE),
+                GL11C.glGetInteger(GL13C.GL_MAX_CUBE_MAP_TEXTURE_SIZE), GL11C.glGetInteger(GL30C.GL_MAX_ARRAY_TEXTURE_LAYERS));
         }
+        pfnGenSamplers = requireFunction(functions, "glGenSamplers");
+        pfnDeleteSamplers = requireFunction(functions, "glDeleteSamplers");
+        pfnBindSampler = requireFunction(functions, "glBindSampler");
+        pfnSamplerParameteri = requireFunction(functions, "glSamplerParameteri");
+        pfnSamplerParameterf = requireFunction(functions, "glSamplerParameterf");
+        pfnIsSampler = requireFunction(functions, "glIsSampler");
+        pfnVertexAttribDivisor = requireFunction(functions, "glVertexAttribDivisor");
+    }
+
+    private static long requireFunction(FunctionProvider functions, String name) {
+        final long address = functions.getFunctionAddress(name);
+        if (address == 0L) throw new IllegalStateException(name + " is not exported by the GL driver");
+        return address;
     }
 
     private long pfnClearDepthf;
     private long pfnDepthRangef;
+    private @Nullable ProxyTexture proxyTexture;
+    // GL33C slots stay unloaded on an ES 3.2 context: LWJGL builds desktop caps only up to the reported 3.2.
+    private long pfnGenSamplers;
+    private long pfnDeleteSamplers;
+    private long pfnBindSampler;
+    private long pfnSamplerParameteri;
+    private long pfnSamplerParameterf;
+    private long pfnIsSampler;
+    private long pfnVertexAttribDivisor;
+
+    private boolean recordProxy(int target, int level, int internalFormat, int width, int height, int depth) {
+        if (proxyTexture == null || !TextureInfoCache.isProxyTarget(target)) return false;
+        proxyTexture.record(target, level, internalFormat, width, height, depth, true);
+        return true;
+    }
 
     @Override
     public void shutdown() {
@@ -565,26 +600,31 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
 
     @Override
     public void texImage2D(int target, int level, int internalFormat, int width, int height, int border, int format, int type, ByteBuffer pixels) {
+        if (recordProxy(target, level, internalFormat, width, height, 1)) return;
         GL11C.glTexImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
     }
 
     @Override
     public void texImage2D(int target, int level, int internalFormat, int width, int height, int border, int format, int type, DoubleBuffer pixels) {
+        if (recordProxy(target, level, internalFormat, width, height, 1)) return;
         GL11C.glTexImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
     }
 
     @Override
     public void texImage2D(int target, int level, int internalFormat, int width, int height, int border, int format, int type, FloatBuffer pixels) {
+        if (recordProxy(target, level, internalFormat, width, height, 1)) return;
         GL11C.glTexImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
     }
 
     @Override
     public void texImage2D(int target, int level, int internalFormat, int width, int height, int border, int format, int type, IntBuffer pixels) {
+        if (recordProxy(target, level, internalFormat, width, height, 1)) return;
         GL11C.glTexImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
     }
 
     @Override
     public void texImage2D(int target, int level, int internalFormat, int width, int height, int border, int format, int type, long pixelBufferOffset) {
+        if (recordProxy(target, level, internalFormat, width, height, 1)) return;
         GL11C.glTexImage2D(target, level, internalFormat, width, height, border, format, type, pixelBufferOffset);
     }
 
@@ -605,16 +645,19 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
 
     @Override
     public void texImage1D(int target, int level, int internalFormat, int width, int border, int format, int type, ByteBuffer pixels) {
+        if (recordProxy(target, level, internalFormat, width, 1, 1)) return;
         GL11C.glTexImage1D(target, level, internalFormat, width, border, format, type, pixels);
     }
 
     @Override
     public void texImage3D(int target, int level, int internalFormat, int width, int height, int depth, int border, int format, int type, ByteBuffer pixels) {
+        if (recordProxy(target, level, internalFormat, width, height, depth)) return;
         GL12C.glTexImage3D(target, level, internalFormat, width, height, depth, border, format, type, pixels);
     }
 
     @Override
     public void texImage3D(int target, int level, int internalFormat, int width, int height, int depth, int border, int format, int type, IntBuffer pixels) {
+        if (recordProxy(target, level, internalFormat, width, height, depth)) return;
         GL12C.glTexImage3D(target, level, internalFormat, width, height, depth, border, format, type, pixels);
     }
 
@@ -686,6 +729,7 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
 
     @Override
     public int getTexLevelParameteri(int target, int level, int pname) {
+        if (proxyTexture != null && TextureInfoCache.isProxyTarget(target)) return proxyTexture.levelParameter(target, level, pname);
         return GL11C.glGetTexLevelParameteri(target, level, pname);
     }
 
@@ -706,27 +750,33 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
 
     @Override
     public int genSamplers() {
-        return GL33C.glGenSamplers();
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            final IntBuffer ids = stack.mallocInt(1);
+            JNI.callPV(1, MemoryUtil.memAddress(ids), pfnGenSamplers);
+            return ids.get(0);
+        }
     }
 
     @Override
     public void deleteSamplers(int sampler) {
-        GL33C.glDeleteSamplers(sampler);
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            JNI.callPV(1, MemoryUtil.memAddress(stack.ints(sampler)), pfnDeleteSamplers);
+        }
     }
 
     @Override
     public void bindSampler(int unit, int sampler) {
-        GL33C.glBindSampler(unit, sampler);
+        JNI.callV(unit, sampler, pfnBindSampler);
     }
 
     @Override
     public void samplerParameteri(int sampler, int pname, int param) {
-        GL33C.glSamplerParameteri(sampler, pname, param);
+        JNI.callV(sampler, pname, param, pfnSamplerParameteri);
     }
 
     @Override
     public void samplerParameterf(int sampler, int pname, float param) {
-        GL33C.glSamplerParameterf(sampler, pname, param);
+        JNI.callV(sampler, pname, param, pfnSamplerParameterf);
     }
 
     @Override
@@ -1371,7 +1421,7 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
 
     @Override public boolean isFramebuffer(int framebuffer) { return GL30C.glIsFramebuffer(framebuffer); }
     @Override public boolean isRenderbuffer(int renderbuffer) { return GL30C.glIsRenderbuffer(renderbuffer); }
-    @Override public boolean isSampler(int sampler) { return GL33C.glIsSampler(sampler); }
+    @Override public boolean isSampler(int sampler) { return JNI.callZ(sampler, pfnIsSampler); }
     @Override public boolean isQuery(int query) { return GL15C.glIsQuery(query); }
 
     @Override
@@ -1441,7 +1491,7 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
 
     @Override
     public void vertexAttribDivisor(int index, int divisor) {
-        GL33C.glVertexAttribDivisor(index, divisor);
+        JNI.callV(index, divisor, pfnVertexAttribDivisor);
     }
 
     @Override

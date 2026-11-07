@@ -1,10 +1,10 @@
 package com.gtnewhorizons.angelica.sdlgpu.pipeline;
 
+import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
 import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager.FrameState;
 import com.gtnewhorizons.angelica.sdlgpu.resource.FboState;
-import com.gtnewhorizons.angelica.sdlgpu.resource.PixelOps;
 import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
 import com.gtnewhorizons.angelica.sdlgpu.resource.TextureOps;
 import com.gtnewhorizons.angelica.sdlgpu.shader.LogicOpFormats;
@@ -121,13 +121,13 @@ public final class LogicOpEmulator {
         if (fbo == null) return frameManager.getFbo0Width();
         final int db = drawBuffer(fbo, loc);
         final ResourceManager.TextureMeta meta = resourceManager.getTextureMeta(fbo.colorGlIds[db]);
-        return meta != null ? PixelOps.mipLevelSize(meta.width(), fbo.colorLevels[db]) : fbo.width;
+        return meta != null ? TextureInfo.mipLevelSize(meta.width(), fbo.colorLevels[db]) : fbo.width;
     }
 
     private int targetHeight(FboState fbo, int loc) {
         if (fbo == null) return frameManager.getFbo0Height();
         final int db = drawBuffer(fbo, loc);
         final ResourceManager.TextureMeta meta = resourceManager.getTextureMeta(fbo.colorGlIds[db]);
-        return meta != null ? PixelOps.mipLevelSize(meta.height(), fbo.colorLevels[db]) : fbo.height;
+        return meta != null ? TextureInfo.mipLevelSize(meta.height(), fbo.colorLevels[db]) : fbo.height;
     }
 }
