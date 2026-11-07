@@ -44,6 +44,7 @@ import com.gtnewhorizons.angelica.compat.cubicchunks.CubicChunksAPI;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightWorldRenderer;
+import com.gtnewhorizons.angelica.glsm.DepthEcho;
 import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
 import com.gtnewhorizons.angelica.glsm.GLSMBlend;
 import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
@@ -64,6 +65,7 @@ import com.gtnewhorizons.angelica.rendering.culling.GpuCulling;
 import com.gtnewhorizons.angelica.render.WeatherRenderer;
 import com.gtnewhorizons.angelica.rendering.culling.GpuTerrainCuller;
 import com.gtnewhorizons.angelica.rendering.tesr.AngelicaTesrMeshCache;
+import com.gtnewhorizons.angelica.rendering.tesr.GlowReplayExclusions;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.gtnewhorizons.angelica.rendering.tesr.PendingTesrDraws;
 import com.gtnewhorizons.angelica.rendering.tesr.SectionBuiltBlockEntity;
@@ -72,6 +74,7 @@ import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHold
 import com.gtnewhorizons.angelica.rendering.tesr.TesrAttribution;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrLifecycle;
+import com.gtnewhorizons.angelica.rendering.tesr.TesrProviderDispatch;
 import com.gtnewhorizons.angelica.rendering.translucency.TranslucencyLayers;
 import com.gtnewhorizons.angelica.rendering.translucency.TranslucentLayer;
 import net.coderbot.iris.Iris;
@@ -105,6 +108,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
 
     private final ObjectArrayList<TileEntity> frameTEs = new ObjectArrayList<>();
     private final ObjectArrayList<TileEntity> frameOverride = new ObjectArrayList<>();
+    private final ObjectArrayList<TileEntity> glowReplay = new ObjectArrayList<>();
 
     private final TileEntityDepthOrder depthOrder = new TileEntityDepthOrder();
     private final Matrix4f savedTextureMatrix = new Matrix4f();
@@ -432,6 +436,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
     public void renderBlockEntitiesBeforeTranslucent(float partialTicks) {
         if (passOne != PassOne.PENDING) return;
         passOne = PassOne.DRAWN_EARLY;
+        glowReplay.clear();
         if (!anyRendersInPassOne()) return;
         final Minecraft mc = Minecraft.getMinecraft();
         final boolean layered = TranslucencyLayers.INSTANCE.active();
@@ -460,6 +465,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             if (layered) TranslucencyLayers.INSTANCE.begin(TranslucentLayer.BLOCK_ENTITIES);
             try {
                 renderBlockEntitiesInPhase(partialTicks);
+                if (layered) replayGlowDepth(partialTicks);
             } finally {
                 if (layered) TranslucencyLayers.INSTANCE.end();
             }
@@ -468,6 +474,45 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
             GLSMMatrices.glPopMatrix();
             GLSMMatrices.setTextureMatrix(0, savedTextureMatrix);
+            GLSMAttribStack.popStateTo(depth);
+        }
+    }
+
+    private void replayGlowDepth(float partialTicks) {
+        if (glowReplay.isEmpty()) return;
+        try {
+            if (!TranslucencyLayers.INSTANCE.beginGlowReplay()) return;
+            try {
+                for (int i = 0; i < glowReplay.size(); i++) {
+                    replayTE(glowReplay.get(i), partialTicks);
+                }
+            } finally {
+                TranslucencyLayers.INSTANCE.endGlowReplay();
+            }
+        } finally {
+            glowReplay.clear();
+        }
+    }
+
+    /// Calls the renderer directly, since a depth-only replay must not feed the dispatcher's lighting or
+    /// batch-eligibility tracking.
+    private static void replayTE(TileEntity tileEntity, float partialTicks) {
+        final TileEntitySpecialRenderer renderer = TileEntityRendererDispatcher.instance.getSpecialRenderer(tileEntity);
+        if (renderer == null) return;
+        final double x = tileEntity.xCoord - TileEntityRendererDispatcher.staticPlayerX;
+        final double y = tileEntity.yCoord - TileEntityRendererDispatcher.staticPlayerY;
+        final double z = tileEntity.zCoord - TileEntityRendererDispatcher.staticPlayerZ;
+        final int depth = GLSMAttribStack.pushState(StateSet.BLEND);
+        GLSMCurrentAttribs.glColor4f(1f, 1f, 1f, 1f);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        TesrBatchRenderer.INSTANCE.beginScope();
+        try {
+            if (AngelicaConfig.enableTESRProviderDispatch && TesrProviderDispatch.tryRender(renderer, tileEntity, x, y, z)) return;
+            renderer.renderTileEntityAt(tileEntity, x, y, z, partialTicks);
+        } catch (RuntimeException e) {
+            if (!tileEntity.isInvalid()) throw e;
+        } finally {
+            TesrBatchRenderer.INSTANCE.endScope();
             GLSMAttribStack.popStateTo(depth);
         }
     }
@@ -710,9 +755,11 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             final boolean attribute = Tracy.ENABLED && TesrAttribution.currentRenderable == null;
             if (attribute) TesrAttribution.currentRenderable = tileEntity.getClass();
             if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_RENDER_TE);
+            if (DepthEcho.armed() && !GlowReplayExclusions.excludes(tileEntity)) DepthEcho.beginTracking();
             try {
                 TileEntityRendererDispatcher.instance.renderTileEntity(tileEntity, partialTicks);
             } finally {
+                if (DepthEcho.endTracking()) glowReplay.add(tileEntity);
                 if (Tracy.ENABLED) Tracy.endZone();
                 if (attribute) TesrAttribution.currentRenderable = null;
                 if (Tracy.ENABLED) RenderClassTimings.TESR.add(teLabelClass(tileEntity), System.nanoTime() - start);
