@@ -1,0 +1,58 @@
+# Translucency layer scene for a generated superflat (windows-flyby-kit/make_world.py). $x $y $z is the flight start;
+# ground-standing level is $y-2. Start facing south (yaw 0), pitch 15. Use with -Dangelica.flyby.weather=RAIN. Torch
+# flame and smoke and rain fall in front of a light blue glass wall and a water pool; one torch row stands behind the glass.
+
+gamerule doMobSpawning false
+
+# glass wall
+setblock $x-1 $y-2 $z+9 stained_glass 3 replace
+setblock $x-1 $y-1 $z+9 stained_glass 3 replace
+setblock $x-1 $y+0 $z+9 stained_glass 3 replace
+setblock $x+0 $y-2 $z+9 stained_glass 3 replace
+setblock $x+0 $y-1 $z+9 stained_glass 3 replace
+setblock $x+0 $y+0 $z+9 stained_glass 3 replace
+setblock $x+1 $y-2 $z+9 stained_glass 3 replace
+setblock $x+1 $y-1 $z+9 stained_glass 3 replace
+setblock $x+1 $y+0 $z+9 stained_glass 3 replace
+setblock $x+2 $y-2 $z+9 stained_glass 3 replace
+setblock $x+2 $y-1 $z+9 stained_glass 3 replace
+setblock $x+2 $y+0 $z+9 stained_glass 3 replace
+setblock $x+3 $y-2 $z+9 stained_glass 3 replace
+setblock $x+3 $y-1 $z+9 stained_glass 3 replace
+setblock $x+3 $y+0 $z+9 stained_glass 3 replace
+
+# torches in front of and behind the glass
+setblock $x-1 $y-2 $z+7 torch 5 replace
+setblock $x-1 $y-2 $z+11 torch 5 replace
+setblock $x+0 $y-2 $z+7 torch 5 replace
+setblock $x+0 $y-2 $z+11 torch 5 replace
+setblock $x+1 $y-2 $z+7 torch 5 replace
+setblock $x+1 $y-2 $z+11 torch 5 replace
+setblock $x+2 $y-2 $z+7 torch 5 replace
+setblock $x+2 $y-2 $z+11 torch 5 replace
+setblock $x+3 $y-2 $z+7 torch 5 replace
+setblock $x+3 $y-2 $z+11 torch 5 replace
+
+# water pool with torches in front of it
+setblock $x-6 $y-3 $z+7 water 0 replace
+setblock $x-6 $y-3 $z+8 water 0 replace
+setblock $x-6 $y-3 $z+9 water 0 replace
+setblock $x-6 $y-3 $z+10 water 0 replace
+setblock $x-5 $y-3 $z+7 water 0 replace
+setblock $x-5 $y-3 $z+8 water 0 replace
+setblock $x-5 $y-3 $z+9 water 0 replace
+setblock $x-5 $y-3 $z+10 water 0 replace
+setblock $x-4 $y-3 $z+7 water 0 replace
+setblock $x-4 $y-3 $z+8 water 0 replace
+setblock $x-4 $y-3 $z+9 water 0 replace
+setblock $x-4 $y-3 $z+10 water 0 replace
+setblock $x-3 $y-3 $z+7 water 0 replace
+setblock $x-3 $y-3 $z+8 water 0 replace
+setblock $x-3 $y-3 $z+9 water 0 replace
+setblock $x-3 $y-3 $z+10 water 0 replace
+setblock $x-2 $y-3 $z+7 water 0 replace
+setblock $x-2 $y-3 $z+8 water 0 replace
+setblock $x-2 $y-3 $z+9 water 0 replace
+setblock $x-2 $y-3 $z+10 water 0 replace
+setblock $x-5 $y-2 $z+6 torch 5 replace
+setblock $x-3 $y-2 $z+6 torch 5 replace
