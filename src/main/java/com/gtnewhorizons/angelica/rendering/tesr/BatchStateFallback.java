@@ -31,6 +31,7 @@ final class BatchStateFallback {
         final long before = GLSMDraws.drawCalls;
         try {
             GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+            if (models.hasQueuedGeometry() || tesrs.hasQueuedGeometry()) TranslucentPeel.flush();
             models.flushForStateChange();
             tesrs.flushForStateChange();
         } finally {

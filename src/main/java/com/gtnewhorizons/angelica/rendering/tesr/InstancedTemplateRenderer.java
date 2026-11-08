@@ -144,6 +144,14 @@ final class InstancedTemplateRenderer {
      * Draws a base run's recorded template upload again, every instance in one color.
      */
     int redrawTemplates(TexRun base, int colorABGR) {
+        return redrawTemplates(base, true, colorABGR);
+    }
+
+    int replayTemplates(TexRun run) {
+        return redrawTemplates(run, false, 0);
+    }
+
+    private int redrawTemplates(TexRun base, boolean constantColor, int colorABGR) {
         long recordOffset = base.uploadOffset;
         neutralizeExtendedAttribs();
         GLSMPrograms.setFfpInstancing(Instancing.TEMPLATE);
@@ -153,9 +161,9 @@ final class InstancedTemplateRenderer {
             bindRingTo(mesh.vao, TEMPLATE_FLAGS);
             InstancedAttribs.pointTemplate(recordOffset);
             GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-            setConstantColor(colorABGR);
+            if (constantColor) setConstantColor(colorABGR);
             GLSMDraws.glDrawArraysInstanced(mesh.drawMode, 0, mesh.vertexCount, count);
-            GLSMVertexInput.glEnableVertexAttribArray(InstancedAttribs.LOC_COLOR);
+            if (constantColor) GLSMVertexInput.glEnableVertexAttribArray(InstancedAttribs.LOC_COLOR);
             recordOffset += (long) count * InstancedAttribs.STRIDE;
         }
         GLSMPrograms.setFfpInstancing(Instancing.NONE);
@@ -220,15 +228,23 @@ final class InstancedTemplateRenderer {
     }
 
     void redrawCubes(long offset, int instances, int colorABGR) {
+        redrawCubes(offset, instances, true, colorABGR);
+    }
+
+    void replayCubes(long offset, int instances) {
+        redrawCubes(offset, instances, false, 0);
+    }
+
+    private void redrawCubes(long offset, int instances, boolean constantColor, int colorABGR) {
         neutralizeExtendedAttribs();
         bindRingTo(UnitCubeMesh.vao(), UnitCubeMesh.VERTEX_FLAGS);
         CubeInstancedAttribs.pointInstanceAttribs(offset);
         GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-        setConstantColor(colorABGR);
+        if (constantColor) setConstantColor(colorABGR);
         GLSMPrograms.setFfpInstancing(Instancing.CUBE);
         GLSMDraws.glDrawArraysInstanced(GL11.GL_QUADS, 0, UnitCubeMesh.VERTEX_COUNT, instances);
         GLSMPrograms.setFfpInstancing(Instancing.NONE);
-        GLSMVertexInput.glEnableVertexAttribArray(InstancedAttribs.LOC_COLOR);
+        if (constantColor) GLSMVertexInput.glEnableVertexAttribArray(InstancedAttribs.LOC_COLOR);
         GLSMVertexInput.glBindVertexArray(0);
     }
 

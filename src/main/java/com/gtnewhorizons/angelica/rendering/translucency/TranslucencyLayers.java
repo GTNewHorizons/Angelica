@@ -173,6 +173,10 @@ public final class TranslucencyLayers {
         return open != null;
     }
 
+    public int openFramebuffer() {
+        return open != null ? layers[open.ordinal()].framebuffer.getId() : 0;
+    }
+
     public void bindOpenLayer() {
         (replayingGlows ? glowDepth : layers[open.ordinal()]).framebuffer.bind();
     }
