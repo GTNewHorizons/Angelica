@@ -1,10 +1,12 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.stacks.BlendStateStack;
 import org.lwjgl.opengl.GL11;
 
 /// Discards fragments that would not change the target under the draw's blend, so the depth [DepthEcho] keeps for a
-/// glow covers only what the glow shows. A fragment it drops changes the draw's own color by less than one 8-bit step.
+/// glow covers only what the glow shows and transparent texels do not take a [DepthPeel] peel. A fragment it drops
+/// changes the draw's own color by less than one 8-bit step.
 public final class CoverageDiscard {
 
     private static final int OFF = 0;
@@ -29,7 +31,7 @@ public final class CoverageDiscard {
     private CoverageDiscard() {}
 
     public static boolean active() {
-        return DepthEcho.discardsCoverage();
+        return GLSMConfig.depthPeel || DepthEcho.discardsCoverage();
     }
 
     public static int mode() {

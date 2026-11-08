@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.glsm.CoverageDiscard;
 import com.gtnewhorizons.angelica.glsm.GLContextState;
 import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.states.TexEnvState;
 import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
@@ -17,7 +18,7 @@ import org.lwjgl.opengl.GL13;
  * Packed-long fragment shader permutation key for FFP emulation.
  *
  * Layout:
- *   long[0]: global bits (14) + unit 0 (45 bits at offset 14), coverage discard (60), combined glint (61), glint alpha (62), clip discard (63)
+ *   long[0]: global bits (14) + unit 0 (45 bits at offset 14), depth peel (59), coverage discard (60), combined glint (61), glint alpha (62), clip discard (63)
  *   long[1..3]: unit 1..3 (45 bits each, low-aligned)
  * Only max(1, nrEnabledUnits) longs are significant.
  *
@@ -79,6 +80,7 @@ public final class FragmentKey {
     }
 
     private static final int GLOBAL_BITS = 14;
+    private static final int BIT_DEPTH_PEEL = 59;
     private static final int BIT_COVERAGE_DISCARD = 60;
     private static final int BIT_COMBINED_GLINT = 61;
     private static final int BIT_GLINT_REPLACE_ALPHA = 62;
@@ -130,6 +132,7 @@ public final class FragmentKey {
         long global = 0;
         if (CombinedGlint.isActive()) global |= 1L << BIT_COMBINED_GLINT;
         if (CoverageDiscard.active()) global |= 1L << BIT_COVERAGE_DISCARD;
+        if (GLSMConfig.depthPeel) global |= 1L << BIT_DEPTH_PEEL;
         if (CombinedGlint.replacesAlpha()) global |= 1L << BIT_GLINT_REPLACE_ALPHA;
         if (GLSMRasterizer.clipEmulationActive(glCtx)) global |= 1L << BIT_CLIP_DISCARD;
 
@@ -268,6 +271,7 @@ public final class FragmentKey {
     public boolean clipDiscard()      { return (packed[0] & (1L << BIT_CLIP_DISCARD)) != 0; }
     public boolean glintReplaceAlpha() { return (packed[0] & (1L << BIT_GLINT_REPLACE_ALPHA)) != 0; }
     public boolean coverageDiscard()   { return (packed[0] & (1L << BIT_COVERAGE_DISCARD)) != 0; }
+    public boolean depthPeel()         { return (packed[0] & (1L << BIT_DEPTH_PEEL)) != 0; }
     public int textureSupersamplingSamples() { return 1 << (int) ((packed[0] >> BIT_TEXTURE_SUPERSAMPLING) & 0x7); }
     public boolean alphaTestEnabled() { return ((packed[0] >> BIT_ALPHA_TEST) & 1) != 0; }
     public int alphaTestFunc()        { return (int) ((packed[0] >> BIT_ALPHA_FUNC) & 0x7); }
