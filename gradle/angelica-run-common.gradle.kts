@@ -36,6 +36,7 @@ tasks.withType<JavaExec>().matching { it.name.startsWith("runClient") }.configur
     for (name in forwardedRunProperties) {
         jvmArgs("-D$name=${System.getProperty(name)}")
     }
+    jvmArgs("-Dangelica.buildVersion=${project.version}")
 }
 
 val isMacOs = org.gradle.internal.os.OperatingSystem.current().isMacOsX

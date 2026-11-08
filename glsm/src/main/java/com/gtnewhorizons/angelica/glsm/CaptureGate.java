@@ -26,12 +26,20 @@ public final class CaptureGate {
     public static final boolean TOOL_ATTACHED = detectCaptureTool();
     public static boolean markersThisFrame = true;
     public static boolean tracyConnected;
+    private static boolean toolAttached = TOOL_ATTACHED;
 
     private CaptureGate() {}
 
     public static void refresh() {
         tracyConnected = Tracy.isConnected();
-        markersThisFrame = gateValue(FORCED, TOOL_ATTACHED, tracyConnected);
+        markersThisFrame = gateValue(FORCED, toolAttached, tracyConnected);
+    }
+
+    static void probeGlTool() {
+        if (RenderSystem.hasExtension("GL_EXT_debug_tool")) {
+            toolAttached = true;
+            LOGGER.info("Capture tool detected via GL_EXT_debug_tool; instrumentation enabled");
+        }
     }
 
     static boolean gateValue(boolean forced, boolean toolAttached, boolean tracyConnected) {
@@ -39,7 +47,7 @@ public final class CaptureGate {
     }
 
     public static boolean enabledAtStartup() {
-        return FORCED || TOOL_ATTACHED;
+        return FORCED || toolAttached;
     }
 
     private static boolean detectCaptureTool() {

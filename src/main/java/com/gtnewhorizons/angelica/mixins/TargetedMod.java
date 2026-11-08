@@ -32,6 +32,7 @@ public enum TargetedMod implements ITargetMod {
     OPENBLOCKS(null, "OpenBlocks"),
     RAILCRAFT(null, "Railcraft"),
     SECURITYCRAFT(null, "securitycraft"),
+    SPARK(null, "spark"),
     STARMINER("jp.mc.ancientred.starminer.core.SMPlugin", "modJ_StarMiner"),
     SUPERNOVA("com.mitchej123.supernova.core.SupernovaCore", "supernova"),
     THAUMCRAFT(null, "Thaumcraft"),

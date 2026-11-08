@@ -458,6 +458,7 @@ public class GLStateManager {
     static void init(Runnable initCallback) {
         final GLContextState glCtx = ctx();
         RenderSystem.initRenderer();
+        CaptureGate.probeGlTool();
 
         GLSMFramebuffer.queryDefaultDrawBuffer();
 

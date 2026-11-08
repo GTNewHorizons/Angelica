@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.mixins.early.angelica.startup;
 
 import com.gtnewhorizon.gtnhlib.core.GTNHLibCore;
 import com.gtnewhorizons.angelica.AngelicaMod;
+import com.gtnewhorizons.angelica.Tags;
 import com.gtnewhorizons.angelica.client.rendering.TextureTracker;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.SystemProperties;
@@ -47,6 +48,7 @@ public class MixinInitGLStateManager {
             .noErrorChecks(AngelicaConfig.disableErrorChecks && GTNHLibCore.isObf() && !AngelicaMod.lwjglDebug)
             .enableDSA(AngelicaConfig.enableDSA)
             .postInitCallback(SelectionBoxRenderer::init)
+            .buildLabel("Angelica " + Tags.VERSION)
             .build());
         BackendStartGuard.disarm();
 

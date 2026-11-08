@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.mixins;
 import com.gtnewhorizon.gtnhmixins.builders.IMixins;
 import com.gtnewhorizon.gtnhmixins.builders.MixinBuilder;
 import com.gtnewhorizons.angelica.api.BlockLightProvider;
+import com.gtnewhorizons.angelica.compat.spark.SparkKnownSources;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.CompatConfig;
 import com.gtnewhorizons.angelica.config.SystemProperties;
@@ -639,6 +640,13 @@ public enum Mixins implements IMixins {
         .addClientMixins(
             "chisel.MixinRenderCarvableBeacon"
         )
+    ),
+
+    SPARK_MOD_SOURCES(new MixinBuilder("Mod versions in spark 1.7.10 profiles")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.SPARK)
+        .setApplyIf(SparkKnownSources::mixinApplies)
+        .addClientMixins("spark.MixinForge1710SparkPlugin")
     ),
 
     ANGELICA_TEXTURE(new MixinBuilder()
