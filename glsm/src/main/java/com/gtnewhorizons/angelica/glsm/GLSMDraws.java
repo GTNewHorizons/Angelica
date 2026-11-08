@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.glsm.DisplayListManager.RecordMode;
 import com.gtnewhorizons.angelica.glsm.backend.GLDebugMessageListener;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
+import com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard;
 import com.gtnewhorizons.angelica.glsm.recording.CommandRecorder;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
 import com.gtnewhorizons.angelica.glsm.recording.ImmediateModeRecorder;
@@ -76,6 +77,7 @@ public final class GLSMDraws {
             ImmediateModeRecorder.begin(mode);
             return;
         }
+        BatchStateGuard.beforeDraw();
         ImmediateModeRecorder.beginLive(mode);
     }
 
@@ -533,6 +535,7 @@ public final class GLSMDraws {
 
     public static void glCallList(int list) {
         rejectExitCapture();
+        if (!DisplayListManager.isRecording()) BatchStateGuard.beforeDraw();
         if (!GLDebug.isActive()) {
             DisplayListManager.glCallList(list);
             return;
