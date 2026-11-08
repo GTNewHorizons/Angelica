@@ -443,7 +443,7 @@ public class RenderSystem {
         return clipDistanceEmulated;
     }
 
-    private static boolean hasExtension(String name) {
+    static boolean hasExtension(String name) {
         final int count = GLSMQueries.glGetInteger(GL30.GL_NUM_EXTENSIONS);
         for (int i = 0; i < count; i++) {
             if (name.equals(GLSMQueries.glGetStringi(GL11.GL_EXTENSIONS, i))) return true;

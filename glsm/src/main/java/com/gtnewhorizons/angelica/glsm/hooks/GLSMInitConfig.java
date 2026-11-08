@@ -17,6 +17,7 @@ public final class GLSMInitConfig {
     @Getter private final Runnable postInitCallback;
     private final boolean dsaEnabled;
     @Getter private final boolean noErrorChecks;
+    @Getter private final String buildLabel;
 
     private GLSMInitConfig(Builder builder) {
         this.lwjglDebug = builder.lwjglDebug;
@@ -27,6 +28,7 @@ public final class GLSMInitConfig {
         this.displayHeight = builder.displayHeight;
         this.postInitCallback = builder.postInitCallback;
         this.dsaEnabled = builder.dsaEnabled;
+        this.buildLabel = builder.buildLabel;
     }
 
     public boolean isDSAEnabled() {
@@ -46,6 +48,7 @@ public final class GLSMInitConfig {
         private Runnable postInitCallback = null;
         private boolean dsaEnabled = true;
         private boolean noErrorChecks;
+        private String buildLabel = "";
 
         private Builder() {}
 
@@ -82,6 +85,11 @@ public final class GLSMInitConfig {
 
         public Builder enableDSA(boolean enableDSA) {
             this.dsaEnabled = enableDSA;
+            return this;
+        }
+
+        public Builder buildLabel(String buildLabel) {
+            this.buildLabel = buildLabel == null ? "" : buildLabel;
             return this;
         }
 
