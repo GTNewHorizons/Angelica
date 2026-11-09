@@ -343,10 +343,10 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
     }
 
     private static Block getLoggedFluidBlock(IBlockAccess region, int x, int y, int z) {
-        if (!ModStatus.isFluidLoggedLoaded) {
+        if (!ModStatus.isFluidLoggedLoaded || !(region instanceof FLBlockAccess fluidAccess)) {
             return null;
         }
-        final Fluid fluid = ((FLBlockAccess) region).fl$getFluid(x, y, z);
+        final Fluid fluid = fluidAccess.fl$getFluid(x, y, z);
         return fluid != null ? fluid.getBlock() : null;
     }
 
