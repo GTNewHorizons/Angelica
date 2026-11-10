@@ -34,9 +34,6 @@ public final class PositionEntries {
             }
         }
 
-        private WorldProvider cachedProvider;
-        private String dimensionName = "";
-
         @Override
         public void display(DebugScreenDisplayer displayer, DebugContext context) {
             final EntityClientPlayerMP player = context.player();
@@ -52,10 +49,7 @@ public final class PositionEntries {
             facing.value(DIRECTION_NAMES[heading]).text(" (").text(TOWARDS[heading]).text(") (");
             facing.value(MathHelper.wrapAngleTo180_float(player.rotationYaw), 1).text(SEPARATOR).value(MathHelper.wrapAngleTo180_float(player.rotationPitch), 1).text(')');
             final WorldProvider provider = context.world().provider;
-            if (provider != cachedProvider) {
-                cachedProvider = provider;
-                dimensionName = provider.getDimensionName();
-            }
+            final String dimensionName = provider.getDimensionName();
             displayer.fact(DebugGroup.POSITION, "Dimension").value(dimensionName).text(" (").value(provider.dimensionId).text(')');
         }
     }
