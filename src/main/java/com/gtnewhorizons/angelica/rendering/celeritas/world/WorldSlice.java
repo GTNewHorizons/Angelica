@@ -32,6 +32,7 @@ import com.gtnewhorizons.angelica.rendering.celeritas.SmoothBiomeColorCache;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.cloned.ChunkRenderContext;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.cloned.ClonedChunkSection;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.cloned.ClonedChunkSectionCache;
+import com.gtnewhorizons.liquidlogged.api.LiquidLoggedBlockAccess;
 import cpw.mods.fml.common.Optional;
 import mega.fluidlogged.api.FLBlockAccess;
 
@@ -45,8 +46,11 @@ import mega.fluidlogged.api.FLBlockAccess;
  *
  * Object pooling should be used to avoid huge allocations as this class contains many large arrays.
  */
-@Optional.Interface(iface = "mega.fluidlogged.api.FLBlockAccess", modid = "fluidlogged")
-public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
+@Optional.InterfaceList({
+    @Optional.Interface(iface = "mega.fluidlogged.api.FLBlockAccess", modid = "fluidlogged"),
+    @Optional.Interface(iface = "com.gtnewhorizons.liquidlogged.api.LiquidLoggedBlockAccess", modid = "liquidlogged")
+})
+public class WorldSlice implements IBlockAccessExtended, FLBlockAccess, LiquidLoggedBlockAccess {
 
     private static final EnumSkyBlock[] LIGHT_TYPES = EnumSkyBlock.values();
 
@@ -179,7 +183,7 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
         this.lightArrays = new NibbleArray[SECTION_TABLE_ARRAY_SIZE][LIGHT_TYPES.length];
         this.sectionLightData = new SectionLightData[SECTION_TABLE_ARRAY_SIZE];
 
-        if (ModStatus.isFluidLoggedLoaded) {
+        if (ModStatus.isFluidLoggedLoaded || ModStatus.isLiquidLoggedLoaded) {
             this.fluidArrays = new Fluid[SECTION_TABLE_ARRAY_SIZE][];
         } else {
             this.fluidArrays = null;
@@ -193,7 +197,7 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
                     Arrays.fill(this.blockArrays[i], Blocks.air);
                     this.metadataArrays[i] = new int[SECTION_BLOCK_COUNT];
 
-                    if (ModStatus.isFluidLoggedLoaded && this.fluidArrays != null) {
+                    if (this.fluidArrays != null) {
                         this.fluidArrays[i] = new Fluid[SECTION_BLOCK_COUNT];
                     }
                 }
@@ -239,7 +243,7 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
 
                     this.unpackBlockData(this.blockArrays[idx], this.metadataArrays[idx], section, context.getVolume());
 
-                    if (ModStatus.isFluidLoggedLoaded && this.fluidArrays != null) {
+                    if (this.fluidArrays != null) {
                         this.unpackFluidLoggedData(this.fluidArrays[idx], section, context.getVolume());
                     }
 
@@ -455,6 +459,12 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
         final int relY = y - this.baseY;
         final int relZ = z - this.baseZ;
         return this.fluidArrays[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)][getLocalBlockIndex(relX & 15, relY & 15, relZ & 15)];
+    }
+
+    // LiquidLogged API support
+
+    public @Nullable Fluid liquidlogged$getFluid(int x, int y, int z) {
+        return fl$getFluid(x, y, z);
     }
 
     public void fl$setFluid(int x, int y, int z, @Nullable Fluid fluid) {
