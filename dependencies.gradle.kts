@@ -186,8 +186,7 @@ DependencyHandlerScope.of(dependencies).apply {
 
     compileOnly("mega:fluidlogged-mc1.7.10:0.1.2")
 
-    // TEMPORARY: local dev jar until LiquidLogged 0.2.0 (with LiquidLoggedRenderAPI) is published
-    compileOnly(files("../LiquidLogged/build/libs/liquidlogged-0.1.1-feature-v0-2-0.1+706d96bd54-dirty-dev.jar"))
+    compileOnly("com.github.GTNewHorizons:LiquidLogged:0.2.0:dev") { isTransitive = false }
 
     compileOnly("com.cardinalstar.cubicchunks:CubicChunks1710:v0.1.5-alpha:dev") { isTransitive = false }
 }
@@ -213,8 +212,7 @@ afterEvaluate {
         glsmTestFixtures(testFixtures(project(":glsm")) as ModuleDependency) { isTransitive = false }
         testCompileOnly(testFixtures(project(":glsm")))
         testImplementation("mega:fluidlogged-mc1.7.10:0.1.2")
-        // TEMPORARY: local dev jar, see the compileOnly entry above
-        testImplementation(files("../LiquidLogged/build/libs/liquidlogged-0.1.1-feature-v0-2-0.1+706d96bd54-dirty-dev.jar"))
+        testImplementation("com.github.GTNewHorizons:LiquidLogged:0.2.0:dev") { isTransitive = false }
 
         testRuntimeOnly(libs.fastutil)
         testRuntimeOnly(libs.joml)
