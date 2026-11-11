@@ -41,6 +41,7 @@ public abstract class MixinRenderBlockConnectedTexturesEthereal extends RenderBl
             newFakeRenderEthereal.setRenderBounds(h, h, h, 1.0D - h, 1.0D - h, 1.0D - h);
             render &= newFakeRenderEthereal.renderStandardBlock(block, x, y, z);
         } finally {
+            getFakeRender().setWorld(null);
             newFakeRenderEthereal.setWorld(null);
         }
         return render;
