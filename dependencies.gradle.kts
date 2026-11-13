@@ -186,6 +186,8 @@ DependencyHandlerScope.of(dependencies).apply {
 
     compileOnly("mega:fluidlogged-mc1.7.10:0.1.2")
 
+    compileOnly("com.github.GTNewHorizons:LiquidLogged:0.2.0:dev") { isTransitive = false }
+
     compileOnly("com.cardinalstar.cubicchunks:CubicChunks1710:v0.1.5-alpha:dev") { isTransitive = false }
 }
 
@@ -210,6 +212,7 @@ afterEvaluate {
         glsmTestFixtures(testFixtures(project(":glsm")) as ModuleDependency) { isTransitive = false }
         testCompileOnly(testFixtures(project(":glsm")))
         testImplementation("mega:fluidlogged-mc1.7.10:0.1.2")
+        testImplementation("com.github.GTNewHorizons:LiquidLogged:0.2.0:dev") { isTransitive = false }
 
         testRuntimeOnly(libs.fastutil)
         testRuntimeOnly(libs.joml)

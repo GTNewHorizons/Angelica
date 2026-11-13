@@ -17,6 +17,8 @@ import com.gtnewhorizons.angelica.rendering.tesr.SectionBuiltBlockEntity;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.utils.NaturalTextureUtils;
+import com.gtnewhorizons.liquidlogged.api.LiquidLoggedAPI;
+import com.gtnewhorizons.liquidlogged.api.LiquidLoggedRenderAPI;
 import com.prupe.mcpatcher.mal.block.RenderBlocksUtils;
 import it.unimi.dsi.fastutil.floats.FloatArrayList;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
@@ -343,10 +345,14 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
     }
 
     private static Block getLoggedFluidBlock(IBlockAccess region, int x, int y, int z) {
-        if (!ModStatus.isFluidLoggedLoaded || !(region instanceof FLBlockAccess fluidAccess)) {
+        final Fluid fluid;
+        if (ModStatus.isLiquidLoggedLoaded) {
+            fluid = LiquidLoggedAPI.getFluid(region, x, y, z);
+        } else if (ModStatus.isFluidLoggedLoaded && region instanceof FLBlockAccess fluidAccess) {
+            fluid = fluidAccess.fl$getFluid(x, y, z);
+        } else {
             return null;
         }
-        final Fluid fluid = fluidAccess.fl$getFluid(x, y, z);
         return fluid != null ? fluid.getBlock() : null;
     }
 
@@ -613,7 +619,14 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         if (applyNaturalTex) { renderBlocks.uvRotateTop = NaturalTextureUtils.getTopRotation(x, y, z); }
 
         tessellator.startDrawingQuads();
-        renderBlocks.renderBlockByRenderType(block, x, y, z);
+        // A block that differs from the cell's own block is the fluid stored in it
+        final boolean storedFluid = ModStatus.isLiquidLoggedLoaded && renderBlocks.blockAccess.getBlock(x, y, z) != block;
+        if (storedFluid) LiquidLoggedRenderAPI.beginStoredFluid();
+        try {
+            renderBlocks.renderBlockByRenderType(block, x, y, z);
+        } finally {
+            if (storedFluid) LiquidLoggedRenderAPI.endStoredFluid();
+        }
 
         if (applyNaturalTex) { renderBlocks.uvRotateTop = 0; } // Reset
     }
