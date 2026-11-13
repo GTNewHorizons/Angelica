@@ -14,6 +14,7 @@ import com.gtnewhorizons.angelica.rendering.FpsReducer;
 import com.gtnewhorizons.angelica.rendering.FramePacer;
 import com.gtnewhorizons.angelica.rendering.IsbrhTestRenderer;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
+import com.prupe.mcpatcher.mal.biome.BiomeAPI;
 import com.sun.management.OperatingSystemMXBean;
 import com.sun.management.ThreadMXBean;
 import cpw.mods.fml.client.FMLClientHandler;
@@ -24,6 +25,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityClientPlayerMP;
 import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.gui.GuiSelectWorld;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraft.server.MinecraftServer;
@@ -34,8 +36,12 @@ import net.minecraft.util.IChatComponent;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.ScreenShotHelper;
 import net.minecraft.world.MinecraftException;
+import net.minecraft.world.Teleporter;
 import net.minecraft.world.World;
+import net.minecraft.world.WorldSettings;
 import net.minecraft.world.WorldServer;
+import net.minecraft.world.biome.BiomeGenBase;
+import net.minecraft.world.biome.WorldChunkManager;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.IChunkProvider;
 import net.minecraft.world.storage.ThreadedFileIOBase;
@@ -66,6 +72,8 @@ public final class FlybyRunner {
 
     private enum State { IDLE, WAITING, PREPARING, WARMUP, RUNNING, SETTLE, EXITING, MENU, DONE }
 
+    private static final int BIOME_WINDOW = 11;
+    private static final int BIOME_SEARCH_CELLS = 512;
     private static final int EXIT_TICKS = 20;
     private static final int SETTLE_TICKS = 40;
     private static final int MENU_SETTLE_TICKS = 20;
@@ -93,6 +101,16 @@ public final class FlybyRunner {
     private final AtomicReference<String> pendingDimensionPlayer = new AtomicReference<>();
     private boolean dimensionRequested;
     private volatile boolean dimensionAbandoned;
+    private final AtomicReference<String> pendingBiomePlayer = new AtomicReference<>();
+    private boolean biomeRequested;
+    private volatile boolean biomeAbandoned;
+    private volatile FlybyOrigin biomeOrigin;
+    private BiomeGenBase[] biomeScratch;
+    private volatile boolean survivalRestoreRequested;
+    private boolean survivalApplied;
+    private String survivalPlayerName;
+    private String survivalWorld;
+    private WorldSettings.GameType survivalRestoreType;
     private FlybyRequest activeRequest;
     private String[] sceneCommands = NO_COMMANDS;
     private volatile boolean sceneClearRequested;
@@ -229,6 +247,10 @@ public final class FlybyRunner {
         this.exitWhenDone = false;
         this.dimensionRequested = false;
         this.dimensionAbandoned = false;
+        this.biomeRequested = false;
+        this.biomeAbandoned = false;
+        this.biomeOrigin = null;
+        if (SystemProperties.FLYBY_SURVIVAL) this.survivalRestoreRequested = true;
         this.jfr = false;
         this.armed = false;
         this.fixedOrigin = null;
@@ -305,6 +327,7 @@ public final class FlybyRunner {
                     return;
                 }
                 if (this.awaitingDimension(mc, player)) return;
+                if (this.awaitingBiome(mc, player)) return;
                 this.begin(mc, player);
             }
             case PREPARING -> {
@@ -386,6 +409,26 @@ public final class FlybyRunner {
             this.dimensionRequested = true;
             LOGGER.info("Flyby: moving from dimension {} to {}", player.dimension, dimension);
             this.pendingDimensionPlayer.set(player.getCommandSenderName());
+        }
+        return true;
+    }
+
+    private boolean awaitingBiome(Minecraft mc, EntityClientPlayerMP player) {
+        final String biome = SystemProperties.FLYBY_BIOME;
+        if (!this.startedFromProperties || biome.isEmpty() || this.biomeAbandoned) return false;
+        final FlybyOrigin found = this.biomeOrigin;
+        if (found != null) {
+            this.fixedOrigin = this.fixedOrigin == null ? found : new FlybyOrigin(found.x(), found.z(), this.fixedOrigin.yaw());
+            return false;
+        }
+        if (mc.getIntegratedServer() == null) {
+            LOGGER.warn("Flyby: not singleplayer, ignoring biome '{}'", biome);
+            this.biomeAbandoned = true;
+            return false;
+        }
+        if (!this.biomeRequested) {
+            this.biomeRequested = true;
+            this.pendingBiomePlayer.set(player.getCommandSenderName());
         }
         return true;
     }
@@ -657,7 +700,7 @@ public final class FlybyRunner {
     public void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         final boolean clear = this.sceneClearRequested;
-        if (!clear && this.pendingRequest.get() == null && this.pendingDimensionPlayer.get() == null && this.sceneDeferred.isEmpty()) return;
+        if (!clear && this.pendingRequest.get() == null && this.pendingDimensionPlayer.get() == null && this.pendingBiomePlayer.get() == null && !this.survivalRestoreRequested && this.sceneDeferred.isEmpty()) return;
 
         final MinecraftServer server = MinecraftServer.getServer();
         if (server == null) return;
@@ -670,8 +713,21 @@ public final class FlybyRunner {
                 LOGGER.warn("Flyby: no server player named '{}', staying in the current dimension", traveller);
                 this.dimensionAbandoned = true;
             } else {
-                server.getConfigurationManager().transferPlayerToDimension(player, SystemProperties.FLYBY_DIMENSION);
+                final int dimension = SystemProperties.FLYBY_DIMENSION;
+                final WorldServer target = server.worldServerForDimension(dimension);
+                server.getConfigurationManager().transferPlayerToDimension(player, dimension,
+                    target.provider.hasNoSky ? target.getDefaultTeleporter() : new SurfaceTeleporter(target));
             }
+        }
+
+        final String seeker = this.pendingBiomePlayer.getAndSet(null);
+        if (seeker != null) {
+            this.findBiome(server, seeker);
+        }
+
+        if (this.survivalRestoreRequested) {
+            this.survivalRestoreRequested = false;
+            this.restoreGameType(server);
         }
 
         if (clear) {
@@ -688,9 +744,102 @@ public final class FlybyRunner {
         final double feetY = this.flightFeetY(server, request);
         request.feetY().complete(feetY);
         this.applyFreeze(server);
+        if (SystemProperties.FLYBY_SURVIVAL) {
+            if (this.survivalApplied) {
+                LOGGER.warn("Flyby: game mode restore pending for world '{}', flying without survival", this.survivalWorld);
+            } else {
+                this.applySurvival(server, request.playerName());
+            }
+        }
         if (request.scene()) {
             this.runScene(server, request, feetY);
         }
+    }
+
+    private void applySurvival(MinecraftServer server, String playerName) {
+        final EntityPlayerMP player = server.getConfigurationManager().func_152612_a(playerName);
+        if (player == null) {
+            LOGGER.warn("Flyby: no server player named '{}', staying in the current game mode", playerName);
+            return;
+        }
+        this.survivalRestoreType = player.theItemInWorldManager.getGameType();
+        player.setGameType(WorldSettings.GameType.SURVIVAL);
+        player.capabilities.allowFlying = player.capabilities.isFlying = player.capabilities.disableDamage = true;
+        player.sendPlayerAbilities();
+        this.survivalApplied = true;
+        this.survivalPlayerName = playerName;
+        this.survivalWorld = server.getFolderName();
+    }
+
+    private void restoreGameType(MinecraftServer server) {
+        if (!this.survivalApplied) return;
+        final EntityPlayerMP player = server.getFolderName().equals(this.survivalWorld)
+            ? server.getConfigurationManager().func_152612_a(this.survivalPlayerName) : null;
+        if (player == null) {
+            this.survivalRestoreRequested = true;
+            return;
+        }
+        player.setGameType(this.survivalRestoreType);
+        this.survivalApplied = false;
+    }
+
+    private void findBiome(MinecraftServer server, String playerName) {
+        final String name = SystemProperties.FLYBY_BIOME;
+        final EntityPlayerMP player = server.getConfigurationManager().func_152612_a(playerName);
+        if (player == null) {
+            LOGGER.warn("Flyby: no server player named '{}', ignoring biome '{}'", playerName, name);
+            this.biomeAbandoned = true;
+            return;
+        }
+        final BiomeGenBase target = BiomeAPI.findBiomeByName(name);
+        if (target == null) {
+            LOGGER.error("Flyby: unknown biome '{}'", name);
+            this.biomeAbandoned = true;
+            return;
+        }
+        final FlybyOrigin found = this.scanForBiome(player.worldObj.getWorldChunkManager(), target);
+        this.biomeScratch = null;
+        if (found == null) {
+            LOGGER.error("Flyby: biome '{}' not found within {} blocks", name, BIOME_SEARCH_CELLS * 4);
+            this.biomeAbandoned = true;
+            return;
+        }
+        LOGGER.info("Flyby: biome '{}' found at {} {}", name, found.x(), found.z());
+        this.biomeOrigin = found;
+    }
+
+    private FlybyOrigin scanForBiome(WorldChunkManager manager, BiomeGenBase target) {
+        FlybyOrigin found = this.scanStrip(manager, target, 0, 0, 0, 0);
+        for (int r = 1; found == null && r <= BIOME_SEARCH_CELLS; r++) {
+            found = this.scanStrip(manager, target, -r, -r, r, -r);
+            if (found == null) found = this.scanStrip(manager, target, -r, r, r, r);
+            if (found == null) found = this.scanStrip(manager, target, -r, 1 - r, -r, r - 1);
+            if (found == null) found = this.scanStrip(manager, target, r, 1 - r, r, r - 1);
+        }
+        return found;
+    }
+
+    private FlybyOrigin scanStrip(WorldChunkManager manager, BiomeGenBase target, int minX, int minZ, int maxX, int maxZ) {
+        final int half = BIOME_WINDOW / 2;
+        final int width = maxX - minX + BIOME_WINDOW;
+        this.biomeScratch = manager.getBiomesForGeneration(this.biomeScratch, minX - half, minZ - half, width, maxZ - minZ + BIOME_WINDOW);
+        for (int cz = minZ; cz <= maxZ; cz++) {
+            for (int cx = minX; cx <= maxX; cx++) {
+                if (this.windowMatches(target, width, minX - half, minZ - half, cx, cz)) return new FlybyOrigin(cx * 4 + 2, cz * 4 + 2, 0.0F);
+            }
+        }
+        return null;
+    }
+
+    private boolean windowMatches(BiomeGenBase target, int width, int originX, int originZ, int cx, int cz) {
+        final int half = BIOME_WINDOW / 2;
+        for (int dz = -half; dz <= half; dz++) {
+            final int row = (cz + dz - originZ) * width - originX + cx;
+            for (int dx = -half; dx <= half; dx++) {
+                if (this.biomeScratch[row + dx] != target) return false;
+            }
+        }
+        return true;
     }
 
     private void discardWorldChanges(MinecraftServer server) {
@@ -864,6 +1013,7 @@ public final class FlybyRunner {
 
     private void finish(Minecraft mc, EntityClientPlayerMP player) {
         this.state = State.SETTLE;
+        if (SystemProperties.FLYBY_SURVIVAL) this.survivalRestoreRequested = true;
         this.tick = 0;
         final long elapsedNs = System.nanoTime() - this.runStartNs;
         Tracy.sectionLeave(this.legSection);
@@ -1140,6 +1290,7 @@ public final class FlybyRunner {
             this.sceneClearRequested = this.sceneCommands.length > 0;
             this.restorePacing(mc);
         }
+        if (SystemProperties.FLYBY_SURVIVAL) this.survivalRestoreRequested = true;
     }
 
     public boolean startedFromProperties() {
@@ -1147,4 +1298,20 @@ public final class FlybyRunner {
     }
 
     private record FlybyRequest(double[] pathX, double[] pathZ, double originX, double originZ, double parkedFeetY, String playerName, boolean sampleTerrain, boolean scene, CompletableFuture<Double> feetY) {}
+
+    private static final class SurfaceTeleporter extends Teleporter {
+        private final WorldServer world;
+
+        SurfaceTeleporter(WorldServer world) {
+            super(world);
+            this.world = world;
+        }
+
+        @Override
+        public void placeInPortal(Entity entity, double x, double y, double z, float yaw) {
+            final int top = this.world.getTopSolidOrLiquidBlock(MathHelper.floor_double(entity.posX), MathHelper.floor_double(entity.posZ));
+            entity.setLocationAndAngles(entity.posX, top > 0 ? top : entity.posY, entity.posZ, entity.rotationYaw, entity.rotationPitch);
+            entity.motionX = entity.motionY = entity.motionZ = 0.0;
+        }
+    }
 }

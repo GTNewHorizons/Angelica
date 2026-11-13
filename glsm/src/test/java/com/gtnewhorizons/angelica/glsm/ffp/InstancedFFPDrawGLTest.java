@@ -100,6 +100,7 @@ class InstancedFFPDrawGLTest {
         CubeParityFixture.disableDirectionalLight();
         CubeParityFixture.deleteResources();
         ParticleParityFixture.deleteResources();
+        WeatherParityFixture.deleteResources();
         if (templateVbo != 0) { GLSMBuffers.glDeleteBuffers(templateVbo); templateVbo = 0; }
         if (instanceVbo != 0) { GLSMBuffers.glDeleteBuffers(instanceVbo); instanceVbo = 0; }
         if (vao != 0) { GLSMVertexInput.glDeleteVertexArrays(vao); vao = 0; }
@@ -194,6 +195,27 @@ class InstancedFFPDrawGLTest {
 
         assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "parity draws must not raise a GL error");
         ParticleParityFixture.assertPixelParity(reference, instanced, PARITY_SIZE, 0xFF000000, pixel -> "0x" + Integer.toHexString(pixel));
+    }
+
+    @Test
+    void weatherColumnsMatchTessellatedReference() {
+        GLSMRasterizer.glViewport(0, 0, PARITY_SIZE, PARITY_SIZE);
+        WeatherParityFixture.setupScene();
+
+        FfpFixture.activateFfp();
+
+        final WeatherParityFixture.Spec[] specs = WeatherParityFixture.specs();
+
+        FfpFixture.clear();
+        WeatherParityFixture.drawReference(specs);
+        final int[] reference = FfpFixture.readRegion(PARITY_SIZE);
+
+        FfpFixture.clear();
+        WeatherParityFixture.drawInstanced(specs);
+        final int[] instanced = FfpFixture.readRegion(PARITY_SIZE);
+
+        assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "parity draws must not raise a GL error");
+        WeatherParityFixture.assertPixelParity(reference, instanced, PARITY_SIZE, 0xFF000000, pixel -> "0x" + Integer.toHexString(pixel));
     }
 
     @Test
