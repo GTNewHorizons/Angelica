@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.glsm.ffp.CubeInstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
 import com.gtnewhorizons.angelica.glsm.ffp.ParticleInstancedAttribs;
+import com.gtnewhorizons.angelica.glsm.ffp.WeatherInstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
 import com.gtnewhorizons.angelica.glsm.testutil.ClipTestSupport;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
@@ -427,7 +428,24 @@ class AttributeTransformerInstancedTest {
 
         assertFalse(byLocation.containsKey(7), "location 7 is unused");
         for (final int loc : byLocation.keySet()) {
-            assertTrue(loc < 11 || loc == ImmediateExtendedAttribHandler.LOC_ENTITY_IDS, "unexpected attribute location " + loc + " declared for the particle variant");
+            assertTrue(loc < ImmediateExtendedAttribHandler.LOC_MC_ENTITY || loc == ImmediateExtendedAttribHandler.LOC_ENTITY_IDS, "unexpected attribute location " + loc + " declared for the particle variant");
+        }
+    }
+
+    @Test
+    void weatherVariantDeclaresTheFiveColumnAttributesAtTheStatedLocations() {
+        final String v = instancedVertex(PARTICLE_VERTEX, Instancing.WEATHER);
+        final Map<Integer, String> byLocation = attributeLocations(v);
+
+        assertEquals(VertexFormatElement.Usage.PRIMARY_UV.getAttributeLocation(), locationOf(byLocation, "iris_WeatherCorner"));
+        assertEquals(WeatherInstancedAttribs.LOC_COLUMN_SPAN, locationOf(byLocation, "iris_InstColumnSpan"));
+        assertEquals(WeatherInstancedAttribs.LOC_JITTER, locationOf(byLocation, "iris_InstJitter"));
+        assertEquals(WeatherInstancedAttribs.LOC_COLOR, locationOf(byLocation, "iris_InstWeatherColor"));
+        assertEquals(WeatherInstancedAttribs.LOC_PARAMS, locationOf(byLocation, "iris_InstWeatherParams"));
+        assertEquals(WeatherInstancedAttribs.LOC_LAYER, locationOf(byLocation, "iris_InstWeatherLayer"));
+
+        for (final int loc : byLocation.keySet()) {
+            assertTrue(loc < ImmediateExtendedAttribHandler.LOC_MC_ENTITY || loc == ImmediateExtendedAttribHandler.LOC_ENTITY_IDS, "unexpected attribute location " + loc + " declared for the weather variant");
         }
     }
 

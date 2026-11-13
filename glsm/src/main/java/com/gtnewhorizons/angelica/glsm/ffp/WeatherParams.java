@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
 /**
- * The per-frame half of the rain and snow instancing, set once per weather draw.
+ * The per-frame half of the weather column instancing, set once per frame.
  */
 public final class WeatherParams {
 
@@ -15,9 +15,14 @@ public final class WeatherParams {
     public static float partialTicks;
     public static float age;
 
-    public static float rainScroll;
-    public static float snowScroll;
+    public static float vanillaTick;
+    public static float providerTick;
     public static float rainStrength;
+    public static float providerAge;
+
+    public static float providerInvRadius;
+
+    public static final int TICK_WRAP = 1024;
 
     public static int generation;
 
@@ -25,7 +30,7 @@ public final class WeatherParams {
 
     public static void set(float translateX, float translateY, float translateZ, float invRadius,
         float cameraFracX, float cameraFracZ, float partialTicks, float age,
-        float rainScroll, float snowScroll, float rainStrength) {
+        int vanillaTick, float rainStrength, int providerTick, float providerAge, float providerInvRadius) {
         WeatherParams.translateX = translateX;
         WeatherParams.translateY = translateY;
         WeatherParams.translateZ = translateZ;
@@ -34,9 +39,11 @@ public final class WeatherParams {
         WeatherParams.cameraFracZ = cameraFracZ;
         WeatherParams.partialTicks = partialTicks;
         WeatherParams.age = age;
-        WeatherParams.rainScroll = rainScroll;
-        WeatherParams.snowScroll = snowScroll;
+        WeatherParams.vanillaTick = vanillaTick & (TICK_WRAP - 1);
+        WeatherParams.providerTick = providerTick & (TICK_WRAP - 1);
         WeatherParams.rainStrength = rainStrength;
+        WeatherParams.providerAge = providerAge;
+        WeatherParams.providerInvRadius = providerInvRadius;
         generation++;
     }
 }

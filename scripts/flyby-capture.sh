@@ -11,6 +11,8 @@
 #   extra  - passed through to gradle; -Dangelica.* reaches the client (e.g. -Dangelica.flyby.timeOfDay=1500).
 #            -Dangelica.flyby.camera=FIRST_PERSON|THIRD_PERSON_BACK|THIRD_PERSON_FRONT (default FIRST_PERSON).
 #            -Dangelica.flyby.dimension=<id> moves the player there first (1 = End), after world saving is off.
+#            -Dangelica.flyby.biome=<name> pins the origin to the 44x44-block area of that biome nearest to 0,0 (BiomeGenBase.biomeName), searched in the target dimension.
+#            -Dangelica.flyby.survival=true runs the flight in survival with flying and no damage, restoring the original game mode afterwards.
 #            -PclientJvmVendor=adoptium (macOS) picks the JVM vendor for runClient17/21/25.
 #
 #   FLYBY_SPEED     - blocks per tick. (0.5 ~= creative flight).

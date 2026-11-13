@@ -44,6 +44,7 @@ public class IrisInternalUniforms {
     private static final Vector4f WEATHER_0 = new Vector4f();
     private static final Vector4f WEATHER_1 = new Vector4f();
     private static final Vector4f WEATHER_2 = new Vector4f();
+    private static final Vector4f WEATHER_3 = new Vector4f();
 
     public static void addWeatherUniforms(DynamicUniformHolder uniforms) {
         uniforms.uniform4f(PER_FRAME, "iris_WeatherParams0", () -> WEATHER_0.set(
@@ -51,7 +52,9 @@ public class IrisInternalUniforms {
         uniforms.uniform4f(PER_FRAME, "iris_WeatherParams1", () -> WEATHER_1.set(
             WeatherParams.cameraFracX, WeatherParams.cameraFracZ, WeatherParams.partialTicks, WeatherParams.age));
         uniforms.uniform4f(PER_FRAME, "iris_WeatherParams2", () -> WEATHER_2.set(
-            WeatherParams.rainScroll, WeatherParams.snowScroll, WeatherParams.rainStrength, 0.0f));
+            WeatherParams.vanillaTick, WeatherParams.providerTick, WeatherParams.rainStrength, WeatherParams.providerAge));
+        uniforms.uniform4f(PER_FRAME, "iris_WeatherParams3", () -> WEATHER_3.set(
+            WeatherParams.providerInvRadius, 0.0f, 0.0f, 0.0f));
     }
 
     public static void addFogUniforms(DynamicUniformHolder uniforms, FogMode fogMode) {
