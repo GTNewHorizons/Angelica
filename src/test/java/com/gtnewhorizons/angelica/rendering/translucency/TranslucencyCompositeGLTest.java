@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.rendering.translucency;
 
+import com.gtnewhorizons.angelica.glsm.DepthEcho;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import com.gtnewhorizons.angelica.glsm.GLSMBlend;
 import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
@@ -10,10 +11,13 @@ import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
 import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.GlTestSupport;
+import com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
@@ -23,6 +27,7 @@ import java.nio.FloatBuffer;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @GLCoreTest
 class TranslucencyCompositeGLTest {
@@ -226,5 +231,45 @@ class TranslucencyCompositeGLTest {
         final ByteBuffer color = readColor();
         assertColumn(color, 0, 159, 159, 191);
         assertColumn(color, 1, 64, 96, 159);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = { false, true })
+    void glowsCompositeAtTheirOwnDepthWithoutRejectingEachOther(boolean replayed) {
+        layers.beginFrame(true);
+        layers.begin(TranslucentLayer.BLOCK_ENTITIES);
+        if (replayed) DepthEcho.beginTracking();
+        drawGlows();
+        BatchStateGuard.suspend();
+        drawGlow(2, 0.3f, 0f, 0f, 1f);
+        BatchStateGuard.resume();
+        assertEquals(replayed, DepthEcho.endTracking());
+        if (replayed) {
+            assertTrue(layers.beginGlowReplay());
+            drawGlows();
+            layers.endGlowReplay();
+        }
+        layers.end();
+        assertEquals(GLSMDepthStencilAlpha.getDepthState().isEnabled(), GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK));
+        drawInto(TranslucentLayer.TERRAIN, 0, 0.6f, 0f, 1f, 0f, 0.5f);
+        drawInto(TranslucentLayer.TERRAIN, 2, 0.6f, 0f, 1f, 0f, 0.5f);
+        layers.composite();
+
+        final ByteBuffer color = readColor();
+        assertColumn(color, 0, 64, 64, 128);
+        assertColumn(color, 1, 64, 128, 64);
+        assertColumn(color, 2, 64, 64, 128);
+    }
+
+    private void drawGlows() {
+        drawGlow(0, 0.3f, 0f, 0f, 1f);
+        drawGlow(1, 0.3f, 0f, 0f, 1f);
+        drawGlow(1, 0.5f, 0f, 1f, 0f);
+    }
+
+    private void drawGlow(int column, float depth, float r, float g, float b) {
+        GLSMDepthStencilAlpha.glDepthMask(false);
+        drawBlended(quadProgram, column, depth, r, g, b, 0.5f, GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GLSMDepthStencilAlpha.glDepthMask(true);
     }
 }
