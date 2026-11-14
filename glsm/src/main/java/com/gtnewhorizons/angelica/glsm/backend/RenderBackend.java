@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.glsm.backend;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
 import com.gtnewhorizons.angelica.glsm.DepthEcho;
+import com.gtnewhorizons.angelica.glsm.DepthPeel;
 import com.gtnewhorizons.angelica.glsm.GLESFormatRemap;
 import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -328,8 +329,12 @@ public abstract class RenderBackend {
     public void provokingVertex(int provokeMode) {}
 
     public final void drawArrays(int mode, int first, int count) {
-        if (DepthEcho.skipsDraw()) return;
-        issueDrawArrays(mode, first, count);
+        if (DepthEcho.skipsDraw() || !DepthPeel.begin()) return;
+        try {
+            issueDrawArrays(mode, first, count);
+        } finally {
+            DepthPeel.end();
+        }
         if (DepthEcho.begin()) {
             try {
                 issueDrawArrays(mode, first, count);
@@ -340,8 +345,12 @@ public abstract class RenderBackend {
     }
 
     public final void drawElements(int mode, int count, int type, long indices) {
-        if (DepthEcho.skipsDraw()) return;
-        issueDrawElements(mode, count, type, indices);
+        if (DepthEcho.skipsDraw() || !DepthPeel.begin()) return;
+        try {
+            issueDrawElements(mode, count, type, indices);
+        } finally {
+            DepthPeel.end();
+        }
         if (DepthEcho.begin()) {
             try {
                 issueDrawElements(mode, count, type, indices);
@@ -352,8 +361,12 @@ public abstract class RenderBackend {
     }
 
     public final void drawElements(int mode, ByteBuffer indices) {
-        if (DepthEcho.skipsDraw()) return;
-        issueDrawElements(mode, indices);
+        if (DepthEcho.skipsDraw() || !DepthPeel.begin()) return;
+        try {
+            issueDrawElements(mode, indices);
+        } finally {
+            DepthPeel.end();
+        }
         if (DepthEcho.begin()) {
             try {
                 issueDrawElements(mode, indices);
@@ -364,8 +377,12 @@ public abstract class RenderBackend {
     }
 
     public final void drawElements(int mode, IntBuffer indices) {
-        if (DepthEcho.skipsDraw()) return;
-        issueDrawElements(mode, indices);
+        if (DepthEcho.skipsDraw() || !DepthPeel.begin()) return;
+        try {
+            issueDrawElements(mode, indices);
+        } finally {
+            DepthPeel.end();
+        }
         if (DepthEcho.begin()) {
             try {
                 issueDrawElements(mode, indices);
@@ -376,8 +393,12 @@ public abstract class RenderBackend {
     }
 
     public final void drawElements(int mode, ShortBuffer indices) {
-        if (DepthEcho.skipsDraw()) return;
-        issueDrawElements(mode, indices);
+        if (DepthEcho.skipsDraw() || !DepthPeel.begin()) return;
+        try {
+            issueDrawElements(mode, indices);
+        } finally {
+            DepthPeel.end();
+        }
         if (DepthEcho.begin()) {
             try {
                 issueDrawElements(mode, indices);
@@ -388,8 +409,12 @@ public abstract class RenderBackend {
     }
 
     public final void drawElements(int mode, int count, int type, ByteBuffer indices) {
-        if (DepthEcho.skipsDraw()) return;
-        issueDrawElements(mode, count, type, indices);
+        if (DepthEcho.skipsDraw() || !DepthPeel.begin()) return;
+        try {
+            issueDrawElements(mode, count, type, indices);
+        } finally {
+            DepthPeel.end();
+        }
         if (DepthEcho.begin()) {
             try {
                 issueDrawElements(mode, count, type, indices);
@@ -400,8 +425,12 @@ public abstract class RenderBackend {
     }
 
     public final void multiDrawElementsIndirect(int mode, int type, long indirect, int drawcount, int stride) {
-        if (DepthEcho.skipsDraw()) return;
-        issueMultiDrawElementsIndirect(mode, type, indirect, drawcount, stride);
+        if (DepthEcho.skipsDraw() || !DepthPeel.begin()) return;
+        try {
+            issueMultiDrawElementsIndirect(mode, type, indirect, drawcount, stride);
+        } finally {
+            DepthPeel.end();
+        }
         if (DepthEcho.begin()) {
             try {
                 issueMultiDrawElementsIndirect(mode, type, indirect, drawcount, stride);
@@ -412,8 +441,12 @@ public abstract class RenderBackend {
     }
 
     public final void drawElementsInstanced(int mode, int count, int type, long indices, int primcount) {
-        if (DepthEcho.skipsDraw()) return;
-        issueDrawElementsInstanced(mode, count, type, indices, primcount);
+        if (DepthEcho.skipsDraw() || !DepthPeel.begin()) return;
+        try {
+            issueDrawElementsInstanced(mode, count, type, indices, primcount);
+        } finally {
+            DepthPeel.end();
+        }
         if (DepthEcho.begin()) {
             try {
                 issueDrawElementsInstanced(mode, count, type, indices, primcount);
@@ -424,8 +457,12 @@ public abstract class RenderBackend {
     }
 
     public final void drawArraysInstanced(int mode, int first, int count, int primcount) {
-        if (DepthEcho.skipsDraw()) return;
-        issueDrawArraysInstanced(mode, first, count, primcount);
+        if (DepthEcho.skipsDraw() || !DepthPeel.begin()) return;
+        try {
+            issueDrawArraysInstanced(mode, first, count, primcount);
+        } finally {
+            DepthPeel.end();
+        }
         if (DepthEcho.begin()) {
             try {
                 issueDrawArraysInstanced(mode, first, count, primcount);
@@ -436,8 +473,12 @@ public abstract class RenderBackend {
     }
 
     public final void drawElementsBaseVertex(int mode, int count, int type, long indices, int baseVertex) {
-        if (DepthEcho.skipsDraw()) return;
-        issueDrawElementsBaseVertex(mode, count, type, indices, baseVertex);
+        if (DepthEcho.skipsDraw() || !DepthPeel.begin()) return;
+        try {
+            issueDrawElementsBaseVertex(mode, count, type, indices, baseVertex);
+        } finally {
+            DepthPeel.end();
+        }
         if (DepthEcho.begin()) {
             try {
                 issueDrawElementsBaseVertex(mode, count, type, indices, baseVertex);
@@ -448,8 +489,12 @@ public abstract class RenderBackend {
     }
 
     public final void multiDrawElementsBaseVertex(int mode, long pCount, int type, long pIndices, int drawcount, long pBaseVertex) {
-        if (DepthEcho.skipsDraw()) return;
-        issueMultiDrawElementsBaseVertex(mode, pCount, type, pIndices, drawcount, pBaseVertex);
+        if (DepthEcho.skipsDraw() || !DepthPeel.begin()) return;
+        try {
+            issueMultiDrawElementsBaseVertex(mode, pCount, type, pIndices, drawcount, pBaseVertex);
+        } finally {
+            DepthPeel.end();
+        }
         if (DepthEcho.begin()) {
             try {
                 issueMultiDrawElementsBaseVertex(mode, pCount, type, pIndices, drawcount, pBaseVertex);
@@ -460,8 +505,12 @@ public abstract class RenderBackend {
     }
 
     public final void multiDrawArrays(int mode, IntBuffer firsts, IntBuffer counts) {
-        if (DepthEcho.skipsDraw()) return;
-        issueMultiDrawArrays(mode, firsts, counts);
+        if (DepthEcho.skipsDraw() || !DepthPeel.begin()) return;
+        try {
+            issueMultiDrawArrays(mode, firsts, counts);
+        } finally {
+            DepthPeel.end();
+        }
         if (DepthEcho.begin()) {
             try {
                 issueMultiDrawArrays(mode, firsts, counts);

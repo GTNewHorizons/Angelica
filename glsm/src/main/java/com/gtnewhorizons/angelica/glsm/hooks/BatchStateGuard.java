@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.glsm.recording.CommandRecorder;
 /** Drains deferred geometry before changing state that is not stored with each batch. */
 public final class BatchStateGuard {
     public static Runnable flush;
+    public static Runnable drawFlush;
     private static int suspended;
 
     private BatchStateGuard() {}
@@ -16,12 +17,20 @@ public final class BatchStateGuard {
     public static boolean isSuspended() { return suspended != 0; }
 
     public static void beforeChange() {
-        if (flush == null || suspended != 0 || !GLStateManager.isMainThread()
+        run(flush);
+    }
+
+    public static void beforeDraw() {
+        run(drawFlush);
+    }
+
+    private static void run(Runnable action) {
+        if (action == null || suspended != 0 || !GLStateManager.isMainThread()
             || DisplayListManager.getRecordMode() == DisplayListManager.RecordMode.COMPILE) return;
         final CommandRecorder recorder = DisplayListManager.isRecording() ? DisplayListManager.pauseRecording() : null;
         suspend();
         try {
-            flush.run();
+            action.run();
         } finally {
             resume();
             if (recorder != null) DisplayListManager.resumeRecording(recorder);

@@ -9,6 +9,7 @@ import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.LightingSnapshot;
 import com.gtnewhorizons.angelica.glsm.StateSet;
+import com.gtnewhorizons.angelica.rendering.tesr.TranslucentPeel;
 import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -66,12 +67,14 @@ public class AngelicaBufferSource implements Groupable {
     }
 
     public SegmentedBufferBuilder getBuffer(RenderLayer type, int blockEntityId) {
+        TranslucentPeel.queued(type, this, type);
         renderOrderManager.begin(type);
         int affinity = affinities.getAndMoveToLast(type);
         if (affinity == -1) {
             if (affinities.size() < builders.length) {
                 affinity = affinities.size();
             } else {
+                TranslucentPeel.queuedUnordered(affinities.firstKey());
                 affinity = affinities.removeFirstInt();
             }
             affinities.put(type, affinity);
@@ -163,22 +166,36 @@ public class AngelicaBufferSource implements Groupable {
     public void endBatch(LayerDrawHook hook) {
         ensurePrepared();
         try {
-            int lastGlint = -1;
-            for (int i = 0, n = order.size(); i < n; i++) {
-                if (getTransparencyType(order.get(i)) == TransparencyType.DECAL) lastGlint = i;
-            }
-            for (int i = 0, n = order.size(); i < n; i++) {
-                final RenderLayer layer = order.get(i);
-                if (getTransparencyType(layer) != TransparencyType.AFTER_GLINT) drawLayer(layer, hook);
-                if (i == lastGlint) drawAfterGlintLayers(hook);
-            }
-            if (lastGlint < 0) drawAfterGlintLayers(hook);
+            drawOrder(hook);
         } catch (Throwable t) {
             discardAfterFailure(t);
             throw t;
         }
         order.clear();
         finish();
+    }
+
+    public void drawPending(LayerDrawHook hook) {
+        ensurePrepared();
+        drawOrder(hook);
+    }
+
+    public void openDrawState() {
+        ensureDrawState();
+        saveIrisState();
+    }
+
+    private void drawOrder(LayerDrawHook hook) {
+        int lastGlint = -1;
+        for (int i = 0, n = order.size(); i < n; i++) {
+            if (getTransparencyType(order.get(i)) == TransparencyType.DECAL) lastGlint = i;
+        }
+        for (int i = 0, n = order.size(); i < n; i++) {
+            final RenderLayer layer = order.get(i);
+            if (getTransparencyType(layer) != TransparencyType.AFTER_GLINT) drawLayer(layer, hook);
+            if (i == lastGlint) drawAfterGlintLayers(hook);
+        }
+        if (lastGlint < 0) drawAfterGlintLayers(hook);
     }
 
     private void drawAfterGlintLayers(LayerDrawHook hook) {
@@ -196,6 +213,14 @@ public class AngelicaBufferSource implements Groupable {
     public void discard() {
         order.clear();
         finish();
+    }
+
+    private void ensureDrawState() {
+        if (drawStateDepth >= 0) return;
+        drawStateDepth = GLSMAttribStack.pushState(StateSet.BATCH);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        if (passLighting != null) GLSMLighting.applyLighting(passLighting);
+        drawDefaults.apply();
     }
 
     private void restoreDrawState() {
@@ -227,12 +252,7 @@ public class AngelicaBufferSource implements Groupable {
         final boolean hasDynamic = segments != null && !segments.isEmpty();
         final boolean hasRetained = hook != null && hook.hasDraws(layer);
         if (!hasDynamic && !hasRetained) return;
-        if (drawStateDepth < 0) {
-            drawStateDepth = GLSMAttribStack.pushState(StateSet.BATCH);
-            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
-            if (passLighting != null) GLSMLighting.applyLighting(passLighting);
-            drawDefaults.apply();
-        }
+        ensureDrawState();
         saveIrisState();
         layer.startDrawing();
         Throwable failure = null;
