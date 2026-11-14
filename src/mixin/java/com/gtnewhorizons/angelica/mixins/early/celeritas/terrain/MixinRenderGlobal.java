@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.celeritas.terrain;
 
 import com.gtnewhorizons.angelica.client.rendering.AngelicaFogService;
+import com.gtnewhorizons.angelica.api.world.WorldDrawStage;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
 import com.gtnewhorizons.angelica.event.RenderChunkEvent;
@@ -284,6 +285,8 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         }
         final int blockEntitiesRendered = this.celeritas$renderer.renderBlockEntities(partialTicks);
         if (Tracy.ENABLED) Tracy.plotInt(P_BLOCK_ENTITIES_RENDERED, blockEntitiesRendered);
+        // Mods drawing their own world geometry, still in the block entity phase so a shaderpack lights it
+        WorldDrawStage.run(partialTicks);
         if (Iris.enabled) {
             GbufferPrograms.endBlockEntities();
         }
