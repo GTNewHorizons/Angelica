@@ -1,6 +1,8 @@
 package net.coderbot.iris.pipeline;
 
 import com.google.common.collect.ImmutableList;
+import com.gtnewhorizons.angelica.api.shadows.ShadowCasters;
+import com.gtnewhorizons.angelica.api.shadows.ShadowStage;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
@@ -869,6 +871,24 @@ public class ShadowRenderer {
 		profiler.endSection();
 	}
 
+	private void renderShadowCasters(ShadowStage stage, MatrixStack modelView, double cameraX, double cameraY, double cameraZ, float partialTicks) {
+		if (!ShadowCasters.hasCasters()) return;
+		try (GLDebug.Scope s = GLDebug.scope("shadow:casters")) {
+			GLSMMatrices.glPushMatrix();
+			MODELVIEW_BUFFER.clear().rewind();
+			modelView.peek().getModel().get(MODELVIEW_BUFFER);
+			GLSMMatrices.glLoadMatrix(MODELVIEW_BUFFER);
+			GbufferPrograms.beginBlockEntities();
+			GbufferPrograms.setBlockEntityDefaults();
+			try {
+				ShadowCasters.renderAll(stage, cameraX, cameraY, cameraZ, partialTicks);
+			} finally {
+				GbufferPrograms.endBlockEntities();
+				GLSMMatrices.glPopMatrix();
+			}
+		}
+	}
+
 	public void renderShadows(EntityRenderer levelRenderer, Camera playerCamera) {
         final Minecraft mc = Minecraft.getMinecraft();
         final RenderGlobal rg = mc.renderGlobal;
@@ -1027,6 +1047,9 @@ public class ShadowRenderer {
 			}
 		}
 
+		// Mod geometry that should shadow like terrain, so not tied to the pack's block entity shadow setting
+		renderShadowCasters(ShadowStage.SOLID, modelView, entityX, entityY, entityZ, tickDelta);
+
 		profiler.endStartSection("iris_shadow_draw_entities");
 
 		// NB: Don't try to draw the translucent parts of entities afterwards. It'll cause problems since some
@@ -1044,6 +1067,7 @@ public class ShadowRenderer {
 			try (GLDebug.Scope s = GLDebug.scope("shadow:translucent")) {
 				rg.sortAndRender(mc.renderViewEntity, 1, playerCamera.getPartialTicks());
 			}
+			renderShadowCasters(ShadowStage.TRANSLUCENT, modelView, entityX, entityY, entityZ, tickDelta);
 		}
 
 		// Note: Apparently tripwire isn't rendered in the shadow pass.
