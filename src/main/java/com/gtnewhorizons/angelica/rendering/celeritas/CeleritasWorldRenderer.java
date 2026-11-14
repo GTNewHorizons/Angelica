@@ -1,8 +1,6 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.List;
 
 import com.gtnewhorizons.angelica.compat.bop.FogBiomeCache;
@@ -95,9 +93,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
     private final ObjectArrayList<TileEntity> frameTEs = new ObjectArrayList<>();
     private final ObjectArrayList<TileEntity> frameOverride = new ObjectArrayList<>();
 
-    // For sorting transparent TESRs
-    private final TileEntityOrderer tileEntityOrderer = new TileEntityOrderer();
-    private final ArrayList<TileEntity> sortedTileEntities = new ArrayList<>();
+    private final TileEntityDepthOrder depthOrder = new TileEntityDepthOrder();
 
     private CeleritasWorldRenderer(Minecraft mc) {
         // Private constructor for singleton
@@ -172,7 +168,6 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
         DynamicLights.setActiveRenderer(null);
         this.frameTEs.clear();
         this.frameOverride.clear();
-        this.sortedTileEntities.clear();
         ShadowRenderer.visibleTileEntities.clear();
         ShadowRenderer.globalTileEntities.clear();
         TesrLifecycle.reset();
@@ -442,6 +437,9 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             this.teTransform = null;
             if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_DISPATCH);
             try {
+                if (ClientProxy.options().performance.translucencySorting) {
+                    depthOrder.sortBackToFront(frameTEs, teCamX, teCamY, teCamZ);
+                }
                 for (int i = 0; i < frameTEs.size(); i++) {
                     final TileEntity te = frameTEs.get(i);
                     if (!(te instanceof OverridesShouldRenderInPass)) {
@@ -461,20 +459,13 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
         } else {
             if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_DISPATCH);
             try {
-                sortedTileEntities.clear();
                 for (int i = 0; i < frameOverride.size(); i++) {
                     final TileEntity te = frameOverride.get(i);
                     if (te.shouldRenderInPass(pass)) {
-                        sortedTileEntities.add(te);
+                        dispatchTE(te, partialTicks);
+                        count++;
                     }
                 }
-                if (sortedTileEntities.size() > 1 && ClientProxy.options().performance.translucencySorting) {
-                    sortedTileEntities.sort(tileEntityOrderer.setLastCameraState(lastCameraState));
-                }
-                for (int i = 0; i < sortedTileEntities.size(); i++) {
-                    dispatchTE(sortedTileEntities.get(i), partialTicks);
-                }
-                count = sortedTileEntities.size();
             } finally {
                 if (Tracy.ENABLED) Tracy.endZone();
             }
@@ -671,29 +662,6 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             this.partialTicks = partialTicks;
             this.pass = pass;
             return this;
-        }
-    }
-
-    private static class TileEntityOrderer implements Comparator<TileEntity> {
-        public CameraState lastCameraState;
-
-        public TileEntityOrderer() {
-            super();
-        }
-
-        public TileEntityOrderer setLastCameraState(CameraState lastCameraState) {
-            this.lastCameraState = lastCameraState;
-            return this;
-        }
-
-        @Override
-        public int compare(TileEntity te1, TileEntity te2) {
-            final double x = this.lastCameraState.x();
-            final double y = this.lastCameraState.y();
-            final double z = this.lastCameraState.z();
-            final double d1 = te1.getDistanceFrom(x, y, z);
-            final double d2 = te2.getDistanceFrom(x, y, z);
-            return Double.compare(d2, d1);
         }
     }
 }
