@@ -54,6 +54,13 @@ out vec4 fragColor; // The output fragment for the color framebuffer
 #define fragColor gl_FragColor
 #endif
 
+#if !defined(LEGACY) && defined(TRANSLUCENCY_SPLIT)
+// Fragments behind the block-entity layer's depth go to a second sheet (TranslucencyLayers).
+uniform bool u_SplitEnabled;
+uniform sampler2D u_SplitDepth;
+layout(location = 1) out vec4 fragBehind;
+#endif
+
 vec2 snapToTexelCentre(vec2 uv, vec2 texelSize, vec2 texelsPerPixel) {
     vec2 centreCoords = uv / texelSize - 0.5;
     vec2 lowerCentre = floor(centreCoords);
@@ -236,5 +243,13 @@ void main() {
 
 #else // No fog
     fragColor = diffuseColor;
+#endif
+
+#if !defined(LEGACY) && defined(TRANSLUCENCY_SPLIT)
+    fragBehind = vec4(0.0);
+    if (u_SplitEnabled && gl_FragCoord.z > texelFetch(u_SplitDepth, ivec2(gl_FragCoord.xy), 0).r) {
+        fragBehind = fragColor;
+        fragColor = vec4(0.0);
+    }
 #endif
 }
