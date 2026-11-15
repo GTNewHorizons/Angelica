@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.rendering.particles;
 
 import com.gtnewhorizons.angelica.rendering.RenderFailures;
+import com.gtnewhorizons.angelica.api.particles.ParticleRendering;
 import com.gtnewhorizons.angelica.client.rendering.DeferredDrawBatcher;
 import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
 import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
@@ -138,6 +139,8 @@ public final class ParticleInstancer {
             STATE.sample();
             SCRATCH.brightness = runTessellator.brightness;
             if (!descriptor.describe(fx, partialTicks, SCRATCH, STATE)) return;
+            // Drawn from its fields, so a mod's size factor goes on here. The capture path below gets it from renderParticle
+            SCRATCH.half *= ParticleRendering.renderScale(fx);
 
             runTessellator.color = SCRATCH.colorABGR;
             runTessellator.hasColor = true;
