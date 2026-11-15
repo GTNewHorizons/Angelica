@@ -40,6 +40,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 public class DynamicLights {
@@ -53,18 +54,50 @@ public class DynamicLights {
     public static final boolean configEnabled = AngelicaConfig.enableDynamicLights;
 
     private static final double MAX_RADIUS = 7.75;
-    private static final double MAX_RADIUS_SQUARED = MAX_RADIUS * MAX_RADIUS;
     private final Set<IDynamicLightSource> dynamicLightSources = new ObjectOpenHashSet<>();
-    private IDynamicLightSource[] lightSourceArray = new IDynamicLightSource[0];
+    private static final IDynamicLightSource[] NO_SOURCES = new IDynamicLightSource[0];
+    private IDynamicLightSource[] lightSourceArray = NO_SOURCES;
+    // The sources that light things under a shaderpack without shader force, see isActive
+    private IDynamicLightSource[] shaderpackSourceArray = NO_SOURCES;
     private final ReentrantReadWriteLock lightSourcesLock = new ReentrantReadWriteLock();
     private volatile int lightSourceCount = 0;
+    private volatile int shaderpackSourceCount = 0;
     private final ChunkRebuildManager chunkRebuildManager = new ChunkRebuildManager();
     private long lastUpdate = System.currentTimeMillis();
     private int lastUpdateCount = 0;
+    // Which sources gave light at the last update: 0 none, 1 the ones lit under shaderpacks, 2 all of them
+    private int litState = -1;
 
     /** Must be called under write lock. */
     private void rebuildLightSourceArray() {
-        this.lightSourceArray = this.dynamicLightSources.toArray(new IDynamicLightSource[0]);
+        this.lightSourceArray = this.dynamicLightSources.toArray(NO_SOURCES);
+        int count = 0;
+        for (IDynamicLightSource source : this.lightSourceArray) {
+            if (source.angelica$isLitUnderShaderpacks()) count++;
+        }
+        final IDynamicLightSource[] shaderpackSources = new IDynamicLightSource[count];
+        int i = 0;
+        for (IDynamicLightSource source : this.lightSourceArray) {
+            if (source.angelica$isLitUnderShaderpacks()) shaderpackSources[i++] = source;
+        }
+        this.shaderpackSourceArray = shaderpackSources;
+        this.shaderpackSourceCount = count;
+    }
+
+    /** The sources that give light right now. Call under the read lock. */
+    private IDynamicLightSource[] activeSources() {
+        if (isEnabled()) return this.lightSourceArray;
+        return configEnabled && Mode.isEnabled() ? this.shaderpackSourceArray : NO_SOURCES;
+    }
+
+    /** A tracked source changed whether it's lit under shaderpacks. */
+    public void onShaderpackLitChanged(IDynamicLightSource lightSource) {
+        this.lightSourcesLock.writeLock().lock();
+        try {
+            if (this.dynamicLightSources.contains(lightSource)) rebuildLightSourceArray();
+        } finally {
+            this.lightSourcesLock.writeLock().unlock();
+        }
     }
 
     public static DynamicLights get() {
@@ -79,6 +112,22 @@ public class DynamicLights {
             // if shader force is enabled then true
             // if not, then true when shaders are not in use
             (ShaderForce || !IrisApi.getInstance().isShaderPackInUse());
+    }
+
+    /**
+     * True when a light that's lit under shaderpacks (or not, see {@link IDynamicLightSource#angelica$isLitUnderShaderpacks})
+     * gives light right now. Those only skip the shaderpack check, dynamic lights turned off still means off.
+     */
+    public static boolean isEnabled(boolean litUnderShaderpacks) {
+        return isEnabled() || litUnderShaderpacks && configEnabled && Mode.isEnabled();
+    }
+
+    /**
+     * True when any light gives light right now: all of them ({@link #isEnabled()}), or only the ones lit under
+     * shaderpacks when a pack turned the rest off. What the light pipeline checks before it does any dynamic light work.
+     */
+    public static boolean isActive() {
+        return isEnabled() || configEnabled && Mode.isEnabled() && get().shaderpackSourceCount > 0;
     }
 
     public boolean hasLightSources() {
@@ -99,7 +148,13 @@ public class DynamicLights {
      * @param renderer the renderer
      */
     public void updateAll(@NotNull IDynamicLightWorldRenderer renderer) {
-        if (!isEnabled())
+        final int state = isEnabled() ? 2 : configEnabled && Mode.isEnabled() ? 1 : 0;
+        if (state != this.litState) {
+            if (this.litState != -1) relightAll(renderer);
+            this.litState = state;
+        }
+
+        if (!isActive())
             return;
 
         final long now = System.currentTimeMillis();
@@ -129,7 +184,7 @@ public class DynamicLights {
             }
 
             this.lightSourcesLock.readLock().lock();
-            for (var lightSource : this.lightSourceArray) {
+            for (var lightSource : activeSources()) {
                 // Entity type filter
                 if (!EntityLightConfig.isEntityTypeEnabled(lightSource)) {
                     continue;
@@ -147,6 +202,23 @@ public class DynamicLights {
                 if (lightSource.angelica$updateDynamicLight(renderer))
                     this.lastUpdateCount++;
             }
+            this.lightSourcesLock.readLock().unlock();
+        }
+    }
+
+    /**
+     * The player switched dynamic lights, shader force or the shaderpack, so which sources give light changed. The
+     * sections they lit rebuild, and every source starts over on its next update. Without this a light that went dark
+     * stays in the terrain until something else rebuilds it, and one that sits still never comes back.
+     */
+    private void relightAll(@NotNull IDynamicLightWorldRenderer renderer) {
+        this.lightSourcesLock.readLock().lock();
+        try {
+            for (IDynamicLightSource source : this.lightSourceArray) {
+                source.angelica$scheduleTrackedChunksRebuild(renderer);
+                source.angelica$resetDynamicLight();
+            }
+        } finally {
             this.lightSourcesLock.readLock().unlock();
         }
     }
@@ -245,7 +317,7 @@ public class DynamicLights {
             }
         }
         this.lightSourceCount = 0;
-        this.lightSourceArray = new IDynamicLightSource[0];
+        rebuildLightSourceArray();
 
         this.lightSourcesLock.writeLock().unlock();
     }
@@ -282,7 +354,7 @@ public class DynamicLights {
     public double getDynamicLightLevel(int x, int y, int z) {
         double result = 0;
         this.lightSourcesLock.readLock().lock();
-        for (var lightSource : this.lightSourceArray) {
+        for (var lightSource : activeSources()) {
             result = maxDynamicLightLevel(x, y, z, lightSource, result);
         }
         this.lightSourcesLock.readLock().unlock();
@@ -296,7 +368,7 @@ public class DynamicLights {
     public double getDynamicLightLevel(double x, double y, double z) {
         double result = 0;
         this.lightSourcesLock.readLock().lock();
-        for (var lightSource : this.lightSourceArray) {
+        for (var lightSource : activeSources()) {
             result = maxDynamicLightLevelExact(x, y, z, lightSource, result);
         }
         this.lightSourcesLock.readLock().unlock();
@@ -317,14 +389,11 @@ public class DynamicLights {
             final double dz = z - lightSource.angelica$getDynamicLightZ() + 0.5;
 
             final double distanceSquared = dx * dx + dy * dy + dz * dz;
-            // 7.75 because else we would have to update more chunks and that's not a good idea.
-            // 15 (max range for blocks) would be too much and a bit cheaty.
-            if (distanceSquared <= MAX_RADIUS_SQUARED) {
-                final double multiplier = 1.0 - Math.sqrt(distanceSquared) / MAX_RADIUS;
-                final double lightLevel = multiplier * (double) luminance;
-                if (lightLevel > currentLightLevel) {
-                    return lightLevel;
-                }
+            // Held torch reach is 7.75 because else we would have to update more chunks and that's not a good idea.
+            // Lights that ask for more get it (see angelica$getReach), and rebuild more chunks for it.
+            final double lightLevel = levelAt(lightSource, luminance, distanceSquared);
+            if (lightLevel > currentLightLevel) {
+                return lightLevel;
             }
         }
         return currentLightLevel;
@@ -342,12 +411,9 @@ public class DynamicLights {
             final double dz = z - lightSource.angelica$getDynamicLightZ();
 
             final double distanceSquared = dx * dx + dy * dy + dz * dz;
-            if (distanceSquared <= MAX_RADIUS_SQUARED) {
-                final double multiplier = 1.0 - Math.sqrt(distanceSquared) / MAX_RADIUS;
-                final double lightLevel = multiplier * (double) luminance;
-                if (lightLevel > currentLightLevel) {
-                    return lightLevel;
-                }
+            final double lightLevel = levelAt(lightSource, luminance, distanceSquared);
+            if (lightLevel > currentLightLevel) {
+                return lightLevel;
             }
         }
         return currentLightLevel;
@@ -370,12 +436,65 @@ public class DynamicLights {
     }
 
     public static int addDynamicLight(IBlockAccess world, int x, int y, int z, int lightmap) {
-        if (!isEnabled()) return lightmap;
+        if (!isActive()) return lightmap;
         final DynamicLights dl = get();
         if (!dl.hasLightSources()) return lightmap;
         final double dynamicLightLevel = dl.getDynamicLightLevel(x, y, z);
         if (dynamicLightLevel > 0 && !world.getBlock(x, y, z).isOpaqueCube()) return dl.getLightmapWithDynamicLight(dynamicLightLevel, lightmap);
         return lightmap;
+    }
+
+    /**
+     * Calls the consumer for every lit light source within radius of the point. Runs on a snapshot of the sources, so
+     * the consumer may add or remove lights.
+     */
+    public void forEachSourceNear(double x, double y, double z, double radius, Consumer<IDynamicLightSource> consumer) {
+        final IDynamicLightSource[] sources;
+        this.lightSourcesLock.readLock().lock();
+        try {
+            sources = activeSources();
+        } finally {
+            this.lightSourcesLock.readLock().unlock();
+        }
+        final double radiusSq = radius * radius;
+        for (IDynamicLightSource source : sources) {
+            if (source.angelica$getLuminance() <= 0) continue;
+            final double dx = source.angelica$getDynamicLightX() - x;
+            final double dy = source.angelica$getDynamicLightY() - y;
+            final double dz = source.angelica$getDynamicLightZ() - z;
+            if (dx * dx + dy * dy + dz * dz <= radiusSq) consumer.accept(source);
+        }
+    }
+
+    /** Light level of a source of this luminance at this distance, with the held torch reach. */
+    public static double falloff(int luminance, double distance) {
+        return falloff(luminance, -1, distance);
+    }
+
+    /**
+     * Light level of a source of this luminance and reach (see {@link IDynamicLightSource#angelica$getReach}) at this
+     * distance.
+     */
+    public static double falloff(int luminance, float reach, double distance) {
+        if (luminance <= 0 || reach == 0) return 0;
+        // Held torch: straight down to 0 at 7.75 blocks, whatever the luminance
+        if (reach < 0) return distance > MAX_RADIUS ? 0 : (1.0 - distance / MAX_RADIUS) * luminance;
+        // Like block light: down 15 / reach levels a block, so 15 is vanilla
+        return Math.max(0, luminance - distance * 15.0 / reach);
+    }
+
+    /** How far the source's light gets at its current luminance, 0 when it's dark. */
+    public static double reachOf(@NotNull IDynamicLightSource source) {
+        final int luminance = source.angelica$getLuminance();
+        if (luminance <= 0) return 0;
+        final float reach = source.angelica$getReach();
+        return reach < 0 ? MAX_RADIUS : reach * luminance / 15.0;
+    }
+
+    private static double levelAt(@NotNull IDynamicLightSource source, int luminance, double distanceSquared) {
+        final double reach = reachOf(source);
+        if (distanceSquared >= reach * reach) return 0;
+        return falloff(luminance, source.angelica$getReach(), Math.sqrt(distanceSquared));
     }
 
     public List<IDynamicLightSource> getSourcesForChunk(int chunkMinX, int chunkMinY, int chunkMinZ) {
@@ -384,21 +503,22 @@ public class DynamicLights {
         final double centerY = chunkMinY + 8.0;
         final double centerZ = chunkMinZ + 8.0;
 
-        // Max distance from chunk center to any corner is sqrt(3) * 8 ≈ 13.86
-        // Add MAX_RADIUS to get the search radius (13.86 + 7.75)^2 ≈ 467
-        final double searchRadiusSq = 470.0; // Slightly padded for safety
+        // Smooth lighting reads the cells a block outside the section too, and the middle of the furthest of those is
+        // sqrt(3) * 8.5 ≈ 14.72 from the chunk center. Plus the source's reach (7.75 for a held torch), slightly padded
+        // for safety
 
         List<IDynamicLightSource> result = null;
 
         this.lightSourcesLock.readLock().lock();
         try {
-            for (var source : this.lightSourceArray) {
+            for (var source : activeSources()) {
                 final double dx = source.angelica$getDynamicLightX() - centerX;
                 final double dy = source.angelica$getDynamicLightY() - centerY;
                 final double dz = source.angelica$getDynamicLightZ() - centerZ;
                 final double distSq = dx * dx + dy * dy + dz * dz;
+                final double searchRadius = 14.8 + reachOf(source);
 
-                if (distSq <= searchRadiusSq) {
+                if (distSq <= searchRadius * searchRadius) {
                     if (result == null) {
                         result = new ArrayList<>();
                     }
@@ -416,7 +536,7 @@ public class DynamicLights {
         int accum = 0;
         this.lightSourcesLock.readLock().lock();
         try {
-            for (var lightSource : this.lightSourceArray) {
+            for (var lightSource : activeSources()) {
                 accum = accumulateSourceRGB(x, y, z, lightSource, accum);
             }
         } finally {
@@ -446,9 +566,8 @@ public class DynamicLights {
         final double dz = z - source.angelica$getDynamicLightZ();
         final double distSq = dx * dx + dy * dy + dz * dz;
 
-        if (distSq > MAX_RADIUS_SQUARED) return accum;
-
-        final double multiplier = 1.0 - Math.sqrt(distSq) / MAX_RADIUS;
+        final double multiplier = levelAt(source, luminance, distSq) / luminance;
+        if (multiplier <= 0) return accum;
         final int r = (int) (BlockLightProvider.unpackR(rgb) * multiplier);
         final int g = (int) (BlockLightProvider.unpackG(rgb) * multiplier);
         final int b = (int) (BlockLightProvider.unpackB(rgb) * multiplier);

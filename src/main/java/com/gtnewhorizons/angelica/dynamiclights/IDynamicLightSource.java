@@ -45,6 +45,24 @@ public interface IDynamicLightSource {
     }
 
     /**
+     * Whether this gives light under a shaderpack without the player's shader force option, for lights that stand in
+     * for real blocks a pack has no other way to light. False for entities and held items, the pack does those.
+     */
+    default boolean angelica$isLitUnderShaderpacks() {
+        return false;
+    }
+
+    /**
+     * How far a luminance 15 light of this source gets, 0-15, falling 15 / reach levels a block like block light (15
+     * is vanilla). -1 for Angelica's held torch falloff, straight down to 0 at 7.75 blocks. The source has to track and
+     * rebuild every chunk section its light gets into (plus a block, smooth lighting reads the cells next to a face),
+     * see {@link DynamicLights#reachOf}.
+     */
+    default float angelica$getReach() {
+        return -1;
+    }
+
+    /**
      * Sets whether the dynamic light is enabled or not.
      * <p>
      * Note: please do not call this function in your mod or you will break things.

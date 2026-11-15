@@ -22,7 +22,7 @@ public final class AngelicaEntries {
     }
 
     public static void dynamicLights(DebugScreenDisplayer displayer, DebugContext context) {
-        if (!DynamicLights.configEnabled || !DynamicLights.isEnabled()) return;
+        if (!DynamicLights.configEnabled || !DynamicLights.isActive()) return;
         final DynamicLights lights = DynamicLights.get();
         final DebugFact fact = displayer.fact(DebugGroup.ANGELICA, "Dynamic Lights");
         fact.value(lights.getLightSourcesCount()).text(" sources, ").value(lights.getLastUpdateCount()).text(" updated");

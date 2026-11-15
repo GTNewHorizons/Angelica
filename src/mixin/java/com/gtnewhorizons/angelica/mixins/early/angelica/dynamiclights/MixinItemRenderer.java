@@ -15,7 +15,7 @@ public class MixinItemRenderer {
 
     @Surround.Return
     private int angelica$dynamiclights_renderItemInFirstPersonResult(int lightmap, WorldClient theWorld, int posX, int posY, int posZ){
-        if (DynamicLights.isEnabled()) {
+        if (DynamicLights.isActive()) {
             final DynamicLights dl = DynamicLights.get();
             if (dl.hasLightSources()) {
                 final double dynamicLightLevel = dl.getDynamicLightLevel(posX, posY, posZ);

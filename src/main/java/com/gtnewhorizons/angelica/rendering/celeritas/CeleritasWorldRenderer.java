@@ -298,7 +298,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
                 IrisShaderProviderHolder.shouldUseFaceCulling());
         }
 
-        if (DynamicLights.isEnabled() && DynamicLights.FrustumCullingEnabled) {
+        if (DynamicLights.isActive() && DynamicLights.FrustumCullingEnabled) {
             DynamicLights.get().processChunkRebuilds(viewport);
         }
     }
@@ -331,7 +331,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
 
         super.setupShadowTerrain(playerViewport, shadowViewport, cameraState, frame, spectator);
 
-        if (DynamicLights.isEnabled() && DynamicLights.FrustumCullingEnabled) {
+        if (DynamicLights.isActive() && DynamicLights.FrustumCullingEnabled) {
             DynamicLights.get().processChunkRebuilds(shadowViewport);
         }
 

@@ -227,7 +227,7 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess, LiquidLo
         Arrays.fill(this.biomeData, null);
 
         // Pre-filter dynamic light sources for this chunk section
-        if (DynamicLights.isEnabled()) {
+        if (DynamicLights.isActive()) {
             this.dynamicLightsInstance = DynamicLights.get();
             this.chunkLightSources = dynamicLightsInstance.getSourcesForChunk(this.origin.getMinX(), this.origin.getMinY(), this.origin.getMinZ());
         } else {

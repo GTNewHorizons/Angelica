@@ -304,7 +304,7 @@ public final class TracyFramePlots {
         Tracy.plotInt(P_QUEUE_TASKS_RAN, AngelicaRenderQueue.getLastFrameTasksRan());
         Tracy.plotInt(P_QUEUE_TIME_NS, AngelicaRenderQueue.getLastFrameTimeNs());
 
-        if (DynamicLights.isEnabled()) {
+        if (DynamicLights.isActive()) {
             final DynamicLights dl = DynamicLights.get();
             Tracy.plotInt(P_DYN_LIGHT_SOURCES, dl.getLightSourcesCount());
             Tracy.plotInt(P_DYN_UPDATES, dl.getLastUpdateCount());

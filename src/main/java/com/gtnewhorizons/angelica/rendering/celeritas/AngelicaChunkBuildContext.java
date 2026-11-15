@@ -112,7 +112,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
     }
 
     public void setupDynamicLights(int chunkOriginX, int chunkOriginY, int chunkOriginZ) {
-        if (DynamicLights.isEnabled()) {
+        if (DynamicLights.isActive()) {
             this.dynamicLightsInstance = DynamicLights.get();
             this.chunkLightSources = dynamicLightsInstance.getSourcesForChunk(chunkOriginX, chunkOriginY, chunkOriginZ);
         } else {

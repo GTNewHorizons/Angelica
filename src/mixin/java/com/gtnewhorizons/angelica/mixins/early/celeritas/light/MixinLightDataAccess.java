@@ -189,7 +189,7 @@ public abstract class MixinLightDataAccess implements ExtLightDataAccess {
         int brgb = provider.getBlockLightRGB(blockAccess, x, y, z);
         final int srgb = provider.getSkyLightRGB(blockAccess, x, y, z);
 
-        if (DynamicLights.isEnabled()) {
+        if (DynamicLights.isActive()) {
             final int dlRGB = DynamicLights.get().getDynamicLightRGB(x + 0.5, y + 0.5, z + 0.5);
             if (dlRGB != 0) {
                 brgb = angelica$mergeMaxRGB(brgb, dlRGB);
