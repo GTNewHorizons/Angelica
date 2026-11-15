@@ -29,6 +29,7 @@ public class CameraUniforms {
 
 	public static void addCameraUniforms(UniformHolder uniforms, FrameUpdateNotifier notifier) {
 		final CameraPositionTracker tracker = new CameraPositionTracker(notifier);
+		LocalGridFrame.trackCamera(tracker);
 
 		uniforms
 			.uniform1f(ONCE, "near", () -> 0.05)

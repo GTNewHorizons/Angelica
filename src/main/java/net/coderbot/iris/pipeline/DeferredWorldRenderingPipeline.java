@@ -967,6 +967,15 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		return current;
 	}
 
+	/** Evaluates these built-in uniforms again and pushes them to the bound pass, see LocalGridFrame. */
+	public void refreshUniforms(String[] names) {
+		customUniforms.refreshInputs(names);
+		if (current != null && current.liveProgram != null
+			&& GLSMPrograms.getActiveProgram() == current.liveProgram.getProgramId()) {
+			current.pushCustomUniforms();
+		}
+	}
+
 	public int getActivePassProgramId() {
 		if (current == null) return -1;
 		final Program p = current.boundProgram();
@@ -1495,6 +1504,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			} finally {
 				GLStateManager.resumeExitCapture(suspended);
 			}
+		}
+
+		void pushCustomUniforms() {
+			DeferredWorldRenderingPipeline.this.customUniforms.push(liveProgram == program ? this : liveProgram);
 		}
 
 		private void bindSelected() {

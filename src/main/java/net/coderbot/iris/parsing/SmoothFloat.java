@@ -30,6 +30,12 @@ public class SmoothFloat {
 	private float cachedHalfLifeDown;
 	private float cachedDecayDown;
 
+	// What the accumulator was at the start of this frame. Custom uniforms can be evaluated again mid-frame (see
+	// LocalGridFrame), and each of those calls has to smooth from the same point instead of stepping again.
+	private int frame = -1;
+	private float frameStartAccumulator;
+	private boolean frameStartHasInitialValue;
+
 	/**
 	 * Computes an exponential decay factor based on the given decay constant and time value
 	 *
@@ -58,6 +64,16 @@ public class SmoothFloat {
 	 * Takes one value from the unsmoothed value sequence, and smooths it into our accumulator
 	 */
 	public float updateAndGet(float value, float halfLifeUp, float halfLifeDown) {
+		final int now = SystemTimeUniforms.COUNTER.getAsInt();
+		if (now != frame) {
+			frame = now;
+			frameStartAccumulator = accumulator;
+			frameStartHasInitialValue = hasInitialValue;
+		} else {
+			accumulator = frameStartAccumulator;
+			hasInitialValue = frameStartHasInitialValue;
+		}
+
 		if (halfLifeUp != cachedHalfLifeUp) {
 			cachedHalfLifeUp = halfLifeUp;
 			if (halfLifeUp == 0.0f) {

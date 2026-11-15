@@ -8,6 +8,7 @@ import net.coderbot.iris.gl.uniform.FloatSupplier;
 import net.coderbot.iris.gl.uniform.UniformHolder;
 import com.gtnewhorizons.angelica.glsm.shader.UniformType;
 import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
+import net.coderbot.iris.uniforms.LocalGridFrame;
 import net.coderbot.iris.uniforms.custom.cached.BooleanCachedUniform;
 import net.coderbot.iris.uniforms.custom.cached.CachedUniform;
 import net.coderbot.iris.uniforms.custom.cached.Float2VectorCachedUniform;
@@ -94,7 +95,8 @@ public class CustomUniformFixedInputUniformsHolder {
 
 		@Override
 		public Builder uniform1f(UniformUpdateFrequency updateFrequency, String name, DoubleSupplier value) {
-			return this.put(name, new FloatCachedUniform(name, updateFrequency, () -> (float) value.getAsDouble()));
+			final DoubleSupplier wrapped = LocalGridFrame.wrapDouble(name, value);
+			return this.put(name, new FloatCachedUniform(name, updateFrequency, () -> (float) wrapped.getAsDouble()));
 		}
 
 		@Override
@@ -119,11 +121,13 @@ public class CustomUniformFixedInputUniformsHolder {
 
 		@Override
 		public Builder uniform3f(UniformUpdateFrequency updateFrequency, String name, Supplier<Vector3fc> value) {
+			value = LocalGridFrame.wrap3f(name, value);
 			return this.put(name, new Float3VectorCachedUniform(name, updateFrequency, value));
 		}
 
 		@Override
 		public Builder uniform3i(UniformUpdateFrequency updateFrequency, String name, Supplier<Vector3ic> value) {
+			value = LocalGridFrame.wrap3i(name, value);
 			return this.put(name, new Int3VectorCachedUniform(name, updateFrequency, value));
 		}
 
@@ -134,9 +138,10 @@ public class CustomUniformFixedInputUniformsHolder {
 
         @Override
 		public Builder uniformTruncated3f(UniformUpdateFrequency updateFrequency, String name, Supplier<Vector4fc> value) {
+			final Supplier<Vector4fc> wrapped = LocalGridFrame.wrap4f(name, value);
 			Vector3f held = new Vector3f();
 			return this.put(name, new Float3VectorCachedUniform(name, updateFrequency, () -> {
-				final Vector4fc vec = value.get();
+				final Vector4fc vec = wrapped.get();
 				held.set(vec.x(), vec.y(), vec.z());
 				return held;
 			}));
@@ -144,9 +149,10 @@ public class CustomUniformFixedInputUniformsHolder {
 
 		@Override
 		public UniformHolder uniform3d(UniformUpdateFrequency updateFrequency, String name, Supplier<Vector3d> value) {
+			final Supplier<Vector3d> wrapped = LocalGridFrame.wrap3d(name, value);
 			Vector3f held = new Vector3f();
 			return this.put(name, new Float3VectorCachedUniform(name, updateFrequency, () -> {
-				Vector3d vec = value.get();
+				Vector3d vec = wrapped.get();
 				held.set(vec.x(), vec.y(), vec.z());
 				return held;
 			}));
@@ -154,9 +160,10 @@ public class CustomUniformFixedInputUniformsHolder {
 
 		@Override
 		public UniformHolder uniform4f(UniformUpdateFrequency updateFrequency, String name, Supplier<Vector4fc> value) {
+			final Supplier<Vector4fc> wrapped = LocalGridFrame.wrap4f(name, value);
 			Vector4f held = new Vector4f();
 			return this.put(name, new Float4VectorCachedUniform(name, updateFrequency, () -> {
-				final Vector4fc vec = value.get();
+				final Vector4fc vec = wrapped.get();
 				held.set(vec.x(), vec.y(), vec.z(), vec.w());
 				return held;
 			}));
@@ -175,6 +182,7 @@ public class CustomUniformFixedInputUniformsHolder {
 		@Override
 		public UniformHolder uniformMatrix(
 			UniformUpdateFrequency updateFrequency, String name, Supplier<Matrix4fc> value) {
+			value = LocalGridFrame.wrapMatrix(name, value);
 			return this.put(name, new Float4MatrixCachedUniform(name, updateFrequency, value));
 		}
 

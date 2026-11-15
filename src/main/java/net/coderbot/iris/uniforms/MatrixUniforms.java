@@ -22,7 +22,7 @@ public final class MatrixUniforms {
 	}
 
 	private static final Matrix4f GBUFFER_MODELVIEW_SCRATCH = new Matrix4f();
-	private static Matrix4fc getGbufferModelView() {
+	static Matrix4fc getGbufferModelView() {
 		final Matrix4fc raw = RenderingState.INSTANCE.getModelViewMatrix();
 		final Entity view = Minecraft.getMinecraft().renderViewEntity;
 		if (view == null) {

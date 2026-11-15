@@ -48,6 +48,9 @@ public class CustomUniforms implements FunctionContext {
 	private final Object2LongOpenHashMap<Object> lastPushedGen = new Object2LongOpenHashMap<>();
 	private long generation;
 
+	private String[] refreshNames;
+	private CachedUniform[] refreshOrder;
+
 	private static final long PLOT_CUSTOM_PUSHED = Tracy.ENABLED ? Tracy.plotHandle("iris.customPushed") : 0;
 	private static final long PLOT_CUSTOM_SKIPPED = Tracy.ENABLED ? Tracy.plotHandle("iris.customSkipped") : 0;
 	private int pushedThisFrame;
@@ -252,6 +255,41 @@ public class CustomUniforms implements FunctionContext {
 		for (int i = 0, n = ordered.size(); i < n; i++) {
 			ordered.get(i).update();
 		}
+	}
+
+	/**
+	 * Evaluates these built-in uniforms again mid-frame, along with every custom uniform made from them, so the next
+	 * push picks them up (see LocalGridFrame).
+	 */
+	public void refreshInputs(String[] names) {
+		if (names != refreshNames) {
+			refreshNames = names;
+			refreshOrder = readersInOrder(names);
+		}
+		for (CachedUniform uniform : refreshOrder) {
+			uniform.update();
+		}
+		generation++;
+	}
+
+	// The named inputs that are still used and every custom uniform that reads them, directly or not, in the order
+	// they're evaluated. uniformOrder is already sorted so each uniform comes after what it reads.
+	private CachedUniform[] readersInOrder(String[] names) {
+		final Set<CachedUniform> affected = new ObjectOpenHashSet<>();
+		for (String name : names) {
+			final CachedUniform uniform = this.inputHolder.getUniform(name);
+			if (uniform != null) affected.add(uniform);
+		}
+		final List<CachedUniform> ordered = new ObjectArrayList<>();
+		for (CachedUniform uniform : this.uniformOrder) {
+			if (!affected.contains(uniform)) {
+				final List<CachedUniform> dependencies = this.dependsOn.get(uniform);
+				if (dependencies == null || dependencies.stream().noneMatch(affected::contains)) continue;
+				affected.add(uniform);
+			}
+			ordered.add(uniform);
+		}
+		return ordered.toArray(new CachedUniform[0]);
 	}
 
 	public void push(Object pass) {

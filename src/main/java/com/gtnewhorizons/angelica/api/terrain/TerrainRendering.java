@@ -1,19 +1,26 @@
 package com.gtnewhorizons.angelica.api.terrain;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
+import com.gtnewhorizons.angelica.api.glstate.GLState;
 import com.gtnewhorizons.angelica.api.shaders.ShaderPacks;
+import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
+import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.BlockMaterialAttribute;
 import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
 import com.gtnewhorizons.angelica.rendering.celeritas.BlockRenderLayer;
 import com.gtnewhorizons.angelica.utils.AnimationsRenderUtils;
 import com.prupe.mcpatcher.mal.block.RenderBlocksUtils;
+import net.coderbot.iris.Iris;
 import net.coderbot.iris.block_rendering.BlockMaterialMapping;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.gl.shader.ProgramCreator;
 import net.coderbot.iris.layer.GbufferPrograms;
+import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
+import net.coderbot.iris.shadows.ShadowRenderingState;
+import net.coderbot.iris.uniforms.LocalGridFrame;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockDoublePlant;
 import net.minecraft.block.BlockDynamicLiquid;
@@ -21,6 +28,7 @@ import net.minecraft.block.BlockStaticLiquid;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.world.IBlockAccess;
+import org.joml.Matrix4f;
 
 import java.util.Map;
 
@@ -36,6 +44,7 @@ public final class TerrainRendering {
 
     private static int terrainDrawDepth;
     private static boolean terrainDrawPushed;
+    private static int localGridId;
 
     private TerrainRendering() {}
 
@@ -55,6 +64,8 @@ public final class TerrainRendering {
 
     public static void endTerrainDraw() {
         if (terrainDrawDepth == 0) return;
+        // While the terrain program is still bound, so it gets the real uniforms back
+        if (terrainDrawDepth == 1) endLocalGrid();
         if (--terrainDrawDepth > 0) return;
         if (terrainDrawPushed) GbufferPrograms.popOverridePhase();
         terrainDrawPushed = false;
@@ -64,9 +75,52 @@ public final class TerrainRendering {
     public static void resetForFrame() {
         if (terrainDrawDepth == 0) return;
         AngelicaMod.LOGGER.warn("A terrain draw was never ended, ending it");
+        LocalGridFrame.end();
         if (terrainDrawPushed) GbufferPrograms.popOverridePhase();
         terrainDrawPushed = false;
         terrainDrawDepth = 0;
+    }
+
+    /**
+     * Call inside {@link #beginTerrainDraw}, in a try-with-resources. Until the grid is closed or the terrain draw
+     * ends, the pack sees the current modelview's model space as the world. For geometry drawn rotated or off the block
+     * grid: packs pick out parts of some blocks by where a pixel is inside its world block (cauldron water, end portal
+     * frame eyes), and off the grid that lands in the wrong spot.
+     * <p>
+     * Only the uniforms a pack works out world space from change (camera, matrices, upPosition, eyePosition and the
+     * like), plus the pack's own custom uniforms made from them. View space and shadows come out the same. Model space
+     * up counts as up. Draws in between must use the modelview it was started with.
+     * <p>
+     * Does nothing without a pack, in the shadow pass, on the SDL GPU backend, if a grid is already on or if the
+     * modelview can't be inverted. Packs that go by at_midBlock instead get it right from the vertex data alone, see
+     * {@link #getMidBlockAttributeLocation}.
+     *
+     * @return the grid, {@link LocalGrid#isActive} says whether it's on
+     */
+    public static LocalGrid beginLocalGrid() {
+        if (!terrainDrawPushed || LocalGridFrame.isActive() || BackendManager.RENDER_BACKEND.isSDLGPU()
+            || ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
+            return LocalGrid.OFF;
+        }
+        final Matrix4f modelView = GLState.getModelViewMatrix(new Matrix4f());
+        if (!LocalGridFrame.begin(modelView)) return LocalGrid.OFF;
+        refreshBoundUniforms();
+        return new LocalGrid(++localGridId, modelView);
+    }
+
+    private static void endLocalGrid() {
+        if (!LocalGridFrame.isActive()) return;
+        LocalGridFrame.end();
+        refreshBoundUniforms();
+    }
+
+    // The camera and matrix uniforms are only worked out once a frame, so work them out again and push them to the
+    // terrain program (binding it first if it's still pending)
+    private static void refreshBoundUniforms() {
+        GLSMHooks.resolvePendingProgram();
+        if (Iris.getPipelineManager().getPipelineNullable() instanceof DeferredWorldRenderingPipeline drp) {
+            drp.refreshUniforms(LocalGridFrame.UNIFORMS);
+        }
     }
 
     /**
@@ -197,6 +251,16 @@ public final class TerrainRendering {
     }
 
     /**
+     * Vertex attribute location the pack's programs read at_midBlock from. Four bytes per vertex, not normalized: the
+     * offset from the vertex to the middle of its block times 64, then the block's light emission (0-15). Bake the
+     * offset in model space and packs that use it get blocks right even off the grid, no {@link #beginLocalGrid}
+     * needed. Only bind it while a shaderpack is in use.
+     */
+    public static int getMidBlockAttributeLocation() {
+        return ProgramCreator.AT_MIDBLOCK;
+    }
+
+    /**
      * Angelica fills in mc_midTexCoord and at_tangent itself for client array draws out of a VBO, guessing from the
      * buffer layout, and binds that over whatever the draw set. Draws until {@link #endOwnExtendedAttributes} bring
      * their own and are left alone. Nests, main thread.
@@ -217,6 +281,39 @@ public final class TerrainRendering {
      */
     public static SpriteCapture captureSprites() {
         return new SpriteCapture(AnimationsRenderUtils.captureSprites());
+    }
+
+    /** See {@link #beginLocalGrid}. */
+    public static final class LocalGrid implements AutoCloseable {
+
+        private static final LocalGrid OFF = new LocalGrid(0, null);
+        private static boolean warnedModelView;
+
+        private final int id;
+        private final Matrix4f modelView;
+
+        private LocalGrid(int id, Matrix4f modelView) {
+            this.id = id;
+            this.modelView = modelView;
+        }
+
+        public boolean isActive() {
+            return id != 0 && id == localGridId && LocalGridFrame.isActive();
+        }
+
+        /** Ends it. Does nothing if it never started or the terrain draw already ended it. */
+        @Override
+        public void close() {
+            if (!isActive()) return;
+            // The one rule callers can break without noticing. Only catches a modelview left changed, not one changed
+            // and put back, but that's cheap enough to always check
+            if (!warnedModelView && !GLState.getModelViewMatrix(new Matrix4f()).equals(modelView, 1e-4f)) {
+                warnedModelView = true;
+                AngelicaMod.LOGGER.warn("Modelview changed during a local grid, draws in it have to use the one it "
+                    + "started with", new Throwable());
+            }
+            endLocalGrid();
+        }
     }
 
     /** See {@link #captureSprites}. */
