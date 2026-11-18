@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.backend;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
+import com.gtnewhorizons.angelica.glsm.DepthEcho;
 import com.gtnewhorizons.angelica.glsm.GLESFormatRemap;
 import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -321,28 +322,173 @@ public abstract class RenderBackend {
     public abstract void logicOp(int opcode);
     public abstract void hint(int target, int mode);
 
-    public abstract void drawArrays(int mode, int first, int count);
-    public abstract void drawElements(int mode, int count, int type, long indices);
-    public void drawElements(int mode, ByteBuffer indices) {}
-    public void drawElements(int mode, IntBuffer indices) {}
-    public void drawElements(int mode, ShortBuffer indices) {}
-    public void drawElements(int mode, int count, int type, ByteBuffer indices) {}
-    public abstract void multiDrawElementsIndirect(int mode, int type, long indirect, int drawcount, int stride);
     public void multiDrawArraysIndirectCount(int mode, long indirect, long drawcount, int maxdrawcount, int stride) { throw new UnsupportedOperationException(getName() + ": indirect draw-count buffers unsupported"); }
     public void multiDrawElementsIndirectCount(int mode, int type, long indirect, long drawcount, int maxdrawcount, int stride) { throw new UnsupportedOperationException(getName() + ": indirect draw-count buffers unsupported"); }
     public abstract void copyBufferSubData(int readTarget, int writeTarget, long readOffset, long writeOffset, long size);
-    public abstract void drawElementsInstanced(int mode, int count, int type, long indices, int primcount);
-    public abstract void drawArraysInstanced(int mode, int first, int count, int primcount);
     public void provokingVertex(int provokeMode) {}
-    public abstract void drawElementsBaseVertex(int mode, int count, int type, long indices, int baseVertex);
-    public abstract void multiDrawElementsBaseVertex(int mode, long pCount, int type, long pIndices, int drawcount, long pBaseVertex);
+
+    public final void drawArrays(int mode, int first, int count) {
+        if (DepthEcho.skipsDraw()) return;
+        issueDrawArrays(mode, first, count);
+        if (DepthEcho.begin()) {
+            try {
+                issueDrawArrays(mode, first, count);
+            } finally {
+                DepthEcho.end();
+            }
+        }
+    }
+
+    public final void drawElements(int mode, int count, int type, long indices) {
+        if (DepthEcho.skipsDraw()) return;
+        issueDrawElements(mode, count, type, indices);
+        if (DepthEcho.begin()) {
+            try {
+                issueDrawElements(mode, count, type, indices);
+            } finally {
+                DepthEcho.end();
+            }
+        }
+    }
+
+    public final void drawElements(int mode, ByteBuffer indices) {
+        if (DepthEcho.skipsDraw()) return;
+        issueDrawElements(mode, indices);
+        if (DepthEcho.begin()) {
+            try {
+                issueDrawElements(mode, indices);
+            } finally {
+                DepthEcho.end();
+            }
+        }
+    }
+
+    public final void drawElements(int mode, IntBuffer indices) {
+        if (DepthEcho.skipsDraw()) return;
+        issueDrawElements(mode, indices);
+        if (DepthEcho.begin()) {
+            try {
+                issueDrawElements(mode, indices);
+            } finally {
+                DepthEcho.end();
+            }
+        }
+    }
+
+    public final void drawElements(int mode, ShortBuffer indices) {
+        if (DepthEcho.skipsDraw()) return;
+        issueDrawElements(mode, indices);
+        if (DepthEcho.begin()) {
+            try {
+                issueDrawElements(mode, indices);
+            } finally {
+                DepthEcho.end();
+            }
+        }
+    }
+
+    public final void drawElements(int mode, int count, int type, ByteBuffer indices) {
+        if (DepthEcho.skipsDraw()) return;
+        issueDrawElements(mode, count, type, indices);
+        if (DepthEcho.begin()) {
+            try {
+                issueDrawElements(mode, count, type, indices);
+            } finally {
+                DepthEcho.end();
+            }
+        }
+    }
+
+    public final void multiDrawElementsIndirect(int mode, int type, long indirect, int drawcount, int stride) {
+        if (DepthEcho.skipsDraw()) return;
+        issueMultiDrawElementsIndirect(mode, type, indirect, drawcount, stride);
+        if (DepthEcho.begin()) {
+            try {
+                issueMultiDrawElementsIndirect(mode, type, indirect, drawcount, stride);
+            } finally {
+                DepthEcho.end();
+            }
+        }
+    }
+
+    public final void drawElementsInstanced(int mode, int count, int type, long indices, int primcount) {
+        if (DepthEcho.skipsDraw()) return;
+        issueDrawElementsInstanced(mode, count, type, indices, primcount);
+        if (DepthEcho.begin()) {
+            try {
+                issueDrawElementsInstanced(mode, count, type, indices, primcount);
+            } finally {
+                DepthEcho.end();
+            }
+        }
+    }
+
+    public final void drawArraysInstanced(int mode, int first, int count, int primcount) {
+        if (DepthEcho.skipsDraw()) return;
+        issueDrawArraysInstanced(mode, first, count, primcount);
+        if (DepthEcho.begin()) {
+            try {
+                issueDrawArraysInstanced(mode, first, count, primcount);
+            } finally {
+                DepthEcho.end();
+            }
+        }
+    }
+
+    public final void drawElementsBaseVertex(int mode, int count, int type, long indices, int baseVertex) {
+        if (DepthEcho.skipsDraw()) return;
+        issueDrawElementsBaseVertex(mode, count, type, indices, baseVertex);
+        if (DepthEcho.begin()) {
+            try {
+                issueDrawElementsBaseVertex(mode, count, type, indices, baseVertex);
+            } finally {
+                DepthEcho.end();
+            }
+        }
+    }
+
+    public final void multiDrawElementsBaseVertex(int mode, long pCount, int type, long pIndices, int drawcount, long pBaseVertex) {
+        if (DepthEcho.skipsDraw()) return;
+        issueMultiDrawElementsBaseVertex(mode, pCount, type, pIndices, drawcount, pBaseVertex);
+        if (DepthEcho.begin()) {
+            try {
+                issueMultiDrawElementsBaseVertex(mode, pCount, type, pIndices, drawcount, pBaseVertex);
+            } finally {
+                DepthEcho.end();
+            }
+        }
+    }
+
+    public final void multiDrawArrays(int mode, IntBuffer firsts, IntBuffer counts) {
+        if (DepthEcho.skipsDraw()) return;
+        issueMultiDrawArrays(mode, firsts, counts);
+        if (DepthEcho.begin()) {
+            try {
+                issueMultiDrawArrays(mode, firsts, counts);
+            } finally {
+                DepthEcho.end();
+            }
+        }
+    }
+
+    protected abstract void issueDrawArrays(int mode, int first, int count);
+    protected abstract void issueDrawElements(int mode, int count, int type, long indices);
+    protected void issueDrawElements(int mode, ByteBuffer indices) {}
+    protected void issueDrawElements(int mode, IntBuffer indices) {}
+    protected void issueDrawElements(int mode, ShortBuffer indices) {}
+    protected void issueDrawElements(int mode, int count, int type, ByteBuffer indices) {}
+    protected abstract void issueMultiDrawElementsIndirect(int mode, int type, long indirect, int drawcount, int stride);
+    protected abstract void issueDrawElementsInstanced(int mode, int count, int type, long indices, int primcount);
+    protected abstract void issueDrawArraysInstanced(int mode, int first, int count, int primcount);
+    protected abstract void issueDrawElementsBaseVertex(int mode, int count, int type, long indices, int baseVertex);
+    protected abstract void issueMultiDrawElementsBaseVertex(int mode, long pCount, int type, long pIndices, int drawcount, long pBaseVertex);
+    protected abstract void issueMultiDrawArrays(int mode, IntBuffer firsts, IntBuffer counts);
     public void drawRangeElements(int mode, int start, int end, int count, int type, long indices) {
         drawElements(mode, count, type, indices);
     }
     public void drawRangeElementsBaseVertex(int mode, int start, int end, int count, int type, long indices, int baseVertex) {
         drawElementsBaseVertex(mode, count, type, indices, baseVertex);
     }
-    public abstract void multiDrawArrays(int mode, IntBuffer firsts, IntBuffer counts);
     public abstract void primitiveRestartIndex(int index);
     public abstract void pointParameterf(int pname, float param);
     public abstract void pointParameteri(int pname, int param);
