@@ -19,27 +19,20 @@ public final class ShadowVoxelizer {
         /** @return false to skip this region */
         boolean region(RenderRegion region, GlVertexFormat format, float offsetX, float offsetY, float offsetZ);
 
-        /** @return false to skip the rest of this region; later regions are still attempted */
-        boolean range(int vertexOffset, int vertexCount);
-
-        void finish();
+        void range(int vertexOffset, int vertexCount);
     }
 
     public void walkPass(ChunkRenderListIterable renderLists, TerrainRenderPass renderPass, GlVertexFormat format, CameraTransform camera, CameraTransform occlusionCamera, boolean useBlockFaceCulling, Sink sink) {
-        try {
-            final boolean reverse = renderPass.isReverseOrder();
-            final int n = renderLists.getNumRegions();
-            if (renderPass.isSorted()) {
-                for (int i = 0; i < n; i++) {
-                    walkRegionFull(renderLists.getRegion(reverse ? n - 1 - i : i), renderPass, format, camera, sink);
-                }
-            } else {
-                for (int i = 0; i < n; i++) {
-                    walkRegionCompact(renderLists.getRegion(reverse ? n - 1 - i : i), renderPass, format, camera, occlusionCamera, useBlockFaceCulling, sink);
-                }
+        final boolean reverse = renderPass.isReverseOrder();
+        final int n = renderLists.getNumRegions();
+        if (renderPass.isSorted()) {
+            for (int i = 0; i < n; i++) {
+                walkRegionFull(renderLists.getRegion(reverse ? n - 1 - i : i), renderPass, format, camera, sink);
             }
-        } finally {
-            sink.finish();
+        } else {
+            for (int i = 0; i < n; i++) {
+                walkRegionCompact(renderLists.getRegion(reverse ? n - 1 - i : i), renderPass, format, camera, occlusionCamera, useBlockFaceCulling, sink);
+            }
         }
     }
 
@@ -85,7 +78,7 @@ public final class ShadowVoxelizer {
                     if (!bindRegion(region, format, camera, sink)) return;
                     bound = true;
                 }
-                if (!sink.range(startVertex, vertexCount)) return;
+                sink.range(startVertex, vertexCount);
             }
         }
     }
@@ -122,7 +115,7 @@ public final class ShadowVoxelizer {
                     if (!bindRegion(region, format, camera, sink)) return;
                     bound = true;
                 }
-                if (!sink.range(startVertex, vertexCount)) return;
+                sink.range(startVertex, vertexCount);
             }
         }
     }

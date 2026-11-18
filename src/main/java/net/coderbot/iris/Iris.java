@@ -4,16 +4,21 @@ import com.google.common.base.Throwables;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.Tags;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.debug.screen.DebugScreen;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
+import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess;
+import com.gtnewhorizons.angelica.glsm.shader.ProgramBinaryCache;
 import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
+import com.gtnewhorizons.angelica.glsm.threading.AngelicaWorkers;
 import com.gtnewhorizons.angelica.iris.ImmediateExtendedAttribs;
 import com.gtnewhorizons.angelica.iris.IrisGLSMBridge;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
 import com.gtnewhorizons.angelica.sdlgpu.SDLGPUGate;
+import com.gtnewhorizons.angelica.utils.AngelicaJar;
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.InputEvent;
@@ -26,6 +31,7 @@ import net.coderbot.iris.celeritas.IrisCeleritasShaderProvider;
 import net.coderbot.iris.compat.dh.DHCompat;
 import net.coderbot.iris.config.IrisConfig;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
+import net.coderbot.iris.gl.program.RetainedPrograms;
 import net.coderbot.iris.gl.shader.StandardMacros;
 import net.coderbot.iris.gui.screen.ShaderPackScreen;
 import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
@@ -35,8 +41,10 @@ import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.pipeline.transform.ShaderTransformer;
 import net.coderbot.iris.pipeline.transform.TransformPatcher;
 import net.coderbot.iris.shaderpack.OptionalBoolean;
+import net.coderbot.iris.shaderpack.IdMap;
 import net.coderbot.iris.shaderpack.ProgramSet;
 import net.coderbot.iris.shaderpack.ShaderPack;
+import net.coderbot.iris.shaderpack.StringPair;
 import net.coderbot.iris.shaderpack.discovery.ShaderpackDirectoryManager;
 import net.coderbot.iris.shaderpack.option.OptionSet;
 import net.coderbot.iris.shaderpack.option.Profile;
@@ -46,6 +54,7 @@ import net.coderbot.iris.texture.pbr.PBRTextureManager;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.iris.uniforms.PerFrameUniformBlockHarvester;
 import net.minecraft.block.Block;
+import net.minecraft.client.LoadingScreenRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.multiplayer.WorldClient;
@@ -61,27 +70,31 @@ import org.lwjgl.input.Keyboard;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UncheckedIOException;
+import java.lang.ref.SoftReference;
+import java.nio.file.DirectoryStream;
 import java.nio.file.FileSystem;
+import java.nio.file.FileSystemLoopException;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
+import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.TreeMap;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 import java.util.zip.ZipException;
@@ -105,8 +118,11 @@ public class Iris {
     private static ShaderpackDirectoryManager shaderpacksDirectoryManager;
 
     private static ShaderPack currentPack;
+    private static CompletableFuture<Void> programSetWarmup;
     @Getter
     private static String currentPackName;
+    private static String currentPackSettings;
+    private static String currentPackState;
     @Getter
     private static boolean initialized;
     @Getter
@@ -148,181 +164,45 @@ public class Iris {
         }
     }
 
-    /**
-     * Lazy executor for parallelizing shader transformations during shader pack loading.
-     * Creates threads on demand and shuts down after a period of inactivity.
-     */
     public static final class ShaderTransformExecutor {
-        private static final long IDLE_TIMEOUT_SECONDS = 120;
-        private static final int THREAD_COUNT = Math.max(2, Math.min(12, Runtime.getRuntime().availableProcessors() / 2));
-
-        private static final Object lock = new Object();
-        private static ExecutorService executor;
-        private static ScheduledExecutorService scheduler;
-        private static volatile long lastActivityTime;
-        private static final AtomicInteger inFlight = new AtomicInteger(0);
-        private static boolean idleCheckScheduled;
-        private static final ThreadLocal<Boolean> ON_WORKER = ThreadLocal.withInitial(() -> Boolean.FALSE);
+        static {
+            AngelicaWorkers.onIdleShutdown(() -> {
+                TransformPatcher.clearCache();
+                ShaderTransformer.clearCache();
+                GlslVulkanPreprocess.clearCache();
+                if (RenderSystem.isGLES() || BackendManager.RENDER_BACKEND.isSDLGPU()) SpirvCompiler.clearCache();
+                SDLGPUGate.clearShaderPrewarmCache();
+            });
+        }
 
         private ShaderTransformExecutor() {}
 
         public static boolean isOnWorker() {
-            return ON_WORKER.get();
+            return AngelicaWorkers.isWorkerThread();
         }
 
-        private static void noteActivity() {
-            lastActivityTime = System.nanoTime();
-        }
-
-        public static ExecutorService get() {
-            synchronized (lock) {
-                noteActivity();
-
-                if (executor != null && !executor.isShutdown()) {
-                    return executor;
-                }
-
-                final AtomicInteger threadCounter = new AtomicInteger();
-                final ThreadFactory factory = r -> {
-                    final Thread t = new Thread(r, "Shader-Transform-" + threadCounter.getAndIncrement());
-                    t.setDaemon(true);
-                    return t;
-                };
-                final ThreadPoolExecutor tpe = new ThreadPoolExecutor(
-                    THREAD_COUNT,
-                    THREAD_COUNT,
-                    0L, TimeUnit.MILLISECONDS,
-                    new LinkedBlockingQueue<>(),
-                    factory);
-                tpe.prestartAllCoreThreads();
-                executor = tpe;
-                logger.debug("Created shader transform executor with " + THREAD_COUNT + " prestarted threads");
-
-                if (scheduler == null || scheduler.isShutdown()) {
-                    scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
-                        Thread t = new Thread(r, "Shader-Transform-Scheduler");
-                        t.setDaemon(true);
-                        return t;
-                    });
-                }
-                if (!idleCheckScheduled) {
-                    idleCheckScheduled = true;
-                    scheduleIdleCheck(IDLE_TIMEOUT_SECONDS);
-                }
-
-                return executor;
-            }
-        }
-
-        private static void scheduleIdleCheck(long delaySeconds) {
-            try {
-                scheduler.schedule(ShaderTransformExecutor::checkIdleShutdown, delaySeconds, TimeUnit.SECONDS);
-            } catch (Exception e) {
-                // If scheduling fails, reset the flag so a future get() can try again
-                idleCheckScheduled = false;
-                logger.warn("Failed to schedule idle check", e);
-            }
-        }
-
-        /** Idempotent: ensures the pool is created. {@link #get()} prestarts all workers. */
         public static void prepare() {
-            get();
+            AngelicaWorkers.prestart();
         }
 
-        /**
-         * Warm up the threadpool by running a representative shader transformation.
-         */
         public static void warmup() {
             final String vertexShader = "#version 120\nvoid main() { gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; }";
             final String fragmentShader = "#version 120\nvoid main() { gl_FragColor = vec4(1.0); }";
-            try {
-                submitTracked(() -> {
-                    TransformPatcher.patchComposite(vertexShader, null, fragmentShader);
-                    TransformPatcher.patchAttributes(vertexShader, null, fragmentShader, InputAvailability.of(true, true));
-                }).get();
-            } catch (Exception e) {
+            submitTracked(() -> {
+                TransformPatcher.patchComposite(vertexShader, null, fragmentShader);
+                TransformPatcher.patchAttributes(vertexShader, null, fragmentShader, InputAvailability.of(true, true));
+            }).exceptionally(e -> {
                 logger.warn("Warmup failed", e);
-            }
+                return null;
+            });
         }
 
         public static <T> CompletableFuture<T> submitTracked(Supplier<T> supplier) {
-            Objects.requireNonNull(supplier);
-            noteActivity();
-            inFlight.incrementAndGet();
-            try {
-                return CompletableFuture.supplyAsync(() -> {
-                    ON_WORKER.set(Boolean.TRUE);
-                    try {
-                        return supplier.get();
-                    } finally {
-                        ON_WORKER.set(Boolean.FALSE);
-                        noteActivity();
-                        inFlight.decrementAndGet();
-                    }
-                }, get());
-            } catch (Exception e) {
-                inFlight.decrementAndGet();
-                throw e;
-            }
+            return AngelicaWorkers.submit(supplier);
         }
 
         public static CompletableFuture<Void> submitTracked(Runnable runnable) {
-            Objects.requireNonNull(runnable);
-            noteActivity();
-            inFlight.incrementAndGet();
-            try {
-                return CompletableFuture.runAsync(() -> {
-                    ON_WORKER.set(Boolean.TRUE);
-                    try {
-                        runnable.run();
-                    } finally {
-                        ON_WORKER.set(Boolean.FALSE);
-                        noteActivity();
-                        inFlight.decrementAndGet();
-                    }
-                }, get());
-            } catch (Exception e) {
-                inFlight.decrementAndGet();
-                throw e;
-            }
-        }
-
-        private static void checkIdleShutdown() {
-            synchronized (lock) {
-                final ExecutorService current = executor;
-                if (current == null || current.isShutdown()) {
-                    // Executor already gone, shut down scheduler
-                    if (scheduler != null && !scheduler.isShutdown()) {
-                        scheduler.shutdown();
-                        scheduler = null;
-                    }
-                    idleCheckScheduled = false;
-                    return;
-                }
-
-                final long idleNanos = System.nanoTime() - lastActivityTime;
-                final long idleSeconds = TimeUnit.NANOSECONDS.toSeconds(idleNanos);
-
-                if (idleSeconds >= IDLE_TIMEOUT_SECONDS && inFlight.get() == 0) {
-                    logger.debug("Shutting down idle shader transform executor after " + idleSeconds + " seconds");
-                    current.shutdown();
-                    executor = null;
-                    scheduler.shutdown();
-                    scheduler = null;
-                    idleCheckScheduled = false;
-
-                    // Clear transformation caches - no longer needed after loading
-                    TransformPatcher.clearCache();
-                    ShaderTransformer.clearCache();
-                    GlslVulkanPreprocess.clearCache();
-                    if (RenderSystem.isGLES() || BackendManager.RENDER_BACKEND.isSDLGPU()) SpirvCompiler.clearCache();
-                    SDLGPUGate.clearShaderPrewarmCache();
-                } else {
-                    // Still active (or in-flight), schedule another check.
-                    final long remainingSeconds = Math.max(1, IDLE_TIMEOUT_SECONDS - idleSeconds + 1);
-                    scheduleIdleCheck(remainingSeconds);
-                }
-            }
+            return AngelicaWorkers.run(runnable);
         }
     }
 
@@ -372,7 +252,7 @@ public class Iris {
     public void keyUp(InputEvent.KeyInputEvent event) {
         final int key = Keyboard.getEventKey();
         final boolean released = !Keyboard.getEventKeyState();
-        if (Minecraft.getMinecraft().gameSettings.showDebugInfo && GuiScreen.isShiftKeyDown() && GuiScreen.isCtrlKeyDown() && released) {
+        if (DebugScreen.isOverlayVisible() && GuiScreen.isShiftKeyDown() && GuiScreen.isCtrlKeyDown() && released) {
             if (key == Keyboard.KEY_N) {
                 ClientProxy.animationsMode.next();
             }
@@ -424,6 +304,10 @@ public class Iris {
 
         IrisShaderProviderHolder.setProvider(new IrisCeleritasShaderProvider());
 
+        // The pack loads below, before mod preInit would otherwise set up the cache
+        final Path angelicaJar = AngelicaJar.location();
+        AngelicaJar.configureShaderDiskCache(angelicaJar != null ? angelicaJar.toFile() : null);
+
         // Warm up the threadpool so shader transformations are faster when we need them
         ShaderTransformExecutor.warmup();
 
@@ -461,9 +345,8 @@ public class Iris {
         // the player is in the overworld.
         // See: https://github.com/IrisShaders/Iris/issues/323
         lastDimensionName = "Overworld";
+        compileEveryShaderFolder();
         Iris.getPipelineManager().preparePipeline("Overworld");
-
-        BlockRenderingSettings.INSTANCE.reloadRendererIfRequired();
     }
 
     public static void toggleShaders(Minecraft minecraft, boolean enabled) throws IOException {
@@ -537,16 +420,32 @@ public class Iris {
     }
 
     public static void warmupShaderTransforms() {
-        if (currentPack == null) return;
+        final ShaderPack pack = currentPack;
+        if (pack == null) return;
         try {
             if (BackendManager.RENDER_BACKEND.isSDLGPU()) {
                 IrisGLSMBridge.installPostTransformHook();
             }
-            final ProgramSet programs = currentPack.getProgramSet(lastDimensionName != null ? lastDimensionName : "Overworld");
-            PerFrameUniformBlockHarvester.harvest(programs);
-            DeferredWorldRenderingPipeline.warmupTransforms(programs);
+            final String dimensionName = lastDimensionName != null ? lastDimensionName : "Overworld";
+            GLSMHooks.uniformBlockBarrier = Iris::awaitProgramSetWarmup;
+            programSetWarmup = ShaderTransformExecutor.submitTracked(() -> {
+                final ProgramSet programs = pack.getProgramSet(dimensionName);
+                PerFrameUniformBlockHarvester.harvest(programs);
+                DeferredWorldRenderingPipeline.warmupTransforms(programs);
+            });
         } catch (Throwable t) {
             logger.warn("Early shader transform warmup failed; transforms will run at pipeline creation", t);
+        }
+    }
+
+    private static void awaitProgramSetWarmup() {
+        final CompletableFuture<Void> warmup = programSetWarmup;
+        if (warmup == null) return;
+        programSetWarmup = null;
+        try {
+            warmup.join();
+        } catch (RuntimeException e) {
+            logger.warn("Early shader transform warmup failed; transforms will run at pipeline creation", e);
         }
     }
 
@@ -606,9 +505,7 @@ public class Iris {
             }
         }
 
-        @SuppressWarnings("unchecked")
-        final Map<String, String> changedConfigs = tryReadConfigProperties(shaderPackConfigTxt).map(properties -> (Map<String, String>) (Map<?, ?>) properties)
-            .orElse(new HashMap<>());
+        final Map<String, String> changedConfigs = readChangedConfigs(shaderPackConfigTxt);
 
         changedConfigs.putAll(shaderPackOptionQueue);
         clearShaderPackOptionQueue();
@@ -619,7 +516,13 @@ public class Iris {
         resetShaderPackOptions = false;
 
         try {
-            currentPack = new ShaderPack(shaderPackPath, changedConfigs, StandardMacros.createStandardEnvironmentDefines());
+            final Iterable<StringPair> environmentDefines = StandardMacros.createStandardEnvironmentDefines();
+            final String packState = describeSettings(name, shaderPackRoot, toProperties(changedConfigs), environmentDefines, false);
+            final ShaderPack prepared = takePreparedPack(name, packState);
+            currentPack = prepared != null ? prepared : new ShaderPack(shaderPackPath, changedConfigs, environmentDefines);
+            currentPackState = packState;
+            RetainedPrograms.useConfiguration(packState);
+            currentPack.activate();
 
             final MutableOptionValues changedConfigsValues = currentPack.getShaderPackOptions().getOptionValues().mutableCopy();
 
@@ -629,6 +532,7 @@ public class Iris {
             changedConfigsValues.getStringValues().forEach(configsToSave::setProperty);
 
             tryUpdateConfigPropertiesFile(shaderPackConfigTxt, configsToSave);
+            currentPackSettings = irisConfig.shouldSaveCompiledShaders() ? describeSettings(name, shaderPackRoot, configsToSave, environmentDefines, true) : null;
         } catch (Exception e) {
             logger.error("Failed to load the shaderpack \"{}\"!", name);
             logger.error("", e);
@@ -638,16 +542,90 @@ public class Iris {
 
         fallback = false;
         currentPackName = name;
+        ProgramBinaryCache.usePack(name);
 
         logger.info("Using shaderpack: " + name);
 
         return true;
     }
 
+    private record PreparedPack(String settings, ShaderPack pack) {}
+
+    private static volatile SoftReference<PreparedPack> preparedPack;
+
+    @Nullable
+    public static Runnable prepareSelectedShaderPack() {
+        if (irisConfig == null || irisConfig.areShadersEnabled() || currentPack != null) return null;
+        final Optional<String> name = irisConfig.getShaderPackName();
+        if (name.isEmpty()) return null;
+        final List<StringPair> environmentDefines = new ArrayList<>();
+        StandardMacros.createStandardEnvironmentDefines().forEach(environmentDefines::add);
+        return () -> {
+            try {
+                final PreparedPack prepared = readPreparedPack(name.get(), environmentDefines);
+                if (prepared != null) preparedPack = new SoftReference<>(prepared);
+            } catch (Exception e) {
+                logger.debug("Could not read shaderpack \"{}\" ahead of time", name.get(), e);
+            }
+        };
+    }
+
+    @Nullable
+    private static PreparedPack readPreparedPack(String name, List<StringPair> environmentDefines) throws IOException {
+        final Path shaderPackRoot = getShaderpacksDirectory().resolve(name);
+        final Map<String, String> changedConfigs = readChangedConfigs(getShaderpacksDirectory().resolve(name + ".txt"));
+        final String settings = describeSettings(name, shaderPackRoot, toProperties(changedConfigs), environmentDefines, false);
+        if (settings == null) return null;
+
+        if (Files.isDirectory(shaderPackRoot)) {
+            return new PreparedPack(settings, parsePack(shaderPackRoot.resolve("shaders"), changedConfigs, environmentDefines));
+        }
+        try (FileSystem zipSystem = FileSystems.newFileSystem(shaderPackRoot, Iris.class.getClassLoader())) {
+            final Optional<Path> shadersDirectory = findShadersDirectory(zipSystem);
+            if (shadersDirectory.isEmpty()) return null;
+            return new PreparedPack(settings, parsePack(shadersDirectory.get(), changedConfigs, environmentDefines));
+        }
+    }
+
+    private static ShaderPack parsePack(Path shadersDirectory, Map<String, String> changedConfigs, List<StringPair> environmentDefines) throws IOException {
+        final ShaderPack pack = new ShaderPack(shadersDirectory, changedConfigs, environmentDefines);
+        // Most worlds open in the overworld; other dimensions build their program sets on demand as usual.
+        // Considered having tracking of what dim a user is in but with it being so fast now, not sure if
+        // it's worth saving the 50-80ms "time waste" on first load, especially when we're already pre-loading at game init.
+        pack.getProgramSet("Overworld");
+        return pack;
+    }
+
+    @Nullable
+    private static ShaderPack takePreparedPack(String name, @Nullable String packState) {
+        final SoftReference<PreparedPack> reference = preparedPack;
+        preparedPack = null;
+        final PreparedPack prepared = reference != null ? reference.get() : null;
+        if (prepared == null || !prepared.settings().equals(packState)) return null;
+        logger.info("Reusing shaderpack \"{}\" read earlier, nothing it was read from has changed", name);
+        return prepared.pack();
+    }
+
+    private static Map<String, String> readChangedConfigs(Path shaderPackConfigTxt) {
+        @SuppressWarnings("unchecked")
+        final Map<String, String> changedConfigs = tryReadConfigProperties(shaderPackConfigTxt).map(properties -> (Map<String, String>) (Map<?, ?>) properties)
+            .orElse(new HashMap<>());
+        return new HashMap<>(changedConfigs);
+    }
+
+    private static Properties toProperties(Map<String, String> values) {
+        final Properties properties = new Properties();
+        properties.putAll(values);
+        return properties;
+    }
+
     private static Optional<Path> loadExternalZipShaderpack(Path shaderpackPath) throws IOException {
         final FileSystem zipSystem = FileSystems.newFileSystem(shaderpackPath, Iris.class.getClassLoader());
         zipFileSystem = zipSystem;
+        return findShadersDirectory(zipSystem);
+    }
 
+    private static Optional<Path> findShadersDirectory(FileSystem zipSystem) throws IOException {
         // Should only be one root directory for a zip shaderpack
         final Path root = zipSystem.getRootDirectories().iterator().next();
 
@@ -670,6 +648,9 @@ public class Iris {
 
     private static void setShadersDisabled() {
         currentPack = null;
+        currentPackState = null;
+        currentPackSettings = null;
+        ProgramBinaryCache.usePack(null);
         fallback = false;
         currentPackName = "(off)";
 
@@ -806,12 +787,12 @@ public class Iris {
         // Drop the stale program probe and cached item geometry
         ImmediateExtendedAttribs.onShaderPackChanged();
 
+        compileEveryShaderFolder();
+
         // Very important - we need to re-create the pipeline straight away.
         // https://github.com/IrisShaders/Iris/issues/1330
         if (Minecraft.getMinecraft().theWorld != null) {
             Iris.getPipelineManager().preparePipeline(Iris.getCurrentDimensionName());
-
-            BlockRenderingSettings.INSTANCE.reloadRendererIfRequired();
         }
 
         if (loadedIncompatiblePack() && Minecraft.getMinecraft().thePlayer != null) {
@@ -825,7 +806,14 @@ public class Iris {
      * Destroys and deallocates all created OpenGL resources. Useful as part of a reload.
      */
     private static void destroyEverything() {
+        awaitProgramSetWarmup();
+        if (currentPack != null && currentPackState != null) {
+            preparedPack = new SoftReference<>(new PreparedPack(currentPackState, currentPack));
+        }
         currentPack = null;
+        currentPackState = null;
+        currentPackSettings = null;
+        ProgramBinaryCache.usePack(null);
 
         getPipelineManager().destroyPipeline();
         PBRTextureManager.INSTANCE.clear();
@@ -884,11 +872,150 @@ public class Iris {
     }
 
 
+    private static void compileEveryShaderFolder() {
+        if (currentPack == null || !irisConfig.shouldSaveCompiledShaders()) return;
+        if (currentPackSettings != null && ProgramBinaryCache.wasCompiledFor(currentPackSettings)) return;
+        awaitProgramSetWarmup();
+
+        final Map<String, ProgramSet> programSets = currentPack.getEveryProgramSet();
+        final LoadingScreenRenderer progress = Minecraft.getMinecraft().loadingScreen;
+        if (progress != null) progress.resetProgressAndMessage(I18n.format("options.iris.saveCompiledShaders.progress"));
+        boolean everyFolderCompiled = true;
+        boolean loopFinished = false;
+        ProgramBinaryCache.beginFullCompile();
+        try {
+            int i = 0;
+            for (Map.Entry<String, ProgramSet> entry : programSets.entrySet()) {
+                final String folder = entry.getKey() != null ? entry.getKey() : I18n.format("options.iris.saveCompiledShaders.baseFolder");
+                if (progress != null) {
+                    progress.resetProgresAndWorkingMessage(I18n.format("options.iris.saveCompiledShaders.progressStep", i + 1, programSets.size(), folder));
+                    progress.setLoadingProgress(i * 100 / programSets.size());
+                }
+                i++;
+                final ProgramSet programs = entry.getValue();
+                try {
+                    shaderPackLoadId++;
+                    ShaderTransformExecutor.prepare();
+                    PerFrameUniformBlockHarvester.harvest(programs);
+                    final DeferredWorldRenderingPipeline pipeline = new DeferredWorldRenderingPipeline(programs);
+                    try {
+                        // These are otherwise built lazily on first draw, after this pipeline is gone
+                        pipeline.compileInstancedVariants();
+                        pipeline.compileWideLinePrograms();
+                        if (IrisShaderProviderHolder.getProvider() instanceof IrisCeleritasShaderProvider terrain) {
+                            terrain.compileTerrainPrograms(pipeline.getCeleritasTerrainPipeline());
+                        }
+                    } finally {
+                        getPipelineManager().discardPipeline(pipeline);
+                    }
+                } catch (Exception e) {
+                    everyFolderCompiled = false;
+                    logger.error("Failed to compile shader folder '{}' for saving", folder, e);
+                } finally {
+                    RetainedPrograms.afterPipelineBuilt();
+                }
+            }
+            loopFinished = true;
+        } finally {
+            ProgramBinaryCache.finishFullCompile(loopFinished && everyFolderCompiled ? currentPackSettings : null);
+            PerFrameUniformBlockHarvester.clear();
+        }
+    }
+
+    private record HashedFile(long size, long modified, String hash) {}
+
+    private static final Map<Path, HashedFile> contentHashes = new ConcurrentHashMap<>();
+
+    private static String contentHash(Path file, BasicFileAttributes attributes) throws IOException {
+        final long size = attributes.size();
+        final long modified = attributes.lastModifiedTime().toMillis();
+        final HashedFile known = contentHashes.get(file);
+        if (known != null && known.size() == size && known.modified() == modified) return known.hash();
+        final String hash;
+        try {
+            hash = Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(file)));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+        contentHashes.put(file, new HashedFile(size, modified, hash));
+        return hash;
+    }
+
+    private record VisitedFolder(Path path, @Nullable Object key) {}
+
+    private static Map<String, String> describeFolder(Path root, VisitedFolder folder, List<VisitedFolder> ancestors, boolean byContent) {
+        final Map<String, String> files = new HashMap<>();
+        final List<Supplier<Map<String, String>>> subfolders = new ArrayList<>();
+        final List<VisitedFolder> lineage = new ArrayList<>(ancestors);
+        lineage.add(folder);
+        try (DirectoryStream<Path> entries = Files.newDirectoryStream(folder.path())) {
+            for (Path entry : entries) {
+                BasicFileAttributes attributes;
+                try {
+                    attributes = Files.readAttributes(entry, BasicFileAttributes.class);
+                } catch (IOException e) {
+                    attributes = Files.readAttributes(entry, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+                }
+                if (attributes.isDirectory()) {
+                    final VisitedFolder subfolder = new VisitedFolder(entry, attributes.fileKey());
+                    for (VisitedFolder ancestor : lineage) {
+                        final boolean same = subfolder.key() != null && ancestor.key() != null
+                            ? subfolder.key().equals(ancestor.key())
+                            : Files.isSameFile(ancestor.path(), entry);
+                        if (same) throw new FileSystemLoopException(entry.toString());
+                    }
+                    subfolders.add(() -> describeFolder(root, subfolder, lineage, byContent));
+                } else if (attributes.isRegularFile()) {
+                    files.put(root.relativize(entry).toString(),
+                        byContent ? contentHash(entry, attributes) : attributes.size() + "|" + attributes.lastModifiedTime().toMillis());
+                }
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        for (Map<String, String> nested : AngelicaWorkers.invokeAll(subfolders)) {
+            files.putAll(nested);
+        }
+        return files;
+    }
+
+    @Nullable
+    private static String describeSettings(String packName, Path packRoot, Properties options, Iterable<StringPair> environmentDefines, boolean byContent) {
+        final StringBuilder settings = new StringBuilder(packName).append('\n');
+        if (Files.isRegularFile(packRoot)) {
+            try {
+                settings.append(Files.size(packRoot)).append('|').append(Files.getLastModifiedTime(packRoot).toMillis());
+            } catch (IOException e) {
+                return null;
+            }
+        } else if (Files.isDirectory(packRoot)) {
+            final TreeMap<String, String> files = new TreeMap<>();
+            try {
+                // One stat per file; this runs on the render thread when shaders turn on, so folders are read in parallel
+                final Object rootKey = Files.readAttributes(packRoot, BasicFileAttributes.class).fileKey();
+                files.putAll(describeFolder(packRoot, new VisitedFolder(packRoot, rootKey), List.of(), byContent));
+            } catch (IOException | UncheckedIOException e) {
+                return null;
+            }
+            files.forEach((file, state) -> settings.append(file).append('|').append(state).append('\n'));
+        } else {
+            return null;
+        }
+        settings.append('\n');
+        new TreeMap<>(options).forEach((key, value) -> settings.append(key).append('=').append(value).append('\n'));
+        for (StringPair define : environmentDefines) {
+            settings.append('#').append(define.getKey()).append(' ').append(define.getValue()).append('\n');
+        }
+        settings.append("modernFallbackMcVersion=").append(IdMap.modernFallbackMcVersion()).append('\n');
+        return settings.toString();
+    }
+
     /**
      * Creates a pipeline for a dimension using the dimension name from WorldProvider.getDimensionName().
      * Supports dimension.properties mappings with wildcard fallback.
      */
     private static WorldRenderingPipeline createPipeline(String dimensionName) {
+        awaitProgramSetWarmup();
         if (currentPack == null) {
             // Completely disables shader-based rendering
             PerFrameUniformBlockHarvester.clear();
@@ -902,7 +1029,12 @@ public class Iris {
             ShaderTransformExecutor.prepare();
             PerFrameUniformBlockHarvester.harvest(programs);
             long startTime = System.nanoTime();
-            WorldRenderingPipeline pipeline = new DeferredWorldRenderingPipeline(programs);
+            final WorldRenderingPipeline pipeline;
+            try {
+                pipeline = new DeferredWorldRenderingPipeline(programs);
+            } finally {
+                RetainedPrograms.afterPipelineBuilt();
+            }
             long endTime = System.nanoTime();
             logger.info("[Load #{}] Total shaderpack load time for '{}' in dimension '{}': {} ms", shaderPackLoadId, currentPackName, dimensionName, String.format("%.1f", (endTime - startTime) / 1_000_000.0));
             return pipeline;

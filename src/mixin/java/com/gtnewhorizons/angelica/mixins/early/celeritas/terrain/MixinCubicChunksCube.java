@@ -8,11 +8,9 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.Shadow;
 
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import com.gtnewhorizons.angelica.mixins.interfaces.IChunkTileEntityMapHolder;
 import com.gtnewhorizons.angelica.utils.ConcurrentTileEntityMap;
-
-import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 
 @Pseudo
 @Mixin(targets = "com.cardinalstar.cubicchunks.world.cube.Cube", remap = false)
@@ -22,9 +20,15 @@ public abstract class MixinCubicChunksCube {
     @Shadow(remap = false)
     private Chunk column;
 
-    @WrapMethod(method = "setBlockTileEntityInChunk")
-    private void angelica$lockTileEntityMutation(int x, int y, int z, TileEntity tileEntity, Operation<Void> original) {
+    @Surround(method = "setBlockTileEntityInChunk")
+    private void angelica$lockTileEntityMutation(int x, int y, int z, TileEntity tileEntity) {
+        @Surround.Carry
         ConcurrentTileEntityMap tileEntities = ((IChunkTileEntityMapHolder) column).angelica$getConcurrentTEMap();
-        tileEntities.withWriteLock(() -> original.call(x, y, z, tileEntity));
+        tileEntities.writeLock();
+    }
+
+    @Surround.Finally
+    private void angelica$unlockTileEntityMutation(@Surround.Carry ConcurrentTileEntityMap tileEntities) {
+        tileEntities.writeUnlock();
     }
 }

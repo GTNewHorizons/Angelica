@@ -5,30 +5,24 @@ import org.junit.jupiter.api.Test;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CaptureGateTest {
 
-    @Test
-    void gateOffWhenNothingAttached() {
-        assertFalse(CaptureGate.gateValue(false, false, false));
-    }
-
-    @Test
-    void gateOnWhenForced() {
-        assertTrue(CaptureGate.gateValue(true, false, false));
-    }
-
-    @Test
-    void gateOnWhenToolAttached() {
-        assertTrue(CaptureGate.gateValue(false, true, false));
-    }
-
-    @Test
-    void gateOnWhenTracyConnected() {
-        assertTrue(CaptureGate.gateValue(false, false, true));
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({
+        "nothing attached, false, false, false, false",
+        "forced, true, false, false, true",
+        "tool attached, false, true, false, true",
+        "tracy connected, false, false, true, true"
+    })
+    void gateIsOnWhenAnySourceIs(String name, boolean forced, boolean toolAttached, boolean tracyConnected, boolean expected) {
+        assertEquals(expected, CaptureGate.gateValue(forced, toolAttached, tracyConnected));
     }
 
     @Test

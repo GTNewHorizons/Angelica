@@ -1,5 +1,6 @@
 package net.coderbot.iris.shaderpack.preprocessor;
 
+import com.gtnewhorizons.angelica.glsm.shader.ShaderDiskCache;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.shaderpack.StringPair;
 import net.coderbot.iris.shaderpack.option.ShaderPackOptions;
@@ -17,7 +18,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 public class PropertiesPreprocessor {
 	// Derived from ShaderProcessor.glslPreprocessSource, which is derived from GlShader from Canvas, licenced under LGPL
@@ -28,6 +28,14 @@ public class PropertiesPreprocessor {
 
 		final List<String> booleanValues = getBooleanValues(shaderPackOptions);
 		final Map<String, String> stringValues = getStringValues(shaderPackOptions);
+
+		final List<StringPair> macros = new ArrayList<>();
+		for (String value : booleanValues) macros.add(new StringPair(value, ""));
+		for (StringPair envDefine : environmentDefines) macros.add(envDefine);
+		stringValues.forEach((name, value) -> macros.add(new StringPair(name, value)));
+		final ShaderDiskCache.Key cacheKey = PreprocessedSourceCache.key("properties", source, macros);
+		final String cached = PreprocessedSourceCache.get(cacheKey);
+		if (cached != null) return cached;
 
 		try (Preprocessor pp = new Preprocessor()) {
 			for (String value : booleanValues) {
@@ -46,7 +54,9 @@ public class PropertiesPreprocessor {
 				}
 			});
 
-			return process(pp, source);
+			final String preprocessed = process(pp, source);
+			PreprocessedSourceCache.put(cacheKey, preprocessed);
+			return preprocessed;
 		} catch (IOException e) {
 			throw new RuntimeException("Unexpected IOException while processing macros", e);
 		} catch (LexerException e) {
@@ -77,24 +87,10 @@ public class PropertiesPreprocessor {
 		PropertyCollectingListener listener = new PropertyCollectingListener();
 		preprocessor.setListener(listener);
 
-		// Not super efficient, but this removes trailing whitespace on lines, fixing an issue with whitespace after
+		// This removes trailing whitespace on lines, fixing an issue with whitespace after
 		// line continuations (see PreprocessorTest#testWeirdPropertiesLineContinuation)
 		// Required for Voyager Shader
-		source = Arrays.stream(source.split("\\r\\n|\\n|\\r")).map(String::trim).filter(s -> !s.isEmpty())
-			.map(line -> {
-				if (line.startsWith("#")) {
-					for (PreprocessorCommand command : PreprocessorCommand.values()) {
-						if (line.startsWith("#" + (command.name().replace("PP_", "").toLowerCase(Locale.ROOT)))) {
-							return line;
-						}
-					}
-					return "";
-				}
-				// In PropertyCollectingListener we suppress "unknown preprocessor directive errors" and
-				// assume the line to be a comment, since in .properties files `#` also functions as a comment
-				// marker.
-				return line.replace("#", "");
-			}).collect(Collectors.joining("\n")) + "\n";
+		source = cleanLines(source);
 		// TODO: This is a horrible fix to trick the preprocessor into not seeing the backslashes during processing. We need a better way to do this.
 		source = source.replace("\\", "IRIS_PASSTHROUGHBACKSLASH");
 
@@ -117,6 +113,46 @@ public class PropertiesPreprocessor {
 		source = builder.toString();
 
 		return (listener.collectLines() + source).replace("IRIS_PASSTHROUGHBACKSLASH", "\\");
+	}
+
+	private static final String[] DIRECTIVE_PREFIXES = Arrays.stream(PreprocessorCommand.values())
+		.map(command -> "#" + command.name().replace("PP_", "").toLowerCase(Locale.ROOT))
+		.toArray(String[]::new);
+
+	// Same result as splitting on \r\n|\n|\r, trimming, dropping empty lines and joining with \n
+	static String cleanLines(String source) {
+		final StringBuilder out = new StringBuilder(source.length());
+		boolean first = true;
+		int start = 0;
+		final int length = source.length();
+		while (start <= length) {
+			int end = start;
+			while (end < length && source.charAt(end) != '\n' && source.charAt(end) != '\r') end++;
+			final String line = source.substring(start, end).trim();
+			if (!line.isEmpty()) {
+				if (!first) out.append('\n');
+				first = false;
+				out.append(cleanLine(line));
+			}
+			if (end < length && source.charAt(end) == '\r' && end + 1 < length && source.charAt(end + 1) == '\n') end++;
+			start = end + 1;
+		}
+		return out.append('\n').toString();
+	}
+
+	private static String cleanLine(String line) {
+		if (line.startsWith("#")) {
+			for (String prefix : DIRECTIVE_PREFIXES) {
+				if (line.startsWith(prefix)) {
+					return line;
+				}
+			}
+			return "";
+		}
+		// In PropertyCollectingListener we suppress "unknown preprocessor directive errors" and
+		// assume the line to be a comment, since in .properties files `#` also functions as a comment
+		// marker.
+		return line.indexOf('#') < 0 ? line : line.replace("#", "");
 	}
 
 	private static List<String> getBooleanValues(ShaderPackOptions shaderPackOptions) {

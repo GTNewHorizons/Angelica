@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu.shader;
 
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess;
-import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
 import com.gtnewhorizons.angelica.glsm.testutil.TestPaths;
 import com.gtnewhorizons.angelica.sdlgpu.sampler.SamplerLookup;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
@@ -12,8 +11,8 @@ import org.lwjgl.util.shaderc.Shaderc;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import static com.gtnewhorizons.angelica.sdlgpu.shader.SpirvTestShaders.compileOrFail;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.lwjgl.system.MemoryUtil.memFree;
 
@@ -24,16 +23,13 @@ class FontFilterVertexSamplerTest {
     private static String runSdlPipeline(String raw) {
         final GlslVulkanPreprocess.Result pre = GlslVulkanPreprocess.run(raw, GL20.GL_VERTEX_SHADER, "fontFilter.vsh", true);
         String src = pre != null ? pre.rewrittenSource() : raw;
-        src = ClipZRemap.injectGLToVulkanClipZ(src);
-        src = SamplerStripper.stripUnused(src);
+        src = ShaderTransformChain.clipZ(src);
+        src = ShaderTransformChain.stripUnused(src);
         return src;
     }
 
     private static ShaderManager.StageReflection reflect(String source) {
-        final SpirvCompiler.Result r = SpirvCompiler.compile(source, Shaderc.shaderc_vertex_shader,
-            "fontFilter.vsh", SpirvCompiler.Options.vulkanForced460Core());
-        assertNotNull(r.spirv(), () -> "fontFilter.vsh failed to compile for Vulkan: " + r.error());
-        final ByteBuffer spirv = r.spirv();
+        final ByteBuffer spirv = compileOrFail(source, Shaderc.shaderc_vertex_shader);
         try {
             return ShaderManager.reflectStage(spirv, true);
         } finally {
@@ -66,11 +62,13 @@ class FontFilterVertexSamplerTest {
     }
 
     @Test
-    void samplerNamedLightmapResolvesToTextureUnitOne() {
+    void lightmapStartsOnUnitZeroAndHonorsTheFontsExplicitAssignment() {
         final List<String> samplers = reflect(runSdlPipeline(FONT_FILTER_VSH)).samplerNames();
-        final Object2IntOpenHashMap<String> noExplicitUnits = new Object2IntOpenHashMap<>();
-        noExplicitUnits.defaultReturnValue(-1);
+        final Object2IntOpenHashMap<String> units = new Object2IntOpenHashMap<>();
+        units.defaultReturnValue(-1);
 
-        assertEquals(1, SamplerLookup.getSamplerTextureUnit(samplers, noExplicitUnits, 0), "even without a glUniform1i the SDL fallback must put a sampler named 'lightmap' on unit 1");
+        assertEquals(0, SamplerLookup.getSamplerTextureUnit(samplers, units, 0), "all samplers start on unit 0");
+        units.put("lightmap", 1);
+        assertEquals(1, SamplerLookup.getSamplerTextureUnit(samplers, units, 0), "the font renderer assigns lightmap explicitly");
     }
 }

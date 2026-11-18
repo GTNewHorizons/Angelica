@@ -41,10 +41,10 @@ public enum IrisTerrainPass {
                 return SHADOW_TRANSLUCENT;
             }
             return pass.supportsFragmentDiscard() ? SHADOW_CUTOUT : SHADOW;
-        } else if (pass.supportsFragmentDiscard()) {
-            return GBUFFER_CUTOUT;
         } else if (pass.isReverseOrder()) {
             return GBUFFER_TRANSLUCENT;
+        } else if (pass.supportsFragmentDiscard()) {
+            return GBUFFER_CUTOUT;
         } else {
             return GBUFFER_SOLID;
         }

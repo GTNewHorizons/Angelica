@@ -103,7 +103,7 @@ public class BlockMaterialMapping {
 		nbtEntries.forEach((intId, entries) -> {
 			for (BlockEntry entry : entries) {
 				if (entry.hasNbtProperties()) {
-					map.addCondition(entry.id(), entry.nbtProperties(), intId);
+					map.addCondition(entry.id(), entry.nbtProperties(), intId, entry.metas());
 				}
 			}
 		});
@@ -121,7 +121,7 @@ public class BlockMaterialMapping {
 			return;
 		}
 
-		teMap.addCondition(block, entry.nbtProperties(), intId);
+		teMap.addCondition(block, entry.nbtProperties(), intId, entry.metas());
 	}
 
 	/**

@@ -2,12 +2,14 @@ package com.gtnewhorizons.angelica.mixins;
 
 import com.gtnewhorizon.gtnhmixins.builders.IMixins;
 import com.gtnewhorizon.gtnhmixins.builders.MixinBuilder;
-import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.api.BlockLightProvider;
+import com.gtnewhorizons.angelica.compat.spark.SparkKnownSources;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.CompatConfig;
 import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.CaptureGate;
+import com.gtnewhorizons.angelica.glsm.backend.BackendOptions;
+import com.gtnewhorizons.angelica.glsm.profiling.TracyOptions;
 import com.gtnewhorizons.angelica.sdlgpu.SDLGPUGate;
 import jss.notfine.config.MCPatcherForgeConfig;
 import jss.notfine.config.NotFineConfig;
@@ -67,14 +69,50 @@ public enum Mixins implements IMixins {
             , "angelica.optimizations.MixinRenderBiped_ArmorResource"
             , "angelica.optimizations.MixinRendererLivingEntity"
             , "angelica.rendering.MixinRenderGlobal_SelectionBox"
+            , "angelica.textures.MixinForgeHooksClient_GuiSupersampling"
+            , "angelica.textures.MixinRenderBlocks_GuiSupersampling"
+            , "angelica.textures.MixinRenderItem_GuiSupersampling"
+            , "angelica.textures.MixinTileEntityRendererDispatcher_GuiSupersampling"
             , "angelica.gui.MixinGuiIngameForge_ModernF3"
+            , "angelica.textures.MixinRenderItem_GuiSampler"
         )
+    ),
+
+    ANGELICA_WEATHER(new MixinBuilder()
+        .setPhase(Phase.EARLY)
+        .addExcludedMod(TargetedMod.DYNAMIC_SURROUNDINGS_MIST)
+        .addExcludedMod(TargetedMod.DYNAMIC_SURROUNDINGS_ORIGINAL)
+        .addClientMixins("angelica.rendering.MixinEntityRenderer_Weather")
     ),
 
     STARMINER_RENDERER_LIVING_ENTITY_OPTIMIZATION(new MixinBuilder()
         .setPhase(Phase.LATE)
         .addRequiredMod(TargetedMod.STARMINER)
         .addClientMixins("client.starminer.MixinTransformClientHelper")
+    ),
+
+    RAILCRAFT_LANTERN_CONNECTIONS(new MixinBuilder("Fix Railcraft lanterns rendering with Angelica")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.RAILCRAFT)
+        .addClientMixins("client.railcraft.MixinRenderBlockLamp")
+    ),
+
+    BOTANIA_DEBUG_SCREEN(new MixinBuilder("Move Botania's F3 text into its own debug screen group")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.BOTANIA)
+        .addClientMixins("client.botania.MixinDebugHandler")
+    ),
+
+    JOURNEYMAP_DEBUG_SCREEN(new MixinBuilder("Move JourneyMap's F3 text into its own debug screen group")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.JOURNEYMAP)
+        .addClientMixins("client.journeymap.MixinMiniMapOverlayHandler")
+    ),
+
+    HODGEPODGE_DEBUG_SCREEN(new MixinBuilder("Move Hodgepodge's ChunkGen F3 text into its own debug screen group")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.HODGEPODGE)
+        .addClientMixins("client.hodgepodge.MixinChunkGenDebugHandler")
     ),
 
     ANGELICA_ENTITY_OVERLAYS(new MixinBuilder()
@@ -97,7 +135,7 @@ public enum Mixins implements IMixins {
 
     ANGELICA_SDL_GPU_DISPLAY(new MixinBuilder("SDL-GPU-aware Display.create path")
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> SystemProperties.USE_SDL_GPU && SDLGPUGate.isSDLGPUAvailable())
+        .setApplyIf(() -> BackendOptions.sdlGpuRequested() && SDLGPUGate.isSDLGPUAvailable())
         .addClientMixins(
             "sdlgpu.MixinForgeHooksClient_SDLGPUDisplay",
             "sdlgpu.MixinMinecraft_SDLGPUIcons"
@@ -131,13 +169,18 @@ public enum Mixins implements IMixins {
             .addClientMixins("angelica.gui.MixinGuiMainMenuSplash")
     ),
 
+    ANGELICA_TEXT_HIGHLIGHT(
+        new MixinBuilder("Draw text field selection without color logic op")
+            .setPhase(Phase.EARLY)
+            .addClientMixins("angelica.gui.MixinGuiTextField")
+    ),
+
     ANGELICA_FONT_RENDERER(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableFontRenderer)
         .addClientMixins(
             "angelica.fontrenderer.MixinGuiIngameForge"
             , "angelica.fontrenderer.MixinFontRenderer"
-            , "angelica.fontrenderer.MixinMCResourceAccessor"
         )
     ),
 
@@ -180,9 +223,20 @@ public enum Mixins implements IMixins {
             "angelica.entity.MixinRendererLivingEntity_GlintClock",
             "angelica.entity.MixinRendererLivingEntity_ModelPassDraws",
             "angelica.entity.MixinRender_BatchEligibility",
+            "angelica.entity.MixinRender_EntityFireBatch",
+            "angelica.entity.MixinRender_NameTagDraws",
             "angelica.entity.MixinRender_ShadowBatch",
             "angelica.entity.MixinTextureManager",
             "angelica.tesr.MixinTileEntitySpecialRenderer_BatchEligibility"
+        )
+    ),
+
+    ANGELICA_ENTITY_SHADOW_REPLAY(new MixinBuilder("Replay entity draws recorded in the shader shadow pass in the main view instead of running each entity renderer again")
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> AngelicaConfig.enableIris && AngelicaConfig.entityShadowReplayEnabled())
+        .addClientMixins(
+            "angelica.entity.MixinBossStatus_EntityReplay",
+            "angelica.entity.MixinRenderGlobal_EntityReplay"
         )
     ),
 
@@ -194,12 +248,40 @@ public enum Mixins implements IMixins {
         )
     ),
 
-    ANGELICA_SKIP_END_FRAME_FLUSH(new MixinBuilder("Skip the end-of-frame glFlush before the buffer swap")
+    ANGELICA_SKIP_END_FRAME_FLUSH(new MixinBuilder("Skip vanilla's end-of-frame glFlush; the buffer swap flushes")
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaConfig.skipEndOfFrameFlush)
         .addClientMixins(
             "angelica.MixinMinecraft_SkipEndFrameFlush"
         )
+    ),
+
+    ANGELICA_PARALLEL_ATLAS_LOADING(new MixinBuilder("Decode atlas sprites and generate their mipmaps on worker threads")
+        .setPhase(Phase.EARLY)
+        .addClientMixins(
+            "angelica.textures.MixinTextureMap_ParallelLoad"
+        )
+    ),
+
+
+    THAUMCRAFT_SCANNER_SCREEN(new MixinBuilder("Render the held Thaumometer screen after world transparency")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.THAUMCRAFT)
+        .setApplyIf(() -> AngelicaConfig.enableIris)
+        .addClientMixins("client.thaumcraft.MixinItemThaumometerRenderer")
+    ),
+
+    THAUMCRAFT_PORTALS(new MixinBuilder("Draw Thaumcraft's end portal styled planes in a more optimized way, and make it work with shaderpacks")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.THAUMCRAFT)
+        .addClientMixins(
+            "client.thaumcraft.MixinTileEldritchObeliskRenderer",
+            "client.thaumcraft.MixinTileEldritchNothingRenderer",
+            "client.thaumcraft.MixinTileEldritchLockRenderer",
+            "client.thaumcraft.MixinTileHoleRenderer",
+            "client.thaumcraft.MixinTileMirrorRenderer",
+            "client.thaumcraft.MixinTileHole",
+            "client.thaumcraft.MixinTileEldritchNothing",
+            "client.thaumcraft.MixinBlockHole")
     ),
 
     THAUMCRAFT_TESR_JAR_CACHE(new MixinBuilder("Batch TC4 jar liquid via the retained TESR mesh cache")
@@ -229,7 +311,7 @@ public enum Mixins implements IMixins {
 
     ANGELICA_TRACY(new MixinBuilder("Tracy profiler zones from vanilla Profiler sections")
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaMod.tracyEnabled)
+        .setApplyIf(() -> TracyOptions.enabled() && TracyOptions.backendPresent())
         .addCommonMixins(
             "angelica.tracy.MixinProfiler_Tracy"
             , "angelica.tracy.MixinNetHandlerPlayServer_Tracy"
@@ -243,14 +325,14 @@ public enum Mixins implements IMixins {
 
     ANGELICA_ENABLE_DEBUG(new MixinBuilder()
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaMod.lwjglDebug)
+        .setApplyIf(() -> SystemProperties.LWJGL_DEBUG)
         .addClientMixins(
             "angelica.debug.MixinSplashProgress"
         )
     ),
     ANGELICA_DEBUG_MARKERS(new MixinBuilder("RenderDoc/RGP debug groups + object labels")
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaMod.lwjglDebug || CaptureGate.enabledAtStartup())
+        .setApplyIf(() -> SystemProperties.LWJGL_DEBUG || CaptureGate.enabledAtStartup())
         .addClientMixins(
             "angelica.debug.MixinProfiler"
             , "angelica.debug.MixinTextureManager"
@@ -320,7 +402,7 @@ public enum Mixins implements IMixins {
     // Not compatible with the lwjgl debug callbacks, so disable if that's enabled
     ARCHAIC_SPLASH(new MixinBuilder()
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaConfig.showSplashMemoryBar && !AngelicaMod.lwjglDebug)
+        .setApplyIf(() -> AngelicaConfig.showSplashMemoryBar && !SystemProperties.LWJGL_DEBUG)
         .addClientMixins(
             "angelica.archaic.MixinSplashProgress$3",
             "angelica.archaic.AccessorSplashProgress"
@@ -336,6 +418,14 @@ public enum Mixins implements IMixins {
             , "angelica.archaic.MixinGuiIngameForge"
             , "angelica.archaic.MixinNetHandlerPlayClient"
             , "angelica.archaic.MixinThreadDownloadImageData"
+        )
+    ),
+
+    ANGELICA_DEBUG_KEY(new MixinBuilder()
+        .addExcludedMod(TargetedMod.ET_FUTURUM_REQUIEM)
+        .setPhase(Phase.EARLY)
+        .addClientMixins(
+            "angelica.debug.MixinMinecraft_DebugKey"
         )
     ),
 
@@ -394,6 +484,7 @@ public enum Mixins implements IMixins {
             , "celeritas.frustum.MixinClippingHelperImpl"
             , "celeritas.frustum.MixinFrustrum"
             , "celeritas.features.culling.MixinEffectRenderer"
+            , "celeritas.features.mipmaps.MixinEffectRenderer"
             , "celeritas.features.mipmaps.MixinTextureAtlasSprite"
             , "celeritas.features.mipmaps.MixinTextureMetadataSection"
             , "celeritas.features.mipmaps.MixinTextureMetadataSectionSerializer"
@@ -403,7 +494,10 @@ public enum Mixins implements IMixins {
             , "celeritas.biome_blending.MixinBlockGrass"
             , "celeritas.biome_blending.MixinBlockLeaves"
             , "celeritas.biome_blending.MixinBlockLiquid"
+            , "celeritas.biome_blending.MixinWorld"
+            , "celeritas.biome_blending.MixinRenderBlocks"
             , "celeritas.threading.MixinForgeHooksClient"
+            , "celeritas.threading.MixinChunkJobTyped"
             , "celeritas.terrain.MixinChunk"
             , "celeritas.terrain.MixinWorldClient_WorkerAccess"
             , "celeritas.terrain.MixinWorld_WorkerMutationGuard"
@@ -411,8 +505,16 @@ public enum Mixins implements IMixins {
             , "celeritas.terrain.MixinNetHandlerPlayClient_DescriptorRepair"
             , "celeritas.terrain.MixinWorld_AwaitingDescriptor"
             , "celeritas.terrain.MixinRenderRegion"
+            , "celeritas.terrain.MixinChunkRenderList"
+            , "celeritas.terrain.MixinChunkMeshBufferBuilder"
+            , "celeritas.terrain.MixinVisibleChunkCollector"
+            , "celeritas.terrain.MixinRenderListManager"
             , "celeritas.terrain.MixinSectionRenderDataStorage"
-            , "celeritas.terrain.MixinDefaultChunkShaderInterface"
+            , "celeritas.terrain.MixinSharedQuadIndexBuffer"
+            , "celeritas.terrain.MixinRenderRegionManager"
+            , "celeritas.terrain.MixinShaderLoader"
+            , "celeritas.terrain.MixinGlUniformMatrix4f"
+            , "celeritas.terrain.MixinGlUniformMatrix3f"
         )
     ),
 
@@ -505,6 +607,14 @@ public enum Mixins implements IMixins {
         )
     ),
 
+    DRAGONAPI_SEASONAL_SNOW(new MixinBuilder("Let DragonAPI's Xmas forced-snow event override weather rendering")
+        .setPhase(Phase.EARLY)
+        .addRequiredMod(TargetedMod.DRAGON_API)
+        .addClientMixins(
+            "dragonapi.MixinSpecialDayTracker"
+        )
+    ),
+
     IRIS_RENDERING_NOBACKHAND(new MixinBuilder("Iris Hand Shaders")
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableIris)
@@ -530,6 +640,13 @@ public enum Mixins implements IMixins {
         .addClientMixins(
             "chisel.MixinRenderCarvableBeacon"
         )
+    ),
+
+    SPARK_MOD_SOURCES(new MixinBuilder("Mod versions in spark 1.7.10 profiles")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.SPARK)
+        .setApplyIf(SparkKnownSources::mixinApplies)
+        .addClientMixins("spark.MixinForge1710SparkPlugin")
     ),
 
     ANGELICA_TEXTURE(new MixinBuilder()
@@ -575,8 +692,14 @@ public enum Mixins implements IMixins {
         .setPhase(Phase.EARLY)
         .addExcludedMod(TargetedMod.ARCHAICFIX)
         .addExcludedMod(TargetedMod.SUPERNOVA)
+        .addExcludedMod(TargetedMod.LUMI)
         .setApplyIf(() -> AngelicaConfig.optimizeWorldUpdateLight)
         .addCommonMixins("angelica.lighting.MixinWorld_FixLightUpdateLag")),
+
+    TESR_LIGHT_CACHE(new MixinBuilder("Cache the tile-entity dispatcher's per-tile lightmap lookup for one tick")
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> AngelicaConfig.enableTESRLightCache)
+        .addClientMixins("angelica.lighting.MixinTileEntityRendererDispatcher_LightCache")),
 
     SPEEDUP_VANILLA_ANIMATIONS(new MixinBuilder()
         .setPhase(Phase.EARLY)
@@ -665,6 +788,7 @@ public enum Mixins implements IMixins {
             "gui.MixinGuiSlot",
 
             "glint.MixinRenderBiped",
+            "glint.MixinEntityLiving_ArmorEnchantCache",
             "glint.MixinRenderPlayer",
 
             "optimization.MixinRenderItemFrame",
@@ -776,6 +900,18 @@ public enum Mixins implements IMixins {
             "MixinBlockTFMagicLeaves"
         ))
     ),
+    NOTFINE_BIOMES_O_PLENTY_COMPAT(new MixinBuilder()
+        .setPhase(Phase.LATE)
+        .setApplyIf(() -> AngelicaConfig.enableNotFineFeatures)
+        .addRequiredMod(TargetedMod.BIOMES_O_PLENTY)
+        .addClientMixins(addPrefix("notfine.leaves.biomesoplenty.",
+            "MixinBlockBOPLeaves",
+            "MixinBlockBOPColorizedLeaves",
+            "MixinBlockBOPAppleLeaves",
+            "MixinBlockBOPPersimmonLeaves",
+            "MixinColorizedLeavesRenderer"
+        ))
+    ),
     ET_FUTURUM_ELYTRA_CAPE(new MixinBuilder("Set custom item ID for elytra with cape texture")
         .setPhase(Phase.LATE)
         .addRequiredMod(TargetedMod.ET_FUTURUM_REQUIEM)
@@ -788,6 +924,11 @@ public enum Mixins implements IMixins {
         .setApplyIf(() -> AngelicaConfig.enableIris)
         .addClientMixins("client.etfuturum.MixinTileEntityNewBeaconRenderer")
     ),
+    DRACONIC_PLACED_ITEM_RENDERER(new MixinBuilder("Keep custom placed-item renderers live")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.DRACONIC_EVOLUTION)
+        .addClientMixins("client.draconicevolution.MixinRenderTilePlacedItem")
+    ),
     OPENBLOCKS_TROPHY_ENTITY_GBUFFER(new MixinBuilder("Render OpenBlocks trophies with the entity gbuffer programs")
         .setPhase(Phase.LATE)
         .addRequiredMod(TargetedMod.OPENBLOCKS)
@@ -799,6 +940,11 @@ public enum Mixins implements IMixins {
         .addRequiredMod(TargetedMod.DRAGON_API)
         .setApplyIf(() -> AngelicaConfig.enableIris)
         .addClientMixins("client.dragonapi.MixinThrottleableEffectRenderer")
+    ),
+    DRAGONAPI_PARTICLE_CUTOFF(new MixinBuilder("Modern 26.2 mipmap alpha cutoff for DragonAPI's terrain particles")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.DRAGON_API)
+        .addClientMixins("client.dragonapi.MixinThrottleableEffectRenderer_MipmapCutoff")
     ),
     DRAGONAPI_PARTICLE_BATCH(new MixinBuilder("Particle instancing for DragonAPI's replacement particle renderer")
         .setPhase(Phase.LATE)
@@ -947,32 +1093,11 @@ public enum Mixins implements IMixins {
             "MixinRenderGlobal"
         ))
     ),
-    MCPATCHER_FORGE_CC_NO_CTM(new MixinBuilder("MCP:F Custom Colors, no Connected Textures")
-        .setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures
-                          && !MCPatcherForgeConfig.ConnectedTextures.enabled
-                          && MCPatcherForgeConfig.CustomColors.enabled)
-        .addClientMixins("mcpatcherforge.ctm_cc.MixinRenderBlocksNoCTM")
-    ),
-    MCPATCHER_FORGE_CTM_NO_CC(new MixinBuilder("MCP:F Connected Textures, no Custom Colours")
-        .setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures
-                          && MCPatcherForgeConfig.ConnectedTextures.enabled
-                          && !MCPatcherForgeConfig.CustomColors.enabled)
-        .addClientMixins("mcpatcherforge.ctm_cc.MixinRenderBlocksNoCC")
-    ),
-    MCPATCHER_FORGE_CTM_AND_CC(new MixinBuilder("MCP:F Connected Textures and Custom Colors")
-        .setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures
-                          && MCPatcherForgeConfig.ConnectedTextures.enabled
-                          && MCPatcherForgeConfig.CustomColors.enabled)
-        .addClientMixins("mcpatcherforge.ctm_cc.MixinRenderBlocks")
-    ),
     MCPATCHER_FORGE_CTM_OR_CC(new MixinBuilder("MCP:F Connected Textures or Custom Colors")
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures
-                          && MCPatcherForgeConfig.ConnectedTextures.enabled
-                          || MCPatcherForgeConfig.CustomColors.enabled)
+                          && (MCPatcherForgeConfig.ConnectedTextures.enabled
+                          || MCPatcherForgeConfig.CustomColors.enabled))
         .addClientMixins("mcpatcherforge.ctm_cc.MixinTextureMap")
     ),
     //End from NotFine

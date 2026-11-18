@@ -104,8 +104,17 @@ public final class FFPUniformBlock {
     public static final int TEX_ENV_COLOR_3 = vec4("u_TexEnvColor3");
     public static final int OVERLAY_COLOR = vec4("u_OverlayColor");
     public static final int SECONDARY_COLOR = vec3("u_SecondaryColor");
+    public static final int ATLAS_GUTTER = flt("u_AtlasGutter");
     public static final int FOG_PARAMS = vec4("u_FogParams");
     public static final int FOG_COLOR = vec4("u_FogColor");
+
+    // Weather columns, for Instancing.WEATHER. 0 = (translate.xyz, 1/radius),
+    // 1 = (cameraFrac.xy, partialTicks, age), 2 = (vanillaTick, providerTick, rainStrength, providerAge),
+    // 3 = (provider 1/radius, unused, unused, unused).
+    public static final int WEATHER_PARAMS_0 = vec4("u_WeatherParams0");
+    public static final int WEATHER_PARAMS_1 = vec4("u_WeatherParams1");
+    public static final int WEATHER_PARAMS_2 = vec4("u_WeatherParams2");
+    public static final int WEATHER_PARAMS_3 = vec4("u_WeatherParams3");
 
     public static final int SIZE;
     public static final String GLSL_DECL;

@@ -1,6 +1,6 @@
 package net.coderbot.iris.gl.buffer;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import lombok.Getter;
 import org.embeddedt.embeddium.impl.gl.debug.GLDebug;
@@ -41,8 +41,8 @@ public class ShaderStorageBuffer {
 		if (!info.relative()) return;
 
 		RenderSystem.deleteBuffers(id);
-		int newId = GLStateManager.glGenBuffers();
-		GLStateManager.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, newId);
+		int newId = GLSMBuffers.glGenBuffers();
+		GLSMBuffers.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, newId);
 
 		// Calculation time
 		long newWidth = (long) (width * info.scaleX());

@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL11;
@@ -21,11 +21,11 @@ class FFPUnboundTextureUnitTest {
     @AfterEach
     void cleanup() {
         for (int i = 3; i >= 0; i--) {
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + i);
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-            if (i > 0) GLStateManager.getTextures().getTextureUnitStates(i).disable();
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0 + i);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+            if (i > 0) GLSMTextures.getTextures().getTextureUnitStates(i).disable();
         }
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
         for (int t : texturesToDelete) GL11.glDeleteTextures(t);
         texturesToDelete.clear();
     }
@@ -33,19 +33,19 @@ class FFPUnboundTextureUnitTest {
     private void bindUnitTexture() {
         final int tex = GL11.glGenTextures();
         texturesToDelete.add(tex);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, tex);
     }
 
     @Test
     void enabledUnitWithoutTextureIsExcluded() {
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.enableTexture();
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.enableTexture();
         bindUnitTexture();
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE2);
-        GLStateManager.enableTexture(); // enabled, nothing bound
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE3);
-        GLStateManager.enableTexture(); // enabled, nothing bound
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE2);
+        GLSMTextures.enableTexture(); // enabled, nothing bound
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE3);
+        GLSMTextures.enableTexture(); // enabled, nothing bound
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
 
         final FragmentKey fk = FragmentKey.fromState();
         assertEquals(1, fk.nrEnabledUnits(), "units 2/3 have no texture bound -> excluded -> only unit 0");
@@ -55,13 +55,13 @@ class FFPUnboundTextureUnitTest {
 
     @Test
     void enabledUnitsWithTextureAreCounted() {
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.enableTexture();
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.enableTexture();
         bindUnitTexture();
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE2);
-        GLStateManager.enableTexture();
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE2);
+        GLSMTextures.enableTexture();
         bindUnitTexture();
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
 
         final FragmentKey fk = FragmentKey.fromState();
         assertTrue(fk.unitEnabled(0));

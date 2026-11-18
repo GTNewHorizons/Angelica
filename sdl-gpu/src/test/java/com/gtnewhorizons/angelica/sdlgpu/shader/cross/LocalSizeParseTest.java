@@ -1,15 +1,18 @@
 package com.gtnewhorizons.angelica.sdlgpu.shader.cross;
 
-import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.util.shaderc.Shaderc;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.stream.Stream;
 
+import static com.gtnewhorizons.angelica.sdlgpu.shader.SpirvTestShaders.compileOrFail;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.fail;
 
 class LocalSizeParseTest {
 
@@ -34,31 +37,19 @@ class LocalSizeParseTest {
         void main() { buf.b[gl_GlobalInvocationID.x] = 1u; }
         """;
 
-    @Test
-    void parsesLocalSize8x8x1() {
-        final ByteBuffer spirv = compile(LS_8_8_1);
-        try {
-            assertArrayEquals(new int[]{8, 8, 1}, CrossCompileUtil.parseLocalSize(spirv));
-        } finally {
-            MemoryUtil.memFree(spirv);
-        }
+    static Stream<Arguments> localSizes() {
+        return Stream.of(
+            Arguments.of("8x8x1", LS_8_8_1, new int[]{8, 8, 1}),
+            Arguments.of("64x1x1", LS_64, new int[]{64, 1, 1}),
+            Arguments.of("4x4x4", LS_4_4_4, new int[]{4, 4, 4}));
     }
 
-    @Test
-    void parsesLocalSize64x1x1() {
-        final ByteBuffer spirv = compile(LS_64);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("localSizes")
+    void parsesLocalSize(String name, String source, int[] expected) {
+        final ByteBuffer spirv = compileOrFail(source, Shaderc.shaderc_compute_shader);
         try {
-            assertArrayEquals(new int[]{64, 1, 1}, CrossCompileUtil.parseLocalSize(spirv));
-        } finally {
-            MemoryUtil.memFree(spirv);
-        }
-    }
-
-    @Test
-    void parsesLocalSize4x4x4() {
-        final ByteBuffer spirv = compile(LS_4_4_4);
-        try {
-            assertArrayEquals(new int[]{4, 4, 4}, CrossCompileUtil.parseLocalSize(spirv));
+            assertArrayEquals(expected, CrossCompileUtil.parseLocalSize(spirv));
         } finally {
             MemoryUtil.memFree(spirv);
         }
@@ -73,14 +64,5 @@ class LocalSizeParseTest {
         } finally {
             MemoryUtil.memFree(spirv);
         }
-    }
-
-    private static ByteBuffer compile(String source) {
-        final SpirvCompiler.Result r = SpirvCompiler.compile(source, Shaderc.shaderc_compute_shader, "ls_test",
-            SpirvCompiler.Options.vulkanForced460Core());
-        if (r.spirv() == null) {
-            fail("Shader compilation failed: " + r.error());
-        }
-        return r.spirv();
     }
 }

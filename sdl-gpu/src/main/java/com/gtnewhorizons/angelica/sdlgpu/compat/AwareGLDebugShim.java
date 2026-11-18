@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu.compat;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -18,7 +18,7 @@ public final class AwareGLDebugShim {
     private AwareGLDebugShim() {}
 
     public static void glDebugMessageCallback(GLDebugMessageCallbackI callback, long userParam) {
-        GLStateManager.registerDebugMessageListener(callback == null ? null : callback::invoke, userParam);
+        GLSMDraws.registerDebugMessageListener(callback == null ? null : callback::invoke, userParam);
     }
 
     public static Callback setupDebugMessageCallback() {
@@ -31,7 +31,7 @@ public final class AwareGLDebugShim {
             return null;
         }
         final GLDebugMessageCallback proc = GLDebugMessageCallback.create((source, type, id, severity, length, message, userParam) -> stream.println("[Angelica] GL debug message: " + GLDebugMessageCallback.getMessage(length, message)));
-        GLStateManager.registerDebugMessageListener(proc::invoke, 0L);
+        GLSMDraws.registerDebugMessageListener(proc::invoke, 0L);
         return proc;
     }
 }

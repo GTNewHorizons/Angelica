@@ -4,7 +4,9 @@ import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VertexBufferType;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
@@ -16,7 +18,6 @@ import java.nio.IntBuffer;
 import java.util.Arrays;
 
 import static com.gtnewhorizons.angelica.render.CloudDisc.ALWAYS_DRAWN_CELLS;
-import static com.gtnewhorizons.angelica.render.CloudDisc.SCROLL_SPEED;
 import static com.gtnewhorizons.angelica.render.CloudDisc.WEDGE_COUNT;
 import static com.gtnewhorizons.angelica.render.CloudDisc.wedgeOf;
 import static org.joml.Math.clamp;
@@ -120,6 +121,7 @@ final class CloudVertexMesh {
     private long[] wallSortKey = new long[4096];
     private long[] wallSortScratch = new long[4096];
     private final int[] radixCounts = new int[RADIX_SIZE];
+    private float textureScaleX, textureScaleZ;
     private boolean forPackShader;
     private int wallCutCells = Integer.MAX_VALUE;
     private int wallClipRadiusSq;
@@ -160,8 +162,8 @@ final class CloudVertexMesh {
         return wallStart;
     }
 
-    void buildFast(int radiusCells, float scrollX, float scrollZ, boolean forPackShader) {
-        beginBuild(false, forPackShader);
+    void buildFast(CloudShape shape, int radiusCells, float scrollX, float scrollZ, boolean forPackShader) {
+        beginBuild(shape, false, forPackShader);
 
         nextQuadDir = DIR_NONE;
         nextQuadGroup = GROUP_PLATE_ALWAYS;
@@ -170,10 +172,10 @@ final class CloudVertexMesh {
         nextQuadCellZ = 0;
         final double minCell = -radiusCells;
         final double maxCell = radiusCells;
-        final float uWest = -radiusCells * SCROLL_SPEED + scrollX;
-        final float uEast = radiusCells * SCROLL_SPEED + scrollX;
-        final float vNorth = -radiusCells * SCROLL_SPEED + scrollZ;
-        final float vSouth = radiusCells * SCROLL_SPEED + scrollZ;
+        final float uWest = -radiusCells * textureScaleX + scrollX;
+        final float uEast = radiusCells * textureScaleX + scrollX;
+        final float vNorth = -radiusCells * textureScaleZ + scrollZ;
+        final float vSouth = radiusCells * textureScaleZ + scrollZ;
         ensureEmitCapacity(quadBytes);
         emitQuad(minCell, 0.0, minCell, uWest, vNorth, maxCell, 0.0, minCell, uEast, vNorth,
             maxCell, 0.0, maxCell, uEast, vSouth, minCell, 0.0, maxCell, uWest, vSouth, FACE_UP, NORMAL_POS_Y);
@@ -185,7 +187,7 @@ final class CloudVertexMesh {
                double cellHeightBlocks, float scrollX, float scrollZ,
                boolean emitUnderside, boolean emitTopSurface, boolean emitPlates,
                int wallCut, int plateLodCells, boolean untextured, boolean forPack) {
-        beginBuild(untextured, forPack);
+        beginBuild(shape, untextured, forPack);
         this.wallCutCells = wallCut;
         buildAnchorX = anchorX;
         buildAnchorZ = anchorZ;
@@ -211,12 +213,14 @@ final class CloudVertexMesh {
 
     void buildInterior(CloudShape shape, int anchorX, int anchorZ, double deckTopY,
                        float scrollX, float scrollZ, boolean untextured, boolean forPack) {
-        beginBuild(untextured, forPack);
+        beginBuild(shape, untextured, forPack);
         addInteriorFaces(shape, anchorX, anchorZ, deckTopY, scrollX, scrollZ);
         finishGeometry();
     }
 
-    private void beginBuild(boolean untextured, boolean forPack) {
+    private void beginBuild(CloudShape shape, boolean untextured, boolean forPack) {
+        textureScaleX = 1.0f / shape.width;
+        textureScaleZ = 1.0f / shape.height;
         forPackShader = forPack;
         if (!forPack && quadCell.length < quadFace.length) {
             quadCell = new int[quadFace.length];
@@ -455,9 +459,9 @@ final class CloudVertexMesh {
 
         if (dir == DIR_WEST || dir == DIR_EAST) {
             final double z1 = relZ + span;
-            final float uCentre = (relX + 0.5F) * SCROLL_SPEED + scrollX;
-            final float vNorth = relZ * SCROLL_SPEED + scrollZ;
-            final float vSouth = (relZ + span) * SCROLL_SPEED + scrollZ;
+            final float uCentre = (relX + 0.5F) * textureScaleX + scrollX;
+            final float vNorth = relZ * textureScaleZ + scrollZ;
+            final float vSouth = (relZ + span) * textureScaleZ + scrollZ;
             if (dir == DIR_WEST) {
                 emitQuad(x0, 0.0, z1, uCentre, vSouth, x0, deckTopY, z1, uCentre, vSouth,
                     x0, deckTopY, z0, uCentre, vNorth, x0, 0.0, z0, uCentre, vNorth, FACE_SIDE_X, NORMAL_NEG_X);
@@ -468,9 +472,9 @@ final class CloudVertexMesh {
             }
         } else {
             final double x1 = relX + span;
-            final float uLeft = relX * SCROLL_SPEED + scrollX;
-            final float uRight = (relX + span) * SCROLL_SPEED + scrollX;
-            final float vCentre = (relZ + 0.5F) * SCROLL_SPEED + scrollZ;
+            final float uLeft = relX * textureScaleX + scrollX;
+            final float uRight = (relX + span) * textureScaleX + scrollX;
+            final float vCentre = (relZ + 0.5F) * textureScaleZ + scrollZ;
             if (dir == DIR_NORTH) {
                 emitQuad(x0, deckTopY, z0, uLeft, vCentre, x1, deckTopY, z0, uRight, vCentre,
                     x1, 0.0, z0, uRight, vCentre, x0, 0.0, z0, uLeft, vCentre, FACE_SIDE_Z, NORMAL_NEG_Z);
@@ -485,10 +489,10 @@ final class CloudVertexMesh {
     private void emitPlateRect(int relX0, int relZ0, int relX1, int relZ1, boolean emitUnderside, boolean emitTopSurface,
                                double plateTopY, float scrollX, float scrollZ, int bytesPerRect) {
         final double x0 = relX0, x1 = relX1, z0 = relZ0, z1 = relZ1;
-        final float uLeft = relX0 * SCROLL_SPEED + scrollX;
-        final float uRight = relX1 * SCROLL_SPEED + scrollX;
-        final float vNorth = relZ0 * SCROLL_SPEED + scrollZ;
-        final float vSouth = relZ1 * SCROLL_SPEED + scrollZ;
+        final float uLeft = relX0 * textureScaleX + scrollX;
+        final float uRight = relX1 * textureScaleX + scrollX;
+        final float vNorth = relZ0 * textureScaleZ + scrollZ;
+        final float vSouth = relZ1 * textureScaleZ + scrollZ;
 
         ensureEmitCapacity(bytesPerRect);
         if (emitUnderside) {
@@ -511,11 +515,11 @@ final class CloudVertexMesh {
         nextQuadCellZ = 0;
 
         final float uLeft = scrollX;
-        final float uRight = SCROLL_SPEED + scrollX;
-        final float uCentre = 0.5F * SCROLL_SPEED + scrollX;
+        final float uRight = textureScaleX + scrollX;
+        final float uCentre = 0.5F * textureScaleX + scrollX;
         final float vNorth = scrollZ;
-        final float vSouth = SCROLL_SPEED + scrollZ;
-        final float vCentre = 0.5F * SCROLL_SPEED + scrollZ;
+        final float vSouth = textureScaleZ + scrollZ;
+        final float vCentre = 0.5F * textureScaleZ + scrollZ;
 
         final double x0 = 0.0;
         final double x1 = 1.0;
@@ -642,10 +646,10 @@ final class CloudVertexMesh {
 
     private void setupShadeAttrib() {
         vao.bind();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vao.getVBO().getId());
-        GLStateManager.glEnableVertexAttribArray(FACE_SHADE_ATTRIB);
-        GLStateManager.glVertexAttribPointer(FACE_SHADE_ATTRIB, 1, GL11.GL_UNSIGNED_BYTE, true, vertexStride, normalOffset + 3);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vao.getVBO().getId());
+        GLSMVertexInput.glEnableVertexAttribArray(FACE_SHADE_ATTRIB);
+        GLSMVertexInput.glVertexAttribPointer(FACE_SHADE_ATTRIB, 4, GL11.GL_UNSIGNED_BYTE, true, vertexStride, normalOffset);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         vao.unbind();
     }
 
@@ -689,7 +693,7 @@ final class CloudVertexMesh {
                 default -> false;
             };
 
-            int band = (int) (Math.sqrt(cx * cx + cz * cz) * ORDER_BANDS_PER_CELL);
+            int band = (int) (Math.sqrt((double) cx * cx + (double) cz * cz) * ORDER_BANDS_PER_CELL);
             if (band >= bands) band = bands - 1;
 
             final int groupSlot = facingAway ? 2 + 2 * WEDGE_COUNT : switch (group) {
@@ -750,9 +754,9 @@ final class CloudVertexMesh {
     void reorderUpload() {
         if (orderPendingQuads <= 0) return;
         if (Tracy.FINE_ZONES) Tracy.beginZone(Z_REORDER_UPLOAD);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
-        GLStateManager.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, orderIndexBuffer, GL15.GL_DYNAMIC_DRAW);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
+        GLSMBuffers.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, orderIndexBuffer, GL15.GL_DYNAMIC_DRAW);
+        GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
         System.arraycopy(plateStartScratch, 0, plateStart, 0, plateStart.length);
         System.arraycopy(wallStartScratch, 0, wallStart, 0, wallStart.length);
         eboQuadCapacity = orderPendingQuads;
@@ -769,7 +773,7 @@ final class CloudVertexMesh {
 
     private void ensureEbo(int quads) {
         if (eboId == -1) {
-            eboId = GLStateManager.glGenBuffers();
+            eboId = GLSMBuffers.glGenBuffers();
         }
 
         if (quads <= eboQuadCapacity && eboIsSequential) return;
@@ -777,9 +781,9 @@ final class CloudVertexMesh {
         final int capacity = Math.max(quads + (quads >> 1), 4096);
         final IntBuffer indices = sequentialIndices(capacity);
         indices.position(0).limit(capacity * 6);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
-        GLStateManager.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, indices, GL15.GL_STATIC_DRAW);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
+        GLSMBuffers.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, indices, GL15.GL_STATIC_DRAW);
+        GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
         eboQuadCapacity = capacity;
     }
 
@@ -800,7 +804,7 @@ final class CloudVertexMesh {
 
     void deleteEbo() {
         if (eboId != -1) {
-            GLStateManager.glDeleteBuffers(eboId);
+            GLSMBuffers.glDeleteBuffers(eboId);
             eboId = -1;
             eboQuadCapacity = 0;
         }
@@ -817,7 +821,7 @@ final class CloudVertexMesh {
 
     void bind() {
         vao.bind();
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
+        GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
     }
 
     void unbind() {
@@ -827,11 +831,11 @@ final class CloudVertexMesh {
     void drawRange(int startQuad, int endQuad) {
         final int quads = endQuad - startQuad;
         if (quads <= 0) return;
-        GLStateManager.glDrawElements(GL11.GL_TRIANGLES, quads * 6, GL11.GL_UNSIGNED_INT, (long) startQuad * 6L * 4L);
+        GLSMDraws.glDrawElements(GL11.GL_TRIANGLES, quads * 6, GL11.GL_UNSIGNED_INT, (long) startQuad * 6L * 4L);
     }
 
     void drawAll() {
-        GLStateManager.glDrawElements(GL11.GL_TRIANGLES, (vertexCount / 4) * 6, GL11.GL_UNSIGNED_INT, 0L);
+        GLSMDraws.glDrawElements(GL11.GL_TRIANGLES, (vertexCount / 4) * 6, GL11.GL_UNSIGNED_INT, 0L);
     }
 
     boolean faceEmpty(int face) {

@@ -2,7 +2,8 @@ package net.coderbot.iris.gl.blending;
 
 import com.gtnewhorizons.angelica.glsm.states.DepthState;
 import com.gtnewhorizons.angelica.glsm.states.ColorMask;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
 import com.gtnewhorizons.angelica.glsm.hooks.VanillaStateLayer;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import lombok.Getter;
@@ -33,8 +34,8 @@ public class DepthColorStorage {
 
     public static void disableDepthColor() {
         if (!overrideHeld) {
-            final ColorMask colorMask = GLStateManager.getColorMask();
-            final DepthState depthState = GLStateManager.getDepthState();
+            final ColorMask colorMask = GLSMBlend.getColorMask();
+            final DepthState depthState = GLSMDepthStencilAlpha.getDepthState();
 
             vanillaDepthEnable = depthState.isEnabled();
             vanillaColor.set(colorMask);
@@ -44,8 +45,8 @@ public class DepthColorStorage {
 
         depthColorLocked = false;
         try {
-            GLStateManager.glDepthMask(false);
-            GLStateManager.glColorMask(false, false, false, false);
+            GLSMDepthStencilAlpha.glDepthMask(false);
+            GLSMBlend.glColorMask(false, false, false, false);
         } finally {
             depthColorLocked = true;
         }
@@ -66,8 +67,8 @@ public class DepthColorStorage {
 
         depthColorLocked = false;
 
-        GLStateManager.glDepthMask(vanillaDepthEnable);
-        GLStateManager.glColorMask(vanillaColor.red, vanillaColor.green, vanillaColor.blue, vanillaColor.alpha);
+        GLSMDepthStencilAlpha.glDepthMask(vanillaDepthEnable);
+        GLSMBlend.glColorMask(vanillaColor.red, vanillaColor.green, vanillaColor.blue, vanillaColor.alpha);
         overrideHeld = false;
     }
 

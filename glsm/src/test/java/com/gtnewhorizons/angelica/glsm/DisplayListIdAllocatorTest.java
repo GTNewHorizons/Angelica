@@ -1,35 +1,49 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizons.angelica.glsm.testutil.TestThreads;
+import org.junit.jupiter.api.Test;
+
 import java.util.HashSet;
 import java.util.Set;
-import org.junit.jupiter.api.Test;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DisplayListIdAllocatorTest {
 
     @Test
-    void zeroNeverReturned() {
-        DisplayListIDAllocator alloc = new DisplayListIDAllocator(1);
-        // Allocate enough IDs to fill the first word (32 IDs). None should be 0.
-        for (int i = 0; i < 31; i++) {
-            int id = alloc.allocRange(1);
-            assertNotEquals(0, id, "ID 0 must never be returned");
-            assertTrue(id > 0, "All returned IDs must be positive");
+    void concurrentAllocationsRemainUnique() throws Exception {
+        final DisplayListIDAllocator alloc = new DisplayListIDAllocator();
+        final int[][] ids = new int[2][500];
+        final CountDownLatch start = new CountDownLatch(1);
+        final TestThreads.Worker[] workers = new TestThreads.Worker[2];
+        for (int t = 0; t < workers.length; t++) {
+            final int[] lane = ids[t];
+            workers[t] = TestThreads.start("DisplayListIdAllocator-" + t, () -> {
+                if (!start.await(5, TimeUnit.SECONDS)) throw new AssertionError("start timed out");
+                for (int i = 0; i < lane.length; i++) lane[i] = alloc.allocRange(1);
+            });
         }
+        start.countDown();
+        for (TestThreads.Worker worker : workers) worker.join();
+        final Set<Integer> unique = new HashSet<>();
+        for (int[] lane : ids) {
+            for (int id : lane) assertTrue(unique.add(id));
+        }
+        assertEquals(1000, unique.size());
     }
 
     @Test
-    void singleAllocReturnsSequential() {
-        DisplayListIDAllocator alloc = new DisplayListIDAllocator();
-        // First alloc should be 1 (0 is reserved)
-        assertEquals(1, alloc.allocRange(1));
-        assertEquals(2, alloc.allocRange(1));
-        assertEquals(3, alloc.allocRange(1));
+    void singleAllocsAreSequentialFromOne() {
+        // Sequential from 1 across several words: 0 is never handed out and no id repeats
+        final DisplayListIDAllocator alloc = new DisplayListIDAllocator(1);
+        for (int expected = 1; expected <= 500; expected++) {
+            assertEquals(expected, alloc.allocRange(1));
+        }
     }
 
     @Test
@@ -133,9 +147,9 @@ class DisplayListIdAllocatorTest {
     @Test
     void freeZeroIsNoOp() {
         DisplayListIDAllocator alloc = new DisplayListIDAllocator();
-        // Should not throw
         alloc.free(0);
         alloc.free(-1);
+        assertEquals(1, alloc.allocRange(1), "freeing the reserved id 0 must not make it allocatable");
     }
 
     @Test
@@ -176,17 +190,6 @@ class DisplayListIdAllocatorTest {
             int id = alloc.allocRange(1);
             assertTrue(id > 0);
             assertTrue(alloc.isAllocated(id));
-        }
-    }
-
-    @Test
-    void noDoubleAllocation() {
-        DisplayListIDAllocator alloc = new DisplayListIDAllocator();
-        // Allocate many IDs and verify uniqueness
-        Set<Integer> seen = new HashSet<>();
-        for (int i = 0; i < 500; i++) {
-            int id = alloc.allocRange(1);
-            assertTrue(seen.add(id), "Duplicate ID returned: " + id);
         }
     }
 
@@ -237,5 +240,29 @@ class DisplayListIdAllocatorTest {
         // Reallocate — should reuse the freed region
         int base2 = alloc.allocRange(64);
         assertEquals(base1, base2, "Freed range should be reused");
+    }
+
+    @Test
+    void reserveRoutesByIdWithoutDisturbingLowIds() {
+        final DisplayListIDAllocator alloc = new DisplayListIDAllocator();
+        alloc.reserve(-5);
+        alloc.reserve(0);
+        alloc.reserve(Integer.MAX_VALUE);
+        assertTrue(alloc.isAllocated(Integer.MAX_VALUE));
+        assertFalse(alloc.isAllocated(Integer.MAX_VALUE & ((1 << 22) - 1)));
+        assertEquals(1, alloc.allocRange(1));
+        alloc.free(Integer.MAX_VALUE);
+        assertFalse(alloc.isAllocated(Integer.MAX_VALUE));
+    }
+
+    @Test
+    void rangeAllocationDoesNotSpanSegments() {
+        final DisplayListIDAllocator alloc = new DisplayListIDAllocator();
+        assertEquals(32, alloc.allocRange((1 << 22) - 64));
+        assertEquals(1 << 22, alloc.allocRange(64));
+        assertFalse(alloc.isAllocated((1 << 22) - 32));
+        assertTrue(alloc.isAllocated(1 << 22));
+        alloc.freeRange((1 << 22) - 1, 2);
+        assertFalse(alloc.isAllocated(1 << 22));
     }
 }

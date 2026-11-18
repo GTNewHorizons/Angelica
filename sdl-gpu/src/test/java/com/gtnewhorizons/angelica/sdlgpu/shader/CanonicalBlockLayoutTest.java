@@ -9,10 +9,10 @@ import java.nio.ByteBuffer;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import static com.gtnewhorizons.angelica.sdlgpu.shader.SpirvTestShaders.compileOrFail;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.fail;
 
 class CanonicalBlockLayoutTest {
 
@@ -69,7 +69,7 @@ class CanonicalBlockLayoutTest {
     }
 
     private static Map<String, Integer> offsetsOf(String source) {
-        final ByteBuffer spirv = compile(source);
+        final ByteBuffer spirv = compileOrFail(source, Shaderc.shaderc_fragment_shader, SpirvCompiler.Options.vulkanRelaxed());
         try {
             final ShaderManager.StageReflection refl = ShaderManager.reflectStage(spirv, false);
             final Map<String, Integer> out = new LinkedHashMap<>();
@@ -78,13 +78,5 @@ class CanonicalBlockLayoutTest {
         } finally {
             MemoryUtil.memFree(spirv);
         }
-    }
-
-    private static ByteBuffer compile(String source) {
-        final SpirvCompiler.Result r = SpirvCompiler.compile(source, Shaderc.shaderc_fragment_shader, "test.frag", SpirvCompiler.Options.vulkanRelaxed());
-        if (r.spirv() == null) {
-            fail("shaderc failed: " + r.error());
-        }
-        return r.spirv();
     }
 }

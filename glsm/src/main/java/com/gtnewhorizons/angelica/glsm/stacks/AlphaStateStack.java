@@ -1,45 +1,51 @@
 package com.gtnewhorizons.angelica.glsm.stacks;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.hooks.VanillaStateLayer;
 import com.gtnewhorizons.angelica.glsm.states.AlphaState;
 import lombok.Setter;
 
-public class AlphaStateStack extends AlphaState implements IStateStack<AlphaState> {
+public final class AlphaStateStack extends AlphaState implements CowStateStack<AlphaStateStack> {
 
     protected final AlphaState[] stack;
-
-    protected int pointer;
+    private final CowDepths cow = new CowDepths();
 
     @Setter private VanillaStateLayer<AlphaState> vanillaLayer;
 
-    public AlphaStateStack() {
-        stack = new AlphaState[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
-        for (int i = 0; i < GLStateManager.MAX_ATTRIB_STACK_DEPTH; i++) {
+    public AlphaStateStack(int id) {
+        cow.id = id;
+        stack = new AlphaState[GLStateManager.STATE_SLOTS];
+        for (int i = 0; i < GLStateManager.STATE_SLOTS; i++) {
             stack[i] = new AlphaState();
         }
     }
 
-    public AlphaStateStack push() {
-        if(pointer == stack.length) {
-            throw new IllegalStateException("Stack overflow size " + (pointer + 1) + " reached");
-        }
-
-        VanillaStateLayer.capture(vanillaLayer, stack[pointer++].set(this));
-        return this;
+    @Override
+    public CowDepths cowDepths() {
+        return cow;
     }
 
-    public AlphaStateStack pop() {
-        if(pointer == 0) {
-            throw new IllegalStateException("Stack underflow");
-        }
+    @Override
+    public boolean slotChanged(int slot) {
+        return VanillaStateLayer.isHeld(vanillaLayer) || !sameAs(stack[slot]);
+    }
 
-        final AlphaState saved = stack[--pointer];
+    @Override
+    public void captureSlot(int s) {
+        VanillaStateLayer.capture(vanillaLayer, stack[s].set(this));
+    }
+
+    @Override
+    public void restoreSlot(int s) {
+        final AlphaState saved = stack[s];
         if (!VanillaStateLayer.restore(vanillaLayer, saved)) {
             set(saved);
         }
-        return this;
+    }
+
+    @Override
+    public boolean topSlotChanged() {
+        return !cow.isEmpty() && !sameAs(stack[cow.top()]);
     }
 
     public AlphaState readEffective(AlphaState out) {
@@ -48,7 +54,8 @@ public class AlphaStateStack extends AlphaState implements IStateStack<AlphaStat
         return out;
     }
 
-    public boolean isEmpty() {
-        return pointer == 0;
+    @Override
+    public int stackId() {
+        return cow.id;
     }
 }

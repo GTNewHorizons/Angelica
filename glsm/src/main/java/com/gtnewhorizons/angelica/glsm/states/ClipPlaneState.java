@@ -27,10 +27,16 @@ public class ClipPlaneState {
         dest[3] = tempPlane.w;
     }
 
-    /** Writes the 4-component eye-space plane equation into {@code buf} at its current position. */
-    public void putEyePlane(int index, FloatBuffer buf) {
-        final float[] p = eyePlanes[index];
-        buf.put(p[0]).put(p[1]).put(p[2]).put(p[3]);
+    // Vulkan and clip emulation have no per-distance enable: a disabled plane must read as distance 0.
+    public void putEffectivePlanes(int enabledMask, FloatBuffer buf) {
+        for (int i = 0; i < eyePlanes.length; i++) {
+            if ((enabledMask & (1 << i)) != 0) {
+                final float[] p = eyePlanes[i];
+                buf.put(p[0]).put(p[1]).put(p[2]).put(p[3]);
+            } else {
+                buf.put(0f).put(0f).put(0f).put(0f);
+            }
+        }
     }
 
     public void getEyePlane(int index, DoubleBuffer buf) {

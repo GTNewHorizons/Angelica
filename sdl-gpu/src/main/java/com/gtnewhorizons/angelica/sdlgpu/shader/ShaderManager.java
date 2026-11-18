@@ -4,18 +4,25 @@ import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.GlslTransformUtils;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.PerFrameUniformBlock;
-import com.gtnewhorizons.angelica.glsm.hooks.ShaderWorkSubmitter;
+import com.gtnewhorizons.angelica.glsm.hooks.PerFrameUniformBlock.Member;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess.Edit;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderCacheIO;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderDiskCache;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderIndex;
 import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
+import com.gtnewhorizons.angelica.glsm.threading.AngelicaWorkers;
+import com.gtnewhorizons.angelica.sdlgpu.compute.VertexWriteReplayer;
 import com.gtnewhorizons.angelica.sdlgpu.device.Device;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
+import com.gtnewhorizons.angelica.sdlgpu.shader.cross.CrossCompileCache;
 import org.taumc.glsl.grammar.GLSLParser;
 import com.gtnewhorizons.angelica.sdlgpu.shader.cross.CrossCompileUtil;
 import com.gtnewhorizons.angelica.sdlgpu.shader.dxbc.DxbcCrossCompile;
 import com.gtnewhorizons.angelica.sdlgpu.shader.msl.MslCrossCompile;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.Nullable;
 import org.lwjgl.sdl.SDL_GPUComputePipelineCreateInfo;
 import org.lwjgl.sdl.SDL_GPUShaderCreateInfo;
 import org.lwjgl.sdl.SDLError;
@@ -49,6 +56,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
+import java.util.function.Supplier;
 
 import static org.lwjgl.sdl.SDLGPU.*;
 import static org.lwjgl.system.MemoryStack.*;
@@ -60,6 +68,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntArrays;
 import it.unimi.dsi.fastutil.ints.IntIterator;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
@@ -83,32 +92,96 @@ public final class ShaderManager {
     private final Int2ObjectOpenHashMap<ShaderObject> shaderObjects = new Int2ObjectOpenHashMap<>();
     private final Int2ObjectOpenHashMap<ProgramObject> programObjects = new Int2ObjectOpenHashMap<>();
 
-    private record PrewarmKey(String source, int glShaderType) {}
-    private record PrewarmEntry(byte[] remappedSpirv, StageReflection reflection, GraphicsBindingMap graphicsBindingMap, Set<String> boolUniforms, String transformedSource) {}
+    private record VertexInputSetKey(int mask, int[] vecSize, int[] baseType) {
+        @Override public boolean equals(Object o) {
+            if (!(o instanceof VertexInputSetKey k)) return false;
+            return mask == k.mask && Arrays.equals(vecSize, k.vecSize) && Arrays.equals(baseType, k.baseType);
+        }
+        @Override public int hashCode() {
+            return (mask * 31 + Arrays.hashCode(vecSize)) * 31 + Arrays.hashCode(baseType);
+        }
+    }
+
+    private final HashMap<VertexInputSetKey, Integer> vertexInputSetIds = new HashMap<>();
+    private int nextVertexInputSetId = 1;
+
+    private int internVertexInputSet(int mask, int[] vecSize, int[] baseType) {
+        final VertexInputSetKey key = new VertexInputSetKey(mask, vecSize.clone(), baseType.clone());
+        final Integer existing = vertexInputSetIds.get(key);
+        if (existing != null) return existing;
+        final int id = nextVertexInputSetId++;
+        vertexInputSetIds.put(key, id);
+        return id;
+    }
+
+    private record SourceKey(String source, int glShaderType, PerFrameUniformBlock perFrame, PerFrameUniformBlock perPass) {}
     private record PrewarmHit(ByteBuffer spirv, StageReflection reflection, GraphicsBindingMap graphicsBindingMap, Set<String> boolUniforms, String transformedSource) {}
     private static final int PREWARM_CACHE_MAX = 256;
-    private static final Object2ObjectLinkedOpenHashMap<PrewarmKey, PrewarmEntry> PREWARM_CACHE = new Object2ObjectLinkedOpenHashMap<>();
+    private static final Object2ObjectLinkedOpenHashMap<SourceKey, ShaderStageSerializer.Stage> PREWARM_CACHE = new Object2ObjectLinkedOpenHashMap<>();
 
-    private record TransformKey(String source, int glShaderType, PerFrameUniformBlock perFrame, PerFrameUniformBlock perPass) {}
-    private record TransformEntry(String source, Set<String> boolUniforms) {}
     private static final int TRANSFORM_CACHE_MAX = 256;
-    private static final Object2ObjectLinkedOpenHashMap<TransformKey, TransformEntry> TRANSFORM_CACHE = new Object2ObjectLinkedOpenHashMap<>();
+    private static final Object2ObjectLinkedOpenHashMap<SourceKey, PrewarmTransformResult> TRANSFORM_CACHE = new Object2ObjectLinkedOpenHashMap<>();
 
     public static void clearPrewarmCache() {
         synchronized (PREWARM_CACHE) { PREWARM_CACHE.clear(); }
         synchronized (TRANSFORM_CACHE) { TRANSFORM_CACHE.clear(); }
     }
 
+    static ShaderDiskCache.Key stageKey(String source, int glShaderType) {
+        return ShaderDiskCache.key("sdl-stage").str(SpirvCompiler.toolchainId()).str(CrossCompileUtil.spvcId()).str(source).i(glShaderType);
+    }
+
+    static ShaderDiskCache.Key prewarmKey(String source, int glShaderType, PerFrameUniformBlock perFrame, PerFrameUniformBlock perPass) {
+        return appendBlocks(ShaderDiskCache.key("sdl-prewarm").str(SpirvCompiler.toolchainId()).str(CrossCompileUtil.spvcId()).str(source).i(glShaderType), perFrame, perPass);
+    }
+
+    static ShaderDiskCache.Key transformDiskKey(String source, int glShaderType, PerFrameUniformBlock perFrame, PerFrameUniformBlock perPass) {
+        return appendBlocks(ShaderDiskCache.key("sdl-transform").str(source).i(glShaderType), perFrame, perPass);
+    }
+
+    private static ShaderDiskCache.Key appendBlocks(ShaderDiskCache.Key key, PerFrameUniformBlock perFrame, PerFrameUniformBlock perPass) {
+        appendBlock(key, perFrame);
+        appendBlock(key, perPass);
+        return key;
+    }
+
+    private static void appendBlock(ShaderDiskCache.Key key, PerFrameUniformBlock block) {
+        if (block == null) {
+            key.i(-1);
+            return;
+        }
+        key.i(block.members().size());
+        for (Member m : block.members()) key.str(m.name()).str(m.type().name());
+    }
+
+    private static boolean isGraphics(int glShaderType) {
+        return glShaderType == GL20.GL_VERTEX_SHADER || glShaderType == GL20.GL_FRAGMENT_SHADER;
+    }
+
+    private static ShaderStageSerializer.Stage loadStage(ShaderDiskCache.Key key) {
+        final byte[] payload = ShaderDiskCache.get(key);
+        return payload == null ? null : ShaderStageSerializer.decode(payload);
+    }
+
+    private static PrewarmTransformResult loadTransform(ShaderDiskCache.Key key) {
+        final byte[] payload = ShaderDiskCache.get(key);
+        return payload == null ? null : ShaderStageSerializer.decodeTransform(payload);
+    }
+
+    private static void warnSeparateSamplerOnHit(StageReflection reflection, int glShaderType) {
+        if (!reflection.extraUniformNames().isEmpty()) {
+            warnSeparateSampler(glShaderType == GL20.GL_VERTEX_SHADER ? "vertex" : "fragment");
+        }
+    }
+
     private static PrewarmHit lookupPrewarm(String src, int glShaderType) {
-        final PrewarmEntry e;
+        final ShaderStageSerializer.Stage e;
         synchronized (PREWARM_CACHE) {
-            e = PREWARM_CACHE.getAndMoveToFirst(new PrewarmKey(src, glShaderType));
+            e = PREWARM_CACHE.getAndMoveToFirst(new SourceKey(src, glShaderType, GLSMHooks.perFrameUniformBlock, GLSMHooks.perPassUniformBlock));
         }
         if (e == null) return null;
         // per-hit copy: linkProgram patches the returned SPIR-V in place (applyVaryingMatch / applyAttribLocationsAndInputMask)
-        final ByteBuffer copy = memAlloc(e.remappedSpirv().length);
-        copy.put(e.remappedSpirv()).flip();
-        return new PrewarmHit(copy, e.reflection(), e.graphicsBindingMap(), e.boolUniforms(), e.transformedSource());
+        return new PrewarmHit(ShaderCacheIO.toNative(e.spirv()), e.reflection(), e.bindingMap(), e.boolUniforms(), e.source());
     }
 
     public ShaderManager(Device device) {
@@ -124,6 +197,9 @@ public final class ShaderManager {
     public void shaderSource(int shader, CharSequence source) {
         final ShaderObject obj = shaderObjects.get(shader);
         if (obj == null) return;
+        final Runnable barrier = GLSMHooks.uniformBlockBarrier;
+        if (barrier != null && !AngelicaWorkers.isWorkerThread()) barrier.run();
+        discardSpirvFuture(obj);
 
         String raw = source.toString();
         if (!raw.isEmpty() && raw.charAt(raw.length() - 1) == '\0') {
@@ -136,57 +212,91 @@ public final class ShaderManager {
             obj.reflection = hit.reflection();
             obj.graphicsBindingMap = hit.graphicsBindingMap();
             obj.boolUniforms = hit.boolUniforms();
-            obj.spirvFuture = CompletableFuture.completedFuture(new SpirvCompiler.Result(hit.spirv(), null, null));
+            obj.spirvFuture = CompletableFuture.completedFuture(new AsyncCompile(new SpirvCompiler.Result(hit.spirv(), null, null), hit.graphicsBindingMap(), hit.reflection()));
             return;
         }
 
-        final TransformKey transformKey = new TransformKey(raw, obj.type, GLSMHooks.perFrameUniformBlock, GLSMHooks.perPassUniformBlock);
-        TransformEntry transformed;
+        final PerFrameUniformBlock perFrame = GLSMHooks.perFrameUniformBlock;
+        final PerFrameUniformBlock perPass = GLSMHooks.perPassUniformBlock;
+        final SourceKey transformKey = new SourceKey(raw, obj.type, perFrame, perPass);
+        PrewarmTransformResult transformed;
         synchronized (TRANSFORM_CACHE) {
             transformed = TRANSFORM_CACHE.getAndMoveToFirst(transformKey);
         }
         if (transformed == null) {
-            final GlslVulkanPreprocess.Result pre = GlslVulkanPreprocess.run(raw, obj.type, "shader" + shader, true);
-            String src = pre != null ? pre.rewrittenSource() : raw;
-            if (obj.isVertex()) {
-                src = ClipZRemap.injectGLToVulkanClipZ(src);
+            final ShaderDiskCache.Key diskKey = ShaderDiskCache.isEnabled() ? transformDiskKey(raw, obj.type, perFrame, perPass) : null;
+            if (diskKey != null) transformed = loadTransform(diskKey);
+            if (transformed == null) {
+                transformed = transformOrNull(raw, obj.type, "shader" + shader, perFrame, perPass);
+                if (transformed == null) transformed = new PrewarmTransformResult(raw, Set.of());
+                else if (diskKey != null) ShaderDiskCache.put(diskKey, ShaderStageSerializer.encodeTransform(transformed.source(), transformed.boolUniforms()));
             }
-            src = SamplerStripper.stripUnused(src);
-            if (obj.type == GL20.GL_VERTEX_SHADER || obj.type == GL20.GL_FRAGMENT_SHADER) {
-                src = PerFrameBlockInjector.inject(src, GLSMHooks.perFrameUniformBlock, GLSMHooks.perPassUniformBlock);
-            }
-            transformed = new TransformEntry(src, pre != null ? pre.boolUniforms() : Set.of());
-            synchronized (TRANSFORM_CACHE) {
-                TRANSFORM_CACHE.putAndMoveToFirst(transformKey, transformed);
-                while (TRANSFORM_CACHE.size() > TRANSFORM_CACHE_MAX) TRANSFORM_CACHE.removeLast();
-            }
+            ShaderCacheIO.lruPut(TRANSFORM_CACHE, transformKey, transformed, TRANSFORM_CACHE_MAX);
         }
         obj.boolUniforms = transformed.boolUniforms();
         obj.source = transformed.source();
 
-        final ShaderWorkSubmitter submitter = GLSMHooks.shaderWorkSubmitter;
-        if (submitter != null) {
-            final int shaderKind = shaderKindFor(obj);
-            final int glType = obj.type;
-            final String finalSrc = obj.source;
-            obj.spirvFuture = submitter.submit(() -> {
-                final SpirvCompiler.Result r = SpirvCompiler.compile(finalSrc, shaderKind, "shader" + shader, SpirvCompiler.Options.vulkanForced460Core());
-                if (r.spirv() != null && (glType == GL20.GL_VERTEX_SHADER || glType == GL20.GL_FRAGMENT_SHADER)) {
-                    obj.graphicsBindingMap = remapSpirvForSDLGPU(r.spirv(), glType);
-                    obj.reflection = reflectStage(r.spirv(), glType == GL20.GL_VERTEX_SHADER);
-                }
-                return r;
-            });
-        } else {
-            obj.spirvFuture = null;
+        final int shaderKind = shaderKindFor(obj);
+        final int glType = obj.type;
+        final String finalSrc = obj.source;
+        final QueuedCompile compile = new QueuedCompile(() -> compileStageAsync(finalSrc, shaderKind, glType, shader));
+        AngelicaWorkers.run(compile);
+        obj.queuedCompile = compile;
+        obj.spirvFuture = compile.result;
+    }
+
+    private static final class QueuedCompile implements Runnable {
+        private final AtomicBoolean claimed = new AtomicBoolean();
+        private final Supplier<AsyncCompile> work;
+        final CompletableFuture<AsyncCompile> result = new CompletableFuture<>();
+
+        QueuedCompile(Supplier<AsyncCompile> work) {
+            this.work = work;
         }
+
+        @Override
+        public void run() {
+            if (!claimed.compareAndSet(false, true)) return;
+            try {
+                result.complete(work.get());
+            } catch (Throwable t) {
+                result.completeExceptionally(t);
+            }
+        }
+
+        /** Stops the compile if no thread has started it; false when it is running or done. */
+        boolean cancel() {
+            return claimed.compareAndSet(false, true);
+        }
+    }
+
+    private static AsyncCompile compileStageAsync(String src, int shaderKind, int glType, int shader) {
+        final boolean graphics = isGraphics(glType);
+        final ShaderDiskCache.Key diskKey = graphics && ShaderDiskCache.isEnabled() ? stageKey(src, glType) : null;
+        if (diskKey != null) {
+            final ShaderStageSerializer.Stage d = loadStage(diskKey);
+            if (d != null) {
+                warnSeparateSamplerOnHit(d.reflection(), glType);
+                return new AsyncCompile(new SpirvCompiler.Result(ShaderCacheIO.toNative(d.spirv()), null, null), d.bindingMap(), d.reflection());
+            }
+        }
+        final SpirvCompiler.Result r = SpirvCompiler.compile(src, shaderKind, "shader" + shader, SpirvCompiler.Options.vulkanForced460Core(), diskKey == null);
+        if (r.spirv() != null && graphics) {
+            final GraphicsBindingMap map = remapSpirvForSDLGPU(r.spirv(), glType);
+            final StageReflection reflection = reflectStage(r.spirv(), glType == GL20.GL_VERTEX_SHADER);
+            if (diskKey != null && reflection != StageReflection.EMPTY) {
+                ShaderDiskCache.put(diskKey, ShaderStageSerializer.encode(ShaderCacheIO.toHeap(r.spirv()), reflection, map, null, null));
+            }
+            return new AsyncCompile(r, map, reflection);
+        }
+        return new AsyncCompile(r, null, null);
     }
 
     private static int shaderKindFor(ShaderObject obj) {
         return shaderKindFor(obj.type);
     }
 
-    private static int shaderKindFor(int glShaderType) {
+    static int shaderKindFor(int glShaderType) {
         if (glShaderType == GL20.GL_VERTEX_SHADER) return Shaderc.shaderc_vertex_shader;
         if (glShaderType == GL32.GL_GEOMETRY_SHADER) return Shaderc.shaderc_geometry_shader;
         if (glShaderType == GL43.GL_COMPUTE_SHADER) return Shaderc.shaderc_compute_shader;
@@ -195,51 +305,63 @@ public final class ShaderManager {
 
     public record PrewarmTransformResult(String source, Set<String> boolUniforms) {}
 
-    public static String applyPrewarmTransforms(String transformedSource, int glShaderType) {
-        return applyPrewarmTransformsFull(transformedSource, glShaderType).source();
+    public static PrewarmTransformResult applyPrewarmTransformsFull(String transformedSource, int glShaderType, PerFrameUniformBlock perFrame, PerFrameUniformBlock perPass) {
+        final PrewarmTransformResult r = transformOrNull(transformedSource, glShaderType, "prewarm", perFrame, perPass);
+        return r != null ? r : new PrewarmTransformResult(transformedSource, Set.of());
     }
 
-    public static PrewarmTransformResult applyPrewarmTransformsFull(String transformedSource, int glShaderType) {
+    private static PrewarmTransformResult transformOrNull(String transformedSource, int glShaderType, String debugName, PerFrameUniformBlock perFrame, PerFrameUniformBlock perPass) {
+        final String source = preprocessed(transformedSource, glShaderType);
         final GLSLParser.Translation_unitContext root;
         try {
-            root = GlslTransformUtils.parseFullQuiet(transformedSource);
+            root = GlslTransformUtils.parseFullQuiet(source);
         } catch (Exception e) {
-            return new PrewarmTransformResult(transformedSource, Set.of());
+            LOG.warn("glsl-transformation-lib parse failed for '{}': {}", debugName, e.getMessage());
+            return null;
         }
-        final List<Edit> edits = new ArrayList<>();
-        if (glShaderType == GL20.GL_VERTEX_SHADER || glShaderType == GL20.GL_FRAGMENT_SHADER) {
-            PerFrameBlockInjector.collectEdits(root, GLSMHooks.perFrameUniformBlock, GLSMHooks.perPassUniformBlock, edits);
-        }
-        final GlslVulkanPreprocess.Metadata meta = GlslVulkanPreprocess.collectEdits(transformedSource, root, glShaderType, "prewarm", true, edits);
-        if (glShaderType == GL20.GL_VERTEX_SHADER) {
-            ClipZRemap.collectEdits(root, edits);
-        }
-        SamplerStripper.collectEdits(root, transformedSource, edits);
-        final String s = edits.isEmpty() ? transformedSource : GlslVulkanPreprocess.applyEdits(transformedSource, edits);
-        return new PrewarmTransformResult(s, meta.boolUniforms());
+        return transform(source, 0, root, glShaderType, debugName, perFrame, perPass);
     }
 
-    public static PrewarmTransformResult applyPrewarmTransformsFull(String finalSource, GLSLParser.Translation_unitContext bodyTree, int headerLen, int glShaderType) {
-        final String header = finalSource.substring(0, headerLen);
-        final String body = finalSource.substring(headerLen);
+    static String preprocessed(String source, int glShaderType) {
+        final String preprocessed = SpirvCompiler.preprocess(source, shaderKindFor(glShaderType), "transform", SpirvCompiler.Options.vulkanForced460Core());
+        return preprocessed != null ? preprocessed : source;
+    }
+
+    public static PrewarmTransformResult applyPrewarmTransformsFull(String finalSource, GLSLParser.Translation_unitContext bodyTree, int headerLen, int glShaderType, PerFrameUniformBlock perFrame, PerFrameUniformBlock perPass) {
+        return transform(finalSource, headerLen, bodyTree, glShaderType, "prewarm", perFrame, perPass);
+    }
+
+    private static PrewarmTransformResult transform(String source, int headerLen, GLSLParser.Translation_unitContext tree, int glShaderType, String debugName, PerFrameUniformBlock perFrame, PerFrameUniformBlock perPass) {
+        final String body = source.substring(headerLen);
+        final ShaderIndex index = new ShaderIndex(tree, body);
         final List<Edit> edits = new ArrayList<>();
-        if (glShaderType == GL20.GL_VERTEX_SHADER || glShaderType == GL20.GL_FRAGMENT_SHADER) {
-            PerFrameBlockInjector.collectEdits(bodyTree, GLSMHooks.perFrameUniformBlock, GLSMHooks.perPassUniformBlock, edits);
+        if (isGraphics(glShaderType)) {
+            PerFrameBlockInjector.collectEdits(index, perFrame, perPass, edits);
         }
-        final GlslVulkanPreprocess.Metadata meta = GlslVulkanPreprocess.collectEdits(null, bodyTree, glShaderType, "prewarm", true, edits);
-        if (glShaderType == GL20.GL_VERTEX_SHADER) {
-            ClipZRemap.collectEdits(bodyTree, edits);
+        final GlslVulkanPreprocess.Metadata meta = GlslVulkanPreprocess.collectEdits(index, glShaderType, debugName, true, edits);
+        if (glShaderType == GL20.GL_VERTEX_SHADER && !ClipZRemap.collectEdits(tree, edits)) {
+            LOG.warn("No main() found in vertex shader '{}'; its clip-space depth stays in OpenGL's -1..1 range", debugName);
         }
-        SamplerStripper.collectEdits(bodyTree, body, edits);
-        String outHeader = header;
-        if (meta.needsSamplerless()) {
+        final List<TextureDeclarations.Declaration> textureDeclarations = TextureDeclarations.collect(index);
+        final Set<String> strippedSamplers = SamplerStripper.collectEdits(index, textureDeclarations, edits);
+        final boolean movedSamplers = isGraphics(glShaderType) && SamplerOverflow.collectEdits(index, textureDeclarations, strippedSamplers, debugName, edits);
+        if (glShaderType == GL20.GL_FRAGMENT_SHADER) {
+            DerivativeHoisting.collectEdits(index, edits);
+        }
+        final boolean needsSamplerless = meta.needsSamplerless() || movedSamplers;
+        if (headerLen == 0) {
+            if (movedSamplers && !meta.needsSamplerless()) GlslVulkanPreprocess.addSamplerlessExtension(index, edits);
+            return new PrewarmTransformResult(GlslVulkanPreprocess.applyEdits(source, edits), meta.boolUniforms());
+        }
+        if (edits.isEmpty() && !needsSamplerless) {
+            return new PrewarmTransformResult(source, meta.boolUniforms());
+        }
+        String header = source.substring(0, headerLen);
+        if (needsSamplerless) {
             final int nl = header.indexOf('\n');
-            outHeader = header.substring(0, nl) + "\n" + GlslVulkanPreprocess.SAMPLERLESS_EXTENSION + header.substring(nl);
+            header = header.substring(0, nl) + "\n" + GlslVulkanPreprocess.SAMPLERLESS_EXTENSION + header.substring(nl);
         }
-        if (edits.isEmpty() && outHeader == header) {
-            return new PrewarmTransformResult(finalSource, meta.boolUniforms());
-        }
-        return new PrewarmTransformResult(outHeader + GlslVulkanPreprocess.applyEdits(body, edits), meta.boolUniforms());
+        return new PrewarmTransformResult(header + GlslVulkanPreprocess.applyEdits(body, edits), meta.boolUniforms());
     }
 
     public static void prewarmSpirv(String transformedSource, int glShaderType) {
@@ -252,31 +374,39 @@ public final class ShaderManager {
             return;
         }
 
-        final PrewarmKey key = new PrewarmKey(transformedSource, glShaderType);
+        final PerFrameUniformBlock perFrame = GLSMHooks.perFrameUniformBlock;
+        final PerFrameUniformBlock perPass = GLSMHooks.perPassUniformBlock;
+        final SourceKey key = new SourceKey(transformedSource, glShaderType, perFrame, perPass);
         synchronized (PREWARM_CACHE) {
             if (PREWARM_CACHE.containsKey(key)) return;
         }
 
-        final PrewarmTransformResult pre = bodyTree != null
-            ? applyPrewarmTransformsFull(transformedSource, bodyTree, headerLen, glShaderType)
-            : applyPrewarmTransformsFull(transformedSource, glShaderType);
+        final boolean graphics = isGraphics(glShaderType);
+        final ShaderDiskCache.Key diskKey = ShaderDiskCache.isEnabled() ? prewarmKey(transformedSource, glShaderType, perFrame, perPass) : null;
+        if (diskKey != null) {
+            final ShaderStageSerializer.Stage d = loadStage(diskKey);
+            if (d != null) {
+                if (graphics) warnSeparateSamplerOnHit(d.reflection(), glShaderType);
+                ShaderCacheIO.lruPut(PREWARM_CACHE, key, graphics ? d : new ShaderStageSerializer.Stage(d.spirv(), StageReflection.EMPTY, GraphicsBindingMap.EMPTY, d.boolUniforms(), d.source()), PREWARM_CACHE_MAX);
+                return;
+            }
+        }
 
-        final SpirvCompiler.Result r = SpirvCompiler.compile(pre.source(), shaderKindFor(glShaderType), "prewarm", SpirvCompiler.Options.vulkanForced460Core());
+        final PrewarmTransformResult pre = bodyTree != null
+            ? applyPrewarmTransformsFull(transformedSource, bodyTree, headerLen, glShaderType, perFrame, perPass)
+            : applyPrewarmTransformsFull(transformedSource, glShaderType, perFrame, perPass);
+
+        final SpirvCompiler.Result r = SpirvCompiler.compile(pre.source(), shaderKindFor(glShaderType), "prewarm", SpirvCompiler.Options.vulkanForced460Core(), diskKey == null);
         if (r.spirv() == null) return;
 
         try {
-            GraphicsBindingMap graphicsBindingMap = GraphicsBindingMap.EMPTY;
-            if (glShaderType == GL20.GL_VERTEX_SHADER || glShaderType == GL20.GL_FRAGMENT_SHADER) {
-                graphicsBindingMap = remapSpirvForSDLGPU(r.spirv(), glShaderType);
-            }
-            final StageReflection reflection = (glShaderType == GL20.GL_VERTEX_SHADER || glShaderType == GL20.GL_FRAGMENT_SHADER)
-                ? reflectStage(r.spirv(), glShaderType == GL20.GL_VERTEX_SHADER) : StageReflection.EMPTY;
+            final GraphicsBindingMap graphicsBindingMap = graphics ? remapSpirvForSDLGPU(r.spirv(), glShaderType) : GraphicsBindingMap.EMPTY;
+            final StageReflection reflection = graphics ? reflectStage(r.spirv(), glShaderType == GL20.GL_VERTEX_SHADER) : StageReflection.EMPTY;
 
-            final byte[] heap = new byte[r.spirv().remaining()];
-            r.spirv().duplicate().get(heap);
-            synchronized (PREWARM_CACHE) {
-                PREWARM_CACHE.putAndMoveToFirst(key, new PrewarmEntry(heap, reflection, graphicsBindingMap, pre.boolUniforms(), pre.source()));
-                while (PREWARM_CACHE.size() > PREWARM_CACHE_MAX) PREWARM_CACHE.removeLast();
+            final byte[] heap = ShaderCacheIO.toHeap(r.spirv());
+            ShaderCacheIO.lruPut(PREWARM_CACHE, key, new ShaderStageSerializer.Stage(heap, reflection, graphicsBindingMap, pre.boolUniforms(), pre.source()), PREWARM_CACHE_MAX);
+            if (diskKey != null && (!graphics || reflection != StageReflection.EMPTY)) {
+                ShaderDiskCache.put(diskKey, ShaderStageSerializer.encode(heap, reflection, graphicsBindingMap, pre.boolUniforms(), pre.source()));
             }
         } finally {
             memFree(r.spirv());
@@ -290,8 +420,15 @@ public final class ShaderManager {
         final SpirvCompiler.Result r;
         final boolean alreadyRemapped;
         if (obj.spirvFuture != null) {
-            r = obj.spirvFuture.join();
+            if (obj.queuedCompile != null) {
+                obj.queuedCompile.run();
+                obj.queuedCompile = null;
+            }
+            final AsyncCompile compiled = obj.spirvFuture.join();
             obj.spirvFuture = null;
+            r = compiled.result();
+            if (compiled.graphicsBindingMap() != null) obj.graphicsBindingMap = compiled.graphicsBindingMap();
+            if (compiled.reflection() != null) obj.reflection = compiled.reflection();
             alreadyRemapped = true;
         } else {
             r = SpirvCompiler.compile(obj.source, shaderKindFor(obj), "shader" + shader, SpirvCompiler.Options.vulkanForced460Core());
@@ -303,8 +440,9 @@ public final class ShaderManager {
             LOG.error("Shader {} compilation failed: {} (dump={})", shader, obj.infoLog, r.dumpPath());
             return;
         }
+        if (obj.spirv != null && obj.spirv != r.spirv()) memFree(obj.spirv);
         obj.spirv = r.spirv();
-        if (!alreadyRemapped && (obj.type == GL20.GL_VERTEX_SHADER || obj.type == GL20.GL_FRAGMENT_SHADER)) {
+        if (!alreadyRemapped && isGraphics(obj.type)) {
             obj.graphicsBindingMap = remapSpirvForSDLGPU(obj.spirv, obj.type);
             obj.reflection = reflectStage(obj.spirv, obj.isVertex());
         }
@@ -320,6 +458,7 @@ public final class ShaderManager {
             return;
         }
         shaderObjects.remove(shader);
+        discardSpirvFuture(obj);
         if (obj.spirv != null) memFree(obj.spirv);
     }
 
@@ -330,9 +469,26 @@ public final class ShaderManager {
         if (obj.attachCount > 0) obj.attachCount--;
         if (obj.deletePending && obj.attachCount == 0) {
             shaderObjects.remove(shader);
+            discardSpirvFuture(obj);
             if (obj.spirv != null) memFree(obj.spirv);
         }
     }
+
+    private static void discardSpirvFuture(ShaderObject obj) {
+        final CompletableFuture<AsyncCompile> future = obj.spirvFuture;
+        if (future == null) return;
+        obj.spirvFuture = null;
+        final QueuedCompile queued = obj.queuedCompile;
+        obj.queuedCompile = null;
+        if (queued != null && queued.cancel()) return;
+        future.thenAccept(ShaderManager::freeSpirvResult);
+    }
+
+    private static void freeSpirvResult(AsyncCompile compiled) {
+        if (compiled != null && compiled.result().spirv() != null) memFree(compiled.result().spirv());
+    }
+
+    private record AsyncCompile(SpirvCompiler.Result result, GraphicsBindingMap graphicsBindingMap, StageReflection reflection) {}
 
     public boolean isCompiled(int shader) {
         final ShaderObject obj = shaderObjects.get(shader);
@@ -379,6 +535,10 @@ public final class ShaderManager {
         shObj.attachCount++;
     }
 
+    private static String stageLinkError(String stage, ShaderObject obj) {
+        return stage + (obj == null ? " shader missing" : " shader not compiled");
+    }
+
     public void linkProgram(int program) {
         final ProgramObject prog = programObjects.get(program);
         if (prog == null) return;
@@ -392,9 +552,11 @@ public final class ShaderManager {
         final ShaderObject fs = shaderObjects.get(prog.fragmentShader);
         final ShaderObject gs = prog.geometryShader != 0 ? shaderObjects.get(prog.geometryShader) : null;
 
-        if (vs == null || !vs.compiled || fs == null || !fs.compiled) {
+        final boolean vertexBad = vs == null || !vs.compiled;
+        final boolean fragmentBad = fs == null || !fs.compiled;
+        if (vertexBad || fragmentBad) {
             prog.linked = false;
-            prog.infoLog = "Shader not compiled";
+            prog.infoLog = !fragmentBad ? stageLinkError("Vertex", vs) : !vertexBad ? stageLinkError("Fragment", fs) : stageLinkError("Vertex", vs) + "; " + stageLinkError("Fragment", fs);
             return;
         }
 
@@ -409,12 +571,14 @@ public final class ShaderManager {
         prog.vertexSpirv = copyBuffer(vs.spirv);
         prog.fragmentSpirv = copyBuffer(fs.spirv);
         prog.vertexSource = vs.source;
+        prog.fragmentSource = fs.source;
         prog.vertexReflection = vs.reflection;
         prog.maxFragOutputLocation = fs.reflection.maxOutputLocation();
         dumpLinkedSource(program, vs.source, fs.source);
 
-        applyVaryingMatch(prog, vs.reflection, fs.reflection);
+        applyVaryingMatch(prog.fragmentSpirv, vs.reflection, fs.reflection);
         applyAttribLocationsAndInputMask(prog, vs.reflection);
+        prog.vertexInputSetId = internVertexInputSet(prog.vertexInputMask, prog.vertexInputVecSize, prog.vertexInputBaseType);
 
         prog.vertexResources = vs.reflection.counts();
         prog.fragmentResources = fs.reflection.counts();
@@ -426,11 +590,10 @@ public final class ShaderManager {
         prog.allSamplerNames.clear();
         prog.allSamplerNames.addAll(prog.vertexSamplerNames);
         prog.allSamplerNames.addAll(prog.fragmentSamplerNames);
-        prog.vertexImageNames = vs.reflection.storageImageNames();
-        prog.fragmentImageNames = fs.reflection.storageImageNames();
         prog.allImageNames.clear();
-        prog.allImageNames.addAll(prog.vertexImageNames);
-        prog.allImageNames.addAll(prog.fragmentImageNames);
+        prog.hasReadMovedSamplers = false;
+        applyStageImages(prog, vs.reflection, true);
+        applyStageImages(prog, fs.reflection, false);
         prog.imageTextureUnits.clear();
         prog.boolUniforms.clear();
         prog.boolUniforms.addAll(vs.boolUniforms);
@@ -448,6 +611,14 @@ public final class ShaderManager {
             prog.infoLog = "graphics-stage RW storage image present";
             return;
         }
+        String overBudget = slotBudgetError("vertex", prog.vertexResources, prog.vertexImageIsMovedSampler);
+        if (overBudget == null) overBudget = slotBudgetError("fragment", prog.fragmentResources, prog.fragmentImageIsMovedSampler);
+        if (overBudget != null) {
+            LOG.error("Program {}: {}. Rejecting link.", program, overBudget);
+            prog.linked = false;
+            prog.infoLog = overBudget;
+            return;
+        }
 
         prog.linked = true;
         prog.infoLog = "";
@@ -459,11 +630,63 @@ public final class ShaderManager {
         registerExtraNames(prog, vs.reflection);
         registerExtraNames(prog, fs.reflection);
 
-        for (final String name : prog.allSamplerNames) ensureLocation(prog, name);
+        registerSamplerLocations(prog, vs.reflection, fs.reflection);
         for (final String name : prog.allImageNames) ensureLocation(prog, name);
+        registerMovedSamplerLocations(prog, prog.vertexImageNames, prog.vertexMovedSamplerRead);
+        registerMovedSamplerLocations(prog, prog.fragmentImageNames, prog.fragmentMovedSamplerRead);
 
         prog.buildUniformSlotArrays();
 
+    }
+
+    private static void applyStageImages(ProgramObject prog, StageReflection stage, boolean vertex) {
+        final List<String> reflected = stage.storageImageNames();
+        final List<String> names = new ArrayList<>(reflected.size());
+        final boolean[] moved = new boolean[reflected.size()];
+        final boolean[] read = new boolean[reflected.size()];
+        for (int i = 0; i < reflected.size(); i++) {
+            final String name = reflected.get(i);
+            if (SamplerOverflow.isMoved(name)) {
+                final String original = SamplerOverflow.originalName(name);
+                names.add(original);
+                moved[i] = true;
+                read[i] = !stage.unusedSamplerNames().contains(name);
+                prog.hasReadMovedSamplers |= read[i];
+                prog.allSamplerNames.add(original);
+            } else {
+                names.add(name);
+                prog.allImageNames.add(name);
+            }
+        }
+        if (vertex) {
+            prog.vertexImageNames = names;
+            prog.vertexImageIsMovedSampler = moved;
+            prog.vertexMovedSamplerRead = read;
+        } else {
+            prog.fragmentImageNames = names;
+            prog.fragmentImageIsMovedSampler = moved;
+            prog.fragmentMovedSamplerRead = read;
+        }
+    }
+
+    private static void registerMovedSamplerLocations(ProgramObject prog, List<String> imageNames, boolean[] read) {
+        for (int i = 0; i < read.length; i++) {
+            if (read[i]) ensureLocation(prog, imageNames.get(i));
+        }
+    }
+
+    private static @Nullable String slotBudgetError(String stage, ResourceCounts counts, boolean[] movedSamplers) {
+        if (counts.numSamplers() > SamplerOverflow.SAMPLER_SLOTS) {
+            int moved = 0;
+            for (boolean m : movedSamplers) if (m) moved++;
+            final String limit = "Too many " + stage + " shader texture samplers (" + counts.numSamplers() + ", maximum " + SamplerOverflow.SAMPLER_SLOTS + ")";
+            return moved == 0 ? limit : limit + ", even after moving " + moved + " that are only read through texelFetch/textureSize to texture slots";
+        }
+        if (counts.numStorageTextures() > SamplerOverflow.TEXTURE_SLOTS) {
+            return stage + " shader reads " + counts.numStorageTextures() + " images and textures without a sampler but SDL_GPU binds at most "
+                + SamplerOverflow.TEXTURE_SLOTS + " per stage";
+        }
+        return null;
     }
 
     private void linkComputeProgram(int program, ProgramObject prog) {
@@ -494,16 +717,18 @@ public final class ShaderManager {
         prog.allSamplerNames.clear();
         prog.allSamplerNames.addAll(refl.samplerNames());
         prog.vertexImageNames = List.of();
-        prog.fragmentImageNames = refl.storageImageNames();
+        prog.vertexImageIsMovedSampler = ProgramObject.NO_FLAGS;
+        prog.vertexMovedSamplerRead = ProgramObject.NO_FLAGS;
         prog.allImageNames.clear();
-        prog.allImageNames.addAll(refl.storageImageNames());
+        prog.hasReadMovedSamplers = false;
+        applyStageImages(prog, refl, false);
         prog.imageTextureUnits.clear();
         prog.boolUniforms.clear();
         prog.boolUniforms.addAll(cs.boolUniforms);
 
         applyUboMembers(prog, refl, false);
         registerExtraNames(prog, refl);
-        for (final String name : prog.allSamplerNames) ensureLocation(prog, name);
+        registerSamplerLocations(prog, refl);
         for (final String name : prog.allImageNames) ensureLocation(prog, name);
         prog.buildUniformSlotArrays();
 
@@ -552,7 +777,7 @@ public final class ShaderManager {
             else prog.fragmentUboSize = refl.uboSize();
         }
         for (UboMember m : refl.uboMembers()) {
-            final int loc = ensureLocation(prog, m.name());
+            final int loc = ensureLocation(prog, m.name(), m.arrayLen());
             final UniformMemberInfo info = new UniformMemberInfo(
                 m.offset(), m.size(), m.arrayStride(), isVertex,
                 m.vectorSize(), m.columns(), m.baseType(), m.arrayLen()
@@ -570,7 +795,7 @@ public final class ShaderManager {
             prog.blockSize[b] = Math.max(prog.blockSize[b], block.size());
             prog.blockBinding[b] = block.binding();
             for (UboMember m : block.members()) {
-                final int loc = ensureLocation(prog, m.name());
+                final int loc = ensureLocation(prog, m.name(), m.arrayLen());
                 if (prog.blockMemberInfo[b].containsKey(loc)) continue;
                 prog.blockMemberInfo[b].put(loc, new UniformMemberInfo(
                     m.offset(), m.size(), m.arrayStride(), false,
@@ -584,19 +809,39 @@ public final class ShaderManager {
     }
 
     private static int ensureLocation(ProgramObject prog, String name) {
+        return ensureLocation(prog, name, 1);
+    }
+
+    private static int ensureLocation(ProgramObject prog, String name, int arrayLen) {
         final int existing = prog.nameToLocation.getInt(name);
-        if (existing != -1) return existing;
-        final int loc = prog.nextUniformLocation++;
+        if (existing != -1) {
+            final int registered = Math.max(1, prog.arrayLenByLocation.get(existing));
+            if (registered == arrayLen) return existing;
+            retireLocations(prog, existing, registered);
+        }
+        final int loc = prog.nextUniformLocation;
+        prog.nextUniformLocation += arrayLen;
         prog.nameToLocation.put(name, loc);
         prog.locationToName.put(loc, name);
+        for (int i = 1; i < arrayLen; i++) prog.locationToName.put(loc + i, name + "[" + i + "]");
+        if (arrayLen > 1) prog.arrayLenByLocation.put(loc, arrayLen);
         return loc;
     }
 
-    private static void applyVaryingMatch(ProgramObject prog, StageReflection vs, StageReflection fs) {
-        if (vs.vsOutputs().isEmpty() || fs.fsInputs().isEmpty() || prog.fragmentSpirv == null) return;
+    private static void retireLocations(ProgramObject prog, int base, int len) {
+        prog.arrayLenByLocation.remove(base);
+        for (int i = 0; i < len; i++) prog.locationToName.remove(base + i);
+        prog.locationToMemberInfo.remove(base);
+        prog.vertexMemberInfo.remove(base);
+        prog.fragmentMemberInfo.remove(base);
+        for (int b = 0; b < BLOCK_COUNT; b++) prog.blockMemberInfo[b].remove(base);
+    }
+
+    private static void applyVaryingMatch(ByteBuffer fragmentSpirv, StageReflection vs, StageReflection fs) {
+        if (vs.vsOutputs().isEmpty() || fs.fsInputs().isEmpty() || fragmentSpirv == null) return;
         final HashMap<String, Integer> vsOutLocs = new HashMap<>(vs.vsOutputs().size() * 2);
         for (VsOutput o : vs.vsOutputs()) vsOutLocs.put(o.name(), o.originalLocation());
-        final IntBuffer fsBuf = prog.fragmentSpirv.asIntBuffer();
+        final IntBuffer fsBuf = fragmentSpirv.asIntBuffer();
         for (FsInput fi : fs.fsInputs()) {
             final Integer vsLoc = vsOutLocs.get(fi.name());
             if (vsLoc == null || vsLoc == fi.originalLocation()) continue;
@@ -712,8 +957,52 @@ public final class ShaderManager {
         return built;
     }
 
+    private static ShaderDiskCache.Key variantKey(String vertexSource, List<UscaledRetype.Attrib> attribs) {
+        final ShaderDiskCache.Key key = ShaderDiskCache.key("sdl-vertex-variant").str(SpirvCompiler.toolchainId()).str(CrossCompileUtil.spvcId())
+            .str(vertexSource).i(attribs.size());
+        for (UscaledRetype.Attrib a : attribs) {
+            key.str(a.name()).i(a.location()).i(a.declVecSize()).i(a.boundVecSize()).i(a.signed() ? 1 : 0);
+        }
+        return key;
+    }
+
     private VertexVariant buildVertexVariant(int program, ProgramObject prog, List<UscaledRetype.Attrib> attribs) {
-        final String preprocessed = SpirvCompiler.preprocess(prog.vertexSource, Shaderc.shaderc_vertex_shader, "variant" + program, SpirvCompiler.Options.vulkanForced460Core());
+        final ShaderDiskCache.Key diskKey = ShaderDiskCache.isEnabled() ? variantKey(prog.vertexSource, attribs) : null;
+        final ShaderStageSerializer.Stage cached = diskKey != null ? loadStage(diskKey) : null;
+        final ShaderStageSerializer.Stage stage = cached != null ? cached : compileVertexVariant(program, prog.vertexSource, attribs, diskKey);
+        if (stage == null) return null;
+
+        final StageReflection refl = stage.reflection();
+        if (!sameVaryingLayout(prog.vertexReflection.vsOutputs(), refl.vsOutputs())) {
+            LOG.error("Vertex attribute conversion: program {} variant changed VS output locations; the fragment stage is patched against the base layout. Falling back to normalized coercion.", program);
+            return null;
+        }
+        final VertexVariant v = new VertexVariant();
+        v.spirv = ShaderCacheIO.toNative(stage.spirv());
+
+        final Object2IntOpenHashMap<String> bindings = new Object2IntOpenHashMap<>(prog.attribLocationBindings);
+        bindings.defaultReturnValue(-1);
+        for (UscaledRetype.Attrib a : attribs) bindings.put(a.name() + UscaledRetype.SUFFIX, a.location());
+        v.inputMask = patchAttribLocations(v.spirv, refl, bindings, v.inputVecSize, v.inputBaseType, null, null);
+        if (v.inputMask != prog.vertexInputMask) {
+            memFree(v.spirv);
+            LOG.error("Vertex attribute conversion: program {} variant resolved inputs to 0x{} but the program binds 0x{}; a renamed input landed on the wrong location. Falling back to normalized coercion.",
+                program, Integer.toHexString(v.inputMask), Integer.toHexString(prog.vertexInputMask));
+            return null;
+        }
+        v.sdlShader = createSDLShader(v.spirv, SDL_GPU_SHADERSTAGE_VERTEX, prog.vertexResources.numSamplers(), prog.vertexResources.numUBOs(), prog.vertexResources.numStorageBuffers(), prog.vertexResources.numStorageTextures());
+        if (v.sdlShader == 0) {
+            memFree(v.spirv);
+            LOG.error("Vertex attribute conversion: program {} variant shader creation failed: {}", program, SDLError.SDL_GetError());
+            return null;
+        }
+        LOG.info("Vertex attribute conversion: program {} converted {}", program, attribs);
+        if (SystemProperties.dumpShaders()) dumpVariantSource(program, stage.source());
+        return v;
+    }
+
+    private static ShaderStageSerializer.Stage compileVertexVariant(int program, String vertexSource, List<UscaledRetype.Attrib> attribs, ShaderDiskCache.Key diskKey) {
+        final String preprocessed = SpirvCompiler.preprocess(vertexSource, Shaderc.shaderc_vertex_shader, "variant" + program, SpirvCompiler.Options.vulkanForced460Core());
         if (preprocessed == null) {
             LOG.warn("Vertex attribute conversion: program {} preprocessing failed; falling back to normalized coercion, values will be scaled", program);
             return null;
@@ -731,34 +1020,86 @@ public final class ShaderManager {
         try {
             remapSpirvForSDLGPU(r.spirv(), GL20.GL_VERTEX_SHADER);
             final StageReflection refl = reflectStage(r.spirv(), true);
-            if (!sameVaryingLayout(prog.vertexReflection.vsOutputs(), refl.vsOutputs())) {
-                LOG.error("Vertex attribute conversion: program {} variant changed VS output locations; the fragment stage is patched against the base layout. Falling back to normalized coercion.", program);
-                return null;
+            final byte[] heap = ShaderCacheIO.toHeap(r.spirv());
+            if (diskKey != null && refl != StageReflection.EMPTY) {
+                ShaderDiskCache.put(diskKey, ShaderStageSerializer.encode(heap, refl, GraphicsBindingMap.EMPTY, null, src));
             }
-            final VertexVariant v = new VertexVariant();
-            v.spirv = copyBuffer(r.spirv());
+            return new ShaderStageSerializer.Stage(heap, refl, GraphicsBindingMap.EMPTY, Set.of(), src);
+        } finally {
+            memFree(r.spirv());
+        }
+    }
 
-            final Object2IntOpenHashMap<String> bindings = new Object2IntOpenHashMap<>(prog.attribLocationBindings);
-            bindings.defaultReturnValue(-1);
-            for (UscaledRetype.Attrib a : attribs) bindings.put(a.name() + UscaledRetype.SUFFIX, a.location());
-            v.inputMask = patchAttribLocations(v.spirv, refl, bindings, v.inputVecSize, v.inputBaseType, null, null);
-            if (v.inputMask != prog.vertexInputMask) {
-                memFree(v.spirv);
-                LOG.error("Vertex attribute conversion: program {} variant resolved inputs to 0x{} but the program binds 0x{}; a renamed input landed on the wrong location. Falling back to normalized coercion.",
-                    program, Integer.toHexString(v.inputMask), Integer.toHexString(prog.vertexInputMask));
-                return null;
+    public LogicOpVariant getOrBuildLogicOpVariant(int program, long key) {
+        final ProgramObject prog = programObjects.get(program);
+        if (prog == null || !prog.linked || prog.fragmentSource.isEmpty()) {
+            throw new IllegalStateException("glLogicOp variant: program " + program + " is not a linked graphics program");
+        }
+        final LogicOpVariant hit = prog.logicOpVariants.get(key);
+        if (hit != null) return hit;
+        final LogicOpVariant built = buildLogicOpVariant(program, prog, key);
+        prog.logicOpVariants.put(key, built);
+        return built;
+    }
+
+    private LogicOpVariant buildLogicOpVariant(int program, ProgramObject prog, long key) {
+        final String preprocessed = SpirvCompiler.preprocess(prog.fragmentSource, Shaderc.shaderc_fragment_shader, "logicop" + program, SpirvCompiler.Options.vulkanForced460Core());
+        if (preprocessed == null) throw new IllegalStateException("glLogicOp variant: program " + program + " fragment preprocessing failed");
+        final String src = LogicOpLowering.lower(preprocessed, key, program);
+        if (SystemProperties.dumpShaders()) dumpLogicOpSource(program, key, src);
+        final SpirvCompiler.Result r = SpirvCompiler.compile(src, Shaderc.shaderc_fragment_shader, "logicop" + program, SpirvCompiler.Options.vulkanForced460Core());
+        if (r.spirv() == null) throw new IllegalStateException("glLogicOp variant: program " + program + " failed to compile: " + r.error());
+        try {
+            final GraphicsBindingMap bindingMap = remapSpirvForSDLGPU(r.spirv(), GL20.GL_FRAGMENT_SHADER);
+            final StageReflection refl = reflectStage(r.spirv(), false);
+            final ResourceCounts base = prog.fragmentResources;
+            final ResourceCounts counts = refl.counts();
+            if (counts.numUBOs() != base.numUBOs() || counts.numStorageBuffers() != base.numStorageBuffers() || counts.numStorageTextures() != base.numStorageTextures()
+                    || !Arrays.equals(bindingMap.roStorageTextureGlSlots(), prog.fragmentGraphicsBindingMap.roStorageTextureGlSlots())
+                    || !Arrays.equals(bindingMap.roSsboGlSlots(), prog.fragmentGraphicsBindingMap.roSsboGlSlots())) {
+                throw new IllegalStateException("glLogicOp variant: program " + program + " variant resources " + counts + " differ from base " + base);
             }
-            v.sdlShader = createSDLShader(v.spirv, SDL_GPU_SHADERSTAGE_VERTEX, prog.vertexResources.numSamplers(), prog.vertexResources.numUBOs(), prog.vertexResources.numStorageBuffers(), prog.vertexResources.numStorageTextures());
-            if (v.sdlShader == 0) {
-                memFree(v.spirv);
-                LOG.error("Vertex attribute conversion: program {} variant shader creation failed: {}", program, SDLError.SDL_GetError());
-                return null;
+            final List<String> names = refl.samplerNames();
+            final List<String> baseNames = prog.fragmentSamplerNames;
+            final int extra = names.size() - baseNames.size();
+            if (extra < 0 || !names.subList(0, baseNames.size()).equals(baseNames)) {
+                throw new IllegalStateException("glLogicOp variant: program " + program + " sampler order " + names + " does not extend base " + baseNames);
             }
-            LOG.info("Vertex attribute conversion: program {} converted {}", program, attribs);
-            if (SystemProperties.dumpShaders()) dumpVariantSource(program, src);
+            final byte[] dstLocation = new byte[extra];
+            int prev = -1;
+            for (int i = 0; i < extra; i++) {
+                final String name = names.get(baseNames.size() + i);
+                if (!name.startsWith(LogicOpLowering.DST_SAMPLER_PREFIX)) {
+                    throw new IllegalStateException("glLogicOp variant: program " + program + " unexpected appended sampler " + name);
+                }
+                final int loc = Integer.parseInt(name.substring(LogicOpLowering.DST_SAMPLER_PREFIX.length()));
+                if (loc <= prev || LogicOpFormats.classAt(key, loc) == 0) {
+                    throw new IllegalStateException("glLogicOp variant: program " + program + " appended samplers " + names.subList(baseNames.size(), names.size()) + " are not in location order");
+                }
+                prev = loc;
+                dstLocation[i] = (byte) loc;
+            }
+            applyVaryingMatch(r.spirv(), prog.vertexReflection, refl);
+            final long shader = createSDLShader(r.spirv(), SDL_GPU_SHADERSTAGE_FRAGMENT, counts.numSamplers(), counts.numUBOs(), counts.numStorageBuffers(), counts.numStorageTextures());
+            if (shader == 0) throw new IllegalStateException("glLogicOp variant: program " + program + " shader creation failed: " + SDLError.SDL_GetError());
+            final LogicOpVariant v = new LogicOpVariant();
+            v.sdlShader = shader;
+            v.numSamplers = names.size();
+            v.baseSamplers = baseNames.size();
+            v.dstLocation = dstLocation;
             return v;
         } finally {
             memFree(r.spirv());
+        }
+    }
+
+    private static void dumpLogicOpSource(int program, long key, String src) {
+        try {
+            final Path dir = Path.of("patched_shaders");
+            Files.createDirectories(dir);
+            Files.writeString(dir.resolve("logicop_" + program + "_" + Long.toHexString(key) + ".fsh"), src);
+        } catch (IOException e) {
+            LOG.warn("Failed to dump glLogicOp variant for program {}: {}", program, e.toString());
         }
     }
 
@@ -816,6 +1157,10 @@ public final class ShaderManager {
         }
         prog.vertexVariants.clear();
         prog.vertexVariantFailed.clear();
+        for (LogicOpVariant v : prog.logicOpVariants.values()) {
+            if (v.sdlShader != 0) SDL_ReleaseGPUShader(dev, v.sdlShader);
+        }
+        prog.logicOpVariants.clear();
         if (prog.sdlVertexShader   != 0) { SDL_ReleaseGPUShader(dev, prog.sdlVertexShader);   prog.sdlVertexShader   = 0; }
         if (prog.sdlFragmentShader != 0) { SDL_ReleaseGPUShader(dev, prog.sdlFragmentShader); prog.sdlFragmentShader = 0; }
         if (prog.sdlComputePipeline != 0) { SDL_ReleaseGPUComputePipeline(dev, prog.sdlComputePipeline); prog.sdlComputePipeline = 0; }
@@ -916,11 +1261,11 @@ public final class ShaderManager {
             return new CrossCompiled(SDL_GPU_SHADERFORMAT_SPIRV, spirv, "main", false);
         }
         if (device.supportsMsl()) {
-            final MslCrossCompile.Output out = MslCrossCompile.compile(spirv, glShaderType);
+            final CrossCompileCache.Output out = MslCrossCompile.compile(spirv, glShaderType, device.metalTextureAtomics());
             return new CrossCompiled(SDL_GPU_SHADERFORMAT_MSL, out.code(), out.entrypoint(), true);
         }
         if (device.supportsDxbc()) {
-            final DxbcCrossCompile.Output out = DxbcCrossCompile.compile(spirv, glShaderType);
+            final CrossCompileCache.Output out = DxbcCrossCompile.compile(spirv, glShaderType);
             return new CrossCompiled(SDL_GPU_SHADERFORMAT_DXBC, out.code(), out.entrypoint(), true);
         }
         if (device.supportsDxil()) {
@@ -943,7 +1288,13 @@ public final class ShaderManager {
     public int getUniformLocation(int program, String name) {
         final ProgramObject prog = programObjects.get(program);
         if (prog == null || !prog.linked) return -1;
-        return prog.nameToLocation.getInt(name);
+        final int exact = prog.nameToLocation.getInt(name);
+        if (exact != -1) return exact;
+        final int index = UniformNames.arrayIndex(name);
+        if (index < 0) return -1;
+        final int base = prog.nameToLocation.getInt(name.substring(0, name.lastIndexOf('[')));
+        if (base < 0 || base >= prog.uniformSlotCount || index >= prog.arrayLenBySlot[base]) return -1;
+        return base + index;
     }
 
     /**
@@ -980,7 +1331,11 @@ public final class ShaderManager {
     }
 
     private static void warnOnSeparateSamplers(long resources, MemoryStack stack, String stage) {
-        if (CrossCompileUtil.countResources(resources, Spvc.SPVC_RESOURCE_TYPE_SEPARATE_SAMPLERS, stack) > 0 && separateSamplerWarned.compareAndSet(false, true)) {
+        if (CrossCompileUtil.countResources(resources, Spvc.SPVC_RESOURCE_TYPE_SEPARATE_SAMPLERS, stack) > 0) warnSeparateSampler(stage);
+    }
+
+    private static void warnSeparateSampler(String stage) {
+        if (separateSamplerWarned.compareAndSet(false, true)) {
             LOG.error("{} shader declares a separate sampler; SDL_GPU cannot bind one and its descriptor will be left unremapped", stage);
         }
     }
@@ -1244,13 +1599,19 @@ public final class ShaderManager {
     }
 
     private static int collectResourceIds(long resources, long compiler, int resourceType, Int2IntOpenHashMap idToNewSet, Int2IntOpenHashMap idToNewBinding, int targetSet, int nextBinding, MemoryStack stack) {
-        final int[] next = { nextBinding };
-        forEachResource(resources, resourceType, stack, (j, res) -> {
-            final int spvId = res.id();
+        final PointerBuffer pList = stack.pointers(0);
+        final PointerBuffer pCount = stack.pointers(0);
+        if (Spvc.spvc_resources_get_resource_list_for_type(resources, resourceType, pList, pCount) != Spvc.SPVC_SUCCESS) return nextBinding;
+        final int count = (int) pCount.get(0);
+        if (count == 0) return nextBinding;
+        final SpvcReflectedResource.Buffer list = SpvcReflectedResource.create(pList.get(0), count);
+        int next = nextBinding;
+        for (int j = 0; j < count; j++) {
+            final int spvId = list.get(j).id();
             idToNewSet.put(spvId, targetSet);
-            idToNewBinding.put(spvId, next[0]++);
-        });
-        return next[0];
+            idToNewBinding.put(spvId, next++);
+        }
+        return next;
     }
 
     private static ByteBuffer copyBuffer(ByteBuffer src) {
@@ -1266,6 +1627,7 @@ public final class ShaderManager {
         }
         programObjects.clear();
         for (ShaderObject obj : shaderObjects.values()) {
+            discardSpirvFuture(obj);
             if (obj.spirv != null) memFree(obj.spirv);
         }
         shaderObjects.clear();
@@ -1279,7 +1641,8 @@ public final class ShaderManager {
         public String infoLog = "";
         public boolean deletePending;
         public int attachCount;
-        public CompletableFuture<SpirvCompiler.Result> spirvFuture;
+        public CompletableFuture<AsyncCompile> spirvFuture;
+        QueuedCompile queuedCompile;
         public StageReflection reflection = StageReflection.EMPTY;
         public GraphicsBindingMap graphicsBindingMap = GraphicsBindingMap.EMPTY;
         public Set<String> boolUniforms = Set.of();
@@ -1308,7 +1671,12 @@ public final class ShaderManager {
     public record UniformMemberInfo(
         int offset, int size, int arrayStride, boolean isVertex,
         int vectorSize, int columns, int baseType, int arrayLen
-    ) {}
+    ) {
+        public UniformMemberInfo element(int i) {
+            return new UniformMemberInfo(offset + i * arrayStride, size - i * arrayStride, arrayStride, isVertex,
+                vectorSize, columns, baseType, arrayLen - i);
+        }
+    }
 
     public record UboMember(
         String name, int offset, int size, int arrayStride,
@@ -1324,6 +1692,7 @@ public final class ShaderManager {
     public record StageReflection(
         ResourceCounts counts,
         List<String> samplerNames,      // SAMPLED_IMAGE, sorted by binding (post-remap)
+        List<String> unusedSamplerNames, // declared samplers the entry point never reads
         List<String> extraUniformNames, // SEPARATE_SAMPLERS - registered in nameToLocation only
         List<String> storageImageNames, // SEPARATE_IMAGE + STORAGE_IMAGE (RO + RW), sorted by binding (post-remap)
         int uboSize,                    // binding-0 UBO total size in bytes; 0 if absent
@@ -1339,7 +1708,7 @@ public final class ShaderManager {
         BlockReflection[] blocks
     ) {
         public static final StageReflection EMPTY = new StageReflection(
-            ResourceCounts.EMPTY, List.of(), List.of(), List.of(), 0, List.of(), List.of(), List.of(), List.of(),
+            ResourceCounts.EMPTY, List.of(), List.of(), List.of(), List.of(), 0, List.of(), List.of(), List.of(), List.of(),
             -1, 0, 0, 0, 0, BlockReflection.emptyBlocks());
     }
 
@@ -1437,27 +1806,8 @@ public final class ShaderManager {
                     }
                     final int memberCount = Spvc.spvc_type_get_num_member_types(Spvc.spvc_compiler_get_type_handle(compiler, ubo.type_id()));
                     for (int m = 0; m < memberCount; m++) {
-                        final String memberName = Spvc.spvc_compiler_get_member_name(compiler, ubo.base_type_id(), m);
-                        if (memberName == null || memberName.isEmpty()) continue;
-                        int memberOffset = 0;
-                        if (Spvc.spvc_compiler_type_struct_member_offset(compiler, baseTypeHandle, m, pOffset) == Spvc.SPVC_SUCCESS) {
-                            memberOffset = pOffset.get(0);
-                        }
-                        int memberSize = 0;
-                        if (Spvc.spvc_compiler_get_declared_struct_member_size(compiler, baseTypeHandle, m, pSize) == Spvc.SPVC_SUCCESS) {
-                            memberSize = (int) pSize.get(0);
-                        }
-                        int memberArrayStride = 0;
-                        if (Spvc.spvc_compiler_type_struct_member_array_stride(compiler, baseTypeHandle, m, pStride) == Spvc.SPVC_SUCCESS) {
-                            memberArrayStride = pStride.get(0);
-                        }
-                        final int memberTypeId = Spvc.spvc_type_get_member_type(baseTypeHandle, m);
-                        final long memberTypeHandle = Spvc.spvc_compiler_get_type_handle(compiler, memberTypeId);
-                        final int memberVectorSize = Spvc.spvc_type_get_vector_size(memberTypeHandle);
-                        final int memberColumns = Spvc.spvc_type_get_columns(memberTypeHandle);
-                        final int memberBaseType = Spvc.spvc_type_get_basetype(memberTypeHandle);
-                        final int memberArrayLen = (memberArrayStride > 0) ? Math.max(1, memberSize / memberArrayStride) : 1;
-                        uboMembers.add(new UboMember(memberName, memberOffset, memberSize, memberArrayStride, memberVectorSize, memberColumns, memberBaseType, memberArrayLen));
+                        final UboMember member = reflectMember(compiler, ubo.base_type_id(), baseTypeHandle, m, pOffset, pStride, pSize);
+                        if (member != null) uboMembers.add(member);
                     }
                 }
             }
@@ -1562,6 +1912,7 @@ public final class ShaderManager {
         return new StageReflection(
             new ResourceCounts(samplerNames.size(), numUBOs, numStorageBuffers, numStorageTextures),
             samplerNames,
+            unusedSamplerNames(compiler, resources, stack),
             extraNames,
             storageImageNames,
             uboSize,
@@ -1598,28 +1949,33 @@ public final class ShaderManager {
     private static void collectBlockMembers(long compiler, SpvcReflectedResource block, long baseTypeHandle, IntBuffer pOffset, IntBuffer pStride, PointerBuffer pSize, List<UboMember> out) {
         final int memberCount = Spvc.spvc_type_get_num_member_types(Spvc.spvc_compiler_get_type_handle(compiler, block.type_id()));
         for (int m = 0; m < memberCount; m++) {
-            final String memberName = Spvc.spvc_compiler_get_member_name(compiler, block.base_type_id(), m);
-            if (memberName == null || memberName.isEmpty()) continue;
-            int memberOffset = 0;
-            if (Spvc.spvc_compiler_type_struct_member_offset(compiler, baseTypeHandle, m, pOffset) == Spvc.SPVC_SUCCESS) {
-                memberOffset = pOffset.get(0);
-            }
-            int memberSize = 0;
-            if (Spvc.spvc_compiler_get_declared_struct_member_size(compiler, baseTypeHandle, m, pSize) == Spvc.SPVC_SUCCESS) {
-                memberSize = (int) pSize.get(0);
-            }
-            int memberArrayStride = 0;
-            if (Spvc.spvc_compiler_type_struct_member_array_stride(compiler, baseTypeHandle, m, pStride) == Spvc.SPVC_SUCCESS) {
-                memberArrayStride = pStride.get(0);
-            }
-            final int memberTypeId = Spvc.spvc_type_get_member_type(baseTypeHandle, m);
-            final long memberTypeHandle = Spvc.spvc_compiler_get_type_handle(compiler, memberTypeId);
-            out.add(new UboMember(memberName, memberOffset, memberSize, memberArrayStride,
-                Spvc.spvc_type_get_vector_size(memberTypeHandle),
-                Spvc.spvc_type_get_columns(memberTypeHandle),
-                Spvc.spvc_type_get_basetype(memberTypeHandle),
-                (memberArrayStride > 0) ? Math.max(1, memberSize / memberArrayStride) : 1));
+            final UboMember member = reflectMember(compiler, block.base_type_id(), baseTypeHandle, m, pOffset, pStride, pSize);
+            if (member != null) out.add(member);
         }
+    }
+
+    private static UboMember reflectMember(long compiler, int baseTypeId, long baseTypeHandle, int m, IntBuffer pOffset, IntBuffer pStride, PointerBuffer pSize) {
+        final String memberName = Spvc.spvc_compiler_get_member_name(compiler, baseTypeId, m);
+        if (memberName == null || memberName.isEmpty()) return null;
+        int memberOffset = 0;
+        if (Spvc.spvc_compiler_type_struct_member_offset(compiler, baseTypeHandle, m, pOffset) == Spvc.SPVC_SUCCESS) {
+            memberOffset = pOffset.get(0);
+        }
+        int memberSize = 0;
+        if (Spvc.spvc_compiler_get_declared_struct_member_size(compiler, baseTypeHandle, m, pSize) == Spvc.SPVC_SUCCESS) {
+            memberSize = (int) pSize.get(0);
+        }
+        final long memberTypeHandle = Spvc.spvc_compiler_get_type_handle(compiler, Spvc.spvc_type_get_member_type(baseTypeHandle, m));
+        int memberArrayStride = 0;
+        if (Spvc.spvc_type_get_num_array_dimensions(memberTypeHandle) > 0
+            && Spvc.spvc_compiler_type_struct_member_array_stride(compiler, baseTypeHandle, m, pStride) == Spvc.SPVC_SUCCESS) {
+            memberArrayStride = pStride.get(0);
+        }
+        return new UboMember(memberName, memberOffset, memberSize, memberArrayStride,
+            Spvc.spvc_type_get_vector_size(memberTypeHandle),
+            Spvc.spvc_type_get_columns(memberTypeHandle),
+            Spvc.spvc_type_get_basetype(memberTypeHandle),
+            (memberArrayStride > 0) ? Math.max(1, memberSize / memberArrayStride) : 1);
     }
 
     private static int countResourceTypeStatic(long resources, int resourceType, MemoryStack stack) {
@@ -1638,6 +1994,42 @@ public final class ShaderManager {
             namesOut.add(name != null ? name : ("sampler_" + i));
             bindingsOut.add(binding);
         });
+    }
+
+    private static List<String> unusedSamplerNames(long compiler, long resources, MemoryStack stack) {
+        final PointerBuffer pActive = stack.mallocPointer(1);
+        final PointerBuffer pActiveResources = stack.mallocPointer(1);
+        if (Spvc.spvc_compiler_get_active_interface_variables(compiler, pActive) != Spvc.SPVC_SUCCESS
+            || Spvc.spvc_compiler_create_shader_resources_for_active_variables(compiler, pActiveResources, pActive.get(0)) != Spvc.SPVC_SUCCESS) {
+            return List.of();
+        }
+        final IntOpenHashSet active = new IntOpenHashSet();
+        forEachResource(pActiveResources.get(0), Spvc.SPVC_RESOURCE_TYPE_SAMPLED_IMAGE, stack, (i, r) -> active.add(r.id()));
+        forEachResource(pActiveResources.get(0), Spvc.SPVC_RESOURCE_TYPE_SEPARATE_IMAGE, stack, (i, r) -> active.add(r.id()));
+        final List<String> unused = new ArrayList<>();
+        forEachResource(resources, Spvc.SPVC_RESOURCE_TYPE_SAMPLED_IMAGE, stack, (i, r) -> {
+            if (active.contains(r.id())) return;
+            final String name = Spvc.spvc_compiler_get_name(compiler, r.id());
+            if (name != null && !name.isEmpty()) unused.add(name);
+        });
+        forEachResource(resources, Spvc.SPVC_RESOURCE_TYPE_SEPARATE_IMAGE, stack, (i, r) -> {
+            if (active.contains(r.id())) return;
+            final String name = Spvc.spvc_compiler_get_name(compiler, r.id());
+            if (name != null && SamplerOverflow.isMoved(name)) unused.add(name);
+        });
+        return unused;
+    }
+
+    private static void registerSamplerLocations(ProgramObject prog, StageReflection... stages) {
+        final Set<String> read = new HashSet<>();
+        for (StageReflection stage : stages) {
+            for (String name : stage.samplerNames()) {
+                if (!stage.unusedSamplerNames().contains(name)) read.add(name);
+            }
+        }
+        for (String name : prog.allSamplerNames) {
+            if (read.contains(name)) ensureLocation(prog, name);
+        }
     }
 
     private static void collectResourceNames(long resources, long compiler, int resourceType, List<String> out, MemoryStack stack) {
@@ -1679,6 +2071,11 @@ public final class ShaderManager {
         public List<String> vertexSamplerNames = List.of();
         public List<String> fragmentImageNames = List.of();
         public List<String> vertexImageNames = List.of();
+        public boolean[] fragmentImageIsMovedSampler = NO_FLAGS;
+        public boolean[] vertexImageIsMovedSampler = NO_FLAGS;
+        public boolean[] fragmentMovedSamplerRead = NO_FLAGS;
+        public boolean[] vertexMovedSamplerRead = NO_FLAGS;
+        public boolean hasReadMovedSamplers;
         public final HashSet<String> allImageNames = new HashSet<>();
         public ResourceCounts computeResources = ResourceCounts.EMPTY;
         public ResourceCounts fragmentResources = ResourceCounts.EMPTY;
@@ -1703,11 +2100,24 @@ public final class ShaderManager {
             return m != null ? m : blockMemberInfo[BLOCK_PER_PASS].get(loc);
         }
 
+        public UniformMemberInfo memberInfo(int slot) {
+            for (int b = 0; b < BLOCK_COUNT; b++) {
+                final UniformMemberInfo info = blockInfoBySlot[b][slot];
+                if (info != null) return info;
+            }
+            final UniformMemberInfo vs = vsInfoBySlot[slot];
+            return vs != null ? vs : fsInfoBySlot[slot];
+        }
+
         private static final UniformMemberInfo[] EMPTY_INFO = new UniformMemberInfo[0];
 
         public UniformMemberInfo[] vsInfoBySlot;
         public UniformMemberInfo[] fsInfoBySlot;
         public int uniformSlotCount;
+        public final Int2IntOpenHashMap arrayLenByLocation = new Int2IntOpenHashMap();
+        public int[] arrayIndexBySlot = EMPTY_UNITS;
+        public int[] arrayLenBySlot = EMPTY_UNITS;
+        public int[] floatLimitBySlot = EMPTY_UNITS;
         public final int[] vertexInputBaseType = new int[16];
         public final int[] vertexInputVecSize = new int[16];
         public final String[] vertexInputName = new String[16];
@@ -1716,6 +2126,8 @@ public final class ShaderManager {
         public StageReflection vertexReflection = StageReflection.EMPTY;
         public final Long2ObjectOpenHashMap<VertexVariant> vertexVariants = new Long2ObjectOpenHashMap<>();
         public final LongOpenHashSet vertexVariantFailed = new LongOpenHashSet();
+        public String fragmentSource = "";
+        public final Long2ObjectOpenHashMap<LogicOpVariant> logicOpVariants = new Long2ObjectOpenHashMap<>();
         public final Object2IntOpenHashMap<String> attribLocationBindings = newLocMap();
         public final Object2IntOpenHashMap<String> resolvedAttribLocations = newLocMap();
         public final Object2IntOpenHashMap<String> nameToLocation = newLocMap();
@@ -1724,9 +2136,23 @@ public final class ShaderManager {
 
         public int[] vertexSamplerUnits = EMPTY_UNITS;
         public int[] fragmentSamplerUnits = EMPTY_UNITS;
+        public int[] vertexMovedSamplerUnits = EMPTY_UNITS;
+        public int[] fragmentMovedSamplerUnits = EMPTY_UNITS;
         public boolean samplerUnitsDirty = true;
+        public int samplerUnitsGeneration;
+
+        public static final byte LOCATION_KIND_PLAIN = 0;
+        public static final byte LOCATION_KIND_SAMPLER = 1;
+        public static final byte LOCATION_KIND_IMAGE = 2;
+
+        public byte[] locationKind = EMPTY_KIND;
+        public String[] locationName = EMPTY_NAMES;
+        public int[] locationSamplerUnit = EMPTY_UNITS;
 
         private static final int[] EMPTY_UNITS = new int[0];
+        private static final boolean[] NO_FLAGS = new boolean[0];
+        private static final byte[] EMPTY_KIND = new byte[0];
+        private static final String[] EMPTY_NAMES = new String[0];
 
         private static Object2IntOpenHashMap<String> newLocMap() {
             final Object2IntOpenHashMap<String> m = new Object2IntOpenHashMap<>();
@@ -1787,9 +2213,11 @@ public final class ShaderManager {
         public int geometryShader;
         public int nextUniformLocation = 0;
         public int vertexInputMask;
+        public int vertexInputSetId;
         public int vertexShader;
         public int vertexUboSize;
         public long sdlComputePipeline;
+        public VertexWriteReplayer.Replay vertexWriteReplay;
         public long sdlFragmentShader;
         public long sdlVertexShader;
         public long lastComputeCb;
@@ -1801,24 +2229,66 @@ public final class ShaderManager {
             uniformSlotCount = n;
             vsInfoBySlot = new UniformMemberInfo[n];
             fsInfoBySlot = new UniformMemberInfo[n];
+            locationKind = new byte[n];
+            locationName = new String[n];
+            locationSamplerUnit = new int[n];
+            Arrays.fill(locationSamplerUnit, -1);
+            for (int loc = 0; loc < n; loc++) {
+                final String name = locationToName.get(loc);
+                locationName[loc] = name;
+                if (name != null && allSamplerNames.contains(name)) {
+                    locationKind[loc] = LOCATION_KIND_SAMPLER;
+                } else if (name != null && allImageNames.contains(name)) {
+                    locationKind[loc] = LOCATION_KIND_IMAGE;
+                } else {
+                    locationKind[loc] = LOCATION_KIND_PLAIN;
+                }
+            }
+            arrayIndexBySlot = new int[n];
+            arrayLenBySlot = new int[n];
+            Arrays.fill(arrayLenBySlot, 1);
+            for (var it = arrayLenByLocation.int2IntEntrySet().fastIterator(); it.hasNext(); ) {
+                final var e = it.next();
+                final int base = e.getIntKey();
+                final int len = e.getIntValue();
+                for (int i = 0; i < len; i++) {
+                    arrayLenBySlot[base + i] = len;
+                    arrayIndexBySlot[base + i] = i;
+                }
+            }
             for (int b = 0; b < BLOCK_COUNT; b++) {
                 blockInfoBySlot[b] = new UniformMemberInfo[n];
                 for (var it = blockMemberInfo[b].int2ObjectEntrySet().fastIterator(); it.hasNext(); ) {
                     final var e = it.next();
-                    final int k = e.getIntKey();
-                    if (k >= 0 && k < n) blockInfoBySlot[b][k] = e.getValue();
+                    fillSlots(blockInfoBySlot[b], e.getIntKey(), e.getValue());
                 }
             }
             for (var it = vertexMemberInfo.int2ObjectEntrySet().fastIterator(); it.hasNext(); ) {
                 final var e = it.next();
-                final int k = e.getIntKey();
-                if (k >= 0 && k < n) vsInfoBySlot[k] = e.getValue();
+                fillSlots(vsInfoBySlot, e.getIntKey(), e.getValue());
             }
             for (var it = fragmentMemberInfo.int2ObjectEntrySet().fastIterator(); it.hasNext(); ) {
                 final var e = it.next();
-                final int k = e.getIntKey();
-                if (k >= 0 && k < n) fsInfoBySlot[k] = e.getValue();
+                fillSlots(fsInfoBySlot, e.getIntKey(), e.getValue());
             }
+            floatLimitBySlot = new int[n];
+            for (int slot = 0; slot < n; slot++) {
+                if (arrayLenBySlot[slot] > 1) {
+                    floatLimitBySlot[slot] = -1;
+                    continue;
+                }
+                final UniformMemberInfo info = memberInfo(slot);
+                final int floats = info == null || info.arrayStride() > 0 ? 0 : info.vectorSize() * info.columns();
+                floatLimitBySlot[slot] = floats > 0 ? floats : Integer.MAX_VALUE;
+            }
+        }
+
+        private void fillSlots(UniformMemberInfo[] bySlot, int base, UniformMemberInfo info) {
+            final int n = bySlot.length;
+            if (base < 0 || base >= n) return;
+            bySlot[base] = info;
+            final int len = arrayLenBySlot[base];
+            for (int i = 1; i < len; i++) bySlot[base + i] = info.element(i);
         }
     }
 }

@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 class TesrLayerKeyTest {
 
@@ -18,72 +19,71 @@ class TesrLayerKeyTest {
     private static final TesrShader SHADER = TesrShaders.register("test:layer_key", () -> {}, () -> {});
     private static final TesrMaterial.SpecialRender NONE = TesrMaterial.SpecialRender.NONE;
     private static final PassOverride NO_PASS = PassOverride.NONE;
-    private static final PassOverride EYES = new PassOverride(SpecialCondition.ENTITY_EYES, null);
-    private static final PassOverride TRANSLUCENT = new PassOverride(null, Boolean.TRUE);
+    private static final PassOverride EYES = PassOverride.of(SpecialCondition.ENTITY_EYES, null, null);
+    private static final PassOverride TRANSLUCENT = PassOverride.of(null, Boolean.TRUE, null);
 
     @Test
     void scratchProbeMatchesCopiedKey() {
-        final TesrBatchRenderer.LayerKey scratch = new TesrBatchRenderer.LayerKey().set(TEX, TesrMaterial.Transparency.OPAQUE, true, false, false, false, 0.1f, false, NONE, SHADER, false, NO_PASS, 0.0f, 0.0f);
+        final TesrBatchRenderer.LayerKey scratch = new TesrBatchRenderer.LayerKey().set(TEX, TesrMaterial.Transparency.TRANSLUCENT, true, false, true, false, 0.1f, true, TesrMaterial.SpecialRender.GLINT, SHADER, false, EYES, 1.0f, 2.0f, DrawState.CULL_FRONT, true, false);
         final TesrBatchRenderer.LayerKey stored = scratch.copy();
         assertNotSame(scratch, stored);
         assertEquals(scratch, stored);
         assertEquals(scratch.hashCode(), stored.hashCode());
 
-        scratch.set(TEX, TesrMaterial.Transparency.OPAQUE, true, false, false, false, 0.1f, false, NONE, SHADER, false, NO_PASS, 0.0f, 0.0f);
+        scratch.set(TEX, TesrMaterial.Transparency.TRANSLUCENT, true, false, true, false, 0.1f, true, TesrMaterial.SpecialRender.GLINT, SHADER, false, EYES, 1.0f, 2.0f, DrawState.CULL_FRONT, true, false);
         assertEquals(stored, scratch, "re-set scratch still matches stored copy");
     }
 
     @Test
     void fieldChangesBreakEquality() {
-        final TesrBatchRenderer.LayerKey base = new TesrBatchRenderer.LayerKey().set(TEX, TesrMaterial.Transparency.OPAQUE, false, false, false, false, 0f, false, NONE, null, false, NO_PASS, 0.0f, 0.0f);
+        final TesrBatchRenderer.LayerKey base = new TesrBatchRenderer.LayerKey().set(TEX, TesrMaterial.Transparency.OPAQUE, false, false, false, false, 0f, false, NONE, null, false, NO_PASS, 0.0f, 0.0f, DrawState.DISABLED, false, true);
         final TesrBatchRenderer.LayerKey other = base.copy();
 
-        other.set(null, TesrMaterial.Transparency.OPAQUE, false, false, false, false, 0f, false, NONE, null, false, NO_PASS, 0.0f, 0.0f);
+        other.set(null, TesrMaterial.Transparency.OPAQUE, false, false, false, false, 0f, false, NONE, null, false, NO_PASS, 0.0f, 0.0f, DrawState.DISABLED, false, true);
         assertNotEquals(base, other);
-        other.set(TEX, TesrMaterial.Transparency.TRANSLUCENT, false, false, false, false, 0f, false, NONE, null, false, NO_PASS, 0.0f, 0.0f);
+        other.set(TEX, TesrMaterial.Transparency.TRANSLUCENT, false, false, false, false, 0f, false, NONE, null, false, NO_PASS, 0.0f, 0.0f, DrawState.DISABLED, false, true);
         assertNotEquals(base, other);
-        other.set(TEX, TesrMaterial.Transparency.OPAQUE, false, false, false, false, 0.5f, false, NONE, null, false, NO_PASS, 0.0f, 0.0f);
+        other.set(TEX, TesrMaterial.Transparency.OPAQUE, false, false, false, false, 0.5f, false, NONE, null, false, NO_PASS, 0.0f, 0.0f, DrawState.DISABLED, false, true);
         assertNotEquals(base, other);
-        other.set(TEX, TesrMaterial.Transparency.OPAQUE, false, false, false, true, 0f, false, NONE, null, false, NO_PASS, 0.0f, 0.0f);
+        other.set(TEX, TesrMaterial.Transparency.OPAQUE, false, false, false, true, 0f, false, NONE, null, false, NO_PASS, 0.0f, 0.0f, DrawState.DISABLED, false, true);
         assertNotEquals(base, other);
-        other.set(TEX, TesrMaterial.Transparency.OPAQUE, false, false, false, false, 0f, false, TesrMaterial.SpecialRender.GLINT, null, false, NO_PASS, 0.0f, 0.0f);
+        other.set(TEX, TesrMaterial.Transparency.OPAQUE, false, false, false, false, 0f, false, TesrMaterial.SpecialRender.GLINT, null, false, NO_PASS, 0.0f, 0.0f, DrawState.DISABLED, false, true);
         assertNotEquals(base, other);
-        other.set(TEX, TesrMaterial.Transparency.OPAQUE, false, false, false, false, 0f, false, NONE, SHADER, false, NO_PASS, 0.0f, 0.0f);
+        other.set(TEX, TesrMaterial.Transparency.OPAQUE, false, false, false, false, 0f, false, NONE, SHADER, false, NO_PASS, 0.0f, 0.0f, DrawState.DISABLED, false, true);
         assertNotEquals(base, other);
-        other.set(TEX, TesrMaterial.Transparency.OPAQUE, false, false, false, false, 0f, false, NONE, null, true, NO_PASS, 0.0f, 0.0f);
+        other.set(TEX, TesrMaterial.Transparency.OPAQUE, false, false, false, false, 0f, false, NONE, null, true, NO_PASS, 0.0f, 0.0f, DrawState.DISABLED, false, true);
+        assertNotEquals(base, other);
+        other.set(TEX, TesrMaterial.Transparency.OPAQUE, false, false, false, false, 0f, false, NONE, null, false, NO_PASS, 0.0f, 0.0f, DrawState.CULL_FRONT, false, true);
+        assertNotEquals(base, other);
+        other.set(TEX, TesrMaterial.Transparency.OPAQUE, false, false, false, false, 0f, false, NONE, null, false, NO_PASS, 0.0f, 0.0f, DrawState.DISABLED, true, true);
+        assertNotEquals(base, other);
+        other.set(TEX, TesrMaterial.Transparency.OPAQUE, false, false, false, false, 0f, false, NONE, null, false, NO_PASS, 0.0f, 0.0f, DrawState.DISABLED, false, false);
         assertNotEquals(base, other);
 
-        other.set(TEX, TesrMaterial.Transparency.OPAQUE, false, false, false, false, 0f, false, NONE, null, false, NO_PASS, 0.0f, 0.0f);
+        other.set(TEX, TesrMaterial.Transparency.OPAQUE, true, false, false, false, 0f, false, NONE, null, false, NO_PASS, 0.0f, 0.0f, DrawState.DISABLED, false, true);
+        assertNotEquals(base, other);
+        other.set(TEX, TesrMaterial.Transparency.OPAQUE, false, true, false, false, 0f, false, NONE, null, false, NO_PASS, 0.0f, 0.0f, DrawState.DISABLED, false, true);
+        assertNotEquals(base, other);
+        other.set(TEX, TesrMaterial.Transparency.OPAQUE, false, false, true, false, 0f, false, NONE, null, false, NO_PASS, 0.0f, 0.0f, DrawState.DISABLED, false, true);
+        assertNotEquals(base, other);
+        other.set(TEX, TesrMaterial.Transparency.OPAQUE, false, false, false, false, 0f, true, NONE, null, false, NO_PASS, 0.0f, 0.0f, DrawState.DISABLED, false, true);
+        assertNotEquals(base, other);
+        other.set(TEX, TesrMaterial.Transparency.OPAQUE, false, false, false, false, 0f, false, NONE, null, false, EYES, 0.0f, 0.0f, DrawState.DISABLED, false, true);
+        assertNotEquals(base, other);
+        other.set(TEX, TesrMaterial.Transparency.OPAQUE, false, false, false, false, 0f, false, NONE, null, false, TRANSLUCENT, 0.0f, 0.0f, DrawState.DISABLED, false, true);
+        assertNotEquals(base, other);
+        other.set(TEX, TesrMaterial.Transparency.OPAQUE, false, false, false, false, 0f, false, NONE, null, false, NO_PASS, -1.0f, -1.0f, DrawState.DISABLED, false, true);
+        assertNotEquals(base, other);
+
+        other.set(TEX, TesrMaterial.Transparency.OPAQUE, false, false, false, false, 0f, false, NONE, null, false, NO_PASS, 0.0f, 0.0f, DrawState.DISABLED, false, true);
         assertEquals(base, other);
     }
 
     @Test
-    void passSeparatesOtherwiseIdenticalKeys() {
-        final TesrBatchRenderer.LayerKey plain = new TesrBatchRenderer.LayerKey().set(TEX, TesrMaterial.Transparency.OPAQUE, false, false, false, false, 0f, false, NONE, null, false, NO_PASS, 0.0f, 0.0f);
-        final TesrBatchRenderer.LayerKey eyes = plain.copy();
-        eyes.set(TEX, TesrMaterial.Transparency.OPAQUE, false, false, false, false, 0f, false, NONE, null, false, EYES, 0.0f, 0.0f);
-        assertNotEquals(plain, eyes);
-
-        final TesrBatchRenderer.LayerKey translucent = plain.copy();
-        translucent.set(TEX, TesrMaterial.Transparency.OPAQUE, false, false, false, false, 0f, false, NONE, null, false, TRANSLUCENT, 0.0f, 0.0f);
-        assertNotEquals(plain, translucent);
-        assertNotEquals(eyes, translucent);
-
-        assertEquals(eyes, eyes.copy());
-        assertEquals(eyes.hashCode(), eyes.copy().hashCode());
-
-        // Polygon offset is the other thing a batch outlives -- the coplanar eye overlay needs it at emit time.
-        final TesrBatchRenderer.LayerKey offset = plain.copy();
-        offset.set(TEX, TesrMaterial.Transparency.OPAQUE, false, false, false, false, 0f, false, NONE, null, false, NO_PASS, -1.0f, -1.0f);
-        assertNotEquals(plain, offset);
-        assertEquals(offset, offset.copy());
-        assertEquals(offset.hashCode(), offset.copy().hashCode());
-    }
-
-    @Test
-    void nullTextureAndShaderHash() {
-        final TesrBatchRenderer.LayerKey key = new TesrBatchRenderer.LayerKey().set(null, null, false, false, false, false, 0f, false, null, null, false, NO_PASS, 0.0f, 0.0f);
-        assertEquals(key, key.copy());
-        assertEquals(key.hashCode(), key.copy().hashCode());
+    void passOverridesAreInterned() {
+        assertSame(EYES, PassOverride.of(SpecialCondition.ENTITY_EYES, null, null));
+        assertSame(TRANSLUCENT, PassOverride.of(null, Boolean.TRUE, null));
+        assertSame(PassOverride.NONE, PassOverride.of(null, null, null));
+        assertNotSame(PassOverride.of(null, Boolean.TRUE, null), PassOverride.of(null, Boolean.FALSE, null));
     }
 }

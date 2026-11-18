@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.states;
 
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.joml.Matrix3f;
 import org.joml.Vector3f;
@@ -11,7 +12,7 @@ import org.lwjgl.opengl.GL11;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.i2f;
+import static com.gtnewhorizons.angelica.glsm.GLSMLighting.i2f;
 
 public class LightState implements ISettableState<LightState> {
 
@@ -73,14 +74,14 @@ public class LightState implements ISettableState<LightState> {
 
         this.rawPosition = new Vector4f(position);
         this.position = position;
-        this.position.mul(GLStateManager.getModelViewMatrix());
-        this.posMvGeneration = GLStateManager.getMvGeneration();
+        this.position.mul(GLSMMatrices.getModelViewMatrix());
+        this.posMvGeneration = GLSMMatrices.getMvGeneration();
 
         this.rawSpotDirection = new Vector3f(spotDirection);
         this.spotDirection = spotDirection;
-        GLStateManager.getModelViewMatrix().get3x3(matrix3f);
+        GLSMMatrices.getModelViewMatrix().get3x3(matrix3f);
         this.spotDirection.mul(matrix3f);
-        this.spotDirLinearGeneration = GLStateManager.getMvLinearGeneration();
+        this.spotDirLinearGeneration = GLSMMatrices.getMvLinearGeneration();
     }
 
     public boolean setAmbient(FloatBuffer newBuffer) {
@@ -152,12 +153,12 @@ public class LightState implements ISettableState<LightState> {
     }
 
     private boolean applyPosition(Vector4f raw) {
-        final int mvGen = GLStateManager.getMvGeneration();
+        final int mvGen = GLSMMatrices.getMvGeneration();
         if (!GLStateManager.isCachingEnabled() || this.posMvGeneration != mvGen || !this.rawPosition.equals(raw)) {
             this.rawPosition.set(raw);
             this.posMvGeneration = mvGen;
             this.position.set(raw);
-            this.position.mul(GLStateManager.getModelViewMatrix());
+            this.position.mul(GLSMMatrices.getModelViewMatrix());
             return true;
         }
         return false;
@@ -175,11 +176,11 @@ public class LightState implements ISettableState<LightState> {
     }
 
     private boolean applySpotDirection(Vector3f raw) {
-        final int mvLinearGen = GLStateManager.getMvLinearGeneration();
+        final int mvLinearGen = GLSMMatrices.getMvLinearGeneration();
         if (!GLStateManager.isCachingEnabled() || this.spotDirLinearGeneration != mvLinearGen || !this.rawSpotDirection.equals(raw)) {
             this.rawSpotDirection.set(raw);
             this.spotDirLinearGeneration = mvLinearGen;
-            GLStateManager.getModelViewMatrix().get3x3(matrix3f);
+            GLSMMatrices.getModelViewMatrix().get3x3(matrix3f);
             this.spotDirection.set(raw);
             this.spotDirection.mul(matrix3f);
             return true;

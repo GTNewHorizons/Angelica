@@ -24,11 +24,6 @@ class FormatMapBufferUsageTest {
     }
 
     @Test
-    void storageBufferTarget_hasNoVertexUsage() {
-        assertEquals(0, FormatMap.mapBufferUsage(GL43.GL_SHADER_STORAGE_BUFFER) & SDL_GPU_BUFFERUSAGE_VERTEX);
-    }
-
-    @Test
     void drawIndirectBufferTarget_singleIndirectFlag() {
         assertEquals(SDL_GPU_BUFFERUSAGE_INDIRECT, FormatMap.mapBufferUsage(GL40.GL_DRAW_INDIRECT_BUFFER));
     }

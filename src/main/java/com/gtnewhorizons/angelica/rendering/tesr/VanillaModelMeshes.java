@@ -4,7 +4,8 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
 import com.gtnewhorizons.angelica.api.tesr.TesrMeshBuilder;
 import com.gtnewhorizons.angelica.api.tesr.TesrMeshSink;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import net.minecraft.client.model.ModelChest;
 import net.minecraft.client.model.ModelRenderer;
@@ -13,7 +14,6 @@ import net.minecraft.client.model.ModelSkeletonHead;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.util.ResourceLocation;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /** Cached-mesh entry points for the vanilla chest/sign/skull TESR mixins. */
@@ -36,9 +36,7 @@ public final class VanillaModelMeshes {
     private static final Object KEY_SIGN_STANDING = new Object();
     private static final Object KEY_SIGN_WALL = new Object();
 
-    private record SkullKey(ModelSkeletonHead model, ResourceLocation texture) {}
-
-    private static final Map<SkullKey, Object> SKULL_KEYS = new HashMap<>();
+    private static final Map<ModelSkeletonHead, Map<ResourceLocation, Object>> SKULL_KEYS = new Reference2ObjectOpenHashMap<>();
 
     private static final Builder BUILDER = new Builder();
 
@@ -69,12 +67,12 @@ public final class VanillaModelMeshes {
     }
 
     private static void renderRotatedPart(Object key, ResourceLocation texture, ModelRenderer part, float angleX) {
-        GLStateManager.glPushMatrix();
-        GLStateManager.glTranslatef(part.offsetX + part.rotationPointX * MODEL_SCALE, part.offsetY + part.rotationPointY * MODEL_SCALE, part.offsetZ + part.rotationPointZ * MODEL_SCALE);
-        GLStateManager.glRotatef(angleX * (180f / (float) Math.PI), 1.0f, 0.0f, 0.0f);
+        GLSMMatrices.glPushMatrix();
+        GLSMMatrices.glTranslatef(part.offsetX + part.rotationPointX * MODEL_SCALE, part.offsetY + part.rotationPointY * MODEL_SCALE, part.offsetZ + part.rotationPointZ * MODEL_SCALE);
+        GLSMMatrices.glRotatef(angleX * (180f / (float) Math.PI), 1.0f, 0.0f, 0.0f);
         BUILDER.setLocal(texture, MODEL_SCALE, part);
         AngelicaTesrMeshCache.INSTANCE.renderCached(key, BUILDER);
-        GLStateManager.glPopMatrix();
+        GLSMMatrices.glPopMatrix();
     }
 
     public static void renderSign(ModelSign model) {
@@ -87,17 +85,17 @@ public final class VanillaModelMeshes {
         if (texture == null) {
             return false;
         }
-        final Object key = SKULL_KEYS.computeIfAbsent(new SkullKey(model, texture), k -> new Object());
-        GLStateManager.glPushMatrix();
+        final Object key = SKULL_KEYS.computeIfAbsent(model, m -> new Object2ObjectOpenHashMap<>()).computeIfAbsent(texture, t -> new Object());
+        GLSMMatrices.glPushMatrix();
         if (yawDegrees != 0.0f) {
-            GLStateManager.glRotatef(yawDegrees, 0.0f, 1.0f, 0.0f);
+            GLSMMatrices.glRotatef(yawDegrees, 0.0f, 1.0f, 0.0f);
         }
         if (pitchDegrees != 0.0f) {
-            GLStateManager.glRotatef(pitchDegrees, 1.0f, 0.0f, 0.0f);
+            GLSMMatrices.glRotatef(pitchDegrees, 1.0f, 0.0f, 0.0f);
         }
         BUILDER.set(texture, scale, model.skeletonHead, null, null);
         AngelicaTesrMeshCache.INSTANCE.renderCached(key, BUILDER);
-        GLStateManager.glPopMatrix();
+        GLSMMatrices.glPopMatrix();
         return true;
     }
 

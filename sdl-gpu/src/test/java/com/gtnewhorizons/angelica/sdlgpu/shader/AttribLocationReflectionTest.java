@@ -19,7 +19,7 @@ class AttribLocationReflectionTest {
 
     private static StageReflection reflectionWith(VsInput... inputs) {
         return new StageReflection(
-            ShaderManager.ResourceCounts.EMPTY, List.of(), List.of(), List.of(), 0, List.of(),
+            ShaderManager.ResourceCounts.EMPTY, List.of(), List.of(), List.of(), List.of(), 0, List.of(),
             List.of(inputs), List.of(), List.of(), -1, 0, 0, 0, 0, ShaderManager.BlockReflection.emptyBlocks());
     }
 

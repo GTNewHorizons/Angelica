@@ -1,12 +1,12 @@
 package me.jellysquid.mods.sodium.client.gui.options.control.element;
 
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import me.jellysquid.mods.sodium.client.gui.options.Option;
 import me.jellysquid.mods.sodium.client.gui.options.control.ControlElement;
 import me.jellysquid.mods.sodium.client.gui.options.control.ControlValueFormatter;
 import me.jellysquid.mods.sodium.client.gui.utils.Rect2i;
 import me.jellysquid.mods.sodium.client.util.Dim2i;
 import net.minecraft.util.MathHelper;
+import org.lwjgl.input.Keyboard;
 
 public class SodiumControlElementFactory implements ControlElementFactory {
     @Override
@@ -57,20 +57,11 @@ public class SodiumControlElementFactory implements ControlElementFactory {
 
         @Override
         public boolean mouseClicked(double mouseX, double mouseY, int button) {
-            if(AngelicaConfig.enableReesesSodiumOptions) {
-                if (this.option.isAvailable() && this.dim.containsCursor(mouseX, mouseY) && (button == 0 || button == 1)) {
-                    this.option.setValue(this.allowedValues[Math.floorMod(this.currentIndex() + (button == 0 ? 1 : -1), this.allowedValues.length)]);
-                    this.playClickSound();
+            if (this.option.isAvailable() && this.dim.containsCursor(mouseX, mouseY) && (button == 0 || button == 1)) {
+                this.option.setValue(this.allowedValues[Math.floorMod(this.currentIndex() + (button == 0 ? 1 : -1), this.allowedValues.length)]);
+                this.playClickSound();
 
-                    return true;
-                }
-            } else {
-                if (this.option.isAvailable() && button == 0 && this.dim.containsCursor(mouseX, mouseY)) {
-                    this.option.setValue(this.allowedValues[(this.currentIndex() + 1) % this.allowedValues.length]);
-                    this.playClickSound();
-
-                    return true;
-                }
+                return true;
             }
 
             return false;
@@ -193,6 +184,30 @@ public class SodiumControlElementFactory implements ControlElementFactory {
             }
 
             return false;
+        }
+
+        @Override
+        public boolean keyTyped(char typedChar, int keyCode) {
+            if (!this.option.isAvailable()) {
+                return false;
+            }
+
+            final int step;
+            if (keyCode == Keyboard.KEY_LEFT) {
+                step = -this.interval;
+            } else if (keyCode == Keyboard.KEY_RIGHT) {
+                step = this.interval;
+            } else {
+                return false;
+            }
+
+            final int value = MathHelper.clamp_int(this.option.getValue() + step, this.min, this.min + this.range);
+
+            if (this.option.getValue() != value) {
+                this.option.setValue(value);
+            }
+
+            return true;
         }
     }
 

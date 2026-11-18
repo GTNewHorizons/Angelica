@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.sdlgpu.shader.cross;
 
 import org.lwjgl.system.MemoryUtil;
 import com.gtnewhorizons.angelica.config.SystemProperties;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderCacheIO;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.PointerBuffer;
@@ -27,7 +28,15 @@ public final class CrossCompileUtil {
 
     public static final AtomicInteger SHADER_DUMP_COUNTER = new AtomicInteger();
 
+    private static final class SpvcId {
+        static final String VALUE = ShaderCacheIO.libraryId(Spvc.getLibrary());
+    }
+
     private CrossCompileUtil() {}
+
+    public static String spvcId() {
+        return SpvcId.VALUE;
+    }
 
     public static String stageSuffix(int glShaderType) {
         if (glShaderType == GL20.GL_VERTEX_SHADER) return "vert";
@@ -141,18 +150,30 @@ public final class CrossCompileUtil {
         return false;
     }
 
+    public static boolean usesImageAtomics(ByteBuffer spirv) {
+        final IntBuffer w = spirv.asIntBuffer();
+        for (int i = SPIRV_HEADER_WORDS; i < w.limit(); i = nextInstruction(w, i)) {
+            if ((w.get(i) & 0xFFFF) == Spv.SpvOpImageTexelPointer) return true;
+        }
+        return false;
+    }
+
+    private static final int SPIRV_HEADER_WORDS = 5; // magic, version, generator, bound, schema
+
+    private static int nextInstruction(IntBuffer w, int i) {
+        final int len = w.get(i) >>> 16;
+        return len == 0 ? w.limit() : i + len;
+    }
+
     public static int[] parseLocalSize(ByteBuffer spirv) {
         final IntBuffer w = spirv.asIntBuffer();
-        final int wordCount = w.limit();
-        int i = 5; // 5-word SPIR-V header (magic, version, generator, bound, schema)
         int lx = 1, ly = 1, lz = 1;
         boolean foundLiteral = false;
         boolean sawExecutionModeId = false;
-        while (i < wordCount) {
+        for (int i = SPIRV_HEADER_WORDS; i < w.limit(); i = nextInstruction(w, i)) {
             final int word0 = w.get(i);
             final int opcode = word0 & 0xFFFF;
-            final int instrLen = (word0 >>> 16) & 0xFFFF;
-            if (instrLen == 0) break;
+            final int instrLen = word0 >>> 16;
             if (opcode == 16 && instrLen >= 6) { // SpvOpExecutionMode
                 final int mode = w.get(i + 2);
                 if (mode == 17) { // SpvExecutionModeLocalSize
@@ -164,7 +185,6 @@ public final class CrossCompileUtil {
             } else if (opcode == 331) { // SpvOpExecutionModeId
                 sawExecutionModeId = true;
             }
-            i += instrLen;
         }
         if (!foundLiteral && sawExecutionModeId) {
             LOG.warn("SPIR-V uses OpExecutionModeId (spec-constant LocalSizeId); falling back to {{1,1,1}} - not supported by parseLocalSize");

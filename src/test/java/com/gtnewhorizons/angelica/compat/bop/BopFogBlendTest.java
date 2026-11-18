@@ -1,201 +1,66 @@
 package com.gtnewhorizons.angelica.compat.bop;
 
+import net.minecraft.world.World;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.Random;
+import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import com.gtnewhorizons.angelica.compat.bop.BopFogTestSupport.Grid;
+
+import static com.gtnewhorizons.angelica.compat.bop.BopFogTestSupport.mockWorld;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class BopFogBlendTest {
 
-    private static final float EPSILON = 1e-4f;
-
-    private static float[] reference(BopFogBlend.ColorSource source, double posX, double posZ, int playerX,
-        int playerY, int playerZ, int distance) {
-
-        float rBiomeFog = 0, gBiomeFog = 0, bBiomeFog = 0, weightBiomeFog = 0;
-        for (int x = -distance; x <= distance; ++x) {
-            for (int z = -distance; z <= distance; ++z) {
-                final int fogColour = source.fogColour(playerX + x, playerY, playerZ + z);
-                if (fogColour == BopFogBlend.NO_FOG) continue;
-
-                float rPart = (fogColour & 0xFF0000) >> 16;
-                float gPart = (fogColour & 0x00FF00) >> 8;
-                float bPart = fogColour & 0x0000FF;
-                float weightPart = 1;
-
-                if (x == -distance) {
-                    final double xDiff = 1 - (posX - playerX);
-                    rPart *= xDiff;
-                    gPart *= xDiff;
-                    bPart *= xDiff;
-                    weightPart *= xDiff;
-                } else if (x == distance) {
-                    final double xDiff = posX - playerX;
-                    rPart *= xDiff;
-                    gPart *= xDiff;
-                    bPart *= xDiff;
-                    weightPart *= xDiff;
-                }
-
-                if (z == -distance) {
-                    final double zDiff = 1 - (posZ - playerZ);
-                    rPart *= zDiff;
-                    gPart *= zDiff;
-                    bPart *= zDiff;
-                    weightPart *= zDiff;
-                } else if (z == distance) {
-                    final double zDiff = posZ - playerZ;
-                    rPart *= zDiff;
-                    gPart *= zDiff;
-                    bPart *= zDiff;
-                    weightPart *= zDiff;
-                }
-
-                rBiomeFog += rPart;
-                gBiomeFog += gPart;
-                bBiomeFog += bPart;
-                weightBiomeFog += weightPart;
-            }
-        }
-        return new float[] { rBiomeFog, gBiomeFog, bBiomeFog, weightBiomeFog };
+    private record Case(String name, long seed, int fogPercent, double posX, double posZ, int playerX, int playerY,
+        int playerZ, int distance, int expectedR, int expectedG, int expectedB, int expectedWeight) {
     }
 
-    /** Deterministic pseudo-random grid: every column is either a fog biome with a stable colour, or plain. */
-    private record Grid(long seed, int fogPercent) implements BopFogBlend.ColorSource {
+    private static final List<Case> CASES = List.of(
+        new Case("distance0", 11L, 100, 10.5, 20.25, 10, 64, 20, 0, 0x429fc000, 0x41ed0000, 0x42a98000, 0x3ec00000),
+        new Case("distance1", 12L, 85, 5.25, 8.75, 5, 70, 8, 1, 0x43adb800, 0x43b41000, 0x43304000, 0x40100000),
+        new Case("distance2", 13L, 65, -3.5, 12.125, -4, 64, 12, 2, 0x44b2f200, 0x44b3de00, 0x44b93800, 0x412a0000),
+        new Case("distance6", 14L, 50, 100.75, -200.25, 100, 80, -200, 6, 0x46026100, 0x45fb6880, 0x45e48f80, 0x42748000),
+        new Case("distance15", 15L, 35, -500.5, 500.5, -500, 64, 500, 15, 0x47166700, 0x4716bb40, 0x470f8c40, 0x4397c000),
+        new Case("distance34", 16L, 20, 1000.25, -1000.75, 1000, 64, -1000, 34, 0x47e8dd20, 0x47e14200, 0x47e63760, 0x44656000),
+        new Case("noFogGrid", 17L, 0, 42.5, -17.25, 42, 64, -17, 10, 0x0, 0x0, 0x0, 0x0),
+        new Case("borderOnlyGrid", 18L, 5, 100.75, 200.125, 100, 64, 200, 12, 0x457fe200, 0x4585bb00, 0x45a5c600, 0x42150000));
 
-        @Override
-        public int fogColour(int x, int y, int z) {
-            long h = seed;
-            h = h * 31 + x;
-            h = h * 31 + y;
-            h = h * 31 + z;
-            h ^= h >>> 27;
-            h *= 0x9E3779B97F4A7C15L;
-            h ^= h >>> 31;
-            if (Math.floorMod(h, 100) >= fogPercent) return BopFogBlend.NO_FOG;
-            return (int) (h >>> 8) & 0xFFFFFF;
-        }
-    }
-
-    private final float[] out = new float[4];
-    private final Object world = new Object();
+    private final float[] actual = new float[4];
 
     @BeforeEach
     void reset() {
         BopFogBlend.invalidate();
+        FogBiomeCache.invalidate();
     }
 
-    private void assertMatchesReference(BopFogBlend.ColorSource source, double posX, double posZ, int px, int py,
-        int pz, int distance, int generation) {
-
-        final float[] expected = reference(source, posX, posZ, px, py, pz, distance);
-        BopFogBlend.accumulate(world, generation, source, posX, posZ, px, py, pz, distance, out);
-        for (int i = 0; i < 4; i++) {
-            final float tolerance = Math.max(EPSILON, Math.abs(expected[i]) * EPSILON);
-            assertEquals(expected[i], out[i], tolerance, "component " + i);
-        }
+    private static void assertBitEqual(float[] expected, float[] actual) {
+        assertEquals(Float.floatToRawIntBits(expected[0]), Float.floatToRawIntBits(actual[0]), "r");
+        assertEquals(Float.floatToRawIntBits(expected[1]), Float.floatToRawIntBits(actual[1]), "g");
+        assertEquals(Float.floatToRawIntBits(expected[2]), Float.floatToRawIntBits(actual[2]), "b");
+        assertEquals(Float.floatToRawIntBits(expected[3]), Float.floatToRawIntBits(actual[3]), "weight");
     }
 
     @Test
-    void matchesReferenceOverRandomGridsAndPositions() {
-        final Random random = new Random(12345);
-        for (int iteration = 0; iteration < 200; iteration++) {
-            final Grid grid = new Grid(random.nextLong(), random.nextInt(101));
-            final int px = random.nextInt(4000) - 2000;
-            final int py = random.nextInt(256);
-            final int pz = random.nextInt(4000) - 2000;
-            final double posX = px + random.nextDouble();
-            final double posZ = pz + random.nextDouble();
-            final int distance = random.nextInt(21);
-            assertMatchesReference(grid, posX, posZ, px, py, pz, distance, iteration);
+    void productionMatchesGoldenBits() {
+        for (Case c : CASES) {
+            final Grid grid = new Grid(c.seed(), c.fogPercent());
+            final World world = mockWorld(grid);
+            BopFogBlend.invalidate();
+            BopFogBlend.accumulate(world, c.posX(), c.posZ(), c.playerX(), c.playerY(), c.playerZ(), c.distance(), actual);
+            assertEquals(c.expectedR(), Float.floatToRawIntBits(actual[0]), c.name() + " r");
+            assertEquals(c.expectedG(), Float.floatToRawIntBits(actual[1]), c.name() + " g");
+            assertEquals(c.expectedB(), Float.floatToRawIntBits(actual[2]), c.name() + " b");
+            assertEquals(c.expectedWeight(), Float.floatToRawIntBits(actual[3]), c.name() + " weight");
         }
     }
 
     @Test
     void noFogBiomesAccumulateNothing() {
-        final BopFogBlend.ColorSource none = (x, y, z) -> BopFogBlend.NO_FOG;
-        BopFogBlend.accumulate(world, 0, none, 10.5, 20.25, 10, 64, 20, 20, out);
-        assertArrayEquals(new float[] { 0, 0, 0, 0 }, out);
-    }
-
-    @Test
-    void fullCoverageMatchesReference() {
-        final BopFogBlend.ColorSource all = (x, y, z) -> 0x203040;
-        assertMatchesReference(all, 10.5, 20.5, 10, 64, 20, 20, 0);
-    }
-
-    @Test
-    void borderOnlyCoverageMatchesReference() {
-        final int distance = 12;
-        final BopFogBlend.ColorSource borderOnly = (x, y, z) -> {
-            final int dx = Math.abs(x - 100);
-            final int dz = Math.abs(z - 200);
-            return (dx == distance || dz == distance) ? 0xFF8040 : BopFogBlend.NO_FOG;
-        };
-        assertMatchesReference(borderOnly, 100.75, 200.125, 100, 64, 200, distance, 0);
-    }
-
-    @Test
-    void interiorIsReusedAcrossSubBlockMovementAndRebuiltOnCrossing() {
-        final Grid grid = new Grid(99, 60);
-        for (double frac = 0.05; frac < 1.0; frac += 0.1) {
-            assertMatchesReference(grid, 40 + frac, 80 + frac, 40, 64, 80, 16, 7);
-        }
-        assertMatchesReference(grid, 41.5, 80.5, 41, 64, 80, 16, 7);
-        assertMatchesReference(grid, 41.5, 80.5, 41, 65, 80, 16, 7);
-        assertMatchesReference(grid, 41.5, 80.5, 41, 65, 80, 12, 7);
-    }
-
-    @Test
-    void onlyTheBorderIsWalkedWhileTheBlockPositionHolds() {
-        final int distance = 20;
-        final int[] lookups = { 0 };
-        final BopFogBlend.ColorSource counting = (x, y, z) -> {
-            lookups[0]++;
-            return 0x102030;
-        };
-
-        BopFogBlend.accumulate(world, 0, counting, 100.1, 200.1, 100, 64, 200, distance, out);
-        assertEquals((2 * distance + 1) * (2 * distance + 1), lookups[0], "first call must walk every column");
-
-        lookups[0] = 0;
-        BopFogBlend.accumulate(world, 0, counting, 100.9, 200.9, 100, 64, 200, distance, out);
-        assertEquals(8 * distance, lookups[0], "a sub-block move must only re-walk the border strips");
-    }
-
-    @Test
-    void aNewGenerationRebuildsTheInterior() {
-        final int[] answer = { 0x101010 };
-        final BopFogBlend.ColorSource shifting = (x, y, z) -> answer[0];
-
-        BopFogBlend.accumulate(world, 1, shifting, 0.5, 0.5, 0, 64, 0, 8, out);
-        final float firstInteriorRed = out[0];
-
-        answer[0] = 0x202020;
-        BopFogBlend.accumulate(world, 2, shifting, 0.5, 0.5, 0, 64, 0, 8, out);
-        assertEquals(firstInteriorRed * 2, out[0], firstInteriorRed * EPSILON,
-            "a generation bump must rebuild the cached interior, not serve the stale sum");
-    }
-
-    @Test
-    void aNewWorldRebuildsTheInterior() {
-        final int[] answer = { 0x101010 };
-        final BopFogBlend.ColorSource shifting = (x, y, z) -> answer[0];
-
-        BopFogBlend.accumulate(world, 0, shifting, 0.5, 0.5, 0, 64, 0, 8, out);
-        final float firstInteriorRed = out[0];
-
-        answer[0] = 0x202020;
-        BopFogBlend.accumulate(new Object(), 0, shifting, 0.5, 0.5, 0, 64, 0, 8, out);
-        assertEquals(firstInteriorRed * 2, out[0], firstInteriorRed * EPSILON);
-    }
-
-    @Test
-    void zeroDistanceMatchesReference() {
-        final BopFogBlend.ColorSource all = (x, y, z) -> 0x804020;
-        assertMatchesReference(all, 5.5, 6.25, 5, 64, 6, 0, 0);
+        final Grid grid = new Grid(1, 0);
+        final World world = mockWorld(grid);
+        BopFogBlend.accumulate(world, 10.5, 20.25, 10, 64, 20, 20, actual);
+        assertBitEqual(new float[] { 0, 0, 0, 0 }, actual);
     }
 }

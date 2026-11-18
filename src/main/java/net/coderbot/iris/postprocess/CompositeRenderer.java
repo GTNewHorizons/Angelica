@@ -4,7 +4,11 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.glsm.GLDebug;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
@@ -298,8 +302,8 @@ public class CompositeRenderer {
 	}
 
 	public void renderAll() {
-        GLStateManager.disableBlend();
-        GLStateManager.disableAlphaTest();
+        GLSMBlend.disableBlend();
+        GLSMDepthStencilAlpha.disableAlphaTest();
 
 		FullScreenQuadRenderer.INSTANCE.begin();
 
@@ -336,7 +340,7 @@ public class CompositeRenderer {
 				final ImmutableSet<Integer> readsFromAlt = renderTargets.parityResolve(renderPass.stageReadsFromAlt);
 
 				if (!renderPass.mipmappedBuffers.isEmpty()) {
-					GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+					GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
 
 					for (int index : renderPass.mipmappedBuffers) {
 						setupMipmapping(CompositeRenderer.this.renderTargets.get(index), readsFromAlt.contains(index));
@@ -347,7 +351,7 @@ public class CompositeRenderer {
 				final float scaledHeight = renderPass.viewHeight * renderPass.viewportScale.scale();
 				final float viewportX = renderPass.viewWidth * renderPass.viewportScale.viewportX();
 				final float viewportY = renderPass.viewHeight * renderPass.viewportScale.viewportY();
-				GLStateManager.glViewport((int) viewportX, (int) viewportY, (int) scaledWidth, (int) scaledHeight);
+				GLSMRasterizer.glViewport((int) viewportX, (int) viewportY, (int) scaledWidth, (int) scaledHeight);
 
 				if (renderPass.preRasterCompute != null && renderPass.preRasterMode != null) {
 					dispatchPreRasterCompute(renderPass);
@@ -378,18 +382,18 @@ public class CompositeRenderer {
         Minecraft.getMinecraft().getFramebuffer().bindFramebuffer(true);
 		ProgramUniforms.clearActiveUniforms();
 		ProgramSamplers.clearActiveSamplers();
-		GLStateManager.glUseProgram(0);
+		GLSMPrograms.glUseProgram(0);
 
 		// NB: Unbinding all of these textures is necessary for proper shaderpack reloading.
-		final int maxUnit = Math.min(SamplerLimits.get().getMaxTextureUnits() - 1, GLStateManager.getMaxBoundTextureUnit());
+		final int maxUnit = Math.min(SamplerLimits.get().getMaxTextureUnits() - 1, GLSMTextures.getMaxBoundTextureUnit());
 		for (int i = 0; i <= maxUnit; i++) {
 			// Unbind all textures that we may have used.
 			// NB: This is necessary for shader pack reloading to work propely
-			GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + i);
-			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+			GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0 + i);
+			GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
 		}
 
-		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+		GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
 	}
 
 	private void dispatchPreRasterCompute(Pass pass) {

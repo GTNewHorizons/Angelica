@@ -15,6 +15,8 @@ public class MixinRenderBlocksEmissive {
 
     @Inject(method = "renderStandardBlock", at = @At("TAIL"))
     private void angelica$renderEmissiveOverlay(Block block, int x, int y, int z, CallbackInfoReturnable<Boolean> cir) {
+        if (!EmissiveTextureHelper.hasAnyEmissive()) return;
+
         RenderBlocks self = (RenderBlocks)(Object)this;
         IBlockAccess world = self.blockAccess;
         if (world == null) return;

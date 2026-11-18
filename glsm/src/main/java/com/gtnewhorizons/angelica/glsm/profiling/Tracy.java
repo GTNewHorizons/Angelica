@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.glsm.profiling;
 
-import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.CaptureGate;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.sun.management.ThreadMXBean;
@@ -66,12 +65,12 @@ public final class Tracy {
 
     static {
         TracyBackend backend = null;
-        if (SystemProperties.TRACY) {
+        if (TracyOptions.enabled()) {
             backend = loadAndInit();
         }
         BACKEND = backend;
         ENABLED = backend != null;
-        FINE_ZONES = ENABLED && SystemProperties.TRACY_FINE_ZONES;
+        FINE_ZONES = ENABLED && TracyOptions.fineZones();
         if (ENABLED) {
             Runtime.getRuntime().addShutdownHook(new Thread(Tracy::shutdown, "Tracy-Shutdown"));
             SECTIONS.registerCategory(SECTION_WORLD, "World");
@@ -86,6 +85,18 @@ public final class Tracy {
 
     private static void shutdown() {
         SHUTTING_DOWN = true;
+        if (isCaptureActive(BACKEND.captureState())) {
+            BACKEND.captureStop();
+            final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+            while (isCaptureActive(BACKEND.captureState()) && System.nanoTime() < deadline) {
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        }
         final Thread worker = new Thread(BACKEND::shutdown, "Tracy-Shutdown-Worker");
         worker.setDaemon(true);
         worker.start();
@@ -96,6 +107,10 @@ public final class Tracy {
         }
     }
 
+    private static boolean isCaptureActive(int state) {
+        return state == TracyBackend.CAPTURE_CONNECTING || state == TracyBackend.CAPTURE_RECORDING || state == TracyBackend.CAPTURE_SAVING;
+    }
+
     private static TracyBackend loadAndInit() {
         TracyBackend found = null;
         try {
@@ -104,11 +119,11 @@ public final class Tracy {
                 found = it.next();
             }
         } catch (ServiceConfigurationError | LinkageError e) {
-            LOGGER.warn("Tracy requested (-Dangelica.tracy=true) but backend unavailable: {}", e.getMessage());
+            LOGGER.warn("Tracy: backend unavailable: {}", e.getMessage());
             return null;
         }
         if (found == null) {
-            LOGGER.warn("Tracy requested (-Dangelica.tracy=true) but no TracyBackend service present");
+            LOGGER.warn("Tracy: enabled but the angelica-tracy jar is not installed");
             return null;
         }
         if (!implementsCurrentAbi(found)) return null;
@@ -120,7 +135,7 @@ public final class Tracy {
         init.start();
         try {
             if (!done.await(15, TimeUnit.SECONDS) && result.compareAndSet(null, Boolean.FALSE)) {
-                LOGGER.warn("Tracy requested (-Dangelica.tracy=true) but init timed out; profiling disabled");
+                LOGGER.warn("Tracy: init timed out; profiling disabled");
                 return null;
             }
         } catch (InterruptedException e) {
@@ -131,17 +146,17 @@ public final class Tracy {
             return null;
         }
         if (!Boolean.TRUE.equals(result.get())) {
-            LOGGER.warn("Tracy requested (-Dangelica.tracy=true) but native init failed; profiling disabled");
+            LOGGER.warn("Tracy: native init failed; profiling disabled");
             return null;
         }
         return backend;
     }
 
-    private static final String ABI_SENTINEL = "sectionEnter";
+    private static final String ABI_SENTINEL = "frameImage";
 
     private static boolean implementsCurrentAbi(TracyBackend backend) {
         try {
-            backend.getClass().getMethod(ABI_SENTINEL, int.class, String.class);
+            backend.getClass().getMethod(ABI_SENTINEL, long.class, int.class, int.class, int.class, boolean.class);
             return true;
         } catch (NoSuchMethodException e) {
             LOGGER.warn("Tracy backend {} was built against an older TracyBackend interface; profiling disabled", backend.getClass().getName());
@@ -322,6 +337,12 @@ public final class Tracy {
         if (ptr != 0) BACKEND.frameMark(ptr);
     }
 
+    /** Copies {@code rgba} before returning; width and height must be multiples of 4. */
+    public static void frameImage(long rgba, int width, int height, int offset, boolean flip) {
+        if (!ENABLED || SHUTTING_DOWN) return;
+        BACKEND.frameImage(rgba, width, height, offset, flip);
+    }
+
     public static void plotInt(String name, long value) {
         plotInt(name, value, TracyBackend.PLOT_FORMAT_NUMBER);
     }
@@ -386,6 +407,31 @@ public final class Tracy {
 
     public static boolean isConnected() {
         return ENABLED && BACKEND.isConnected();
+    }
+
+    public static String captureStart(String path, int seconds) {
+        if (!ENABLED) return "Tracy not enabled";
+        return BACKEND.captureStart(path, seconds);
+    }
+
+    public static void captureStop() {
+        if (!ENABLED) return;
+        BACKEND.captureStop();
+    }
+
+    public static int captureState() {
+        if (!ENABLED) return 0;
+        return BACKEND.captureState();
+    }
+
+    public static long captureElapsedMs() {
+        if (!ENABLED) return 0;
+        return BACKEND.captureElapsedMs();
+    }
+
+    public static String captureError() {
+        if (!ENABLED) return "";
+        return BACKEND.captureError();
     }
 
     private static boolean gpuInitAttempted;

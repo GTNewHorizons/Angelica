@@ -1,16 +1,16 @@
 package com.gtnewhorizons.angelica.sdlgpu.resource;
 
 import com.gtnewhorizons.angelica.sdlgpu.device.Device;
-import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
+import com.gtnewhorizons.angelica.sdlgpu.frame.FenceTracker;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.sdl.SDLError;
 import org.lwjgl.sdl.SDL_GPUBufferRegion;
-import org.lwjgl.sdl.SDL_GPUTransferBufferCreateInfo;
 import org.lwjgl.sdl.SDL_GPUTransferBufferLocation;
 import org.lwjgl.system.MemoryStack;
+import org.lwjgl.opengl.GL32;
 import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;
@@ -25,25 +25,27 @@ public final class ReadbackShadows {
     private static final class Slot {
         long transferBuffer;
         int capacity;
+        int validLen;
         boolean valid;
+        long sync;
     }
 
     private final Device device;
-    private final Long2ObjectOpenHashMap<Slot> slots = new Long2ObjectOpenHashMap<>();
+    private final ResourceManager resourceManager;
+    private final FenceTracker fenceTracker;
+    private final Int2ObjectOpenHashMap<Long2ObjectOpenHashMap<Slot>> byBuffer = new Int2ObjectOpenHashMap<>();
 
-    public ReadbackShadows(Device device) {
+    public ReadbackShadows(Device device, ResourceManager resourceManager, FenceTracker fenceTracker) {
         this.device = device;
+        this.resourceManager = resourceManager;
+        this.fenceTracker = fenceTracker;
     }
 
-    private static long key(int glId, long offset) {
-        return ((long) glId << 32) | (offset & 0xFFFFFFFFL);
-    }
-
-    public boolean scheduleDownload(long copyPass, long srcHandle, long srcOffset, int dstGlId, long dstOffset, long size) {
-        if (copyPass == 0 || srcHandle == 0 || size <= 0 || size > Integer.MAX_VALUE) return false;
+    public void scheduleDownload(long copyPass, long srcHandle, long srcOffset, int dstGlId, long dstOffset, long size) {
+        if (copyPass == 0 || srcHandle == 0 || size <= 0 || size > Integer.MAX_VALUE) return;
 
         final Slot slot = ensureSlot(dstGlId, dstOffset, (int) size);
-        if (slot == null) return false;
+        if (slot == null) return;
 
         try (MemoryStack stack = stackPush()) {
             final SDL_GPUBufferRegion src = SDL_GPUBufferRegion.calloc(stack)
@@ -55,18 +57,32 @@ public final class ReadbackShadows {
                 .offset(0);
             SDL_DownloadFromGPUBuffer(copyPass, src, dst);
         }
+        dropSync(slot);
+        slot.sync = fenceTracker.fenceSync();
+        slot.validLen = (int) size;
         slot.valid = true;
-        return true;
     }
 
-    public void invalidate(int glId, long offset) {
-        final Slot slot = slots.get(key(glId, offset));
-        if (slot != null) slot.valid = false;
+    public void invalidateAll(int glId) {
+        if (glId == 0) return;
+        final Long2ObjectOpenHashMap<Slot> slots = byBuffer.get(glId);
+        if (slots == null) return;
+        for (Slot slot : slots.values()) {
+            slot.valid = false;
+            dropSync(slot);
+        }
     }
 
     public boolean serve(int glId, long offset, ByteBuffer out, int len) {
-        final Slot slot = slots.get(key(glId, offset));
-        if (slot == null || !slot.valid || slot.transferBuffer == 0 || slot.capacity < len) return false;
+        final Long2ObjectOpenHashMap<Slot> slots = byBuffer.get(glId);
+        final Slot slot = slots != null ? slots.get(offset) : null;
+        if (slot == null || !slot.valid || slot.transferBuffer == 0 || slot.validLen < len) return false;
+
+        if (slot.sync != 0) {
+            final int wait = fenceTracker.clientWaitSync(slot.sync, GL32.GL_SYNC_FLUSH_COMMANDS_BIT, Long.MAX_VALUE);
+            if (wait != GL32.GL_ALREADY_SIGNALED && wait != GL32.GL_CONDITION_SATISFIED) return false;
+            dropSync(slot);
+        }
 
         final long mapped = nSDL_MapGPUTransferBuffer(device.getDevice(), slot.transferBuffer, false);
         if (mapped == 0) {
@@ -80,62 +96,63 @@ public final class ReadbackShadows {
     }
 
     public boolean hasSlotsFor(int glId) {
-        for (long k : slots.keySet()) {
-            if ((int) (k >>> 32) == glId) return true;
-        }
-        return false;
+        return byBuffer.containsKey(glId);
     }
 
     public void release(int glId) {
-        if (slots.isEmpty()) return;
-        final ObjectIterator<Long2ObjectMap.Entry<Slot>> it = slots.long2ObjectEntrySet().fastIterator();
-        while (it.hasNext()) {
-            final Long2ObjectMap.Entry<Slot> entry = it.next();
-            if ((int) (entry.getLongKey() >>> 32) == glId) {
-                releaseSlot(entry.getValue());
-                it.remove();
-            }
-        }
+        final Long2ObjectOpenHashMap<Slot> slots = byBuffer.remove(glId);
+        if (slots == null) return;
+        for (Slot slot : slots.values()) releaseSlot(slot);
     }
 
     public void dispose() {
-        for (Slot slot : slots.values()) releaseSlot(slot);
-        slots.clear();
+        for (Long2ObjectOpenHashMap<Slot> slots : byBuffer.values()) {
+            for (Slot slot : slots.values()) releaseSlot(slot);
+        }
+        byBuffer.clear();
     }
 
     private Slot ensureSlot(int glId, long offset, int size) {
-        final long k = key(glId, offset);
-        Slot slot = slots.get(k);
+        Long2ObjectOpenHashMap<Slot> slots = byBuffer.get(glId);
+        Slot slot = slots != null ? slots.get(offset) : null;
         if (slot != null && slot.capacity >= size) return slot;
 
         if (slot == null) {
+            if (slots == null) {
+                slots = new Long2ObjectOpenHashMap<>();
+                byBuffer.put(glId, slots);
+            }
             slot = new Slot();
-            slots.put(k, slot);
+            slots.put(offset, slot);
         } else {
             releaseSlot(slot);
         }
 
-        try (MemoryStack stack = stackPush()) {
-            final SDL_GPUTransferBufferCreateInfo ci = SDL_GPUTransferBufferCreateInfo.calloc(stack)
-                .usage(SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD)
-                .size(size);
-            slot.transferBuffer = SDL_CreateGPUTransferBuffer(device.getDevice(), ci);
-        }
+        slot.transferBuffer = resourceManager.createTransferBuffer(size, SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD);
         if (slot.transferBuffer == 0) {
-            LOG.error("Failed to create readback transfer buffer size={}: {}", size, SDLError.SDL_GetError());
-            slots.remove(k);
+            slots.remove(offset);
+            if (slots.isEmpty()) byBuffer.remove(glId);
             return null;
         }
         slot.capacity = size;
+        slot.validLen = 0;
         slot.valid = false;
         return slot;
     }
 
+    private void dropSync(Slot slot) {
+        if (slot.sync == 0) return;
+        fenceTracker.deleteSync(slot.sync);
+        slot.sync = 0;
+    }
+
     private void releaseSlot(Slot slot) {
+        dropSync(slot);
         if (slot.transferBuffer != 0 && device.getDevice() != 0) {
-            SDL_ReleaseGPUTransferBuffer(device.getDevice(), slot.transferBuffer);
+            resourceManager.releaseTransferBuffer(slot.transferBuffer);
         }
         slot.transferBuffer = 0;
         slot.capacity = 0;
+        slot.validLen = 0;
     }
 }

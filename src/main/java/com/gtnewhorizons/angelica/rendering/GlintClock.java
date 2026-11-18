@@ -1,7 +1,8 @@
 package com.gtnewhorizons.angelica.rendering;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import org.joml.Matrix4fc;
+import org.joml.Matrix4f;
 
 public final class GlintClock {
 
@@ -14,6 +15,7 @@ public final class GlintClock {
 
     private static long millis;
     private static float armorU0, armorV0, armorU1, armorV1;
+    private static final Matrix4f armorFirst = new Matrix4f(), armorSecond = new Matrix4f();
 
     public static void beginFrame(long nowMillis) {
         millis = nowMillis;
@@ -30,6 +32,20 @@ public final class GlintClock {
         final double dv1 = frac(f1 * COS1 / 3.0);
         armorU1 = (float) (3.0 * (COS1 * du1 + SIN1 * dv1));
         armorV1 = (float) (3.0 * (-SIN1 * du1 + COS1 * dv1));
+        armorFirst.scaling(0.33333334f).rotateZ((float) Math.toRadians(30)).translate(armorU0, armorV0, 0);
+        armorSecond.scaling(0.33333334f).rotateZ((float) Math.toRadians(-30)).translate(armorU1, armorV1, 0);
+    }
+
+    public static Matrix4f secondArmorMatrix(Matrix4fc first) {
+        return armorFirst.equals(first, 0.000001f) ? armorSecond : null;
+    }
+
+    public static Matrix4f firstArmorMatrix() {
+        return armorFirst;
+    }
+
+    public static Matrix4f secondArmorMatrix() {
+        return armorSecond;
     }
 
     public static long millis() {
@@ -41,10 +57,10 @@ public final class GlintClock {
     }
 
     public static void translateArmorGlint() {
-        if (secondArmorLayer(GLStateManager.getMatrixStack())) {
-            GLStateManager.glTranslatef(armorU1, armorV1, 0f);
+        if (secondArmorLayer(GLSMMatrices.getMatrixStack())) {
+            GLSMMatrices.glTranslatef(armorU1, armorV1, 0f);
         } else {
-            GLStateManager.glTranslatef(armorU0, armorV0, 0f);
+            GLSMMatrices.glTranslatef(armorU0, armorV0, 0f);
         }
     }
 

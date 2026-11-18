@@ -1,7 +1,11 @@
 package net.coderbot.iris.gl.program;
 
 import com.google.common.collect.ImmutableSet;
+import com.gtnewhorizons.angelica.glsm.DisplayListManager;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.recording.CommandRecorder;
+import com.gtnewhorizons.angelica.glsm.shader.ProgramBinaryCache;
 import net.coderbot.iris.gl.image.ImageHolder;
 import net.coderbot.iris.gl.sampler.GlSampler;
 import net.coderbot.iris.gl.sampler.SamplerHolder;
@@ -14,9 +18,11 @@ import com.gtnewhorizons.angelica.glsm.texture.TextureType;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.IntSupplier;
+import java.util.function.Supplier;
 
 public class ProgramBuilder extends ProgramUniforms.Builder implements SamplerHolder, ImageHolder {
 	private final int program;
+	private RetainedPrograms.Sources sources;
 	private final ProgramSamplers.Builder samplers;
 	private final ProgramImages.Builder images;
 
@@ -40,6 +46,32 @@ public class ProgramBuilder extends ProgramUniforms.Builder implements SamplerHo
 	public static ProgramBuilder begin(String name, @Nullable String vertexSource, @Nullable String geometrySource,
 									   @Nullable String tessControlSource, @Nullable String tessEvalSource,
 									   @Nullable String fragmentSource, ImmutableSet<Integer> reservedTextureUnits) {
+		final RetainedPrograms.Sources sources = new RetainedPrograms.Sources(vertexSource, geometrySource, tessControlSource, tessEvalSource, fragmentSource, null);
+		final int retained = RetainedPrograms.take(sources);
+		final ProgramBinaryCache.Key cacheKey = retained != 0 && !ProgramBinaryCache.isFullCompileRunning() ? null : ProgramCreator.cacheKey();
+		if (cacheKey != null) {
+			cacheKey.stage(ShaderType.VERTEX.id, vertexSource);
+			if (geometrySource != null) cacheKey.stage(ShaderType.GEOMETRY.id, geometrySource);
+			if (tessControlSource != null) cacheKey.stage(ShaderType.TESSELATION_CONTROL.id, tessControlSource);
+			if (tessEvalSource != null) cacheKey.stage(ShaderType.TESSELATION_EVAL.id, tessEvalSource);
+			cacheKey.stage(ShaderType.FRAGMENT.id, fragmentSource);
+		}
+		if (retained != 0) {
+			if (cacheKey == null || ProgramBinaryCache.saveRetained(cacheKey, retained)) {
+				initializeFallbackUniforms(retained);
+				return new ProgramBuilder(name, retained, reservedTextureUnits).retainAs(sources);
+			}
+			GLSMPrograms.glDeleteProgram(retained);
+		}
+
+		if (cacheKey != null) {
+			final int saved = ProgramCreator.load(name, cacheKey);
+			if (saved != 0) {
+				initializeFallbackUniforms(saved);
+				return new ProgramBuilder(name, saved, reservedTextureUnits).retainAs(sources);
+			}
+		}
+
 		GlShader vertex = buildShader(ShaderType.VERTEX, name + ".vsh", vertexSource);
 		GlShader geometry = geometrySource != null ? buildShader(ShaderType.GEOMETRY, name + ".gsh", geometrySource) : null;
 		GlShader tessControl = tessControlSource != null ? buildShader(ShaderType.TESSELATION_CONTROL, name + ".tcs", tessControlSource) : null;
@@ -53,13 +85,50 @@ public class ProgramBuilder extends ProgramUniforms.Builder implements SamplerHo
 		if (tessEval != null) shaders.add(tessEval);
 		shaders.add(fragment);
 
-		int programId = ProgramCreator.create(name, shaders.toArray(new GlShader[0]));
+		int programId = ProgramCreator.create(name, cacheKey, shaders.toArray(new GlShader[0]));
+		initializeFallbackUniforms(programId);
 
 		for (GlShader shader : shaders) {
 			shader.destroy();
 		}
 
-		return new ProgramBuilder(name, programId, reservedTextureUnits);
+		return new ProgramBuilder(name, programId, reservedTextureUnits).retainAs(sources);
+	}
+
+	/** Initialize alpha and color uniforms to neutral values until the first pass update. */
+	private static void initializeFallbackUniforms(int programId) {
+		final int previous = GLSMPrograms.getActiveProgram();
+		final CommandRecorder recorder = DisplayListManager.isRecording() ? DisplayListManager.pauseRecording() : null;
+		try {
+			Program.bindManaged(programId);
+			seedUniform1i(programId, "iris_currentAlphaFunc", 7);
+			seedUniform1f(programId, "iris_currentAlphaTest", -1.0f);
+			seedUniform1f(programId, "alphaTestRef", -1.0f);
+			final int modulator = GLSMPrograms.glGetUniformLocation(programId, "iris_ColorModulator");
+			if (modulator != -1) {
+				RenderSystem.uniform4f(modulator, 1.0f, 1.0f, 1.0f, 1.0f);
+			}
+		} finally {
+			try {
+				Program.bindManaged(previous);
+			} finally {
+				if (recorder != null) DisplayListManager.resumeRecording(recorder);
+			}
+		}
+	}
+
+	private static void seedUniform1i(int programId, String name, int value) {
+		final int location = GLSMPrograms.glGetUniformLocation(programId, name);
+		if (location != -1) {
+			RenderSystem.uniform1i(location, value);
+		}
+	}
+
+	private static void seedUniform1f(int programId, String name, float value) {
+		final int location = GLSMPrograms.glGetUniformLocation(programId, name);
+		if (location != -1) {
+			RenderSystem.uniform1f(location, value);
+		}
 	}
 
 	public static ProgramBuilder beginCompute(String name, @Nullable String source, ImmutableSet<Integer> reservedTextureUnits) {
@@ -67,21 +136,46 @@ public class ProgramBuilder extends ProgramUniforms.Builder implements SamplerHo
 			throw new IllegalStateException("This PC does not support compute shaders, but it's attempting to be used???");
 		}
 
+		final RetainedPrograms.Sources sources = new RetainedPrograms.Sources(null, null, null, null, null, source);
+		final int retained = RetainedPrograms.take(sources);
+		final ProgramBinaryCache.Key cacheKey = retained != 0 && !ProgramBinaryCache.isFullCompileRunning() ? null : ProgramCreator.cacheKey();
+		if (cacheKey != null) {
+			cacheKey.stage(ShaderType.COMPUTE.id, source);
+		}
+		if (retained != 0) {
+			if (cacheKey == null || ProgramBinaryCache.saveRetained(cacheKey, retained)) {
+				return new ProgramBuilder(name, retained, reservedTextureUnits).retainAs(sources);
+			}
+			GLSMPrograms.glDeleteProgram(retained);
+		}
+
+		if (cacheKey != null) {
+			final int saved = ProgramCreator.load(name, cacheKey);
+			if (saved != 0) {
+				return new ProgramBuilder(name, saved, reservedTextureUnits).retainAs(sources);
+			}
+		}
+
 		GlShader compute = buildShader(ShaderType.COMPUTE, name + ".csh", source);
 
-		int programId = ProgramCreator.create(name, compute);
+		int programId = ProgramCreator.create(name, cacheKey, compute);
 
 		compute.destroy();
 
-		return new ProgramBuilder(name, programId, reservedTextureUnits);
+		return new ProgramBuilder(name, programId, reservedTextureUnits).retainAs(sources);
+	}
+
+	private ProgramBuilder retainAs(RetainedPrograms.Sources sources) {
+		this.sources = sources;
+		return this;
 	}
 
 	public Program build() {
-		return new Program(program, super.buildUniforms(), this.samplers.build(), this.images.build());
+		return new Program(program, sources, super.buildUniforms(), this.samplers.build(), this.images.build());
 	}
 
 	public ComputeProgram buildCompute() {
-		return new ComputeProgram(program, super.buildUniforms(), this.samplers.build(), this.images.build());
+		return new ComputeProgram(program, sources, super.buildUniforms(), this.samplers.build(), this.images.build());
 	}
 
 	private static GlShader buildShader(ShaderType shaderType, String name, @Nullable String source) {
@@ -103,17 +197,17 @@ public class ProgramBuilder extends ProgramUniforms.Builder implements SamplerHo
 	}
 
 	@Override
-	public boolean addDefaultSampler(TextureType type, IntSupplier texture, ValueUpdateNotifier notifier, GlSampler sampler, String... names) {
+	public boolean addDefaultSampler(TextureType type, IntSupplier texture, ValueUpdateNotifier notifier, Supplier<GlSampler> sampler, String... names) {
 		return samplers.addDefaultSampler(type, texture, notifier, sampler, names);
 	}
 
 	@Override
-	public boolean addDynamicSampler(TextureType type, IntSupplier texture, GlSampler sampler, String... names) {
+	public boolean addDynamicSampler(TextureType type, IntSupplier texture, Supplier<GlSampler> sampler, String... names) {
 		return samplers.addDynamicSampler(type, texture, sampler, names);
 	}
 
 	@Override
-	public boolean addDynamicSampler(TextureType type, IntSupplier texture, ValueUpdateNotifier notifier, GlSampler sampler, String... names) {
+	public boolean addDynamicSampler(TextureType type, IntSupplier texture, ValueUpdateNotifier notifier, Supplier<GlSampler> sampler, String... names) {
 		return samplers.addDynamicSampler(type, texture, notifier, sampler, names);
 	}
 

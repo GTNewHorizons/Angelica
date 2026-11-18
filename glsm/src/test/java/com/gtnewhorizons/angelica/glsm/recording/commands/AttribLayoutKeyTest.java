@@ -1,7 +1,12 @@
 package com.gtnewhorizons.angelica.glsm.recording.commands;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.lwjgl.opengl.GL11;
+
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -15,59 +20,50 @@ class AttribLayoutKeyTest {
         return out;
     }
 
-    @Test
-    void standardPosColorUvNormal_isAlignedAndPacked() {
-        final AttribLayoutKey k = new AttribLayoutKey(
-            new int[]{0, 1, 2, 4},
-            new int[]{3, 4, 2, 3},
-            new int[]{GL11.GL_FLOAT, GL11.GL_UNSIGNED_BYTE, GL11.GL_FLOAT, GL11.GL_BYTE},
-            new boolean[]{false, true, false, true});
-        assertArrayEquals(new int[]{0, 12, 16, 24}, offsetsOf(k));
-        assertEquals(28, k.stride());
+    static Stream<Arguments> layouts() {
+        return Stream.of(
+            Arguments.of("standard pos/color/uv/normal is aligned and packed",
+                new AttribLayoutKey(
+                    new int[]{0, 1, 2, 4},
+                    new int[]{3, 4, 2, 3},
+                    new int[]{GL11.GL_FLOAT, GL11.GL_UNSIGNED_BYTE, GL11.GL_FLOAT, GL11.GL_BYTE},
+                    new boolean[]{false, true, false, true}),
+                new int[]{0, 12, 16, 24}, 28),
+            Arguments.of("pos/uv/normal3 rounds the tail stride to 24",
+                new AttribLayoutKey(
+                    new int[]{0, 2, 4},
+                    new int[]{3, 2, 3},
+                    new int[]{GL11.GL_FLOAT, GL11.GL_FLOAT, GL11.GL_BYTE},
+                    new boolean[]{false, false, true}),
+                new int[]{0, 12, 20}, 24),
+            Arguments.of("byte attrib in the middle rounds the next offset",
+                new AttribLayoutKey(
+                    new int[]{0, 4, 2},
+                    new int[]{3, 3, 2},
+                    new int[]{GL11.GL_FLOAT, GL11.GL_BYTE, GL11.GL_FLOAT},
+                    new boolean[]{false, true, false}),
+                new int[]{0, 12, 16}, 24),
+            Arguments.of("all-byte layout packs tight",
+                new AttribLayoutKey(
+                    new int[]{0, 1, 2},
+                    new int[]{3, 4, 2},
+                    new int[]{GL11.GL_BYTE, GL11.GL_UNSIGNED_BYTE, GL11.GL_BYTE},
+                    new boolean[]{true, true, false}),
+                new int[]{0, 3, 7}, 9),
+            Arguments.of("shorts after a byte round offset and stride to even",
+                new AttribLayoutKey(
+                    new int[]{0, 1},
+                    new int[]{1, 2},
+                    new int[]{GL11.GL_BYTE, GL11.GL_SHORT},
+                    new boolean[]{true, false}),
+                new int[]{0, 2}, 6));
     }
 
-    @Test
-    void posUvNormal3_roundsTailStrideTo24() {
-        final AttribLayoutKey k = new AttribLayoutKey(
-            new int[]{0, 2, 4},
-            new int[]{3, 2, 3},
-            new int[]{GL11.GL_FLOAT, GL11.GL_FLOAT, GL11.GL_BYTE},
-            new boolean[]{false, false, true});
-        assertArrayEquals(new int[]{0, 12, 20}, offsetsOf(k));
-        assertEquals(24, k.stride());
-    }
-
-    @Test
-    void interiorHazardOrder_roundsMidAttribOffset() {
-        final AttribLayoutKey k = new AttribLayoutKey(
-            new int[]{0, 4, 2},
-            new int[]{3, 3, 2},
-            new int[]{GL11.GL_FLOAT, GL11.GL_BYTE, GL11.GL_FLOAT},
-            new boolean[]{false, true, false});
-        assertArrayEquals(new int[]{0, 12, 16}, offsetsOf(k));
-        assertEquals(24, k.stride());
-    }
-
-    @Test
-    void allByteLayout_packsTight() {
-        final AttribLayoutKey k = new AttribLayoutKey(
-            new int[]{0, 1, 2},
-            new int[]{3, 4, 2},
-            new int[]{GL11.GL_BYTE, GL11.GL_UNSIGNED_BYTE, GL11.GL_BYTE},
-            new boolean[]{true, true, false});
-        assertArrayEquals(new int[]{0, 3, 7}, offsetsOf(k));
-        assertEquals(9, k.stride());
-    }
-
-    @Test
-    void shortsFollowingByte_roundToEvenAndStrideToEven() {
-        final AttribLayoutKey k = new AttribLayoutKey(
-            new int[]{0, 1},
-            new int[]{1, 2},
-            new int[]{GL11.GL_BYTE, GL11.GL_SHORT},
-            new boolean[]{true, false});
-        assertArrayEquals(new int[]{0, 2}, offsetsOf(k));
-        assertEquals(6, k.stride());
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("layouts")
+    void offsetsAndStride(String name, AttribLayoutKey key, int[] offsets, int stride) {
+        assertArrayEquals(offsets, offsetsOf(key));
+        assertEquals(stride, key.stride());
     }
 
     @Test

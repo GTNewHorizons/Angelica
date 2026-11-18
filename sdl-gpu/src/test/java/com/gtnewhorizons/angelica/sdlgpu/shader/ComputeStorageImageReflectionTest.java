@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.sdlgpu.shader;
 
-import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
 import com.gtnewhorizons.angelica.glsm.testutil.TestPaths;
 import com.gtnewhorizons.angelica.glsm.texture.InternalTextureFormat;
 import org.junit.jupiter.api.Test;
@@ -11,15 +10,13 @@ import org.lwjgl.util.shaderc.Shaderc;
 
 import java.nio.ByteBuffer;
 
+import static com.gtnewhorizons.angelica.sdlgpu.shader.SpirvTestShaders.compileOrFail;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.fail;
 
 class ComputeStorageImageReflectionTest {
 
     private static ShaderManager.ComputeBindingMap reflect(String name, String source) {
-        final SpirvCompiler.Result r = SpirvCompiler.compile(source, Shaderc.shaderc_compute_shader, name, SpirvCompiler.Options.vulkanForced460Core());
-        if (r.spirv() == null) fail(name + " failed to compile: " + r.error());
-        final ByteBuffer spirv = r.spirv();
+        final ByteBuffer spirv = compileOrFail(source, Shaderc.shaderc_compute_shader);
         try {
             return ShaderManager.remapSpirvForComputeSDLGPU(spirv);
         } finally {

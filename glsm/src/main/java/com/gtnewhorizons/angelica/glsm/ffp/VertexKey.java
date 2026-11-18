@@ -2,7 +2,11 @@ package com.gtnewhorizons.angelica.glsm.ffp;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.MatrixHelper;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
+import com.gtnewhorizons.angelica.glsm.GLContextState;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.states.TexGenState;
 import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
 import org.joml.Matrix4f;
@@ -45,11 +49,19 @@ public final class VertexKey {
     private static final int BIT_TEXGEN_R            = BIT_TEXGEN_T + 3;
     private static final int BIT_TEXGEN_Q            = BIT_TEXGEN_R + 3;
     private static final int BIT_CLIP_PLANES         = BIT_TEXGEN_Q + 3;
-    private static final int BIT_WIDE_LINE           = BIT_CLIP_PLANES + 1;
-    private static final int BIT_UNIT_TEXMAT_BASE    = BIT_WIDE_LINE + 1;
+    private static final int BIT_LINE_QUADS          = BIT_CLIP_PLANES + 1;
+    private static final int BIT_UNIT_TEXMAT_BASE    = BIT_LINE_QUADS + 1;
     private static final int BIT_UNIT23_UV_FROM_UNIT0 = BIT_UNIT_TEXMAT_BASE + MAX_UNITS;
     private static final int BIT_LINE_STIPPLE        = BIT_UNIT23_UV_FROM_UNIT0 + 1;
     private static final int BIT_INSTANCING          = BIT_LINE_STIPPLE + 1;
+    private static final int BIT_CLIP_EMULATED       = BIT_INSTANCING + 3;
+    private static final long INSTANCING_MASK        = 0x7L;
+
+    static {
+        if (Instancing.VALUES.length > INSTANCING_MASK + 1) {
+            throw new IllegalStateException("Instancing has outgrown the VertexKey field; widen INSTANCING_MASK");
+        }
+    }
 
     public static final int TG_NONE                  = 0;
     public static final int TG_OBJ_LINEAR            = 1;
@@ -95,9 +107,10 @@ public final class VertexKey {
     public int texGenModeQ()              { return (int)((packed >> BIT_TEXGEN_Q) & 0x7); }
     public boolean texGenEnabled()        { return texGenModeS() != TG_NONE || texGenModeT() != TG_NONE || texGenModeR() != TG_NONE || texGenModeQ() != TG_NONE; }
     public boolean clipPlanesEnabled()    { return bit(BIT_CLIP_PLANES); }
-    public boolean wideLineEmulation()   { return bit(BIT_WIDE_LINE); }
+    public boolean clipEmulated()         { return bit(BIT_CLIP_EMULATED); }
     public boolean lineStipple()          { return bit(BIT_LINE_STIPPLE); }
-    public Instancing instancing()         { return Instancing.VALUES[(int) ((packed >> BIT_INSTANCING) & 0x3)]; }
+    public boolean lineQuads()            { return bit(BIT_LINE_QUADS); }
+    public Instancing instancing()         { return Instancing.VALUES[(int) ((packed >> BIT_INSTANCING) & INSTANCING_MASK)]; }
 
     public boolean cmReplacesAmbient()    { final int m = colorMaterialMode(); return m == CM_AMBIENT || m == CM_AMBIENT_AND_DIFFUSE; }
     public boolean cmReplacesDiffuse()    { final int m = colorMaterialMode(); return m == CM_DIFFUSE || m == CM_AMBIENT_AND_DIFFUSE; }
@@ -126,54 +139,66 @@ public final class VertexKey {
     }
 
     public static long packFromState(boolean hasColor, boolean hasNormal, boolean hasTexCoord, boolean hasLightmap, int fragUnitMask) {
+        return packFromState(hasColor, hasNormal, hasTexCoord, hasLightmap, fragUnitMask, GLStateManager.ctx());
+    }
+
+    public static long packFromState(boolean hasColor, boolean hasNormal, boolean hasTexCoord, boolean hasLightmap, int fragUnitMask, GLContextState glCtx) {
         long bits = 0;
 
-        final boolean lighting = GLStateManager.getLightingState().isEnabled();
+        final boolean lighting = glCtx.lightingState.isEnabled();
         if (lighting) {
             bits |= (1L << BIT_LIGHTING);
 
             for (int i = 0; i < FFP_LIGHT_COUNT; i++) {
-                if (!GLStateManager.getLightStates()[i].isEnabled()) continue;
+                if (!glCtx.lightStates[i].isEnabled()) continue;
                 bits |= (1L << (BIT_LIGHT_BASE + i));
                 // position.w == 0 means directional
-                if (GLStateManager.getLightDataStates()[i].position.w == 0.0f) {
+                if (glCtx.lightDataStates[i].position.w == 0.0f) {
                     bits |= (1L << (BIT_LIGHT_DIR_BASE + i));
                 }
             }
 
-            if (GLStateManager.getColorMaterial().isEnabled()) {
+            if (glCtx.colorMaterial.isEnabled()) {
                 bits |= (1L << BIT_COLOR_MATERIAL);
-                final int cmMode = encodeColorMaterialMode(GLStateManager.getColorMaterialParameter().getValue());
+                final int cmMode = encodeColorMaterialMode(glCtx.colorMaterialParameter.getValue());
                 bits |= ((long) cmMode & 0x7) << BIT_COLOR_MAT_MODE;
             }
 
-            if (GLStateManager.getLightModel().colorControl == GL12.GL_SEPARATE_SPECULAR_COLOR) {
+            if (glCtx.lightModel.colorControl == GL12.GL_SEPARATE_SPECULAR_COLOR) {
                 bits |= (1L << BIT_SEPARATE_SPECULAR);
             }
         }
 
-        if (GLStateManager.getFogMode().isEnabled()) {
+        if (glCtx.fogMode.isEnabled()) {
             bits |= (1L << BIT_FOG);
-            final int fogDistMode = GLStateManager.getFogState().getFogDistanceMode();
+            final int fogDistMode = glCtx.fogState.getFogDistanceMode();
             bits |= ((long) fogDistMode & 0x3) << BIT_FOG_DIST_MODE;
         }
 
-        if (GLStateManager.getNormalizeState().isEnabled()) {
+        if (glCtx.normalizeState.isEnabled()) {
             bits |= (1L << BIT_NORMALIZE);
         }
-        if (GLStateManager.getRescaleNormalState().isEnabled()) {
+        if (glCtx.rescaleNormalState.isEnabled()) {
             bits |= (1L << BIT_RESCALE_NORMAL);
         }
 
-        final TextureUnitArray texUnit = GLStateManager.getTextures();
+        final TextureUnitArray texUnit = glCtx.textures;
         for (int i = 0; i < MAX_UNITS; i++) {
             if ((fragUnitMask & (1 << i)) != 0) {
                 bits |= (1L << (BIT_UNIT_TEX_BASE + i));
             }
-            if (!MatrixHelper.isIdentity(texUnit.getTextureUnitMatrix(i))) {
-                bits |= (1L << (BIT_UNIT_TEXMAT_BASE + i));
-            }
         }
+        if (texUnit.texMatIdentityGen != glCtx.texMatrixGeneration) {
+            int mask = 0;
+            for (int i = 0; i < MAX_UNITS; i++) {
+                if (!MatrixHelper.isIdentity(texUnit.getTextureUnitMatrix(i))) {
+                    mask |= 1 << i;
+                }
+            }
+            texUnit.texMatIdentityMask = mask;
+            texUnit.texMatIdentityGen = glCtx.texMatrixGeneration;
+        }
+        bits |= ((long) texUnit.texMatIdentityMask) << BIT_UNIT_TEXMAT_BASE;
 
         // TexGen (unit 0 only) - per-coordinate mode if enabled.
         // TODO: per-unit texgen for units 2/3. Deferred - no MC code path uses glTexGen on those.
@@ -206,33 +231,34 @@ public final class VertexKey {
 
         // Vertex format flags
         if (hasColor) bits |= (1L << BIT_HAS_VERTEX_COLOR);
-        if (hasNormal) bits |= (1L << BIT_HAS_VERTEX_NORMAL);
+        if (hasNormal && !glCtx.lineQuadsActive) bits |= (1L << BIT_HAS_VERTEX_NORMAL);
         if (hasTexCoord) bits |= (1L << BIT_HAS_VERTEX_TEX);
         if (hasLightmap) bits |= (1L << BIT_HAS_VERTEX_LIGHTMAP);
 
-        if (GLStateManager.consumeUnit23TexCoordSetDuringDraw() && hasTexCoord) {
+        if (GLSMCurrentAttribs.consumeUnit23TexCoordSetDuringDraw(glCtx) && hasTexCoord) {
             bits |= (1L << BIT_UNIT23_UV_FROM_UNIT0);
         }
 
-        if (GLStateManager.anyClipPlaneEnabled()) {
+        if (GLSMRasterizer.anyClipPlaneEnabled(glCtx)) {
             bits |= (1L << BIT_CLIP_PLANES);
+            if (RenderSystem.isClipDistanceEmulated()) bits |= 1L << BIT_CLIP_EMULATED;
         }
 
-        if (GLStateManager.wideLineEmulationActive) {
-            bits |= (1L << BIT_WIDE_LINE);
-        }
-
-        if (GLStateManager.lineStippleActive) {
+        if (glCtx.lineStippleActive) {
             bits |= (1L << BIT_LINE_STIPPLE);
         }
 
-        bits |= (long) GLStateManager.ffpInstancing.ordinal() << BIT_INSTANCING;
+        if (glCtx.lineQuadsActive) {
+            bits |= (1L << BIT_LINE_QUADS);
+        }
+
+        bits |= (long) glCtx.ffpInstancing.ordinal() << BIT_INSTANCING;
 
         return bits;
     }
 
     static long withInstancing(long packed, Instancing kind) {
-        return (packed & ~(0x3L << BIT_INSTANCING)) | ((long) kind.ordinal() << BIT_INSTANCING);
+        return (packed & ~(INSTANCING_MASK << BIT_INSTANCING)) | ((long) kind.ordinal() << BIT_INSTANCING);
     }
 
     public static VertexKey fromState(boolean hasColor, boolean hasNormal, boolean hasTexCoord, boolean hasLightmap, int fragUnitMask) {
@@ -257,6 +283,6 @@ public final class VertexKey {
 
     @Override
     public String toString() {
-        return String.format("FFPVertexKey[0x%011X: lit=%b l0=%b l1=%b cm=%b fog=%b tex=%d%d%d%d texmat=%d%d%d%d col=%b nrm=%b vtex=%b vlm=%b tg=%d/%d/%d/%d clip=%b wline=%b inst=%s]", packed,lightingEnabled(), lightEnabled(0), lightEnabled(1), colorMaterialEnabled(), fogEnabled(), unitTexCoordEnabled(0)?1:0, unitTexCoordEnabled(1)?1:0, unitTexCoordEnabled(2)?1:0, unitTexCoordEnabled(3)?1:0, unitTexMatEnabled(0)?1:0, unitTexMatEnabled(1)?1:0, unitTexMatEnabled(2)?1:0, unitTexMatEnabled(3)?1:0, hasVertexColor(), hasVertexNormal(), hasVertexTexCoord(), hasVertexLightmap(), texGenModeS(), texGenModeT(), texGenModeR(), texGenModeQ(), clipPlanesEnabled(), wideLineEmulation(), instancing());
+        return String.format("FFPVertexKey[0x%012X: lit=%b l0=%b l1=%b cm=%b fog=%b tex=%d%d%d%d texmat=%d%d%d%d col=%b nrm=%b vtex=%b vlm=%b tg=%d/%d/%d/%d clip=%b clipEmu=%b lquads=%b inst=%s]", packed,lightingEnabled(), lightEnabled(0), lightEnabled(1), colorMaterialEnabled(), fogEnabled(), unitTexCoordEnabled(0)?1:0, unitTexCoordEnabled(1)?1:0, unitTexCoordEnabled(2)?1:0, unitTexCoordEnabled(3)?1:0, unitTexMatEnabled(0)?1:0, unitTexMatEnabled(1)?1:0, unitTexMatEnabled(2)?1:0, unitTexMatEnabled(3)?1:0, hasVertexColor(), hasVertexNormal(), hasVertexTexCoord(), hasVertexLightmap(), texGenModeS(), texGenModeT(), texGenModeR(), texGenModeQ(), clipPlanesEnabled(), clipEmulated(), lineQuads(), instancing());
     }
 }

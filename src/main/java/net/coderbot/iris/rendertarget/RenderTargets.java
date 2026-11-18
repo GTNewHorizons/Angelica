@@ -1,6 +1,8 @@
 package net.coderbot.iris.rendertarget;
 
 import com.google.common.collect.ImmutableSet;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
@@ -193,7 +195,7 @@ public class RenderTargets {
 			translucentDepthDirty = false;
 			final Profiler profiler = Minecraft.getMinecraft().mcProfiler;
 			profiler.startSection("iris_depth_realloc");
-			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, noTranslucents.getTextureId());
+			GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, noTranslucents.getTextureId());
 			depthSourceFb.bindAsReadBuffer();
 			RenderSystem.copyTexImage2D(GL11.GL_TEXTURE_2D, 0, copyDepthFormat().getGlInternalFormat(), 0, 0, cachedWidth, cachedHeight, 0);
 			profiler.endSection();
@@ -207,7 +209,7 @@ public class RenderTargets {
 			handDepthDirty = false;
 			final Profiler profiler = Minecraft.getMinecraft().mcProfiler;
 			profiler.startSection("iris_depth_realloc");
-			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, noHand.getTextureId());
+			GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, noHand.getTextureId());
 			depthSourceFb.bindAsReadBuffer();
 			RenderSystem.copyTexImage2D(GL11.GL_TEXTURE_2D, 0, copyDepthFormat().getGlInternalFormat(), 0, 0, cachedWidth, cachedHeight, 0);
 			profiler.endSection();
@@ -359,7 +361,7 @@ public class RenderTargets {
 		framebuffer.drawBuffers(actualDrawBuffers);
         framebuffer.readBuffer(0);
 
-		if (GLStateManager.framebufferCompletenessIsMeaningful()) {
+		if (GLSMFramebuffer.framebufferCompletenessIsMeaningful()) {
 			final int status = framebuffer.getStatus();
 			if (status != GL30.GL_FRAMEBUFFER_COMPLETE) {
 				throw new IllegalStateException(String.format("Unexpected error while creating framebuffer: glCheckFramebufferStatus=0x%X, size=%dx%d, drawBuffers=%d", status, cachedWidth, cachedHeight, drawBuffers.length));

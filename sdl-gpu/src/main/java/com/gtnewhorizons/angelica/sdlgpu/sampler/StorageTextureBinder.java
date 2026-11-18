@@ -19,11 +19,13 @@ public final class StorageTextureBinder {
 
     private final ResourceManager resourceManager;
     private final ShaderManager shaderManager;
+    private final MovedSamplerCopies movedSamplerCopies;
     private final IntOpenHashSet nullHandleWarned = new IntOpenHashSet();
 
-    public StorageTextureBinder(ResourceManager resourceManager, ShaderManager shaderManager) {
+    public StorageTextureBinder(ResourceManager resourceManager, ShaderManager shaderManager, MovedSamplerCopies movedSamplerCopies) {
         this.resourceManager = resourceManager;
         this.shaderManager = shaderManager;
+        this.movedSamplerCopies = movedSamplerCopies;
     }
 
     public void bindStorageTextures(long renderPass, ContextState st, long bindCb) {
@@ -63,18 +65,31 @@ public final class StorageTextureBinder {
         final boolean programChanged = st.boundProgram != lastProg;
         boolean anyChanged = programChanged;
 
-        final long fallback = resourceManager.getOrCreateFallbackStorageTexture3D();
+        final int[] movedSamplerUnits = SamplerLookup.movedSamplerUnits(prog, fragment);
+        final boolean[] movedSamplers = fragment ? prog.fragmentImageIsMovedSampler : prog.vertexImageIsMovedSampler;
         for (int i = 0; i < count; i++) {
             final String name = imgNames.get(i);
-            final int glUnit = prog.imageTextureUnits.getInt(name);
-            final int glTexId = (glUnit >= 0 && glUnit < ContextState.MAX_IMAGE_UNITS) ? st.boundStorageTextureByUnit[glUnit] : 0;
+            final boolean movedSampler = movedSamplers[i];
+            final int glUnit;
+            final int glTexId;
+            if (movedSampler) {
+                glUnit = movedSamplerUnits[i];
+                glTexId = st.boundTexture(glUnit);
+            } else {
+                glUnit = prog.imageTextureUnits.getInt(name);
+                glTexId = (glUnit >= 0 && glUnit < ContextState.MAX_IMAGE_UNITS) ? st.boundStorageTextureByUnit[glUnit] : 0;
+            }
             long texHandle = (glTexId != 0) ? resourceManager.getTextureHandle(glTexId) : 0;
+            final boolean hasSource = texHandle != 0;
+            if (movedSampler && hasSource) texHandle = movedSamplerCopies.textureFor(texHandle, glTexId);
             if (texHandle == 0) {
-                if (nullHandleWarned.add(st.boundProgram)) {
-                    LOG.warn("StorageTextureBinder: program {} {} stage image '{}' has no bound texture (glUnit={} glTexId={}); substituting fallback", st.boundProgram, fragment ? "fragment" : "vertex", name, glUnit, glTexId);
+                final boolean unreadMovedSampler = movedSampler && glUnit < 0;
+                if (!unreadMovedSampler && nullHandleWarned.add(st.boundProgram)) {
+                    LOG.warn("StorageTextureBinder: program {} {} stage image '{}' {} (glUnit={} glTexId={}); substituting fallback", st.boundProgram, fragment ? "fragment" : "vertex", name,
+                        hasSource ? "has no usable texture-slot copy" : "has no bound texture", glUnit, glTexId);
                 }
-                if (fallback == 0) return;
-                texHandle = fallback;
+                texHandle = movedSampler ? resourceManager.getOrCreateFallbackStorageTexture2D() : resourceManager.getOrCreateFallbackStorageTexture3D();
+                if (texHandle == 0) return;
             }
             ptrs.put(i, texHandle);
             if (texHandle != lastTex[i]) {

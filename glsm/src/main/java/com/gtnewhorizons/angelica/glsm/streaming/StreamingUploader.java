@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.streaming;
 
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL30;
@@ -27,30 +28,30 @@ public final class StreamingUploader {
     public static int upload(UploadStrategy strategy, ByteBuffer data, int capacity) {
         switch (strategy) {
             case BUFFER_DATA -> {
-                GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, data, GL15.GL_STREAM_DRAW);
+                GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, data, GL15.GL_STREAM_DRAW);
                 return data.remaining();
             }
             case BUFFER_SUB_DATA -> {
                 if (data.remaining() > capacity) {
-                    GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, data, GL15.GL_STREAM_DRAW);
+                    GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, data, GL15.GL_STREAM_DRAW);
                     return data.remaining();
                 }
-                GLStateManager.glBufferSubData(GL15.GL_ARRAY_BUFFER, 0, data);
+                GLSMBuffers.glBufferSubData(GL15.GL_ARRAY_BUFFER, 0, data);
                 return capacity;
             }
             case MAP_BUFFER_RANGE -> {
                 if (data.remaining() > capacity) {
-                    GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, data, GL15.GL_STREAM_DRAW);
+                    GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, data, GL15.GL_STREAM_DRAW);
                     return data.remaining();
                 }
                 final int dataSize = data.remaining();
-                final long dst = GLStateManager.glMapBufferRangeAddress(GL15.GL_ARRAY_BUFFER, 0, dataSize, MAP_WRITE_INVALIDATE_BUFFER);
+                final long dst = GLSMBuffers.glMapBufferRangeAddress(GL15.GL_ARRAY_BUFFER, 0, dataSize, MAP_WRITE_INVALIDATE_BUFFER);
                 if (dst == 0L) {
-                    GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, data, GL15.GL_STREAM_DRAW);
+                    GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, data, GL15.GL_STREAM_DRAW);
                     return data.remaining();
                 }
                 memCopy(memAddress0(data), dst, dataSize);
-                GLStateManager.glUnmapBuffer(GL15.GL_ARRAY_BUFFER);
+                GLSMBuffers.glUnmapBuffer(GL15.GL_ARRAY_BUFFER);
                 return capacity;
             }
             default -> throw new UnsupportedOperationException();

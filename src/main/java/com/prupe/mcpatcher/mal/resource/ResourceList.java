@@ -3,7 +3,8 @@ package com.prupe.mcpatcher.mal.resource;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -31,8 +32,7 @@ public class ResourceList {
     private static final Map<IResourcePack, Integer> resourcePackOrder = new WeakHashMap<>();
 
     private final IResourcePack resourcePack;
-    private final Set<ResourceLocationWithSource> allResources = new TreeSet<>(
-        new ResourceLocationWithSource.Comparator1());
+    private final Map<ResourceLocationWithSource, ResourceLocationWithSource> resources = new HashMap<>();
 
     public static ResourceList getInstance() {
         if (instance == null) {
@@ -43,7 +43,7 @@ public class ResourceList {
                 resourcePackOrder.put(resourcePack, order);
                 order--;
             }
-            instance = new ResourceList();
+            instance = new ResourceList(resourcePacks);
         }
         return instance;
     }
@@ -57,9 +57,9 @@ public class ResourceList {
         return i == null ? Integer.MAX_VALUE : i;
     }
 
-    private ResourceList() {
+    private ResourceList(List<IResourcePack> resourcePacks) {
         this.resourcePack = null;
-        for (IResourcePack resourcePack : TexturePackAPI.getResourcePacks(null)) {
+        for (IResourcePack resourcePack : resourcePacks) {
             ResourceList sublist;
             if (resourcePack instanceof FileResourcePack) {
                 sublist = new ResourceList((FileResourcePack) resourcePack);
@@ -70,12 +70,15 @@ public class ResourceList {
             } else {
                 continue;
             }
-            allResources.removeAll(sublist.allResources);
-            allResources.addAll(sublist.allResources);
+            for (ResourceLocationWithSource resource : sublist.resources.values()) {
+                resources.put(resource, resource);
+            }
         }
         logger.fine("new %s", this);
         if (logger.isLoggable(Level.FINEST)) {
-            for (ResourceLocationWithSource resource : allResources) {
+            List<ResourceLocationWithSource> sorted = new ArrayList<>(resources.values());
+            sorted.sort(new ResourceLocationWithSource.Comparator1());
+            for (ResourceLocationWithSource resource : sorted) {
                 logger.finest(
                     "%s -> %s",
                     resource,
@@ -120,7 +123,7 @@ public class ResourceList {
                 addResource(resource, file.isFile(), file.isDirectory());
             }
         }
-        if (!allResources.isEmpty()) {
+        if (!resources.isEmpty()) {
             logger.fine("new %s", this);
         }
     }
@@ -147,7 +150,9 @@ public class ResourceList {
         if (zipFile == null) {
             return;
         }
-        for (ZipEntry entry : Collections.list(zipFile.entries())) {
+        Enumeration<? extends ZipEntry> entries = zipFile.entries();
+        while (entries.hasMoreElements()) {
+            ZipEntry entry = entries.nextElement();
             String path = entry.getName();
             ResourceLocation resource = TexturePackAPI.parsePath(path);
             if (resource != null) {
@@ -173,14 +178,18 @@ public class ResourceList {
 
     private void addResource(ResourceLocation resource, boolean isFile, boolean isDirectory) {
         if (isFile) {
-            allResources.add(new ResourceLocationWithSource(resourcePack, resource));
+            put(new ResourceLocationWithSource(resourcePack, resource));
         } else if (isDirectory) {
             if (!resource.getResourcePath()
                 .endsWith("/")) {
                 resource = new ResourceLocation(resource.getResourceDomain(), resource.getResourcePath() + '/');
             }
-            allResources.add(new ResourceLocationWithSource(resourcePack, resource));
+            put(new ResourceLocationWithSource(resourcePack, resource));
         }
+    }
+
+    private void put(ResourceLocationWithSource resource) {
+        resources.putIfAbsent(resource, resource);
     }
 
     public List<ResourceLocation> listResources(String directory, String suffix, boolean sortByFilename) {
@@ -206,7 +215,7 @@ public class ResourceList {
         Set<ResourceLocationWithSource> tmpList = new TreeSet<>(
             new ResourceLocationWithSource.Comparator1(true, sortByFilename ? suffix : null));
         boolean allNamespaces = MCPatcherUtils.isNullOrEmpty(namespace);
-        for (ResourceLocationWithSource resource : allResources) {
+        for (ResourceLocationWithSource resource : resources.values()) {
             if (directories != resource.isDirectory()) {
                 continue;
             }
@@ -244,7 +253,7 @@ public class ResourceList {
         int fileCount = 0;
         int directoryCount = 0;
         Set<String> namespaces = new HashSet<>();
-        for (ResourceLocationWithSource resource : allResources) {
+        for (ResourceLocationWithSource resource : resources.values()) {
             if (resource.isDirectory()) {
                 directoryCount++;
             } else {

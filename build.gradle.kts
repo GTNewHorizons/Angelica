@@ -6,6 +6,8 @@ plugins {
     id("com.gtnewhorizons.gtnhconvention")
 }
 
+apply(from = "gradle/mod-version.gradle.kts")
+
 val lwjglDebug = false
 val gpuHud = false
 val renderdoc = false
@@ -87,8 +89,11 @@ tasks.register<Copy>("copyDependencies") {
 val embedOnly: Configuration by configurations
 val shadowImplementation: Configuration by configurations
 
+val dependencyClasspath: FileCollection = sourceSets.main.get().runtimeClasspath - sourceSets.main.get().output
+
 val downgradeEmbedOnlyForTest by tasks.registering(DowngradeFiles::class) {
     inputCollection = embedOnly
+    classpath = dependencyClasspath
     outputs.dir(temporaryDir)
 }
 
@@ -102,6 +107,7 @@ val stripModuleInfoFromShadow by tasks.registering(Jar::class) {
 
 val downgradeShadowImplForTest by tasks.registering(DowngradeFiles::class) {
     inputCollection = files(stripModuleInfoFromShadow.map { it.archiveFile })
+    classpath = dependencyClasspath
     outputs.dir(temporaryDir)
 }
 
@@ -116,6 +122,7 @@ val glsmTestFixtures: Configuration by configurations.creating {
 
 val downgradeGlsmTestFixturesForTest by tasks.registering(DowngradeFiles::class) {
     inputCollection = glsmTestFixtures
+    classpath = dependencyClasspath
     outputs.dir(temporaryDir)
 }
 
@@ -146,15 +153,62 @@ fun Test.configureAngelicaJava8() {
     }
 }
 
+if (isMacOs && providers.gradleProperty("clientJvmVendor").isPresent) {
+    for (javaVersion in listOf(17, 21, 25)) {
+        tasks.named<JavaExec>("runClient$javaVersion") {
+            javaLauncher = javaToolchains.launcherFor {
+                languageVersion = JavaLanguageVersion.of(javaVersion)
+                vendor = JvmVendorSpec.matching(providers.gradleProperty("clientJvmVendor").get())
+            }
+        }
+    }
+}
+
+// Forge's asm-debug-all 5.0.3 cannot read the Java 25 class files ArchScan walks; this ASM has to resolve first.
+val archScanAsm: Configuration by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
+val glsmRedirectAgent: Configuration by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
+val glsmMutableStaticsAgent: Configuration by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
+dependencies {
+    glsmRedirectAgent(project(":glsm", "redirectAgent"))
+    glsmMutableStaticsAgent(project(":glsm", "mutableStaticsAgent"))
+    archScanAsm(libs.asm.tree.test)
+    archScanAsm(libs.asm.commons.test)
+}
+
+sourceSets.test {
+    compileClasspath = archScanAsm + compileClasspath
+}
+
 tasks.test {
     useJUnitPlatform { excludeTags = setOf("gl-core") }
     configureAngelicaJava8()
+    classpath = archScanAsm + classpath
+    javaAgent(glsmMutableStaticsAgent)
     jvmArgs("-Dceleritas.lwjglService=org.taumc.celeritas.lwjgl.HeadlessTestLWJGLService")
     dependsOn(":glsm:classes", ":lwjgl3-backend:classes", ":sdl-gpu:classes")
 }
 
 val downgradeRootMainClasses = tasks.named<DowngradeFiles>("downgradeMainClasses")
 val downgradeRootTestClasses = tasks.named<DowngradeFiles>("downgradeTestClasses")
+
+// JVMDowngrader only declares outputs for inputs that exist at configuration, so a clean tree has none.
+for (name in listOf("main", "mixin", "test")) {
+    tasks.named<DowngradeFiles>("downgrade${name.replaceFirstChar { it.uppercase() }}Classes") {
+        sourceSets[name].output.classesDirs.files.forEach { outputs.dir(temporaryDir.resolve(it.name)) }
+    }
+}
 
 val glCoreTest by tasks.registering(Test::class) {
     description = "Runs the gl-core tests in their own JVM with a real GL context."
@@ -171,13 +225,29 @@ val glCoreTest by tasks.registering(Test::class) {
         .plus(downgraded(downgradeRootMainClasses))
         .plus(sourceSets["test"].runtimeClasspath.minus(rawMain).minus(rawTest))
 
+    javaAgent(glsmRedirectAgent)
+
     configureAngelicaJava8()
-    mustRunAfter(tasks.test)
 }
 
-tasks.test { finalizedBy(glCoreTest) }
+val verifyTestsRan by tasks.registering
+listOf(tasks.test, glCoreTest).forEach { testTask ->
+    val name = testTask.name
+    val verify = tasks.register("verify${name.replaceFirstChar { it.uppercase() }}Ran") {
+        val resultsDir = layout.buildDirectory.dir("test-results/$name")
+        dependsOn(testTask)
+        doLast {
+            val dir = resultsDir.get().asFile
+            val xmls = dir.listFiles { f -> f.name.startsWith("TEST-") && f.name.endsWith(".xml") } ?: emptyArray()
+            check(xmls.isNotEmpty()) { ":$name produced no TEST-*.xml in $dir - test task likely went NO-SOURCE" }
+        }
+    }
+    verifyTestsRan.configure { dependsOn(verify) }
+}
+tasks.check { dependsOn(verifyTestsRan) }
 
 apply(from = "gradle/angelica-shadow-common.gradle.kts")
+apply(from = "experimental-surround/surround.root.gradle.kts")
 
 tasks.withType<TaskPublishCurseForge>().configureEach {
     uploadArtifacts.forEach { it.addGameVersion("Client") }

@@ -2,11 +2,15 @@ package net.coderbot.iris.pipeline.transform.parameter;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import net.coderbot.iris.gl.blending.AlphaTest;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderDiskCache;
 import com.gtnewhorizons.angelica.glsm.shader.ShaderType;
 import com.gtnewhorizons.angelica.glsm.texture.TextureType;
 import net.coderbot.iris.helpers.Tri;
 import net.coderbot.iris.pipeline.transform.Patch;
 import net.coderbot.iris.shaderpack.texture.TextureStage;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public abstract class Parameters {
 	public final Patch patch;
@@ -27,6 +31,20 @@ public abstract class Parameters {
 
 	public Object2ObjectMap<Tri<String, TextureType, TextureStage>, String> getTextureMap() {
 		return textureMap;
+	}
+
+	public void appendDiskKey(ShaderDiskCache.Key k) {
+		k.str(getClass().getName());
+		if (textureMap == null) {
+			k.i(-1);
+			return;
+		}
+		final List<String> rendered = new ArrayList<>(textureMap.size());
+		for (Object2ObjectMap.Entry<Tri<String, TextureType, TextureStage>, String> e : textureMap.object2ObjectEntrySet()) {
+			final Tri<String, TextureType, TextureStage> tri = e.getKey();
+			rendered.add(tri.first() + "\0" + tri.second().name() + "\0" + tri.third().name() + "\0" + e.getValue());
+		}
+		k.sortedStrs(rendered);
 	}
 
 	@Override

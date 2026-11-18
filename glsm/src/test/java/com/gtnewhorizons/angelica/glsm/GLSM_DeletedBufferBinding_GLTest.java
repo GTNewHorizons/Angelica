@@ -6,6 +6,7 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL21;
 import org.lwjgl.opengl.GL30;
+import org.lwjgl.opengl.GL31;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -14,14 +15,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class GLSM_DeletedBufferBinding_GLTest {
 
     private static int makeBoundBuffer(int target) {
-        final int buffer = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(target, buffer);
-        GLStateManager.glBufferData(target, 64L, GL15.GL_STREAM_DRAW);
+        final int buffer = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(target, buffer);
+        GLSMBuffers.glBufferData(target, 64L, GL15.GL_STREAM_DRAW);
         return buffer;
     }
 
     private static void assertUnboundAfterDelete(int target, int binding, int buffer) {
-        GLStateManager.glDeleteBuffers(buffer);
+        GLSMBuffers.glDeleteBuffers(buffer);
         assertEquals(0, GL11.glGetInteger(binding), "GL unbinds a deleted buffer; the cache must not be the only place that knows");
     }
 
@@ -30,12 +31,12 @@ public class GLSM_DeletedBufferBinding_GLTest {
         final int pbo = makeBoundBuffer(GL21.GL_PIXEL_UNPACK_BUFFER);
         assertUnboundAfterDelete(GL21.GL_PIXEL_UNPACK_BUFFER, GL21.GL_PIXEL_UNPACK_BUFFER_BINDING, pbo);
 
-        final int tex = GLStateManager.glGenTextures();
+        final int tex = GLSMTextures.glGenTextures();
         try {
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex);
-            GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, 1, 1, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, BufferUtils.createByteBuffer(4));
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, tex);
+            GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, 1, 1, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, BufferUtils.createByteBuffer(4));
         } finally {
-            GLStateManager.glDeleteTextures(tex);
+            GLSMTextures.glDeleteTextures(tex);
         }
     }
 
@@ -59,6 +60,18 @@ public class GLSM_DeletedBufferBinding_GLTest {
         } finally {
             GL30.glBindVertexArray(prevVao);
         }
+    }
+
+    @Test
+    void deletedIndexedUniformBufferIsNotRestoredFromCache() {
+        final int index = 3;
+        final int ubo = makeBoundBuffer(GL31.GL_UNIFORM_BUFFER);
+        GLSMBuffers.glBindBufferBase(GL31.GL_UNIFORM_BUFFER, index, ubo);
+        assertEquals(ubo, GLSMBuffers.getIndexedBufferBinding(GL31.GL_UNIFORM_BUFFER, index));
+
+        GLSMBuffers.glDeleteBuffers(ubo);
+        assertEquals(0, GL30.glGetInteger(GL31.GL_UNIFORM_BUFFER_BINDING, index));
+        assertEquals(0, GLSMBuffers.getIndexedBufferBinding(GL31.GL_UNIFORM_BUFFER, index));
     }
 
     @Test

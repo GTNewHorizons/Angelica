@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.utils;
 
+import com.gtnewhorizons.angelica.rendering.TextureAtlasType;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockFlower;
@@ -55,7 +56,7 @@ public final class MipmapStrategies {
         }
 
         MipmapStrategy strategy = STRATEGY_STACK.get().peek();
-        if (strategy == null && textureType == 0 && iconName.contains("leaves")) {
+        if (strategy == null && textureType == TextureAtlasType.BLOCK && iconName.contains("leaves")) {
             strategy = MipmapStrategy.DARK_CUTOUT;
         }
         if (strategy == null) {
@@ -67,7 +68,7 @@ public final class MipmapStrategies {
     }
 
     public static MipmapStrategy inheritedFor(int textureType, String iconName) {
-        if (iconName == null || textureType != 0) {
+        if (iconName == null || textureType != TextureAtlasType.BLOCK) {
             return null;
         }
         return SPRITE_RULES.get(iconName);

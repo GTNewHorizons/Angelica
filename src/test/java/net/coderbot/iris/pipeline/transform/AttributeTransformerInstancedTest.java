@@ -1,14 +1,17 @@
 package net.coderbot.iris.pipeline.transform;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement;
+import com.gtnewhorizons.angelica.glsm.ffp.ClipDistanceGlsl;
 import com.gtnewhorizons.angelica.glsm.ffp.CubeInstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
 import com.gtnewhorizons.angelica.glsm.ffp.ParticleInstancedAttribs;
-import com.gtnewhorizons.angelica.glsm.RenderSystem;
-import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
+import com.gtnewhorizons.angelica.glsm.ffp.WeatherInstancedAttribs;
+import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
+import com.gtnewhorizons.angelica.glsm.testutil.ClipTestSupport;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.pipeline.transform.parameter.AttributeParameters;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,6 +22,8 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static net.coderbot.iris.pipeline.transform.TransformTestSupport.TEX_LM;
+import static net.coderbot.iris.pipeline.transform.TransformTestSupport.squash;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -28,8 +33,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AttributeTransformerInstancedTest {
 
     private static final Pattern ATTRIBUTE_LOCATION = Pattern.compile("layout\\s*\\(\\s*location\\s*=\\s*(\\d+)\\s*\\)\\s*in\\s+\\w+\\s+(\\w+)");
-
-    private static final InputAvailability TEX_LM = InputAvailability.of(true, true);
 
     private static final String PARTICLE_VERTEX = """
         #version 120
@@ -100,6 +103,19 @@ class AttributeTransformerInstancedTest {
         }
         """;
 
+    private static final String VERTEX_CORE_PROFILE_MV_INVERSE = """
+        #version 150
+        in vec3 vaPosition;
+        uniform mat4 modelViewMatrix;
+        uniform mat4 modelViewMatrixInverse;
+        uniform mat4 projectionMatrix;
+        out vec3 wpos;
+        void main() {
+            wpos = (modelViewMatrixInverse * (modelViewMatrix * vec4(vaPosition, 1.0))).xyz;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(vaPosition, 1.0);
+        }
+        """;
+
     private static final String FRAGMENT = """
         #version 120
         varying vec4 color;
@@ -147,20 +163,21 @@ class AttributeTransformerInstancedTest {
         }
         """;
 
+    private static int previousMaxGlslVersion;
+
     @BeforeAll
-    static void initShaderTransformer() throws Exception {
-        Reflect.setStatic(RenderSystem.class, "maxGlslVersion", 460);
-        ShaderTransformer.init();
+    static void pinGlslVersion() {
+        previousMaxGlslVersion = TransformTestSupport.pinGlslVersion(460);
+    }
+
+    @AfterAll
+    static void restoreGlslVersion() {
+        TransformTestSupport.restoreGlslVersion(previousMaxGlslVersion);
     }
 
     @BeforeEach
     void clearCaches() {
-        TransformPatcher.clearCache();
-        ShaderTransformer.clearCache();
-    }
-
-    private static String squash(String s) {
-        return s.replaceAll("\\s+", "");
+        TransformTestSupport.clearCaches();
     }
 
     private static void assertHas(String shader, String snippet) {
@@ -215,15 +232,20 @@ class AttributeTransformerInstancedTest {
         return v;
     }
 
-    @Test
-    void generatedInstancedShaderHasNoOverlappingAttributeLocations() {
-        final Map<Integer, String> byLocation = attributeLocations(instancedVertex(VERTEX));
-        assertFalse(byLocation.isEmpty(), "expected the instanced variant to declare attribute locations");
+    private static Map<PatchShaderType, String> instancedStages(String vertex, String fragment, Instancing instancing) {
+        final Map<PatchShaderType, String> result = TransformPatcher.patchAttributesInstanced(vertex, null, null, null, fragment, TEX_LM, false, instancing);
+        assertNotNull(result);
+        assertNotNull(result.get(PatchShaderType.VERTEX));
+        assertNotNull(result.get(PatchShaderType.FRAGMENT));
+        ShaderParser.parseShader(result.get(PatchShaderType.VERTEX));
+        ShaderParser.parseShader(result.get(PatchShaderType.FRAGMENT));
+        return result;
     }
 
     @Test
-    void declaresInstanceAttribsAndGlobalMatrices() {
+    void declaresInstanceAttribsAtDistinctLocationsAndGlobalMatrices() {
         final String v = instancedVertex(VERTEX);
+        attributeLocations(v);
         assertHas(v, "layout(location = " + InstancedAttribs.LOC_ROW0 + ") in vec4 iris_InstRow0");
         assertHas(v, "layout(location = " + InstancedAttribs.LOC_ROW1 + ") in vec4 iris_InstRow1");
         assertHas(v, "layout(location = " + InstancedAttribs.LOC_ROW2 + ") in vec4 iris_InstRow2");
@@ -239,21 +261,17 @@ class AttributeTransformerInstancedTest {
 
     @Test
     void entityIdsRideTheInstanceAttribute() {
-        final Map<PatchShaderType, String> result = TransformPatcher.patchAttributesInstanced(VERTEX_ENTITY, null, null, null, FRAGMENT_ENTITY, TEX_LM, false, Instancing.TEMPLATE);
-        assertNotNull(result);
+        final Map<PatchShaderType, String> result = instancedStages(VERTEX_ENTITY, FRAGMENT_ENTITY, Instancing.TEMPLATE);
         final String v = result.get(PatchShaderType.VERTEX);
         final String f = result.get(PatchShaderType.FRAGMENT);
-        assertNotNull(v);
-        assertNotNull(f);
-        ShaderParser.parseShader(v);
-        ShaderParser.parseShader(f);
 
         assertLacks(v, "uniform int entityId;");
         assertLacks(v, "uniform int blockEntityId;");
         assertLacks(v, "uniform int currentRenderedItemId;");
-        assertHas(v, "layout(location = " + InstancedAttribs.LOC_ENTITY + ") in ivec4 iris_Entity;");
+        assertHas(v, "layout(location = " + InstancedAttribs.LOC_ENTITY + ") in vec4 iris_InstEntity;");
+        assertLacks(v, "in vec4 iris_Entity;");
         assertHas(v, "flat out ivec3 iris_entityInfo;");
-        assertHas(v, "iris_entityInfo = iris_Entity.xyz;");
+        assertHas(v, "ivec3 iris_ids = ivec3(round(iris_InstEntity.xyz * 65535.0));");
 
         assertLacks(f, "uniform int entityId;");
         assertHas(f, "flat in ivec3 iris_entityInfo;");
@@ -261,14 +279,9 @@ class AttributeTransformerInstancedTest {
 
     @Test
     void entityColorIsAVaryingFromTheOverlaySlot() {
-        final Map<PatchShaderType, String> result = TransformPatcher.patchAttributesInstanced(VERTEX_OVERLAY, null, null, null, FRAGMENT_OVERLAY, TEX_LM, false, Instancing.TEMPLATE);
-        assertNotNull(result);
+        final Map<PatchShaderType, String> result = instancedStages(VERTEX_OVERLAY, FRAGMENT_OVERLAY, Instancing.TEMPLATE);
         final String v = result.get(PatchShaderType.VERTEX);
         final String f = result.get(PatchShaderType.FRAGMENT);
-        assertNotNull(v);
-        assertNotNull(f);
-        ShaderParser.parseShader(v);
-        ShaderParser.parseShader(f);
 
         assertLacks(v, "uniform vec4 entityColor;");
         assertHas(v, "out vec4 entityColor;");
@@ -311,6 +324,13 @@ class AttributeTransformerInstancedTest {
     }
 
     @Test
+    void coreProfileMvInverseIsComputedPerInstance() {
+        final String v = instancedVertex(VERTEX_CORE_PROFILE_MV_INVERSE);
+        assertHas(v, "iris_ModelViewMatrixInverse = inverse(iris_ModelViewMatrix)");
+        assertLacks(v, "modelViewMatrixInverse");
+    }
+
+    @Test
     void assignmentBlockRunsFirstInMain() {
         final String v = instancedVertex(VERTEX);
         final int mainIdx = indexOfSquashed(v, "void main()");
@@ -347,6 +367,8 @@ class AttributeTransformerInstancedTest {
         assertHas(v, "layout(location = 3) in vec4 iris_CubeDelta");
         assertHas(v, "layout(location = " + CubeInstancedAttribs.LOC_CUBE_TEX + ") in vec4 iris_CubeTex");
         assertHas(v, "layout(location = " + CubeInstancedAttribs.LOC_LIGHTMAP_SCALE + ") in vec4 iris_InstLightmapScale");
+        assertHas(v, "layout(location = " + InstancedAttribs.LOC_ENTITY + ") in vec4 iris_InstEntity;");
+        assertLacks(v, "in vec4 iris_Entity;");
         assertLacks(v, "layout(location = 2) in vec4 iris_MultiTexCoord0");
         assertHas(v, "vec4 iris_MultiTexCoord0;");
         assertHas(v, "iris_MultiTexCoord1 = vec4(iris_InstLightmapScale.xy, 0.0, 1.0)");
@@ -402,10 +424,28 @@ class AttributeTransformerInstancedTest {
         assertEquals(ParticleInstancedAttribs.LOC_UV, locationOf(byLocation, "iris_InstUv"));
         assertEquals(InstancedAttribs.LOC_COLOR, locationOf(byLocation, "iris_InstColor"));
         assertEquals(InstancedAttribs.LOC_LIGHTMAP, locationOf(byLocation, "iris_InstLightmap"));
+        assertEquals(ImmediateExtendedAttribHandler.LOC_ENTITY_IDS, locationOf(byLocation, "iris_Entity"));
 
         assertFalse(byLocation.containsKey(7), "location 7 is unused");
         for (final int loc : byLocation.keySet()) {
-            assertTrue(loc < 11, "unexpected attribute location " + loc + " declared for the particle variant");
+            assertTrue(loc < ImmediateExtendedAttribHandler.LOC_MC_ENTITY || loc == ImmediateExtendedAttribHandler.LOC_ENTITY_IDS, "unexpected attribute location " + loc + " declared for the particle variant");
+        }
+    }
+
+    @Test
+    void weatherVariantDeclaresTheFiveColumnAttributesAtTheStatedLocations() {
+        final String v = instancedVertex(PARTICLE_VERTEX, Instancing.WEATHER);
+        final Map<Integer, String> byLocation = attributeLocations(v);
+
+        assertEquals(VertexFormatElement.Usage.PRIMARY_UV.getAttributeLocation(), locationOf(byLocation, "iris_WeatherCorner"));
+        assertEquals(WeatherInstancedAttribs.LOC_COLUMN_SPAN, locationOf(byLocation, "iris_InstColumnSpan"));
+        assertEquals(WeatherInstancedAttribs.LOC_JITTER, locationOf(byLocation, "iris_InstJitter"));
+        assertEquals(WeatherInstancedAttribs.LOC_COLOR, locationOf(byLocation, "iris_InstWeatherColor"));
+        assertEquals(WeatherInstancedAttribs.LOC_PARAMS, locationOf(byLocation, "iris_InstWeatherParams"));
+        assertEquals(WeatherInstancedAttribs.LOC_LAYER, locationOf(byLocation, "iris_InstWeatherLayer"));
+
+        for (final int loc : byLocation.keySet()) {
+            assertTrue(loc < ImmediateExtendedAttribHandler.LOC_MC_ENTITY || loc == ImmediateExtendedAttribHandler.LOC_ENTITY_IDS, "unexpected attribute location " + loc + " declared for the weather variant");
         }
     }
 
@@ -416,26 +456,21 @@ class AttributeTransformerInstancedTest {
     }
 
     @Test
-    void particleEntityIdAndOverlayColorStayAsPlainUniformsLikeTheNonePath() {
-        final Map<PatchShaderType, String> result = TransformPatcher.patchAttributesInstanced(VERTEX_ENTITY_AND_COLOR, null, null, null, FRAGMENT_ENTITY_AND_COLOR, TEX_LM, false, Instancing.PARTICLE);
-        assertNotNull(result);
+    void particleEntityIdsAndOverlayColorFollowTheNonePath() {
+        final Map<PatchShaderType, String> result = instancedStages(VERTEX_ENTITY_AND_COLOR, FRAGMENT_ENTITY_AND_COLOR, Instancing.PARTICLE);
         final String v = result.get(PatchShaderType.VERTEX);
         final String f = result.get(PatchShaderType.FRAGMENT);
-        assertNotNull(v);
-        assertNotNull(f);
-        ShaderParser.parseShader(v);
-        ShaderParser.parseShader(f);
 
-        assertHas(v, "uniform int entityId;");
+        assertLacks(v, "uniform int entityId;");
+        assertHas(v, "layout(location = " + ImmediateExtendedAttribHandler.LOC_ENTITY_IDS + ") in vec4 iris_Entity;");
         assertHas(v, "uniform vec4 entityColor;");
-        assertLacks(v, "iris_entityInfo");
         assertLacks(v, "iris_InstOverlay");
         assertLacks(v, "out vec4 entityColor;");
 
-        assertHas(f, "uniform int entityId;");
+        assertLacks(f, "uniform int entityId;");
+        assertHas(f, "flat in ivec3 iris_entityInfo;");
         assertHas(f, "uniform vec4 entityColor;");
         assertLacks(f, "in vec4 entityColor;");
-        assertLacks(f, "flat in ivec3 iris_entityInfo;");
     }
 
     @Test
@@ -450,6 +485,56 @@ class AttributeTransformerInstancedTest {
 
         final Map<PatchShaderType, String> entityResult = TransformPatcher.patchAttributes(VERTEX_ENTITY, null, null, null, FRAGMENT_ENTITY, TEX_LM, false);
         assertNotNull(entityResult);
-        assertHas(entityResult.get(PatchShaderType.VERTEX), "uniform int entityId;");
+        assertHas(entityResult.get(PatchShaderType.VERTEX), "layout(location = " + ImmediateExtendedAttribHandler.LOC_ENTITY_IDS + ") in vec4 iris_Entity;");
+    }
+
+    private static final String[] CLIP_NAMES = {"gl_ClipDistance", "angelica_ClipDist", "angelica_ClipPlane"};
+
+    private static Map<PatchShaderType, String> clipStages(boolean emulated, boolean clipDiscard) {
+        try (var ignored = ClipTestSupport.emulation(emulated)) {
+            final Map<PatchShaderType, String> result = TransformPatcher.patchAttributesInstanced(VERTEX, null, null, null, FRAGMENT, TEX_LM, false, Instancing.NONE, clipDiscard);
+            assertNotNull(result);
+            for (String stage : result.values()) {
+                if (stage != null) ShaderParser.parseShader(stage);
+            }
+            return result;
+        }
+    }
+
+    @Test
+    void nativeClipDistancesWrittenByTheVertexStage() {
+        final Map<PatchShaderType, String> result = clipStages(false, false);
+        assertHas(result.get(PatchShaderType.VERTEX), "gl_ClipDistance[7] = dot(angelica_ClipPlane[7], _cp_ep);");
+        assertLacks(result.get(PatchShaderType.VERTEX), "angelica_ClipDist0");
+        assertLacks(result.get(PatchShaderType.FRAGMENT), "angelica_ClipDist0");
+    }
+
+    @Test
+    void emulatedUnclippedVariantCarriesNoClipCode() {
+        final Map<PatchShaderType, String> result = clipStages(true, false);
+        for (String stage : result.values()) {
+            if (stage == null) continue;
+            for (String name : CLIP_NAMES) assertLacks(stage, name);
+        }
+    }
+
+    @Test
+    void emulatedClippedVariantDiscardsFirstInFragmentMain() {
+        final Map<PatchShaderType, String> result = clipStages(true, true);
+        final String v = result.get(PatchShaderType.VERTEX);
+        assertHas(v, "uniform vec4 angelica_ClipPlane[8];");
+        assertHas(v, "out vec4 angelica_ClipDist0;");
+        assertHas(v, "out vec4 angelica_ClipDist1;");
+        assertHas(v, "angelica_ClipDist0 = vec4(dot(angelica_ClipPlane[0], _cp_ep), dot(angelica_ClipPlane[1], _cp_ep), dot(angelica_ClipPlane[2], _cp_ep), dot(angelica_ClipPlane[3], _cp_ep));");
+        assertHas(v, "angelica_ClipDist1 = vec4(dot(angelica_ClipPlane[4], _cp_ep), dot(angelica_ClipPlane[5], _cp_ep), dot(angelica_ClipPlane[6], _cp_ep), dot(angelica_ClipPlane[7], _cp_ep));");
+        assertLacks(v, "gl_ClipDistance");
+
+        final String f = result.get(PatchShaderType.FRAGMENT);
+        assertHas(f, "in vec4 angelica_ClipDist0;");
+        assertHas(f, "in vec4 angelica_ClipDist1;");
+        final String body = squash(f);
+        final int mainIdx = body.indexOf("voidmain(){");
+        assertTrue(mainIdx >= 0, f);
+        assertTrue(body.startsWith(squash(ClipDistanceGlsl.FS_DISCARD), mainIdx + "voidmain(){".length()), "discard is not the first statement of main:\n" + f);
     }
 }

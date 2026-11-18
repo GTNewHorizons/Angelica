@@ -1,6 +1,7 @@
 package net.coderbot.iris.pipeline.transform.parameter;
 
 import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderDiskCache;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.pipeline.transform.Patch;
 import net.coderbot.iris.shaderpack.texture.TextureStage;
@@ -11,20 +12,34 @@ public class AttributeParameters extends Parameters {
 	public final InputAvailability inputs;
 	public final boolean scrollGlint;
 	public final Instancing instancing;
+	public final boolean wideLines;
+	public final boolean clipDiscard;
 	// WARNING: adding new fields requires updating hashCode and equals methods!
 
 	public AttributeParameters(Patch patch, boolean hasGeometry, boolean hasTesselation, InputAvailability inputs, boolean scrollGlint, Instancing instancing) {
+		this(patch, hasGeometry, hasTesselation, inputs, scrollGlint, instancing, false, false);
+	}
+
+	public AttributeParameters(Patch patch, boolean hasGeometry, boolean hasTesselation, InputAvailability inputs, boolean scrollGlint, Instancing instancing, boolean wideLines, boolean clipDiscard) {
 		super(patch, null);
 		this.hasGeometry = hasGeometry;
 		this.hasTesselation = hasTesselation;
 		this.inputs = inputs;
 		this.scrollGlint = scrollGlint;
 		this.instancing = instancing;
+		this.wideLines = wideLines;
+		this.clipDiscard = clipDiscard;
 	}
 
 	@Override
 	public TextureStage getTextureStage() {
 		return TextureStage.GBUFFERS_AND_SHADOW;
+	}
+
+	@Override
+	public void appendDiskKey(ShaderDiskCache.Key k) {
+		super.appendDiskKey(k);
+		k.b(hasGeometry).b(hasTesselation).str(inputs == null ? null : inputs.name()).b(scrollGlint).str(instancing.name()).b(wideLines).b(clipDiscard);
 	}
 
 	@Override
@@ -35,6 +50,8 @@ public class AttributeParameters extends Parameters {
 		result = prime * result + (hasTesselation ? 1231 : 1237);
 		result = prime * result + (scrollGlint ? 1231 : 1237);
 		result = prime * result + instancing.ordinal();
+		result = prime * result + (wideLines ? 1231 : 1237);
+		result = prime * result + (clipDiscard ? 1231 : 1237);
 		result = prime * result + ((inputs == null) ? 0 : inputs.hashCode());
 		return result;
 	}
@@ -56,11 +73,12 @@ public class AttributeParameters extends Parameters {
 			return false;
 		if (instancing != other.instancing)
 			return false;
-		if (inputs == null) {
-			if (other.inputs != null)
-				return false;
-		} else if (!inputs.equals(other.inputs))
+		if (wideLines != other.wideLines)
 			return false;
-		return true;
-	}
+		if (clipDiscard != other.clipDiscard)
+			return false;
+		if (inputs == null) {
+            return other.inputs == null;
+		} else return inputs.equals(other.inputs);
+    }
 }

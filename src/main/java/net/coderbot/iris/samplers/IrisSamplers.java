@@ -3,7 +3,9 @@ package net.coderbot.iris.samplers;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.rendering.TextureSamplers;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.gl.image.GlImage;
 import net.coderbot.iris.gl.sampler.GlSampler;
@@ -11,12 +13,15 @@ import net.coderbot.iris.gl.sampler.SamplerHolder;
 import net.coderbot.iris.gl.state.StateUpdateNotifiers;
 import net.coderbot.iris.gl.texture.TextureAccess;
 import com.gtnewhorizons.angelica.glsm.texture.TextureType;
+import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.rendertarget.RenderTarget;
 import net.coderbot.iris.rendertarget.RenderTargets;
 import net.coderbot.iris.shaderpack.PackRenderTargetDirectives;
 import net.coderbot.iris.shaderpack.PackShadowDirectives;
 import net.coderbot.iris.shadows.ShadowRenderTargets;
+import net.coderbot.iris.texture.format.TextureFormat;
+import net.coderbot.iris.texture.pbr.PBRType;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 
 import java.util.Set;
@@ -39,6 +44,7 @@ public class IrisSamplers {
 
 	private static GlSampler SHADOW_SAMPLER_NEAREST;
 	private static GlSampler SHADOW_SAMPLER_LINEAR;
+	private static GlSampler MIPPED_NEAREST_NEAREST;
 
 	private IrisSamplers() {
 		// no construction allowed
@@ -49,8 +55,23 @@ public class IrisSamplers {
 			// Leave as null - callers handle null gracefully
 			return;
 		}
-		SHADOW_SAMPLER_NEAREST = new GlSampler(false, false, true, true);
-		SHADOW_SAMPLER_LINEAR = new GlSampler(true, false, true, true);
+		SHADOW_SAMPLER_NEAREST = new GlSampler(false, false, false, true, true, true);
+		SHADOW_SAMPLER_LINEAR = new GlSampler(true, true, false, true, true, true);
+		MIPPED_NEAREST_NEAREST = new GlSampler(false, false, true, false, false, true);
+	}
+
+	public static GlSampler getTerrainSampler(int anisotropy) {
+		if (BlockRenderingSettings.INSTANCE.breaksAnisotropy()) {
+			anisotropy = 1;
+		}
+		return TextureSamplers.getTerrainSampler(false, anisotropy);
+	}
+
+	public static GlSampler getPbrSampler(TextureFormat format, PBRType type, int anisotropy) {
+		if (format != null && !format.canInterpolateValues(type)) {
+			return MIPPED_NEAREST_NEAREST;
+		}
+		return getTerrainSampler(anisotropy);
 	}
 
 	public static void addRenderTargetSamplers(SamplerHolder samplers, Supplier<ImmutableSet<Integer>> flipped,
@@ -94,8 +115,8 @@ public class IrisSamplers {
 
 		// Add the DH depth textures (stub implementation returns 0 until DH is integrated)
 		if (pipeline != null) {
-			samplers.addDynamicSampler(TextureType.TEXTURE_2D, () -> pipeline.getDHCompat().getDepthTex(), (GlSampler) null, "dhDepthTex", "dhDepthTex0");
-			samplers.addDynamicSampler(TextureType.TEXTURE_2D, () -> pipeline.getDHCompat().getDepthTexNoTranslucent(), (GlSampler) null, "dhDepthTex1");
+			samplers.addDynamicSampler(TextureType.TEXTURE_2D, () -> pipeline.getDHCompat().getDepthTex(), "dhDepthTex", "dhDepthTex0");
+			samplers.addDynamicSampler(TextureType.TEXTURE_2D, () -> pipeline.getDHCompat().getDepthTexNoTranslucent(), "dhDepthTex1");
 		}
 	}
 
@@ -137,13 +158,13 @@ public class IrisSamplers {
 		final GlSampler sampler1 = separateHardwareSamplers ? null : (shadowRenderTargets.isHardwareFiltered(1) ? (shadowRenderTargets.isLinearFiltered(1) ? SHADOW_SAMPLER_LINEAR : SHADOW_SAMPLER_NEAREST) : null);
 
 		if (waterShadowEnabled) {
-			samplers.addDynamicSampler(TextureType.TEXTURE_2D, shadowRenderTargets.getDepthTexture()::getTextureId, sampler0, "shadowtex0", "watershadow");
-			if (samplers.addDynamicSampler(TextureType.TEXTURE_2D, shadowRenderTargets.getDepthTextureNoTranslucents()::getTextureId, sampler1, "shadowtex1", "shadow")) {
+			samplers.addDynamicSampler(TextureType.TEXTURE_2D, shadowRenderTargets.getDepthTexture()::getTextureId, () -> sampler0, "shadowtex0", "watershadow");
+			if (samplers.addDynamicSampler(TextureType.TEXTURE_2D, shadowRenderTargets.getDepthTextureNoTranslucents()::getTextureId, () -> sampler1, "shadowtex1", "shadow")) {
 				usage |= USAGE_SHADOWTEX1;
 			}
 		} else {
-			samplers.addDynamicSampler(TextureType.TEXTURE_2D, shadowRenderTargets.getDepthTexture()::getTextureId, sampler0, "shadowtex0", "shadow");
-			if (samplers.addDynamicSampler(TextureType.TEXTURE_2D, shadowRenderTargets.getDepthTextureNoTranslucents()::getTextureId, sampler1, "shadowtex1")) {
+			samplers.addDynamicSampler(TextureType.TEXTURE_2D, shadowRenderTargets.getDepthTexture()::getTextureId, () -> sampler0, "shadowtex0", "shadow");
+			if (samplers.addDynamicSampler(TextureType.TEXTURE_2D, shadowRenderTargets.getDepthTextureNoTranslucents()::getTextureId, () -> sampler1, "shadowtex1")) {
 				usage |= USAGE_SHADOWTEX1;
 			}
 		}
@@ -176,12 +197,12 @@ public class IrisSamplers {
 		// Hardware-filtered shadow samplers for separate HW sampler access
 		if (shadowRenderTargets.isHardwareFiltered(0) && separateHardwareSamplers) {
 			final GlSampler hwSampler0 = shadowRenderTargets.isLinearFiltered(0) ? SHADOW_SAMPLER_LINEAR : SHADOW_SAMPLER_NEAREST;
-			samplers.addDynamicSampler(TextureType.TEXTURE_2D, shadowRenderTargets.getDepthTexture()::getTextureId, hwSampler0, "shadowtex0HW");
+			samplers.addDynamicSampler(TextureType.TEXTURE_2D, shadowRenderTargets.getDepthTexture()::getTextureId, () -> hwSampler0, "shadowtex0HW");
 		}
 
 		if (shadowRenderTargets.isHardwareFiltered(1) && separateHardwareSamplers) {
 			final GlSampler hwSampler1 = shadowRenderTargets.isLinearFiltered(1) ? SHADOW_SAMPLER_LINEAR : SHADOW_SAMPLER_NEAREST;
-			if (samplers.addDynamicSampler(TextureType.TEXTURE_2D, shadowRenderTargets.getDepthTextureNoTranslucents()::getTextureId, hwSampler1, "shadowtex1HW")) {
+			if (samplers.addDynamicSampler(TextureType.TEXTURE_2D, shadowRenderTargets.getDepthTextureNoTranslucents()::getTextureId, () -> hwSampler1, "shadowtex1HW")) {
 				usage |= USAGE_SHADOWTEX1;
 			}
 		}
@@ -207,8 +228,12 @@ public class IrisSamplers {
 			samplers.addDynamicSampler(whitePixel::getGlTextureId, "lightmap");
 		}
 
-		samplers.addDynamicSampler(pipeline::getCurrentNormalTexture, StateUpdateNotifiers.normalTextureChangeNotifier, "normals");
-		samplers.addDynamicSampler(pipeline::getCurrentSpecularTexture, StateUpdateNotifiers.specularTextureChangeNotifier, "specular");
+		if (pipeline instanceof DeferredWorldRenderingPipeline deferred) {
+			samplers.addDynamicSampler(TextureType.TEXTURE_2D, pipeline::getCurrentNormalTexture,
+				StateUpdateNotifiers.normalTextureChangeNotifier, deferred::getNormalSampler, "normals");
+			samplers.addDynamicSampler(TextureType.TEXTURE_2D, pipeline::getCurrentSpecularTexture,
+				StateUpdateNotifiers.specularTextureChangeNotifier, deferred::getSpecularSampler, "specular");
+		}
 	}
 
 	public static int addWorldDepthSamplers(SamplerHolder samplers, RenderTargets renderTargets) {

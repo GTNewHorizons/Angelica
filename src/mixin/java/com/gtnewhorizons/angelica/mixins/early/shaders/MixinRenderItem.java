@@ -1,8 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
-import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.uniforms.ItemIdManager;
@@ -22,18 +21,15 @@ public class MixinRenderItem {
     /**
      * Item ID and cutout draw state for dropped items.
      */
-    @WrapMethod(method = "doRender(Lnet/minecraft/entity/item/EntityItem;DDDFF)V")
-    private void iris$droppedItemRender(EntityItem entity, double x, double y, double z, float entityYaw, float partialTicks, Operation<Void> original) {
-        final int prevItemId = ItemIdManager.getItemId();
-        final long prevCutout = GbufferPrograms.pushCutoutDefaults();
+    @Surround(method = "doRender(Lnet/minecraft/entity/item/EntityItem;DDDFF)V")
+    private void iris$droppedItemRender(EntityItem entity, double x, double y, double z, float entityYaw, float partialTicks) {
+        @Surround.Carry
+        final int stateDepth = ItemIdManager.beginCutout(entity.getEntityItem());
+    }
 
-        ItemIdManager.setItemId(entity.getEntityItem());
-        try {
-            original.call(entity, x, y, z, entityYaw, partialTicks);
-        } finally {
-            ItemIdManager.setItemIdRaw(prevItemId);
-            GbufferPrograms.popCutoutDefaults(prevCutout);
-        }
+    @Surround.Finally
+    private void iris$droppedItemRestore(@Surround.Carry int stateDepth) {
+        ItemIdManager.endCutout(stateDepth);
     }
 
     /**
@@ -45,6 +41,7 @@ public class MixinRenderItem {
         remap = false
     )
     private void iris$glintStart(CallbackInfo ci) {
+        ItemIdManager.pushItemId();
         ItemIdManager.resetItemId();
         GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.GLINT);
         ShaderGlint.beginGlint();
@@ -61,5 +58,6 @@ public class MixinRenderItem {
     private void iris$glintEnd(CallbackInfo ci) {
         GbufferPrograms.teardownSpecialRenderCondition();
         ShaderGlint.endGlint();
+        ItemIdManager.popItemId();
     }
 }

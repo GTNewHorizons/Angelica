@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.loading;
 
+import com.gtnewhorizons.retrofuturabootstrap.api.BytePatternMatcher;
+import com.gtnewhorizons.retrofuturabootstrap.api.ClassHeaderMetadata;
 import com.gtnewhorizons.retrofuturabootstrap.api.ClassNodeHandle;
 import com.gtnewhorizons.retrofuturabootstrap.api.ExtensibleClassLoader;
 import com.gtnewhorizons.retrofuturabootstrap.api.RfbClassTransformer;
@@ -16,10 +18,12 @@ public abstract class RfbModRedirector implements RfbClassTransformer {
 
     private final String id;
     private final ModRedirector inner;
+    private final BytePatternMatcher cstPoolMatcher;
 
     protected RfbModRedirector(@Pattern("[a-z0-9-]+") String id, ModRedirector inner) {
         this.id = id;
         this.inner = inner;
+        this.cstPoolMatcher = new BytePatternMatcher(inner.getConstantPoolSearchStrings(), BytePatternMatcher.Mode.StartsWith);
     }
 
     @Override
@@ -53,7 +57,11 @@ public abstract class RfbModRedirector implements RfbClassTransformer {
         if (!classNode.isPresent()) {
             return false;
         }
-        return inner.shouldTransform(classNode.getOriginalBytes());
+        final ClassHeaderMetadata metadata = classNode.getOriginalMetadata();
+        if (metadata == null) {
+            return inner.shouldTransform(classNode.getOriginalBytes());
+        }
+        return metadata.matchesBytes(classNode.getOriginalBytes(), cstPoolMatcher);
     }
 
     @Override

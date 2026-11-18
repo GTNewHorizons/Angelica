@@ -10,6 +10,8 @@ import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
 
@@ -21,6 +23,13 @@ public final class CommandRecorder {
     private long writePointer;
     private final ArrayList<DisplayListCommand> complexObjects = new ArrayList<>();
     private final IndexedDrawBatchBuilder indexedDraws = new IndexedDrawBatchBuilder();
+    private Set<DisplayListCommand> onceCommands;
+    private DisplayListCommand lastComplexCommand;
+    private int lastComplexCommandEnd = -1;
+
+    public boolean isLastCommand(DisplayListCommand command) {
+        return size() == lastComplexCommandEnd && command.equals(lastComplexCommand);
+    }
 
     public CommandRecorder() {
         this(DEFAULT_CAPACITY);
@@ -30,6 +39,11 @@ public final class CommandRecorder {
         this.buffer = memAlloc(initialCapacity);
         this.basePointer = memAddress0(buffer);
         this.writePointer = basePointer;
+    }
+
+    public boolean markRecordedOnce(DisplayListCommand command) {
+        if (onceCommands == null) onceCommands = new HashSet<>();
+        return onceCommands.add(command);
     }
 
     // === Low-level write operations ===
@@ -364,6 +378,16 @@ public final class CommandRecorder {
         writeFloat(b);
     }
 
+    public void writeVertexAttrib(int index, float x, float y, float z, float w) {
+        ensureCapacity(24);
+        writeInt(GLCommand.VERTEX_ATTRIB);
+        writeInt(index);
+        writeFloat(x);
+        writeFloat(y);
+        writeFloat(z);
+        writeFloat(w);
+    }
+
     public void writeClearColor(float r, float g, float b, float a) {
         ensureCapacity(20);
         writeInt(GLCommand.CLEAR_COLOR);
@@ -649,6 +673,8 @@ public final class CommandRecorder {
         complexObjects.add(cmd);
         writeInt(GLCommand.COMPLEX_REF);
         writeInt(index);
+        lastComplexCommand = cmd;
+        lastComplexCommandEnd = size();
     }
 
     // === Lifecycle ===

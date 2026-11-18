@@ -57,6 +57,10 @@ public class AngelicaRenderQueue {
         LockSupport.unpark(GLStateManager.getMainThread());
     }
 
+    public static void remove(Runnable runnable) {
+        TASKS.removeIf(t -> t == runnable);
+    }
+
     public static int processTasks(int max) {
         int tasksRun = 0;
         while(tasksRun < max) {

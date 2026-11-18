@@ -4,7 +4,7 @@ import java.util.function.LongConsumer;
 import com.gtnewhorizons.angelica.sdlgpu.pipeline.Hashing;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.lwjgl.PointerBuffer;
+import com.gtnewhorizons.angelica.sdlgpu.device.FenceWait;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
@@ -31,6 +31,7 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -44,8 +45,11 @@ import static org.lwjgl.system.MemoryStack.*;
 import static org.lwjgl.system.MemoryUtil.memAlloc;
 import static org.lwjgl.system.MemoryUtil.memFree;
 
+import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
+import com.gtnewhorizons.angelica.glsm.texture.TextureStaging;
 import com.gtnewhorizons.angelica.sdlgpu.device.Device;
+import com.gtnewhorizons.angelica.sdlgpu.device.Submits;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
 import com.gtnewhorizons.angelica.sdlgpu.pipeline.EBOSplitScanner;
@@ -94,6 +98,9 @@ public final class ResourceManager {
 
     private final Int2ObjectOpenHashMap<ContextState.VAOState> vaoStates = new Int2ObjectOpenHashMap<>();
     private final Int2ObjectOpenHashMap<PersistentMapping> persistentMappings = new Int2ObjectOpenHashMap<>();
+    private final Int2ObjectOpenHashMap<MappedRange> plainMappings = new Int2ObjectOpenHashMap<>();
+    private MappedRange[] plainMappingPool = new MappedRange[4];
+    private int plainMappingPoolCount;
     private final Int2ObjectOpenHashMap<ByteBuffer> uboShadows = new Int2ObjectOpenHashMap<>();
     private final Int2ObjectOpenHashMap<ByteBuffer> eboShadows = new Int2ObjectOpenHashMap<>();
     private final IntOpenHashSet eboShadowWanted = new IntOpenHashSet();
@@ -125,10 +132,13 @@ public final class ResourceManager {
     public void markFboAttachment(int glId) { fboAttachedGlIds.add(glId); }
     public boolean isFboAttachment(int glId) { return fboAttachedGlIds.contains(glId); }
 
+    public boolean shouldDeferTextureUpload(ContextState st, int glId) { return st.deferUploads && !isFboAttachment(glId); }
+
     private int preferredD24 = SDL_GPU_TEXTUREFORMAT_D24_UNORM;
     private int preferredD24S8 = SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT;
     private volatile int swapchainDepthStencilFormat = SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT;
     private long swapchainDepthStencil;
+    private int swapchainDepthStencilUsage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET;
     private int swapchainDepthStencilWidth;
     private int swapchainDepthStencilHeight;
 
@@ -159,16 +169,32 @@ public final class ResourceManager {
             LOG.info("D24_UNORM_S8_UINT not supported for depth+sampler, using D32_FLOAT_S8_UINT");
         }
 
-        swapchainDepthStencilFormat = preferredD24S8;
-        if (!SDL_GPUTextureSupportsFormat(dev, swapchainDepthStencilFormat, texType, SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET)) {
-            final int alt = swapchainDepthStencilFormat == SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT ? SDL_GPU_TEXTUREFORMAT_D32_FLOAT_S8_UINT : SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT;
-            if (SDL_GPUTextureSupportsFormat(dev, alt, texType, SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET)) {
-                swapchainDepthStencilFormat = alt;
+        final int alt = preferredD24S8 == SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT ? SDL_GPU_TEXTUREFORMAT_D32_FLOAT_S8_UINT : SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT;
+        swapchainDepthStencilUsage = depthUsage;
+        swapchainDepthStencilFormat = pickDepthStencilFormat(dev, texType, preferredD24S8, alt, depthUsage);
+        if (swapchainDepthStencilFormat == 0) {
+            swapchainDepthStencilUsage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET;
+            swapchainDepthStencilFormat = pickDepthStencilFormat(dev, texType, preferredD24S8, alt, swapchainDepthStencilUsage);
+            if (swapchainDepthStencilFormat != 0) {
+                LOG.warn("No depth+stencil format is both sampleable and a render target; default framebuffer depth/stencil cannot be read back");
             } else {
-                swapchainDepthStencilFormat = 0;
                 LOG.warn("No depth+stencil format usable as a render target; default framebuffer will have no depth or stencil");
             }
         }
+    }
+
+    private static int pickDepthStencilFormat(long dev, int texType, int preferred, int alt, int usage) {
+        if (SDL_GPUTextureSupportsFormat(dev, preferred, texType, usage)) return preferred;
+        if (SDL_GPUTextureSupportsFormat(dev, alt, texType, usage)) return alt;
+        return 0;
+    }
+
+    public long getSwapchainDepthStencil() {
+        return swapchainDepthStencil;
+    }
+
+    public boolean isSwapchainDepthStencilSampleable() {
+        return (swapchainDepthStencilUsage & SDL_GPU_TEXTUREUSAGE_SAMPLER) != 0;
     }
 
     public int getSwapchainDepthStencilFormat() {
@@ -197,7 +223,7 @@ public final class ResourceManager {
     }
 
     private static int defaultUsage(int sdlFormat) {
-        if (isDepthFormat(sdlFormat)) {
+        if (PixelOps.isDepthFormat(sdlFormat)) {
             return SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
         }
         if (isIntegerFormat(sdlFormat)) {
@@ -223,6 +249,7 @@ public final class ResourceManager {
     }
 
     private long createTextureCore(int glId, int glTarget, int sdlFormat, int glFormat, int width, int height, int depth, int levels, int usage) {
+        if (getTextureHandle(glId) != 0) beforeTextureReplaced();
         usage = reconcileUsageAndWarn(glId, usage);
         final int sdlType = mapTextureType(glTarget);
         if (!SDL_GPUTextureSupportsFormat(device.getDevice(), sdlFormat, sdlType, usage)) {
@@ -284,7 +311,19 @@ public final class ResourceManager {
         return sdlFormat;
     }
 
+    private Runnable textureReplaceHook;
+
+    public void setTextureReplaceHook(Runnable hook) {
+        textureReplaceHook = hook;
+    }
+
+    private void beforeTextureReplaced() {
+        final Runnable hook = textureReplaceHook;
+        if (hook != null) hook.run();
+    }
+
     public void deleteTexture(int glId) {
+        beforeTextureReplaced();
         final long handle;
         wLock.lock();
         try {
@@ -293,19 +332,9 @@ public final class ResourceManager {
             fboAttachedGlIds.remove(glId);
             for (FboState fbo : fboStates.values()) {
                 for (int i = 0; i < ContextState.MAX_COLOR_ATTACHMENTS; i++) {
-                    if (fbo.colorGlIds[i] == glId) {
-                        fbo.colorTextures[i] = 0;
-                        fbo.colorGlIds[i] = 0;
-                        fbo.colorFormats[i] = 0;
-                        fbo.targetsDirty = true;
-                    }
+                    if (fbo.colorGlIds[i] == glId) fbo.detachColor(i);
                 }
-                if (fbo.depthGlId == glId) {
-                    fbo.depthTexture = 0;
-                    fbo.depthGlId = 0;
-                    fbo.depthFormat = 0;
-                    fbo.targetsDirty = true;
-                }
+                if (fbo.depthGlId == glId) fbo.detachDepth();
             }
             texSamplerStates.remove(glId);
         } finally {
@@ -315,6 +344,7 @@ public final class ResourceManager {
     }
 
     public void releaseTextureHandleForRealloc(int glId) {
+        beforeTextureReplaced();
         final long handle;
         wLock.lock();
         try {
@@ -332,6 +362,7 @@ public final class ResourceManager {
             releaseTextureDeferred(handle);
             return;
         }
+        notifyTextureReleased(handle);
         releaseTextureHandle(handle);
     }
 
@@ -354,6 +385,46 @@ public final class ResourceManager {
     }
 
     private final LongOpenHashSet definedContentTextures = new LongOpenHashSet();
+    private volatile Long2ObjectOpenHashMap<AtomicLong> textureWriteVersions = new Long2ObjectOpenHashMap<>();
+    private final AtomicLong textureWriteGeneration = new AtomicLong();
+
+    public void trackTextureWrites(long handle) {
+        if (handle != 0) setWriteTracking(handle, true);
+    }
+
+    public void stopTrackingTextureWrites(long handle) {
+        if (textureWriteVersions.containsKey(handle)) setWriteTracking(handle, false);
+    }
+
+    private void setWriteTracking(long handle, boolean track) {
+        wLock.lock();
+        try {
+            if (textureWriteVersions.containsKey(handle) == track) return;
+            final Long2ObjectOpenHashMap<AtomicLong> versions = new Long2ObjectOpenHashMap<>(textureWriteVersions);
+            if (track) versions.put(handle, new AtomicLong());
+            else versions.remove(handle);
+            textureWriteVersions = versions;
+            textureWriteGeneration.incrementAndGet();
+        } finally {
+            wLock.unlock();
+        }
+    }
+
+    public long textureWriteGeneration() {
+        return textureWriteGeneration.get();
+    }
+
+    public long textureWriteVersion(long handle) {
+        final AtomicLong version = textureWriteVersions.get(handle);
+        return version == null ? 0 : version.get();
+    }
+
+    public void markTextureWritten(long handle) {
+        final AtomicLong version = textureWriteVersions.get(handle);
+        if (version == null) return;
+        version.incrementAndGet();
+        textureWriteGeneration.incrementAndGet();
+    }
 
     public boolean isTextureContentDefined(long handle) {
         if (handle == 0) return false;
@@ -364,6 +435,7 @@ public final class ResourceManager {
 
     public void markTextureContentDefined(long handle) {
         if (handle == 0) return;
+        if (isTextureContentDefined(handle)) return;
         wLock.lock();
         try { definedContentTextures.add(handle); } finally { wLock.unlock(); }
     }
@@ -408,6 +480,7 @@ public final class ResourceManager {
         if (handle == 0) return;
         dropBatchedUploadsTargeting(handle);
         markTextureContentUndefined(handle);
+        stopTrackingTextureWrites(handle);
         final boolean live;
         wLock.lock();
         try {
@@ -432,6 +505,7 @@ public final class ResourceManager {
                     if (fbo.colorGlIds[i] == glId) {
                         fbo.colorTextures[i] = newHandle;
                         fbo.targetsDirty = true;
+                        fbo.cachedFormatsDirty = true;
                         if (meta != null) {
                             fbo.colorFormats[i] = meta.sdlFormat();
                             if (i == 0) {
@@ -565,9 +639,10 @@ public final class ResourceManager {
         return true;
     }
 
-    private boolean copyAllMips(long srcTex, long dstTex, int glTarget, int width, int height, int depth, int levels) {
+    public boolean copyAllMips(long srcTex, long dstTex, int glTarget, int width, int height, int depth, int levels) {
         final long cp = frameManager.ensureCopyPass();
         if (cp == 0) return false;
+        flushBatchedUploads(cp);
         final boolean volume = glTarget == GL12.GL_TEXTURE_3D;
         final int layers = volume ? 1 : Math.max(1, depth);
         try (var stack = stackPush()) {
@@ -584,6 +659,7 @@ public final class ResourceManager {
                 }
             }
         }
+        markTextureWritten(dstTex);
         return true;
     }
 
@@ -622,7 +698,7 @@ public final class ResourceManager {
         final GpuBucket b = gpuBufferPool.get(Hashing.packHiLo(usage, bucket));
         if (b == null || b.handles.isEmpty()) return 0;
         for (int i = 0, n = b.handles.size(); i < n; i++) {
-            if (gpuPoolCurrentFrame - b.frames.getLong(i) >= Device.MAX_FRAMES_IN_FLIGHT) {
+            if (gpuPoolCurrentFrame - b.frames.getLong(i) >= RenderBackend.MAX_FRAMES_IN_FLIGHT) {
                 final long handle = b.handles.getLong(i);
                 final int last = n - 1;
                 if (i != last) {
@@ -729,7 +805,9 @@ public final class ResourceManager {
 
     public void deleteBuffer(int glId) {
         final ByteBuffer droppedPboStaging;
+        final ByteBuffer droppedPlainStaging;
         final PersistentMapping droppedPm;
+        final boolean hadEboShadow;
         wLock.lock();
         try {
             final long handle = bufferHandles.remove(glId);
@@ -740,9 +818,10 @@ public final class ResourceManager {
             undefinedContentBuffers.remove(glId);
             droppedPm = persistentMappings.remove(glId);
             if (droppedPm != null) mappingsVersion++;
+            droppedPlainStaging = removePlainMappingLocked(glId);
             droppedPboStaging = pboStagingData.remove(glId);
             deleteUboShadow(glId);
-            deleteEboShadow(glId);
+            hadEboShadow = deleteEboShadow(glId);
             deleteArrayShadow(glId);
             if (handle != 0) {
                 returnBufferToPool(handle, usage, size);
@@ -751,11 +830,15 @@ public final class ResourceManager {
         } finally {
             wLock.unlock();
         }
+        if (hadEboShadow) invalidateSplitCacheFor(glId);
         if (droppedPboStaging != null) {
             memFree(droppedPboStaging);
         }
+        if (droppedPlainStaging != null) {
+            memFree(droppedPlainStaging);
+        }
         untrackPersistentDirty(droppedPm);
-        releasePersistentStaging(droppedPm);
+        releasePersistentStaging(droppedPm, glId, "delete");
     }
 
     public void flushDeferredReleases() {
@@ -792,6 +875,18 @@ public final class ResourceManager {
         } finally {
             wLock.unlock();
         }
+        notifyTextureReleased(handle);
+    }
+
+    private LongConsumer textureReleaseListener;
+
+    public void setTextureReleaseListener(LongConsumer listener) {
+        textureReleaseListener = listener;
+    }
+
+    private void notifyTextureReleased(long handle) {
+        final LongConsumer listener = textureReleaseListener;
+        if (listener != null) listener.accept(handle);
     }
 
     private static volatile boolean singleThreadedReads;
@@ -930,10 +1025,81 @@ public final class ResourceManager {
         try { vaoStates.remove(glId); } finally { wLock.unlock(); }
     }
 
-    public void putPersistentMapping(int bufferGlId, PersistentMapping m) {
+    public boolean putPersistentMappingIfAbsent(int glId, PersistentMapping pm) {
         wLock.lock();
-        try { persistentMappings.put(bufferGlId, m); mappingsVersion++; } finally { wLock.unlock(); }
+        try {
+            if (plainMappings.containsKey(glId) || persistentMappings.putIfAbsent(glId, pm) != null) return false;
+            mappingsVersion++;
+            return true;
+        } finally { wLock.unlock(); }
     }
+
+    public boolean putPlainMappingIfAbsent(int glId, ByteBuffer staging, long offset, long length, boolean invalidate, int accessFlags) {
+        wLock.lock();
+        try {
+            if (plainMappings.containsKey(glId) || persistentMappings.containsKey(glId)) return false;
+            final MappedRange m;
+            if (plainMappingPoolCount > 0) {
+                m = plainMappingPool[--plainMappingPoolCount];
+                plainMappingPool[plainMappingPoolCount] = null;
+            } else {
+                m = new MappedRange();
+            }
+            m.glId = glId;
+            m.staging = staging;
+            m.offset = offset;
+            m.length = length;
+            m.invalidate = invalidate;
+            m.accessFlags = accessFlags;
+            plainMappings.put(glId, m);
+            return true;
+        } finally { wLock.unlock(); }
+    }
+
+    public boolean takePlainMapping(int glId, MappedRange out) {
+        wLock.lock();
+        try {
+            final MappedRange m = plainMappings.get(glId);
+            if (m == null) return false;
+            copyMappedRange(m, out);
+            removePlainMappingLocked(glId);
+            return true;
+        } finally { wLock.unlock(); }
+    }
+
+    public ByteBuffer takePlainStaging(int glId) {
+        wLock.lock();
+        try { return removePlainMappingLocked(glId); } finally { wLock.unlock(); }
+    }
+
+    public boolean peekPlainMapping(int glId, MappedRange out) {
+        if (fastRead()) return copyMappedRange(plainMappings.get(glId), out);
+        rLock.lock();
+        try { return copyMappedRange(plainMappings.get(glId), out); } finally { rLock.unlock(); }
+    }
+
+    private static boolean copyMappedRange(MappedRange m, MappedRange out) {
+        if (m == null) return false;
+        out.glId = m.glId;
+        out.staging = m.staging;
+        out.offset = m.offset;
+        out.length = m.length;
+        out.invalidate = m.invalidate;
+        out.accessFlags = m.accessFlags;
+        return true;
+    }
+
+    private ByteBuffer removePlainMappingLocked(int glId) {
+        final MappedRange m = plainMappings.remove(glId);
+        if (m == null) return null;
+        final ByteBuffer staging = m.staging;
+        m.staging = null;
+        if (plainMappingPoolCount == plainMappingPool.length) plainMappingPool = Arrays.copyOf(plainMappingPool, plainMappingPoolCount * 2);
+        plainMappingPool[plainMappingPoolCount++] = m;
+        return staging;
+    }
+    public void beginPersistentDrain() { rLock.lock(); }
+    public void endPersistentDrain() { rLock.unlock(); }
     public PersistentMapping getPersistentMapping(int bufferGlId) {
         if (fastRead()) return persistentMappings.get(bufferGlId);
         rLock.lock();
@@ -942,16 +1108,12 @@ public final class ResourceManager {
     public PersistentMapping removePersistentMapping(int bufferGlId) {
         final PersistentMapping dropped;
         wLock.lock();
-        try { dropped = persistentMappings.remove(bufferGlId); mappingsVersion++; } finally { wLock.unlock(); }
+        try {
+            dropped = persistentMappings.remove(bufferGlId);
+            if (dropped != null) mappingsVersion++;
+        } finally { wLock.unlock(); }
         untrackPersistentDirty(dropped);
         return dropped;
-    }
-    public PersistentMapping swapPersistentMapping(int bufferGlId, PersistentMapping fresh) {
-        final PersistentMapping prior;
-        wLock.lock();
-        try { prior = persistentMappings.put(bufferGlId, fresh); mappingsVersion++; } finally { wLock.unlock(); }
-        untrackPersistentDirty(prior);
-        return prior;
     }
 
     private volatile int mappingsVersion;
@@ -966,8 +1128,9 @@ public final class ResourceManager {
         if (pm != null && !PersistentMapping.isClean(pm.claimDirty())) persistentDirtyCount.decrementAndGet();
     }
 
-    public void releasePersistentStaging(PersistentMapping pm) {
+    public void releasePersistentStaging(PersistentMapping pm, int glId, String cause) {
         if (pm == null || pm.staging == null) return;
+        if (LOG.isDebugEnabled()) LOG.debug("Persistent mapping released: buffer {} ({} KiB) via {}", glId, pm.length >> 10, cause);
         final TransferThread tt = transferThread;
         final long seq = pm.lastEnqueuedSeq;
         if (tt != null && seq > tt.getSubmittedSeq()) tt.freeAfterSeq(pm.staging, seq);
@@ -978,24 +1141,20 @@ public final class ResourceManager {
         rLock.lock();
         try {
             final PersistentMapping srcPm = persistentMappings.get(srcGlId);
-            if (srcPm == null) return false;
-            final ByteBuffer slice = srcPm.staging.duplicate();
-            slice.position((int) readOffset).limit((int) (readOffset + size));
-            uploadToBuffer(copyPass, slice, dstHandle, writeOffset, false);
+            if (srcPm == null || !srcPm.covers(readOffset, size)) return false;
+            uploadRangeToBuffer(copyPass, srcPm.staging, srcPm.stagingIndex(readOffset), size, dstHandle, writeOffset, false);
             final PersistentMapping dstPm = persistentMappings.get(dstGlId);
-            if (dstPm != null) {
-                PersistentBufferSync.mirrorPersistentCopy(srcPm.staging, readOffset, dstPm.staging, writeOffset, size);
-            }
+            if (dstPm != null) PersistentBufferSync.mirrorPersistentCopy(srcPm, readOffset, dstPm, writeOffset, size);
             return true;
         } finally { rLock.unlock(); }
     }
 
-    public boolean enqueuePersistentCopyDeferred(int srcGlId, int dstGlId, long seq,
+    public boolean enqueuePersistentCopyDeferred(int srcGlId, int dstGlId, long seq, long readOffset, long size,
             BiConsumer<PersistentMapping, PersistentMapping> inLock) {
         rLock.lock();
         try {
             final PersistentMapping srcPm = persistentMappings.get(srcGlId);
-            if (srcPm == null) return false;
+            if (srcPm == null || !srcPm.covers(readOffset, size)) return false;
             final PersistentMapping dstPm = persistentMappings.get(dstGlId);
             srcPm.lastEnqueuedSeq = seq;
             inLock.accept(srcPm, dstPm);
@@ -1120,11 +1279,12 @@ public final class ResourceManager {
         try { return eboShadowVersions.get(bufferGlId); } finally { rLock.unlock(); }
     }
 
-    private void deleteEboShadow(int bufferGlId) {
+    private boolean deleteEboShadow(int bufferGlId) {
         final ByteBuffer existing = eboShadows.remove(bufferGlId);
         if (existing != null) memFree(existing);
         eboShadowVersions.remove(bufferGlId);
         eboShadowWanted.remove(bufferGlId);
+        return existing != null;
     }
 
     public boolean canShadowArrayBuffer(int size) {
@@ -1169,7 +1329,7 @@ public final class ResourceManager {
     public void mirrorArrayShadowFull(int glId, ByteBuffer data) {
         final int len = data.remaining();
         final ByteBuffer shadow = getOrAllocArrayShadow(glId, len);
-        copyShadowRegion(data, data.position(), shadow, 0, len);
+        ByteRegionCopy.copyByteRegion(data, data.position(), shadow, 0, len);
         shadow.position(0).limit(len);
     }
 
@@ -1183,7 +1343,7 @@ public final class ResourceManager {
                 removeArrayShadowLocked(glId);
                 return;
             }
-            copyShadowRegion(data, data.position(), shadow, dstOffset, len);
+            ByteRegionCopy.copyByteRegion(data, data.position(), shadow, dstOffset, len);
         } finally { wLock.unlock(); }
     }
 
@@ -1201,18 +1361,6 @@ public final class ResourceManager {
         final ByteBuffer existing = arrayShadows.remove(glId);
         if (existing != null) memFree(existing);
         arrayShadowWanted.remove(glId);
-    }
-
-    private static void copyShadowRegion(ByteBuffer src, int srcOff, ByteBuffer dst, int dstOff, int len) {
-        if (src.isDirect() && dst.isDirect()) {
-            MemoryUtil.memCopy(MemoryUtil.memAddress(src) + srcOff, MemoryUtil.memAddress(dst) + dstOff, len);
-            return;
-        }
-        final ByteBuffer s = src.duplicate();
-        s.position(srcOff).limit(srcOff + len);
-        final ByteBuffer d = dst.duplicate();
-        d.position(dstOff);
-        d.put(s);
     }
 
     public EBOSplitScanner.EboSplit[] getOrScanSplits(int glId, int indexType, int sentinel) {
@@ -1411,7 +1559,7 @@ public final class ResourceManager {
             for (int i = 0; i < n; i += 2) {
                 final long handle = batchSegmentPending.getLong(i);
                 final long stamp = batchSegmentPending.getLong(i + 1);
-                if (currentFrame - stamp >= Device.MAX_FRAMES_IN_FLIGHT) {
+                if (currentFrame - stamp >= RenderBackend.MAX_FRAMES_IN_FLIGHT) {
                     batchSegmentFree.enqueue(handle);
                 } else {
                     batchSegmentPending.set(w, handle);
@@ -1424,9 +1572,13 @@ public final class ResourceManager {
     }
 
     public long createTransferBuffer(long size) {
+        return createTransferBuffer(size, SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD);
+    }
+
+    public long createTransferBuffer(long size, int usage) {
         try (var stack = stackPush()) {
             final SDL_GPUTransferBufferCreateInfo ci = SDL_GPUTransferBufferCreateInfo.calloc(stack)
-                .usage(SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD)
+                .usage(usage)
                 .size((int) size);
 
             final long handle = SDL_CreateGPUTransferBuffer(device.getDevice(), ci);
@@ -1479,14 +1631,15 @@ public final class ResourceManager {
         }
     }
 
-    public static final int COPY_CALLSITE_UPLOAD_BUFFER = 1;
     public static final int COPY_CALLSITE_UPLOAD_TEX_BATCH = 2;
     public static final int COPY_CALLSITE_UPLOAD_TEX_DIRECT = 3;
     public static final int COPY_CALLSITE_ARENA = 4;
+    public static final int COPY_CALLSITE_FILL_BUFFER = 5;
 
     public boolean arenaUpload(ByteBuffer data, long dstHandle, long dstOffset, boolean cycle) {
         final FrameManager.FrameState f = frameManager.frame();
         final int size = data.remaining();
+        if (size == 0) return true;
         if (!f.arena.fits(size)) {
             return false;
         }
@@ -1539,7 +1692,7 @@ public final class ResourceManager {
         f.arenaCopyPass = SDL_BeginGPUCopyPass(f.arenaCommandBuffer);
         if (f.arenaCopyPass == 0) {
             LOG.error("Failed to begin arena copy pass: {}", SDLError.SDL_GetError());
-            SDL_SubmitGPUCommandBuffer(f.arenaCommandBuffer);
+            Submits.submit(f.arenaCommandBuffer);
             f.arenaCommandBuffer = 0;
             unmapArena(f);
             return false;
@@ -1567,7 +1720,7 @@ public final class ResourceManager {
             f.arenaCopyPass = 0;
         }
         if (f.arenaCommandBuffer != 0) {
-            if (!SDL_SubmitGPUCommandBuffer(f.arenaCommandBuffer)) {
+            if (!Submits.submit(f.arenaCommandBuffer)) {
                 device.reportGpuFailure("submit arena upload command buffer");
             }
             f.arenaCommandBuffer = 0;
@@ -1577,7 +1730,14 @@ public final class ResourceManager {
     }
 
     public void uploadToBuffer(long copyPass, ByteBuffer data, long gpuBuffer, long offset, boolean cycle) {
-        final long size = data.remaining();
+        uploadRangeToBuffer(copyPass, data, data.position(), data.remaining(), gpuBuffer, offset, cycle);
+    }
+
+    public void uploadRangeToBuffer(long copyPass, ByteBuffer src, long srcOff, long size, long gpuBuffer, long dstOff, boolean cycle) {
+        if (srcOff < 0 || size < 0 || srcOff + size > src.capacity()) {
+            throw new IllegalStateException("uploadRangeToBuffer: bad source range srcOff=" + srcOff + " size=" + size + " src.capacity=" + src.capacity());
+        }
+        if (size == 0) return;
         final long xfer = acquireTransferBuffer(size);
         if (xfer == 0) return;
 
@@ -1586,26 +1746,101 @@ public final class ResourceManager {
         if (mapped == null || mapped.capacity() < size) {
             SDL_UnmapGPUTransferBuffer(device.getDevice(), xfer);
             returnTransferBuffer(xfer, size);
-            throw new IllegalStateException("uploadToBuffer: bad mapping size=" + size + " mapSize=" + mapSize + " mapped=" + (mapped == null ? "null" : "cap=" + mapped.capacity()));
+            throw new IllegalStateException("uploadRangeToBuffer: bad mapping size=" + size + " mapSize=" + mapSize + " mapped=" + (mapped == null ? "null" : "cap=" + mapped.capacity()));
         }
-        copyMappedFromData(mapped, data, (int) size, COPY_CALLSITE_UPLOAD_BUFFER);
+        if (src.isDirect()) {
+            MemoryUtil.memCopy(MemoryUtil.memAddress0(src) + srcOff, MemoryUtil.memAddress0(mapped), size);
+        } else {
+            mapped.put(0, src, (int) srcOff, (int) size);
+        }
         SDL_UnmapGPUTransferBuffer(device.getDevice(), xfer);
 
         try (var stack = stackPush()) {
-            final SDL_GPUTransferBufferLocation src = SDL_GPUTransferBufferLocation.calloc(stack)
+            final SDL_GPUTransferBufferLocation srcLoc = SDL_GPUTransferBufferLocation.calloc(stack)
                 .transfer_buffer(xfer)
                 .offset(0);
 
             final SDL_GPUBufferRegion dst = SDL_GPUBufferRegion.calloc(stack)
                 .buffer(gpuBuffer)
-                .offset((int) offset)
+                .offset((int) dstOff)
                 .size((int) size);
 
-            SDL_UploadToGPUBuffer(copyPass, src, dst, cycle);
+            SDL_UploadToGPUBuffer(copyPass, srcLoc, dst, cycle);
         }
 
         frameManager.recordUploadCommands(size, 1);
         returnTransferBuffer(xfer, size);
+    }
+
+    /**
+     * Fills {@code size} bytes of a buffer by staging {@code pattern} once and uploading it repeatedly. Staging every
+     * byte instead maps a transfer buffer per chunk, which stalls for seconds on the hundreds of megabytes some shader
+     * packs allocate as storage buffers.
+     */
+    public void fillBuffer(long copyPass, ByteBuffer pattern, long gpuBuffer, long offset, long size) {
+        final int chunk = pattern.remaining();
+        if (chunk <= 0 || size <= 0) return;
+        final long xfer = acquireTransferBuffer(chunk);
+        if (xfer == 0) return;
+        try {
+            final ByteBuffer mapped = SDL_MapGPUTransferBuffer(device.getDevice(), xfer, true, getTransferBufferMapSize(chunk));
+            if (mapped == null || mapped.capacity() < chunk) {
+                SDL_UnmapGPUTransferBuffer(device.getDevice(), xfer);
+                throw new IllegalStateException("fillBuffer: bad mapping size=" + chunk + " mapped=" + (mapped == null ? "null" : "cap=" + mapped.capacity()));
+            }
+            copyMappedFromData(mapped, pattern, chunk, COPY_CALLSITE_FILL_BUFFER);
+            SDL_UnmapGPUTransferBuffer(device.getDevice(), xfer);
+
+            int uploads = 0;
+            try (var stack = stackPush()) {
+                final SDL_GPUTransferBufferLocation src = SDL_GPUTransferBufferLocation.calloc(stack).transfer_buffer(xfer).offset(0);
+                final SDL_GPUBufferRegion dst = SDL_GPUBufferRegion.calloc(stack).buffer(gpuBuffer);
+                for (long done = 0; done < size; done += chunk) {
+                    dst.offset((int) (offset + done)).size((int) Math.min(chunk, size - done));
+                    SDL_UploadToGPUBuffer(copyPass, src, dst, false);
+                    uploads++;
+                }
+            }
+            frameManager.recordUploadCommands(size, uploads);
+        } finally {
+            returnTransferBuffer(xfer, chunk);
+        }
+    }
+
+    public boolean zeroTexture3D(long copyPass, long gpuTexture, int w, int h, int d, int level, int bytesPerTexel) {
+        final long sliceBytes = (long) w * h * bytesPerTexel;
+        if (sliceBytes <= 0 || sliceBytes > Integer.MAX_VALUE) return false;
+        final long xfer = acquireTransferBuffer(sliceBytes);
+        if (xfer == 0) return false;
+        try {
+            final ByteBuffer mapped = SDL_MapGPUTransferBuffer(device.getDevice(), xfer, true, getTransferBufferMapSize(sliceBytes));
+            if (mapped == null || mapped.capacity() < sliceBytes) {
+                SDL_UnmapGPUTransferBuffer(device.getDevice(), xfer);
+                return false;
+            }
+            MemoryUtil.memSet(MemoryUtil.memAddress(mapped), 0, sliceBytes);
+            SDL_UnmapGPUTransferBuffer(device.getDevice(), xfer);
+
+            flushBatchedUploads(copyPass);
+            try (var stack = stackPush()) {
+                final SDL_GPUTextureTransferInfo src = SDL_GPUTextureTransferInfo.calloc(stack).transfer_buffer(xfer).offset(0);
+                final SDL_GPUTextureRegion dst = SDL_GPUTextureRegion.calloc(stack)
+                    .texture(gpuTexture)
+                    .mip_level(level)
+                    .x(0).y(0)
+                    .w(w).h(h).d(1);
+                for (int z = 0; z < d; z++) {
+                    dst.z(z);
+                    SDL_UploadToGPUTexture(copyPass, src, dst, false);
+                }
+            }
+            markTextureContentDefined(gpuTexture);
+            markTextureWritten(gpuTexture);
+            frameManager.recordUploadCommands(sliceBytes * d, d);
+            return true;
+        } finally {
+            returnTransferBuffer(xfer, sliceBytes);
+        }
     }
 
     public static final int BATCH_SEGMENT_CAPACITY = 4 * 1024 * 1024;
@@ -1654,6 +1889,8 @@ public final class ResourceManager {
         f.pendingTexLevels.add(level);
         f.pendingTexOffsets.add(f.batchOffset);
         f.batchOffset += size;
+        // Mark queued uploads now: sampler copies test freshness before the copy pass flushes them.
+        markTextureWritten(gpuTexture);
     }
 
     public void flushBatchedUploads(long copyPass) {
@@ -1722,22 +1959,7 @@ public final class ResourceManager {
         }
         copyMappedFromData(mapped, data, (int) size, COPY_CALLSITE_UPLOAD_TEX_DIRECT);
         SDL_UnmapGPUTransferBuffer(device.getDevice(), xfer);
-
-        try (var stack = stackPush()) {
-            final SDL_GPUTextureTransferInfo src = SDL_GPUTextureTransferInfo.calloc(stack)
-                .transfer_buffer(xfer)
-                .offset(0);
-            final SDL_GPUTextureRegion dst = SDL_GPUTextureRegion.calloc(stack)
-                .texture(gpuTexture)
-                .mip_level(level)
-                .x(x).y(y).z(z)
-                .w(w).h(h).d(d);
-            SDL_UploadToGPUTexture(copyPass, src, dst, false);
-        }
-        markTextureContentDefined(gpuTexture);
-
-        frameManager.recordUploadCommands(size, 1);
-        returnTransferBuffer(xfer, size);
+        uploadRegionFromTransfer(copyPass, xfer, size, gpuTexture, level, x, y, z, w, h, d);
     }
 
     private void directUploadToTexture(long copyPass, ByteBuffer data, long gpuTexture, int x, int y, int w, int h, int level) {
@@ -1754,24 +1976,29 @@ public final class ResourceManager {
         }
         copyMappedFromData(mapped, data, (int) size, COPY_CALLSITE_UPLOAD_TEX_DIRECT);
         SDL_UnmapGPUTransferBuffer(device.getDevice(), xfer);
+        uploadRegionFromTransfer(copyPass, xfer, size, gpuTexture, level, x, y, 0, w, h, 1);
+    }
 
-        try (var stack = stackPush()) {
-            final SDL_GPUTextureTransferInfo src = SDL_GPUTextureTransferInfo.calloc(stack)
-                .transfer_buffer(xfer)
-                .offset(0);
-
-            final SDL_GPUTextureRegion dst = SDL_GPUTextureRegion.calloc(stack)
-                .texture(gpuTexture)
-                .mip_level(level)
-                .x(x).y(y).z(0)
-                .w(w).h(h).d(1);
-
-            SDL_UploadToGPUTexture(copyPass, src, dst, false);
+    private void uploadRegionFromTransfer(long copyPass, long xfer, long size, long tex, int level, int x, int y, int z, int w, int h, int d) {
+        try {
+            flushBatchedUploads(copyPass);
+            try (var stack = stackPush()) {
+                final SDL_GPUTextureTransferInfo src = SDL_GPUTextureTransferInfo.calloc(stack)
+                    .transfer_buffer(xfer)
+                    .offset(0);
+                final SDL_GPUTextureRegion dst = SDL_GPUTextureRegion.calloc(stack)
+                    .texture(tex)
+                    .mip_level(level)
+                    .x(x).y(y).z(z)
+                    .w(w).h(h).d(d);
+                SDL_UploadToGPUTexture(copyPass, src, dst, false);
+            }
+            markTextureContentDefined(tex);
+            markTextureWritten(tex);
+            frameManager.recordUploadCommands(size, 1);
+        } finally {
+            returnTransferBufferThreadSafe(xfer, size);
         }
-        markTextureContentDefined(gpuTexture);
-
-        frameManager.recordUploadCommands(size, 1);
-        returnTransferBuffer(xfer, size);
     }
 
     public boolean enqueueDeferredTextureUpload(ContextState st, ByteBuffer prepped, long texHandle, int x, int y, int w, int h, int level) {
@@ -1788,14 +2015,54 @@ public final class ResourceManager {
             prepped.position(prevPos);
         }
         SDL_UnmapGPUTransferBuffer(device.getDevice(), xfer);
+        enqueueMappedRegion(tt, st, xfer, size, texHandle, level, x, y, w, h);
+        return true;
+    }
+
+    private void enqueueMappedRegion(TransferThread tt, ContextState st, long xfer, long size, long tex, int level, int x, int y, int w, int h) {
         final long seq = TransferThread.nextSeq();
         st.frameHighestEnqueuedSeq = seq;
         lastTextureUploadSeq = seq;
-        markTextureContentDefined(texHandle);
-        tt.enqueue(TransferThread.TextureRegionUpload.acquire(xfer, texHandle, x, y, w, h, level, size, seq));
+        markTextureContentDefined(tex);
+        markTextureWritten(tex);
+        tt.enqueue(TransferThread.TextureRegionUpload.acquire(xfer, tex, x, y, w, h, level, size, seq));
         tt.wake();
+    }
+
+    public TextureStagingRegion beginTextureStaging(int glId, long texHandle, boolean bgra, int level, int x, int y, int w, int h) {
+        final long size = (long) w * h * 4;
+        if (size <= 0 || size > Integer.MAX_VALUE) return null;
+        final long xfer = acquireTransferBufferThreadSafe(size);
+        if (xfer == 0) return null;
+        final ByteBuffer mapped = SDL_MapGPUTransferBuffer(device.getDevice(), xfer, true, getTransferBufferMapSize(size));
+        if (mapped == null || mapped.capacity() < size) {
+            SDL_UnmapGPUTransferBuffer(device.getDevice(), xfer);
+            returnTransferBufferThreadSafe(xfer, size);
+            return null;
+        }
+        mapped.clear().limit((int) size);
+        return new TextureStagingRegion(mapped.slice(), bgra, level, x, y, w, h, glId, texHandle, xfer, size);
+    }
+
+    public boolean commitTextureStagingDeferred(ContextState st, TextureStagingRegion s) {
+        final TransferThread tt = transferThread;
+        if (tt == null) return false;
+        SDL_UnmapGPUTransferBuffer(device.getDevice(), s.transferBuffer());
+        enqueueMappedRegion(tt, st, s.transferBuffer(), s.size(), s.texHandle(), s.level(), s.x(), s.y(), s.width(), s.height());
         return true;
     }
+
+    public void commitTextureStagingInline(long copyPass, TextureStagingRegion s) {
+        SDL_UnmapGPUTransferBuffer(device.getDevice(), s.transferBuffer());
+        uploadRegionFromTransfer(copyPass, s.transferBuffer(), s.size(), s.texHandle(), s.level(), s.x(), s.y(), 0, s.width(), s.height(), 1);
+    }
+
+    public void abandonTextureStaging(TextureStagingRegion s) {
+        SDL_UnmapGPUTransferBuffer(device.getDevice(), s.transferBuffer());
+        returnTransferBufferThreadSafe(s.transferBuffer(), s.size());
+    }
+
+    public record TextureStagingRegion(ByteBuffer buffer, boolean bgra, int level, int x, int y, int width, int height, int glId, long texHandle, long transferBuffer, long size) implements TextureStaging {}
 
     public void downloadFromTexture(long commandBuffer, long gpuTexture, int x, int y, int w, int h, int level, ByteBuffer output) {
         downloadFromTexture(commandBuffer, gpuTexture, x, y, 0, w, h, 1, level, output);
@@ -1804,23 +2071,42 @@ public final class ResourceManager {
     public void downloadFromTexture(long commandBuffer, long gpuTexture, int x, int y, int z, int w, int h, int d, int level, ByteBuffer output) {
         final int size = output.remaining();
 
+        final long xfer = createTransferBuffer(size, SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD);
+        if (xfer == 0) return;
+
+        final long copyPass = SDL_BeginGPUCopyPass(commandBuffer);
+        if (copyPass == 0) {
+            LOG.error("Failed to begin copy pass for texture download: {}", SDLError.SDL_GetError());
+            releaseTransferBuffer(xfer);
+            return;
+        }
+
+        recordTextureDownload(copyPass, gpuTexture, level, x, y, z, w, h, d, xfer);
+        SDL_EndGPUCopyPass(copyPass);
+
+        final long fence = Submits.submitAndAcquireFence(commandBuffer);
+        if (fence == 0) {
+            LOG.error("Failed to submit download command buffer: {}", SDLError.SDL_GetError());
+            releaseTransferBuffer(xfer);
+            return;
+        }
+        try {
+            FenceWait.await(device, fence, FenceWait.FOREVER);
+        } finally {
+            device.fenceReleaser().release(fence);
+        }
+
+        final long mappedPtr = nSDL_MapGPUTransferBuffer(device.getDevice(), xfer, false);
+        if (mappedPtr != 0) {
+            final ByteBuffer mapped = MemoryUtil.memByteBuffer(mappedPtr, size);
+            output.put(mapped);
+        }
+        SDL_UnmapGPUTransferBuffer(device.getDevice(), xfer);
+        releaseTransferBuffer(xfer);
+    }
+
+    public void recordTextureDownload(long copyPass, long gpuTexture, int level, int x, int y, int z, int w, int h, int d, long xfer) {
         try (var stack = stackPush()) {
-            final SDL_GPUTransferBufferCreateInfo xferCi = SDL_GPUTransferBufferCreateInfo.calloc(stack)
-                .usage(SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD)
-                .size(size);
-            final long xfer = SDL_CreateGPUTransferBuffer(device.getDevice(), xferCi);
-            if (xfer == 0) {
-                LOG.error("Failed to create download transfer buffer: {}", SDLError.SDL_GetError());
-                return;
-            }
-
-            final long copyPass = SDL_BeginGPUCopyPass(commandBuffer);
-            if (copyPass == 0) {
-                LOG.error("Failed to begin copy pass for texture download: {}", SDLError.SDL_GetError());
-                SDL_ReleaseGPUTransferBuffer(device.getDevice(), xfer);
-                return;
-            }
-
             final SDL_GPUTextureRegion src = SDL_GPUTextureRegion.calloc(stack)
                 .texture(gpuTexture)
                 .mip_level(level)
@@ -1832,46 +2118,18 @@ public final class ResourceManager {
                 .offset(0);
 
             SDL_DownloadFromGPUTexture(copyPass, src, dst);
-            SDL_EndGPUCopyPass(copyPass);
-
-            final long fence = SDL_SubmitGPUCommandBufferAndAcquireFence(commandBuffer);
-            if (fence == 0) {
-                LOG.error("Failed to submit download command buffer: {}", SDLError.SDL_GetError());
-                SDL_ReleaseGPUTransferBuffer(device.getDevice(), xfer);
-                return;
-            }
-            try {
-                final PointerBuffer fences = stack.pointers(fence);
-                SDL_WaitForGPUFences(device.getDevice(), true, fences);
-            } finally {
-                SDL_ReleaseGPUFence(device.getDevice(), fence);
-            }
-
-            final long mappedPtr = nSDL_MapGPUTransferBuffer(device.getDevice(), xfer, false);
-            if (mappedPtr != 0) {
-                final ByteBuffer mapped = MemoryUtil.memByteBuffer(mappedPtr, size);
-                output.put(mapped);
-            }
-            SDL_UnmapGPUTransferBuffer(device.getDevice(), xfer);
-            SDL_ReleaseGPUTransferBuffer(device.getDevice(), xfer);
         }
     }
 
     public void downloadFromBuffer(long commandBuffer, long gpuBuffer, int offset, int size, ByteBuffer output) {
         try (var stack = stackPush()) {
-            final SDL_GPUTransferBufferCreateInfo xferCi = SDL_GPUTransferBufferCreateInfo.calloc(stack)
-                .usage(SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD)
-                .size(size);
-            final long xfer = SDL_CreateGPUTransferBuffer(device.getDevice(), xferCi);
-            if (xfer == 0) {
-                LOG.error("Failed to create download transfer buffer for buffer readback: {}", SDLError.SDL_GetError());
-                return;
-            }
+            final long xfer = createTransferBuffer(size, SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD);
+            if (xfer == 0) return;
 
             final long copyPass = SDL_BeginGPUCopyPass(commandBuffer);
             if (copyPass == 0) {
                 LOG.error("Failed to begin copy pass for buffer download: {}", SDLError.SDL_GetError());
-                SDL_ReleaseGPUTransferBuffer(device.getDevice(), xfer);
+                releaseTransferBuffer(xfer);
                 return;
             }
 
@@ -1887,17 +2145,16 @@ public final class ResourceManager {
             SDL_DownloadFromGPUBuffer(copyPass, src, dst);
             SDL_EndGPUCopyPass(copyPass);
 
-            final long fence = SDL_SubmitGPUCommandBufferAndAcquireFence(commandBuffer);
+            final long fence = Submits.submitAndAcquireFence(commandBuffer);
             if (fence == 0) {
                 LOG.error("Failed to submit buffer download command buffer: {}", SDLError.SDL_GetError());
-                SDL_ReleaseGPUTransferBuffer(device.getDevice(), xfer);
+                releaseTransferBuffer(xfer);
                 return;
             }
             try {
-                final PointerBuffer fences = stack.pointers(fence);
-                SDL_WaitForGPUFences(device.getDevice(), true, fences);
+                FenceWait.await(device, fence, FenceWait.FOREVER);
             } finally {
-                SDL_ReleaseGPUFence(device.getDevice(), fence);
+                device.fenceReleaser().release(fence);
             }
 
             final long mappedPtr = nSDL_MapGPUTransferBuffer(device.getDevice(), xfer, false);
@@ -1906,7 +2163,7 @@ public final class ResourceManager {
                 output.put(mapped);
             }
             SDL_UnmapGPUTransferBuffer(device.getDevice(), xfer);
-            SDL_ReleaseGPUTransferBuffer(device.getDevice(), xfer);
+            releaseTransferBuffer(xfer);
         }
     }
     private long defaultSampler;
@@ -1936,51 +2193,67 @@ public final class ResourceManager {
     }
 
     public long getOrCreateFallbackTexture() {
-        if (fallbackTexture != 0) return fallbackTexture;
+        if (fallbackTexture == 0) {
+            fallbackTexture = createFallback(SDL_GPU_TEXTURETYPE_2D, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+                SDL_GPU_TEXTUREUSAGE_SAMPLER, new byte[] { 0, 0, 0, (byte) 0xFF });
+        }
+        return fallbackTexture;
+    }
 
+    public long createStorageReadTexture(TextureMeta meta, int sdlFormat, int extraUsage) {
+        final int type = mapTextureType(meta.glTarget());
+        final int usage = SDL_GPU_TEXTUREUSAGE_GRAPHICS_STORAGE_READ | extraUsage;
+        if (!SDL_GPUTextureSupportsFormat(device.getDevice(), sdlFormat, type, usage)) return 0;
         try (var stack = stackPush()) {
             final SDL_GPUTextureCreateInfo ci = SDL_GPUTextureCreateInfo.calloc(stack)
-                .type(SDL_GPU_TEXTURETYPE_2D)
-                .format(SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM)
-                .usage(SDL_GPU_TEXTUREUSAGE_SAMPLER)
-                .width(1)
-                .height(1)
-                .layer_count_or_depth(1)
-                .num_levels(1);
-
-            fallbackTexture = SDL_CreateGPUTexture(device.getDevice(), ci);
-            if (fallbackTexture == 0) {
-                LOG.error("Failed to create fallback texture: {}", SDLError.SDL_GetError());
+                .type(type)
+                .format(sdlFormat)
+                .usage(usage)
+                .width(meta.width()).height(meta.height()).layer_count_or_depth(meta.depth()).num_levels(meta.levels());
+            final long handle = SDL_CreateGPUTexture(device.getDevice(), ci);
+            if (handle == 0) {
+                LOG.error("Failed to create storage-read texture {}x{} sdlFmt=0x{}: {}", meta.width(), meta.height(), Integer.toHexString(sdlFormat), SDLError.SDL_GetError());
                 return 0;
             }
-            trackTextureHandle(fallbackTexture);
+            trackTextureHandle(handle);
+            return handle;
         }
-        // GL 4.4 sec 11.1.3.5: sampling an incomplete texture yields (0,0,0,1).
-        final byte[] texel = { 0, 0, 0, (byte) 0xFF };
-        seedOneTexel(fallbackTexture, texel);
-        return fallbackTexture;
+    }
+
+    private long fallbackStorageTexture2D;
+    public long getOrCreateFallbackStorageTexture2D() {
+        if (fallbackStorageTexture2D == 0) {
+            fallbackStorageTexture2D = createFallback(SDL_GPU_TEXTURETYPE_2D, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+                SDL_GPU_TEXTUREUSAGE_GRAPHICS_STORAGE_READ, new byte[] { 0, 0, 0, (byte) 0xFF });
+        }
+        return fallbackStorageTexture2D;
     }
 
     private long fallbackStorageTexture3D;
     public long getOrCreateFallbackStorageTexture3D() {
-        if (fallbackStorageTexture3D != 0) return fallbackStorageTexture3D;
+        if (fallbackStorageTexture3D == 0) {
+            fallbackStorageTexture3D = createFallback(SDL_GPU_TEXTURETYPE_3D, SDL_GPU_TEXTUREFORMAT_R8_UINT,
+                SDL_GPU_TEXTUREUSAGE_GRAPHICS_STORAGE_READ | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_READ
+                    | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE, new byte[1]);
+        }
+        return fallbackStorageTexture3D;
+    }
+
+    private long createFallback(int type, int format, int usage, byte[] texel) {
+        final long texture;
         try (var stack = stackPush()) {
             final SDL_GPUTextureCreateInfo ci = SDL_GPUTextureCreateInfo.calloc(stack)
-                .type(SDL_GPU_TEXTURETYPE_3D)
-                .format(SDL_GPU_TEXTUREFORMAT_R8_UINT)
-                .usage(SDL_GPU_TEXTUREUSAGE_GRAPHICS_STORAGE_READ
-                     | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_READ
-                     | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE)
+                .type(type).format(format).usage(usage)
                 .width(1).height(1).layer_count_or_depth(1).num_levels(1);
-            fallbackStorageTexture3D = SDL_CreateGPUTexture(device.getDevice(), ci);
-            if (fallbackStorageTexture3D == 0) {
-                LOG.error("Failed to create fallback storage 3D texture: {}", SDLError.SDL_GetError());
-                return 0;
-            }
-            trackTextureHandle(fallbackStorageTexture3D);
+            texture = SDL_CreateGPUTexture(device.getDevice(), ci);
         }
-        seedOneTexel(fallbackStorageTexture3D, new byte[1]);
-        return fallbackStorageTexture3D;
+        if (texture == 0) {
+            LOG.error("Failed to create fallback texture (type={} format={} usage={}): {}", type, format, usage, SDLError.SDL_GetError());
+            return 0;
+        }
+        trackTextureHandle(texture);
+        seedOneTexel(texture, texel);
+        return texture;
     }
 
     private long fallbackStorageBuffer;
@@ -2073,8 +2346,9 @@ public final class ResourceManager {
                     .w(1).h(1).d(1);
                 SDL_UploadToGPUTexture(copyPass, src, dst, false);
                 SDL_EndGPUCopyPass(copyPass);
+                markTextureWritten(texture);
             }
-            SDL_SubmitGPUCommandBuffer(cb);
+            Submits.submit(cb);
         }
         releaseTransferBuffer(xfer);
     }
@@ -2101,7 +2375,7 @@ public final class ResourceManager {
                 SDL_UploadToGPUBuffer(copyPass, src, dst, false);
                 SDL_EndGPUCopyPass(copyPass);
             }
-            SDL_SubmitGPUCommandBuffer(cb);
+            Submits.submit(cb);
         }
         releaseTransferBuffer(xfer);
     }
@@ -2134,7 +2408,7 @@ public final class ResourceManager {
             final SDL_GPUTextureCreateInfo ci = SDL_GPUTextureCreateInfo.calloc(stack)
                 .type(SDL_GPU_TEXTURETYPE_2D)
                 .format(swapchainDepthStencilFormat)
-                .usage(SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET)
+                .usage(swapchainDepthStencilUsage)
                 .width(width).height(height).layer_count_or_depth(1).num_levels(1);
             swapchainDepthStencil = SDL_CreateGPUTexture(device.getDevice(), ci);
         }
@@ -2149,8 +2423,29 @@ public final class ResourceManager {
         return swapchainDepthStencil;
     }
 
+    public long createLogicOpScratch(int sdlFormat, int width, int height) {
+        return createScratchTexture(sdlFormat, width, height, SDL_GPU_TEXTUREUSAGE_SAMPLER);
+    }
+
+    public long createScratchTexture(int sdlFormat, int width, int height, int usage) {
+        final long handle;
+        try (var stack = stackPush()) {
+            final SDL_GPUTextureCreateInfo ci = SDL_GPUTextureCreateInfo.calloc(stack)
+                .type(SDL_GPU_TEXTURETYPE_2D)
+                .format(sdlFormat)
+                .usage(usage)
+                .width(width).height(height).layer_count_or_depth(1).num_levels(1);
+            handle = SDL_CreateGPUTexture(device.getDevice(), ci);
+        }
+        if (handle == 0) {
+            throw new IllegalStateException("Failed to create scratch texture (" + width + "x" + height + " format " + sdlFormat + " usage " + usage + "): " + SDLError.SDL_GetError());
+        }
+        trackTextureHandle(handle);
+        return handle;
+    }
+
     private static final int DUMMY_VBO_SIZE = 16 * 16;
-    public static final int ATTRIB_RING_BLOCKS = 2048 * Device.MAX_FRAMES_IN_FLIGHT;
+    public static final int ATTRIB_RING_BLOCKS = 2048 * RenderBackend.MAX_FRAMES_IN_FLIGHT;
     public static final int ATTRIB_RING_CHUNK_BLOCKS = 64;
     private static final int ATTRIB_RING_CHUNKS = ATTRIB_RING_BLOCKS / ATTRIB_RING_CHUNK_BLOCKS;
     private final AtomicLong attribRingCounter = new AtomicLong();
@@ -2158,6 +2453,18 @@ public final class ResourceManager {
     public int nextAttribRingChunkOffset() {
         final int chunk = 1 + (int) (attribRingCounter.getAndIncrement() % (ATTRIB_RING_CHUNKS - 1));
         return chunk * ATTRIB_RING_CHUNK_BLOCKS * DUMMY_VBO_SIZE;
+    }
+
+    public long createVertexBuffer(int size) {
+        try (var stack = stackPush()) {
+            final long handle = SDL_CreateGPUBuffer(device.getDevice(), SDL_GPUBufferCreateInfo.calloc(stack).usage(SDL_GPU_BUFFERUSAGE_VERTEX).size(size));
+            if (handle == 0) {
+                LOG.error("Failed to create vertex buffer size={}: {}", size, SDLError.SDL_GetError());
+                return 0;
+            }
+            trackBufferHandle(handle);
+            return handle;
+        }
     }
 
     public long getOrCreateDummyVertexBuffer() {
@@ -2193,7 +2500,7 @@ public final class ResourceManager {
                     final var dst = SDL_GPUBufferRegion.calloc(stack).buffer(dummyVertexBuffer).offset(0).size(DUMMY_VBO_SIZE);
                     SDL_UploadToGPUBuffer(copyPass, src, dst, false);
                     SDL_EndGPUCopyPass(copyPass);
-                    SDL_SubmitGPUCommandBuffer(cb);
+                    Submits.submit(cb);
                 }
                 releaseTransferBufferHandle(xfer);
             }
@@ -2308,6 +2615,7 @@ public final class ResourceManager {
             case GL30.GL_RGB16I -> SDL_GPU_TEXTUREFORMAT_R16G16B16A16_INT;
             case GL30.GL_RGB32I -> SDL_GPU_TEXTUREFORMAT_R32G32B32A32_INT;
             case GL30.GL_R11F_G11F_B10F -> SDL_GPU_TEXTUREFORMAT_R11G11B10_UFLOAT;
+            case GL11.GL_RGB10_A2 -> SDL_GPU_TEXTUREFORMAT_R10G10B10A2_UNORM;
             case GL31.GL_R8_SNORM -> SDL_GPU_TEXTUREFORMAT_R8_SNORM;
             case GL31.GL_RG8_SNORM -> SDL_GPU_TEXTUREFORMAT_R8G8_SNORM;
             case GL31.GL_RGB8_SNORM -> SDL_GPU_TEXTUREFORMAT_R8G8B8A8_SNORM; // RGB SNORM -> RGBA SNORM promotion
@@ -2316,14 +2624,6 @@ public final class ResourceManager {
             case GL31.GL_RGB16_SNORM -> SDL_GPU_TEXTUREFORMAT_R16G16B16A16_SNORM; // RGB SNORM -> RGBA SNORM promotion
             default -> SDL_GPU_TEXTUREFORMAT_INVALID;
         };
-    }
-
-    private static boolean isDepthFormat(int sdlFormat) {
-        return sdlFormat == SDL_GPU_TEXTUREFORMAT_D16_UNORM
-            || sdlFormat == SDL_GPU_TEXTUREFORMAT_D24_UNORM
-            || sdlFormat == SDL_GPU_TEXTUREFORMAT_D32_FLOAT
-            || sdlFormat == SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT
-            || sdlFormat == SDL_GPU_TEXTUREFORMAT_D32_FLOAT_S8_UINT;
     }
 
     static boolean isIntegerFormat(int sdlFormat) {
@@ -2409,6 +2709,10 @@ public final class ResourceManager {
             releaseTextureHandle(fallbackStorageTexture3D);
             fallbackStorageTexture3D = 0;
         }
+        if (fallbackStorageTexture2D != 0) {
+            releaseTextureHandle(fallbackStorageTexture2D);
+            fallbackStorageTexture2D = 0;
+        }
         synchronized (computeStandInTextures) {
             for (long handle : computeStandInTextures.values()) releaseTextureHandle(handle);
             computeStandInTextures.clear();
@@ -2435,12 +2739,20 @@ public final class ResourceManager {
         arrayShadowWanted.clear();
         for (ByteBuffer bb : pboStagingData.values()) memFree(bb);
         pboStagingData.clear();
-        for (PersistentMapping pm : persistentMappings.values()) {
+        for (var e : persistentMappings.int2ObjectEntrySet()) {
+            final PersistentMapping pm = e.getValue();
             untrackPersistentDirty(pm);
-            releasePersistentStaging(pm);
+            releasePersistentStaging(pm, e.getIntKey(), "shutdown");
         }
         persistentMappings.clear();
         mappingsVersion++;
+        for (MappedRange m : plainMappings.values()) {
+            if (m.staging != null) memFree(m.staging);
+            m.staging = null;
+        }
+        plainMappings.clear();
+        Arrays.fill(plainMappingPool, null);
+        plainMappingPoolCount = 0;
     }
 
     public record TextureMeta(int glTarget, int glFormat, int sdlFormat, int width, int height, int depth, int levels, int usage) {}

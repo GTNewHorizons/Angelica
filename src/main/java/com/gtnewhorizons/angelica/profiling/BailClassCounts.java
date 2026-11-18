@@ -1,11 +1,11 @@
 package com.gtnewhorizons.angelica.profiling;
 
+import com.gtnewhorizons.angelica.debug.screen.DebugScreen;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import it.unimi.dsi.fastutil.objects.Reference2IntMap;
 import it.unimi.dsi.fastutil.objects.Reference2IntMaps;
 import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
-import net.minecraft.client.Minecraft;
 
 public final class BailClassCounts {
     public static final BailClassCounts MATERIAL = new BailClassCounts("tesr.bailCls.mat.", "BailMat");
@@ -16,7 +16,7 @@ public final class BailClassCounts {
     private final String label;
     private final Reference2IntOpenHashMap<Class<?>> counts = new Reference2IntOpenHashMap<>();
     private final Reference2ObjectOpenHashMap<Class<?>, String> plotNames = new Reference2ObjectOpenHashMap<>();
-    private String debugLine = "";
+    private String debugValue = "";
 
     private BailClassCounts(String plotPrefix, String label) {
         this.plotPrefix = plotPrefix;
@@ -29,12 +29,12 @@ public final class BailClassCounts {
 
     public void flushFrame(boolean plot) {
         if (counts.isEmpty()) {
-            debugLine = "";
+            debugValue = "";
             return;
         }
-        final boolean debugScreen = Minecraft.getMinecraft().gameSettings.showDebugInfo;
+        final boolean debugScreen = DebugScreen.isRendererVerbose();
         if (!plot && !debugScreen) {
-            debugLine = "";
+            debugValue = "";
             counts.clear();
             return;
         }
@@ -57,13 +57,13 @@ public final class BailClassCounts {
             }
         }
         if (!debugScreen) {
-            debugLine = "";
+            debugValue = "";
         } else {
-            final StringBuilder sb = new StringBuilder(label).append(": ");
+            final StringBuilder sb = new StringBuilder();
             appendEntry(sb, a, an);
             if (b != null) appendEntry(sb.append(", "), b, bn);
             if (c != null) appendEntry(sb.append(", "), c, cn);
-            debugLine = sb.toString();
+            debugValue = sb.toString();
         }
         counts.clear();
     }
@@ -81,7 +81,11 @@ public final class BailClassCounts {
         sb.append(cls.getSimpleName()).append(" x").append(count);
     }
 
-    public String debugLine() {
-        return debugLine;
+    public String label() {
+        return label;
+    }
+
+    public String debugValue() {
+        return debugValue;
     }
 }

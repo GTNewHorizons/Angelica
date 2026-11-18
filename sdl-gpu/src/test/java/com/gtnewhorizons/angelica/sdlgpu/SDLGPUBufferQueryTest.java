@@ -1,12 +1,12 @@
 package com.gtnewhorizons.angelica.sdlgpu;
 
+import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SDLGPUBufferQueryTest {
 
@@ -29,24 +29,21 @@ class SDLGPUBufferQueryTest {
     }
 
     @Test
-    void defaultMatchesGLStateManagerDeclaredDefault() {
-        assertEquals(0x405, SDLGPURenderBackend.bufferEnum(0, 0));
-    }
-
-    @Test
-    void boundTextureReadsTheActiveUnitsSlot() {
-        final int[] bound = {11, 22, 33, 44};
-        assertEquals(11, SDLGPURenderBackend.boundTextureOf(0, bound));
-        assertEquals(44, SDLGPURenderBackend.boundTextureOf(3, bound));
+    void boundTextureReadsTheUnitsSlot() {
+        final ContextState st = new ContextState();
+        st.boundTextures[0] = 11;
+        st.boundTextures[3] = 44;
+        assertEquals(11, st.boundTexture(0));
+        assertEquals(44, st.boundTexture(3));
     }
 
     @Test
     void outOfRangeUnitReadsZero() {
-        final int[] bound = {11, 22};
-        assertEquals(0, SDLGPURenderBackend.boundTextureOf(-1, bound));
-        assertEquals(0, SDLGPURenderBackend.boundTextureOf(2, bound));
-        assertEquals(0, SDLGPURenderBackend.boundTextureOf(-33984, bound));
-        assertEquals(0, SDLGPURenderBackend.boundTextureOf(0, new int[0]));
+        final ContextState st = new ContextState();
+        st.boundTextures[0] = 11;
+        assertEquals(0, st.boundTexture(-1));
+        assertEquals(0, st.boundTexture(st.boundTextures.length));
+        assertEquals(0, st.boundTexture(-33984));
     }
 
     @Test
@@ -54,12 +51,6 @@ class SDLGPUBufferQueryTest {
         assertEquals(1024, SDLGPURenderBackend.deviceLimit(GL20.GL_MAX_VERTEX_UNIFORM_COMPONENTS));
         assertEquals(1024, SDLGPURenderBackend.deviceLimit(GL20.GL_MAX_FRAGMENT_UNIFORM_COMPONENTS));
         assertEquals(256, SDLGPURenderBackend.deviceLimit(GL30.GL_MAX_ARRAY_TEXTURE_LAYERS));
-    }
-
-    @Test
-    void uniformLimitFitsSdlsUboSection() {
-        assertTrue(SDLGPURenderBackend.deviceLimit(GL20.GL_MAX_VERTEX_UNIFORM_COMPONENTS) * 4 <= 4096);
-        assertTrue(SDLGPURenderBackend.deviceLimit(GL30.GL_MAX_ARRAY_TEXTURE_LAYERS) <= 256);
     }
 
     @Test

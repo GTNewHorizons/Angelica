@@ -1,6 +1,6 @@
 package net.coderbot.iris.gl.blending;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.hooks.VanillaBooleanLayer;
 import com.gtnewhorizons.angelica.glsm.hooks.VanillaStateLayer;
@@ -45,10 +45,10 @@ public class BlendModeStorage {
         blendLocked = false;
         try {
             if (override == null) {
-                GLStateManager.disableBlend();
+                GLSMBlend.disableBlend();
             } else {
-                GLStateManager.enableBlend();
-                GLStateManager.tryBlendFuncSeparate(override.getSrcRgb(), override.getDstRgb(), override.getSrcAlpha(), override.getDstAlpha());
+                GLSMBlend.enableBlend();
+                GLSMBlend.tryBlendFuncSeparate(override.getSrcRgb(), override.getDstRgb(), override.getSrcAlpha(), override.getDstAlpha());
             }
         } finally {
             blendLocked = true;
@@ -79,8 +79,8 @@ public class BlendModeStorage {
 
     private static void captureVanilla() {
         if (!overrideHeld) {
-            vanillaBlendEnable = GLStateManager.getBlendMode().isEnabled();
-            vanillaBlend.set(GLStateManager.getBlendState());
+            vanillaBlendEnable = GLSMBlend.getBlendMode().isEnabled();
+            vanillaBlend.set(GLSMBlend.getBlendState());
         }
     }
 
@@ -146,11 +146,11 @@ public class BlendModeStorage {
         blendLocked = false;
         try {
             if (vanillaBlendEnable) {
-                GLStateManager.enableBlend();
+                GLSMBlend.enableBlend();
             } else {
-                GLStateManager.disableBlend();
+                GLSMBlend.disableBlend();
             }
-            GLStateManager.tryBlendFuncSeparate(vanillaBlend.getSrcRgb(), vanillaBlend.getDstRgb(), vanillaBlend.getSrcAlpha(), vanillaBlend.getDstAlpha());
+            GLSMBlend.tryBlendFuncSeparate(vanillaBlend.getSrcRgb(), vanillaBlend.getDstRgb(), vanillaBlend.getSrcAlpha(), vanillaBlend.getDstAlpha());
         } finally {
             blendLocked = wasLocked;
         }

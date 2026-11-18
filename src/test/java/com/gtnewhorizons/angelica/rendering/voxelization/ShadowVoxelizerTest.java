@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.rendering.voxelization;
 
+import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.rendering.RenderRegionKeys;
 import org.embeddedt.embeddium.impl.gl.attribute.GlVertexFormat;
 import org.embeddedt.embeddium.impl.gl.util.VertexRange;
@@ -17,13 +18,16 @@ import org.embeddedt.embeddium.impl.render.chunk.vertex.format.ChunkVertexType;
 import org.embeddedt.embeddium.impl.render.viewport.CameraTransform;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -36,9 +40,7 @@ class ShadowVoxelizerTest {
     private static class RecordingSink implements ShadowVoxelizer.Sink {
         final List<float[]> regions = new ArrayList<>();
         final List<int[]> ranges = new ArrayList<>();
-        int finishes;
         boolean refuseRegion;
-        boolean refuseRange;
 
         @Override
         public boolean region(RenderRegion region, GlVertexFormat format, float x, float y, float z) {
@@ -48,15 +50,8 @@ class ShadowVoxelizerTest {
         }
 
         @Override
-        public boolean range(int vertexOffset, int vertexCount) {
-            if (refuseRange) return false;
+        public void range(int vertexOffset, int vertexCount) {
             ranges.add(new int[]{vertexOffset, vertexCount});
-            return true;
-        }
-
-        @Override
-        public void finish() {
-            finishes++;
         }
     }
 
@@ -97,45 +92,15 @@ class ShadowVoxelizerTest {
     }
 
     private static SectionRenderDataStorage storage(long heap, SectionRenderDataUnsafe.Strategy layout) {
-        final SectionRenderDataStorage storage = allocateInstance(SectionRenderDataStorage.class);
-        setField(storage, SectionRenderDataStorage.class, "storageStrategy", layout);
-        setField(storage, SectionRenderDataStorage.class, "primitiveType", PRIMITIVE);
-        setField(storage, SectionRenderDataStorage.class, "pMeshDataArray", heap);
+        final SectionRenderDataStorage storage = Reflect.allocate(SectionRenderDataStorage.class);
+        Reflect.setDeclared(SectionRenderDataStorage.class, storage, "storageStrategy", layout);
+        Reflect.setDeclared(SectionRenderDataStorage.class, storage, "primitiveType", PRIMITIVE);
+        Reflect.setDeclared(SectionRenderDataStorage.class, storage, "pMeshDataArray", heap);
         return storage;
     }
 
-    @SuppressWarnings("unchecked")
-    private static <T> T allocateInstance(Class<T> type) {
-        try {
-            final Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
-            final Field theUnsafe = unsafeClass.getDeclaredField("theUnsafe");
-            theUnsafe.setAccessible(true);
-            final Object unsafe = theUnsafe.get(null);
-            return (T) unsafeClass.getMethod("allocateInstance", Class.class).invoke(unsafe, type);
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
-    private static void setField(Object target, Class<?> owner, String name, Object value) {
-        try {
-            final Field field = owner.getDeclaredField(name);
-            field.setAccessible(true);
-            field.set(target, value);
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
     private static void attachStorage(RenderRegion region, TerrainRenderPass renderPass, SectionRenderDataStorage storage) {
-        try {
-            final Field field = RenderRegion.class.getDeclaredField("sectionRenderData");
-            field.setAccessible(true);
-            ((Map<TerrainRenderPass, SectionRenderDataStorage>) field.get(region)).put(renderPass, storage);
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException(e);
-        }
+        Reflect.<Map<TerrainRenderPass, SectionRenderDataStorage>>get(region, "sectionRenderData").put(renderPass, storage);
     }
 
     private static ChunkRenderList renderList(RenderRegion region, int... localSectionIndices) {
@@ -144,8 +109,8 @@ class ShadowVoxelizerTest {
         for (int i = 0; i < localSectionIndices.length; i++) {
             sections[i] = (byte) localSectionIndices[i];
         }
-        setField(list, ChunkRenderList.class, "sectionsWithGeometry", sections);
-        setField(list, ChunkRenderList.class, "sectionsWithGeometryCount", localSectionIndices.length);
+        Reflect.setDeclared(ChunkRenderList.class, list, "sectionsWithGeometry", sections);
+        Reflect.setDeclared(ChunkRenderList.class, list, "sectionsWithGeometryCount", localSectionIndices.length);
         return list;
     }
 
@@ -190,6 +155,15 @@ class ShadowVoxelizerTest {
         return sink;
     }
 
+    private RecordingSink walkSingleSection(RenderRegion region, CameraTransform camera, boolean faceCulling, int... vertsPerFacing) {
+        final TerrainRenderPass renderPass = pass("solid");
+        final long heap = heap();
+        final SectionRenderDataStorage storage = storage(heap);
+        writeSection(heap, 0, 0, vertsPerFacing);
+        attachStorage(region, renderPass, storage);
+        return walk(lists(renderList(region, 0)), renderPass, camera, faceCulling);
+    }
+
     private final List<Long> heaps = new ArrayList<>();
 
     @AfterEach
@@ -221,86 +195,56 @@ class ShadowVoxelizerTest {
         assertArrayEqualsInt(new int[]{116, 4}, sink.ranges.get(4), "section 5 facing 4");
     }
 
-    @Test
-    void regionOffsetIsCameraRelative() {
-        final TerrainRenderPass renderPass = pass("solid");
-        final RenderRegion region = region(1, 0, 3);
-        final long heap = heap();
-        final SectionRenderDataStorage storage = storage(heap);
-        writeSection(heap, 0, 0, 4, 0, 0, 0, 0, 0, 0);
-        attachStorage(region, renderPass, storage);
-        final CameraTransform camera = new CameraTransform(70.25, 12.5, -3.75);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("regionOffsets")
+    void regionOffsetIsCameraRelativeFromTheRegionOrigin(String label, int rx, int ry, int rz,
+                                                         double camX, double camY, double camZ, Float literalX) {
+        final RenderRegion region = region(rx, ry, rz);
+        final CameraTransform camera = new CameraTransform(camX, camY, camZ);
 
-        final RecordingSink sink = walk(lists(renderList(region, 0)), renderPass, camera, false);
+        final RecordingSink sink = walkSingleSection(region, camera, false, 4, 0, 0, 0, 0, 0, 0);
 
         assertEquals(1, sink.regions.size());
         final float[] offset = sink.regions.get(0);
         assertEquals(region.getOriginX() - camera.intX - camera.fracX, offset[0], 0f, "x");
         assertEquals(region.getOriginY() - camera.intY - camera.fracY, offset[1], 0f, "y");
         assertEquals(region.getOriginZ() - camera.intZ - camera.fracZ, offset[2], 0f, "z");
+        if (literalX != null) {
+            assertEquals(literalX, offset[0], 0f, "region 1 starts at block 128");
+        }
     }
 
-    @Test
-    void regionOffsetUsesTheRegionOriginNotA256BlockGrid() {
-        final TerrainRenderPass renderPass = pass("solid");
-        final RenderRegion region = region(1, 0, 0);
-        final long heap = heap();
-        final SectionRenderDataStorage storage = storage(heap);
-        writeSection(heap, 0, 0, 4, 0, 0, 0, 0, 0, 0);
-        attachStorage(region, renderPass, storage);
-
-        final RecordingSink sink = walk(lists(renderList(region, 0)), renderPass, new CameraTransform(0, 0, 0), false);
-
-        assertEquals(128f, sink.regions.get(0)[0], 0f, "region 1 starts at block 128");
+    private static Stream<Arguments> regionOffsets() {
+        return Stream.of(
+            Arguments.of("camera relative", 1, 0, 3, 70.25, 12.5, -3.75, null),
+            Arguments.of("region origin is not a 256 block grid", 1, 0, 0, 0.0, 0.0, 0.0, 128f));
     }
 
-    @Test
-    void contiguousFacingsCollapseToOneRange() {
-        final TerrainRenderPass renderPass = pass("solid");
-        final RenderRegion region = region(0, 0, 0);
-        final long heap = heap();
-        final SectionRenderDataStorage storage = storage(heap);
-        writeSection(heap, 0, 0, 4, 4, 4, 4, 4, 4, 4);
-        attachStorage(region, renderPass, storage);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("facingRuns")
+    void facingMaskProducesTheExpectedRanges(String label, int[] vertsPerFacing, int[][] expectedRanges) {
+        final RecordingSink sink = walkSingleSection(region(0, 0, 0), new CameraTransform(0, 0, 0), false, vertsPerFacing);
 
-        final RecordingSink sink = walk(lists(renderList(region, 0)), renderPass, new CameraTransform(0, 0, 0), false);
-
-        assertEquals(1, sink.ranges.size(), "seven adjacent facings are one vertex span, not seven dispatches");
-        assertEquals(0, sink.ranges.get(0)[0]);
-        assertEquals(28, sink.ranges.get(0)[1]);
+        assertEquals(expectedRanges.length, sink.ranges.size());
+        for (int i = 0; i < expectedRanges.length; i++) {
+            assertArrayEqualsInt(expectedRanges[i], sink.ranges.get(i), "range " + i);
+        }
     }
 
-    @Test
-    void gapsInTheFacingMaskSplitRuns() {
-        final TerrainRenderPass renderPass = pass("solid");
-        final RenderRegion region = region(0, 0, 0);
-        final long heap = heap();
-        final SectionRenderDataStorage storage = storage(heap);
-        writeSection(heap, 0, 0, 4, 0, 8, 0, 0, 0, 4);
-        attachStorage(region, renderPass, storage);
-
-        final RecordingSink sink = walk(lists(renderList(region, 0)), renderPass, new CameraTransform(0, 0, 0), false);
-
-        assertEquals(3, sink.ranges.size());
-        assertArrayEqualsInt(new int[]{0, 4}, sink.ranges.get(0), "facing 0");
-        assertArrayEqualsInt(new int[]{4, 8}, sink.ranges.get(1), "facing 2");
-        assertArrayEqualsInt(new int[]{12, 4}, sink.ranges.get(2), "facing 6");
+    private static Stream<Arguments> facingRuns() {
+        return Stream.of(
+            Arguments.of("seven adjacent facings are one vertex span, not seven dispatches",
+                new int[] {4, 4, 4, 4, 4, 4, 4}, new int[][] {{0, 28}}),
+            Arguments.of("gaps in the facing mask split runs",
+                new int[] {4, 0, 8, 0, 0, 0, 4}, new int[][] {{0, 4}, {4, 8}, {12, 4}}));
     }
 
     @Test
     void sectionsWithoutGeometryNeverAnnounceTheRegion() {
-        final TerrainRenderPass renderPass = pass("solid");
-        final RenderRegion region = region(0, 0, 0);
-        final long heap = heap();
-        final SectionRenderDataStorage storage = storage(heap);
-        writeSection(heap, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-        attachStorage(region, renderPass, storage);
-
-        final RecordingSink sink = walk(lists(renderList(region, 0)), renderPass, new CameraTransform(0, 0, 0), false);
+        final RecordingSink sink = walkSingleSection(region(0, 0, 0), new CameraTransform(0, 0, 0), false, 0, 0, 0, 0, 0, 0, 0);
 
         assertTrue(sink.regions.isEmpty(), "an empty region must not open an encoder");
         assertTrue(sink.ranges.isEmpty());
-        assertEquals(1, sink.finishes);
     }
 
     @Test
@@ -311,7 +255,6 @@ class ShadowVoxelizerTest {
         final RecordingSink sink = walk(lists(renderList(region, 0)), renderPass, new CameraTransform(0, 0, 0), false);
 
         assertTrue(sink.ranges.isEmpty());
-        assertEquals(1, sink.finishes);
     }
 
     @Test
@@ -334,47 +277,11 @@ class ShadowVoxelizerTest {
             new CameraTransform(0, 0, 0), new CameraTransform(0, 0, 0), false, sink);
 
         assertTrue(sink.ranges.isEmpty(), "a region that cannot be bound emits nothing");
-        assertEquals(1, sink.finishes, "the encoder is still closed exactly once");
-    }
-
-    @Test
-    void refusedRangeSkipsOnlyThatRegion() {
-        final TerrainRenderPass renderPass = pass("solid");
-        final RenderRegion regionA = region(0, 0, 0);
-        final RenderRegion regionB = region(1, 0, 0);
-        final long heapA = heap();
-        final long heapB = heap();
-        final SectionRenderDataStorage storageA = storage(heapA);
-        final SectionRenderDataStorage storageB = storage(heapB);
-        writeSection(heapA, 0, 0, 4, 0, 4, 0, 0, 0, 0);
-        writeSection(heapB, 0, 0, 4, 0, 0, 0, 0, 0, 0);
-        attachStorage(regionA, renderPass, storageA);
-        attachStorage(regionB, renderPass, storageB);
-
-        final RecordingSink sink = new RecordingSink() {
-            @Override public boolean range(int vertexOffset, int vertexCount) {
-                return regions.size() != 1 && super.range(vertexOffset, vertexCount);
-            }
-        };
-        new ShadowVoxelizer().walkPass(lists(renderList(regionA, 0), renderList(regionB, 0)), renderPass, null, new CameraTransform(0, 0, 0), new CameraTransform(0, 0, 0), false, sink);
-
-        assertEquals(2, sink.regions.size(), "the second region is still attempted after the first is refused");
-        assertEquals(1, sink.ranges.size(), "only the second region's range lands");
-        assertEquals(1, sink.finishes);
     }
 
     @Test
     void faceCullingNarrowsTheEmittedRanges() {
-        final TerrainRenderPass renderPass = pass("solid");
-        final RenderRegion region = region(0, 0, 0);
-        final long heap = heap();
-        final SectionRenderDataStorage storage = storage(heap);
-        writeSection(heap, 0, 0, 4, 4, 4, 4, 4, 4, 4);
-        attachStorage(region, renderPass, storage);
-        final ChunkRenderListIterable renderLists = lists(renderList(region, 0));
-        final CameraTransform camera = new CameraTransform(500, 200, 500);
-
-        final RecordingSink sink = walk(renderLists, renderPass, camera, true);
+        final RecordingSink sink = walkSingleSection(region(0, 0, 0), new CameraTransform(500, 200, 500), true, 4, 4, 4, 4, 4, 4, 4);
 
         assertFalse(sink.ranges.isEmpty(), "face culling removed everything; the fixture is not exercising the path");
         assertTrue(sink.ranges.size() < 7 || sink.ranges.get(0)[1] < 28, "face culling did not narrow anything");

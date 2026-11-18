@@ -1,11 +1,15 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
 import com.google.common.collect.ImmutableListMultimap;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.StateSet;
+import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.utils.SpritePadding;
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceOpenHashMap;
 import lombok.Getter;
 import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
+import me.jellysquid.mods.sodium.client.gui.options.named.MipmapGeneration;
 import org.embeddedt.embeddium.impl.render.chunk.RenderPassConfiguration;
 import org.embeddedt.embeddium.impl.render.chunk.compile.sorting.QuadPrimitiveType;
 import org.embeddedt.embeddium.impl.render.chunk.terrain.TerrainRenderPass;
@@ -14,6 +18,7 @@ import org.embeddedt.embeddium.impl.render.chunk.terrain.material.parameters.Alp
 import org.embeddedt.embeddium.impl.render.chunk.vertex.format.ChunkVertexType;
 import org.lwjgl.opengl.GL11;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class AngelicaRenderPassConfiguration {
@@ -24,54 +29,61 @@ public class AngelicaRenderPassConfiguration {
     @Getter
     private static boolean rgssEnabled;
 
-    private static TerrainRenderPass.TerrainRenderPassBuilder builderForRenderType(int pass, boolean disableAlphaTest, ChunkVertexType vertexType) {
+    private static TerrainRenderPass.TerrainRenderPassBuilder builderForRenderType(int pass, boolean disableAlphaTest,
+        AlphaCutoffParameter alphaCutoff, ChunkVertexType vertexType) {
         final TerrainRenderPass.TerrainRenderPassBuilder builder = TerrainRenderPass.builder()
-            .pipelineState(new AngelicaPipelineState(pass, disableAlphaTest))
+            .pipelineState(new AngelicaPipelineState(pass, disableAlphaTest, alphaCutoff))
+            .fragmentDiscard(!disableAlphaTest && alphaCutoff != AlphaCutoffParameter.ZERO)
             .vertexType(vertexType)
             .primitiveType(QuadPrimitiveType.TRIANGULATED);
 
-        final int mipmapLevels = SodiumGameOptions.terrainMipmapLevels();
-
-        if (rgssEnabled) {
-            builder.extraDefine("USE_RGSS", "");
-        }
-        if (SodiumGameOptions.usesTerrainTexelSnap()) {
-            builder.extraDefine("USE_TEXEL_SNAP", "");
-        }
-        if (SodiumGameOptions.effectiveTextureFilterMode().usesAnisotropy()) {
-            builder.extraDefine("USE_ANISOTROPIC", "");
-            builder.extraDefine("TERRAIN_GUTTER", SpritePadding.gutterFor(mipmapLevels, true) + ".0");
-        }
-        if (mipmapLevels <= 0) {
-            builder.extraDefine("TERRAIN_NO_MIPS", "");
-        }
+        samplerDefines(rgssEnabled, SodiumGameOptions.usesTerrainTexelSnap(),
+            SodiumGameOptions.effectiveTextureFilterMode().usesAnisotropy(), SodiumGameOptions.terrainMipmapLevels())
+            .forEach(builder::extraDefine);
 
         return builder;
     }
 
+    /** Defines selecting the terrain fragment shader's sampling path. */
+    public static Map<String, String> samplerDefines(boolean rgss, boolean texelSnap, boolean anisotropic, int mipmapLevels) {
+        final Map<String, String> defines = new LinkedHashMap<>();
+        if (rgss) {
+            defines.put("USE_RGSS", "");
+        }
+        if (texelSnap) {
+            defines.put("USE_TEXEL_SNAP", "");
+        }
+        if (anisotropic) {
+            defines.put("USE_ANISOTROPIC", "");
+            defines.put("TERRAIN_GUTTER", SpritePadding.gutterFor(mipmapLevels, true) + ".0");
+        }
+        if (mipmapLevels <= 0) {
+            defines.put("TERRAIN_NO_MIPS", "");
+        }
+        return defines;
+    }
+
     public static RenderPassConfiguration<BlockRenderLayer> build(ChunkVertexType vertexType) {
         rgssEnabled = SodiumGameOptions.effectiveTextureFilterMode().usesRgss();
+        final AlphaCutoffParameter translucentCutoff = MipmapGeneration.alphaFloorCutoff();
 
-        SOLID_PASS = builderForRenderType(0, true, vertexType)
+        SOLID_PASS = builderForRenderType(0, true, AlphaCutoffParameter.HALF, vertexType)
             .name("solid")
-            .fragmentDiscard(false)
             .useReverseOrder(false)
             .build();
 
-        CUTOUT_MIPPED_PASS = builderForRenderType(0, false, vertexType)
+        CUTOUT_MIPPED_PASS = builderForRenderType(0, false, AlphaCutoffParameter.HALF, vertexType)
             .name("cutout_mipped")
-            .fragmentDiscard(true)
             .useReverseOrder(false)
             .build();
 
-        TRANSLUCENT_PASS = builderForRenderType(1, false, vertexType)
+        TRANSLUCENT_PASS = builderForRenderType(1, false, translucentCutoff, vertexType)
             .name("translucent")
-            .fragmentDiscard(false)
             .useReverseOrder(true)
-            .useTranslucencySorting(true)
+            .useTranslucencySorting(ClientProxy.options().performance.translucencySorting)
             .build();
 
-        TRANSLUCENT_MATERIAL = new Material(TRANSLUCENT_PASS, AlphaCutoffParameter.ZERO, true);
+        TRANSLUCENT_MATERIAL = new Material(TRANSLUCENT_PASS, translucentCutoff, true);
         SOLID_MATERIAL = new Material(SOLID_PASS, AlphaCutoffParameter.ZERO, true);
         CUTOUT_MIPPED_MATERIAL = new Material(CUTOUT_MIPPED_PASS, AlphaCutoffParameter.HALF, true);
         CUTOUT_MATERIAL = new Material(CUTOUT_MIPPED_PASS, AlphaCutoffParameter.ONE_TENTH, false);
@@ -95,36 +107,43 @@ public class AngelicaRenderPassConfiguration {
     private static final class AngelicaPipelineState implements TerrainRenderPass.PipelineState {
         private final int pass;
         private final boolean disableAlphaTest;
-        private int savedAlphaFunction;
-        private float savedAlphaReference;
+        private final float alphaCutoff;
+        private int alphaStateDepth = -1;
 
-        private AngelicaPipelineState(int pass, boolean disableAlphaTest) {
+        private AngelicaPipelineState(int pass, boolean disableAlphaTest, AlphaCutoffParameter alphaCutoff) {
             this.pass = pass;
             this.disableAlphaTest = disableAlphaTest;
+            this.alphaCutoff = alphaCutoff.cutoff();
         }
 
         @Override
         public void setup() {
-            GLStateManager.glDepthMask(true);
+            GLSMDepthStencilAlpha.glDepthMask(true);
 
-            if (pass == 0) {
-                final var alphaState = GLStateManager.getAlphaState();
-                savedAlphaFunction = alphaState.getFunction();
-                savedAlphaReference = alphaState.getReference();
-                GLStateManager.glAlphaFunc(GL11.GL_GREATER, AlphaCutoffParameter.HALF.cutoff());
+            if (alphaCutoff > 0.0f) {
+                if (alphaStateDepth >= 0) {
+                    GLSMAttribStack.popStateTo(alphaStateDepth);
+                    alphaStateDepth = -1;
+                }
+                alphaStateDepth = GLSMAttribStack.pushState(StateSet.ALPHA);
+                GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, alphaCutoff);
+                if (pass == 1) {
+                    GLSMDepthStencilAlpha.enableAlphaTest();
+                }
             }
             if (disableAlphaTest) {
-                GLStateManager.disableAlphaTest();
+                GLSMDepthStencilAlpha.disableAlphaTest();
             }
         }
 
         @Override
         public void clear() {
-            if (pass == 0) {
-                GLStateManager.glAlphaFunc(savedAlphaFunction, savedAlphaReference);
+            if (alphaStateDepth >= 0) {
+                GLSMAttribStack.popStateTo(alphaStateDepth);
+                alphaStateDepth = -1;
             }
             if (disableAlphaTest) {
-                GLStateManager.enableAlphaTest();
+                GLSMDepthStencilAlpha.enableAlphaTest();
             }
         }
     }

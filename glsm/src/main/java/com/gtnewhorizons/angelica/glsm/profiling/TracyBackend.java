@@ -12,6 +12,13 @@ public interface TracyBackend {
     int SEVERITY_ERROR = 4;
     int SEVERITY_FATAL = 5;
 
+    int CAPTURE_IDLE = 0;
+    int CAPTURE_CONNECTING = 1;
+    int CAPTURE_RECORDING = 2;
+    int CAPTURE_SAVING = 3;
+    int CAPTURE_DONE = 4;
+    int CAPTURE_FAILED = 5;
+
     boolean init();
 
     long internSrcLoc(String name, int color);
@@ -25,6 +32,7 @@ public interface TracyBackend {
 
     void frameMark();
     void frameMark(long namePtr);
+    void frameImage(long rgba, int width, int height, int offset, boolean flip);
 
     long internFrameName(String name);
     long internPlotName(String name, int format);
@@ -47,4 +55,12 @@ public interface TracyBackend {
     boolean gpuBeginZone(long srcLoc);
     void gpuEndZone();
     void gpuCollect();
+
+    default String captureStart(String path, int seconds) {
+        return "Tracy capture unsupported by this angelica-tracy build";
+    }
+    default void captureStop() {}
+    default int captureState() { return CAPTURE_IDLE; }
+    default long captureElapsedMs() { return 0; }
+    default String captureError() { return ""; }
 }

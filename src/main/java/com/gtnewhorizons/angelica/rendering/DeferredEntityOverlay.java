@@ -1,6 +1,10 @@
 package com.gtnewhorizons.angelica.rendering;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.rendering.tesr.EntityShadowReplay;
 import lombok.Getter;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
@@ -8,6 +12,8 @@ import net.coderbot.iris.uniforms.EntityIdHelper;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.entity.RendererLivingEntity;
 import net.minecraft.entity.EntityLivingBase;
+import org.joml.Matrix4f;
+import org.joml.Matrix4fc;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
@@ -37,6 +43,7 @@ public class DeferredEntityOverlay {
     private static final List<DeferredEntry> pool = new ArrayList<>(INITIAL_CAPACITY);
 
     private static final FloatBuffer MATRIX_BUF = BufferUtils.createFloatBuffer(16);
+    private static final Matrix4f replayMatrix = new Matrix4f();
 
     // Set by the shouldRenderPass inject, consumed by the doRender WrapOperation.
     @Getter
@@ -68,6 +75,9 @@ public class DeferredEntityOverlay {
 
     public static void clearStaleOverlayFlag() {
         overlayPassActive = false;
+        pendingShouldRenderPass = null;
+        pendingRenderer = null;
+        pendingEntity = null;
     }
 
     /**
@@ -76,21 +86,23 @@ public class DeferredEntityOverlay {
      */
     public static void deferRender(float limbSwing, float limbSwingAmount, float ageInTicks,
                                    float headYaw, float headPitch, float scale) {
-        overlayPassActive = false;
-
         DeferredEntry entry = acquireEntry();
         entry.set(pendingShouldRenderPass, pendingRenderer, pendingEntity, pendingPartialTick,
             limbSwing, limbSwingAmount, ageInTicks, headYaw, headPitch, scale);
 
-        MATRIX_BUF.clear();
-        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, MATRIX_BUF);
-        MATRIX_BUF.get(entry.matrix);
+        GLSMMatrices.getModelViewMatrix().get(entry.matrix);
 
         deferred.add(entry);
+        EntityShadowReplay.recordDeferredOverlay(entry);
 
-        pendingShouldRenderPass = null;
-        pendingRenderer = null;
-        pendingEntity = null;
+        clearStaleOverlayFlag();
+    }
+
+    public static void queueReplay(DeferredEntry captured, Matrix4fc mainFromShadow) {
+        final DeferredEntry entry = acquireEntry();
+        entry.set(captured);
+        replayMatrix.set(captured.matrix).mulLocal(mainFromShadow).get(entry.matrix);
+        deferred.add(entry);
     }
 
     private static DeferredEntry acquireEntry() {
@@ -103,9 +115,7 @@ public class DeferredEntityOverlay {
 
     private static void recycle() {
         for (DeferredEntry entry : deferred) {
-            entry.shouldRenderPass = null;
-            entry.renderer = null;
-            entry.entity = null;
+            entry.clear();
             pool.add(entry);
         }
         deferred.clear();
@@ -113,7 +123,7 @@ public class DeferredEntityOverlay {
 
     public static void clear() {
         recycle();
-        overlayPassActive = false;
+        clearStaleOverlayFlag();
         replaying = false;
     }
 
@@ -138,29 +148,29 @@ public class DeferredEntityOverlay {
 
         // Restore the entity's lightmap coords
         int brightness = entity.getBrightnessForRender(entry.partialTick);
-        OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit,
+        GLSMCurrentAttribs.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit,
             brightness % 65536, (float) brightness / 65536);
 
         // Restore the saved modelview matrix
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glPushMatrix();
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glPushMatrix();
         boolean depthMaskDisabled = false;
         try {
             MATRIX_BUF.clear();
             MATRIX_BUF.put(entry.matrix);
             MATRIX_BUF.flip();
-            GLStateManager.glLoadMatrix(MATRIX_BUF);
+            GLSMMatrices.glLoadMatrix(MATRIX_BUF);
 
             // Replay shouldRenderPass pass 1
             replaying = true;
             int result = entry.shouldRenderPass.invoke(entity, 1, entry.partialTick);
             if (result > 0) {
                 // Disable depth writes so coplanar faces don't z-fight each other
-                GLStateManager.glDepthMask(false);
+                GLSMDepthStencilAlpha.glDepthMask(false);
                 depthMaskDisabled = true;
 
                 // Disable backface culling so both sides of the overlay shell are visible
-                GLStateManager.glDisable(GL11.GL_CULL_FACE);
+                GLSMEnable.glDisable(GL11.GL_CULL_FACE);
 
                 // Render using the model set by shouldRenderPass
                 entry.renderer.renderPassModel.setLivingAnimations(entity,
@@ -176,14 +186,14 @@ public class DeferredEntityOverlay {
         } finally {
             replaying = false;
             if (depthMaskDisabled) {
-                GLStateManager.glDepthMask(true);
-                GLStateManager.glEnable(GL11.GL_CULL_FACE);
+                GLSMDepthStencilAlpha.glDepthMask(true);
+                GLSMEnable.glEnable(GL11.GL_CULL_FACE);
             }
-            GLStateManager.glPopMatrix();
+            GLSMMatrices.glPopMatrix();
         }
     }
 
-    private static class DeferredEntry {
+    public static final class DeferredEntry {
         final float[] matrix = new float[16];
         ShouldRenderPassFn shouldRenderPass;
         RendererLivingEntity renderer;
@@ -195,6 +205,22 @@ public class DeferredEntityOverlay {
         float headYaw;
         float headPitch;
         float scale;
+
+        public void copyFrom(DeferredEntry source) {
+            set(source);
+            System.arraycopy(source.matrix, 0, matrix, 0, matrix.length);
+        }
+
+        public void clear() {
+            shouldRenderPass = null;
+            renderer = null;
+            entity = null;
+        }
+
+        private void set(DeferredEntry source) {
+            set(source.shouldRenderPass, source.renderer, source.entity, source.partialTick,
+                source.limbSwing, source.limbSwingAmount, source.ageInTicks, source.headYaw, source.headPitch, source.scale);
+        }
 
         void set(ShouldRenderPassFn shouldRenderPass, RendererLivingEntity renderer,
                  EntityLivingBase entity, float partialTick,

@@ -2,6 +2,8 @@ package com.gtnewhorizons.angelica.glsm;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
@@ -15,16 +17,33 @@ public class GLSM_DisplayList_PixelStore_Test {
     private static final int SRC = 8;
     private static final int SUB = 4;
 
+    enum Upload {
+        TEX_SUB_IMAGE_2D {
+            @Override
+            void run(ByteBuffer src) {
+                GLSMTextures.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, SUB, SUB, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, src);
+            }
+        },
+        TEX_IMAGE_2D {
+            @Override
+            void run(ByteBuffer src) {
+                GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, SUB, SUB, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, src);
+            }
+        };
+
+        abstract void run(ByteBuffer src);
+    }
+
     @AfterEach
     void resetUnpackState() {
-        GLStateManager.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 4);
+        GLSMTextures.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 4);
         setUnpack(0, 0, 0);
     }
 
     private static void setUnpack(int rowLength, int skipRows, int skipPixels) {
-        GLStateManager.glPixelStorei(GL11.GL_UNPACK_ROW_LENGTH, rowLength);
-        GLStateManager.glPixelStorei(GL11.GL_UNPACK_SKIP_ROWS, skipRows);
-        GLStateManager.glPixelStorei(GL11.GL_UNPACK_SKIP_PIXELS, skipPixels);
+        GLSMTextures.glPixelStorei(GL11.GL_UNPACK_ROW_LENGTH, rowLength);
+        GLSMTextures.glPixelStorei(GL11.GL_UNPACK_SKIP_ROWS, skipRows);
+        GLSMTextures.glPixelStorei(GL11.GL_UNPACK_SKIP_PIXELS, skipPixels);
     }
 
     private static void setStridedUnpack() {
@@ -42,15 +61,15 @@ public class GLSM_DisplayList_PixelStore_Test {
     }
 
     private static int makeTexture(int size, ByteBuffer pixels) {
-        final int tex = GLStateManager.glGenTextures();
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex);
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, size, size, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
+        final int tex = GLSMTextures.glGenTextures();
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, tex);
+        GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, size, size, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
         return tex;
     }
 
     private static ByteBuffer readback(int size) {
         final ByteBuffer out = ByteBuffer.allocateDirect(size * size * 4).order(ByteOrder.nativeOrder());
-        GLStateManager.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, out);
+        GLSMTextures.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, out);
         return out;
     }
 
@@ -82,42 +101,43 @@ public class GLSM_DisplayList_PixelStore_Test {
 
     @Test
     void pixelStoreExecutesImmediatelyAndIsNotRecorded() {
-        final int list = GLStateManager.glGenLists(1);
-        GLStateManager.glNewList(list, GL11.GL_COMPILE);
-        GLStateManager.glPixelStorei(GL11.GL_UNPACK_ROW_LENGTH, 7);
+        final int list = GLSMDraws.glGenLists(1);
+        GLSMDraws.glNewList(list, GL11.GL_COMPILE);
+        GLSMTextures.glPixelStorei(GL11.GL_UNPACK_ROW_LENGTH, 7);
         assertEquals(7, GL11.glGetInteger(GL11.GL_UNPACK_ROW_LENGTH), "must execute immediately during recording");
-        GLStateManager.glEndList();
+        GLSMDraws.glEndList();
         assertEquals(7, GL11.glGetInteger(GL11.GL_UNPACK_ROW_LENGTH), "must persist after glEndList");
 
-        GLStateManager.glPixelStorei(GL11.GL_UNPACK_ROW_LENGTH, 0);
-        GLStateManager.glCallList(list);
+        GLSMTextures.glPixelStorei(GL11.GL_UNPACK_ROW_LENGTH, 0);
+        GLSMDraws.glCallList(list);
         assertEquals(0, GL11.glGetInteger(GL11.GL_UNPACK_ROW_LENGTH), "must not have been recorded into the list");
 
-        GLStateManager.glDeleteLists(list, 1);
+        GLSMDraws.glDeleteLists(list, 1);
     }
 
-    @Test
-    void stridedTexSubImage2DCompile() {
+    @ParameterizedTest
+    @EnumSource(Upload.class)
+    void stridedUploadCompile(Upload upload) {
         final int tex = makeTexture(SUB, ByteBuffer.allocateDirect(SUB * SUB * 4).order(ByteOrder.nativeOrder()));
         final ByteBuffer src = makeSource(SRC);
 
         setStridedUnpack();
 
-        final int list = GLStateManager.glGenLists(1);
-        GLStateManager.glNewList(list, GL11.GL_COMPILE);
-        GLStateManager.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, SUB, SUB, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, src);
-        GLStateManager.glEndList();
+        final int list = GLSMDraws.glGenLists(1);
+        GLSMDraws.glNewList(list, GL11.GL_COMPILE);
+        upload.run(src);
+        GLSMDraws.glEndList();
 
         assertEquals(0, red(readback(SUB), SUB, 0, 0), "GL_COMPILE must not execute the upload");
 
         setUnpack(0, 0, 0);
 
-        GLStateManager.glCallList(list);
+        GLSMDraws.glCallList(list);
         assertStridedSubImage(readback(SUB));
         assertUnpack(0, 0, 0);
 
-        GLStateManager.glDeleteLists(list, 1);
-        GLStateManager.glDeleteTextures(tex);
+        GLSMDraws.glDeleteLists(list, 1);
+        GLSMTextures.glDeleteTextures(tex);
     }
 
     @Test
@@ -128,87 +148,44 @@ public class GLSM_DisplayList_PixelStore_Test {
 
         setStridedUnpack();
 
-        final int list = GLStateManager.glGenLists(1);
-        GLStateManager.glNewList(list, GL11.GL_COMPILE_AND_EXECUTE);
-        GLStateManager.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, SUB, SUB, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, src);
-        GLStateManager.glEndList();
+        final int list = GLSMDraws.glGenLists(1);
+        GLSMDraws.glNewList(list, GL11.GL_COMPILE_AND_EXECUTE);
+        GLSMTextures.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, SUB, SUB, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, src);
+        GLSMDraws.glEndList();
 
         assertStridedSubImage(readback(SUB));
 
         setUnpack(0, 0, 0);
-        GLStateManager.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, SUB, SUB, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, zeros);
+        GLSMTextures.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, SUB, SUB, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, zeros);
 
-        GLStateManager.glCallList(list);
+        GLSMDraws.glCallList(list);
         assertStridedSubImage(readback(SUB));
         assertUnpack(0, 0, 0);
 
-        GLStateManager.glDeleteLists(list, 1);
-        GLStateManager.glDeleteTextures(tex);
+        GLSMDraws.glDeleteLists(list, 1);
+        GLSMTextures.glDeleteTextures(tex);
     }
 
-    @Test
-    void stridedTexImage2DCompile() {
-        final int tex = makeTexture(SUB, ByteBuffer.allocateDirect(SUB * SUB * 4).order(ByteOrder.nativeOrder()));
-        final ByteBuffer src = makeSource(SRC);
-
-        setStridedUnpack();
-
-        final int list = GLStateManager.glGenLists(1);
-        GLStateManager.glNewList(list, GL11.GL_COMPILE);
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, SUB, SUB, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, src);
-        GLStateManager.glEndList();
-
-        setUnpack(0, 0, 0);
-
-        GLStateManager.glCallList(list);
-        assertStridedSubImage(readback(SUB));
-        assertUnpack(0, 0, 0);
-
-        GLStateManager.glDeleteLists(list, 1);
-        GLStateManager.glDeleteTextures(tex);
-    }
-
-    @Test
-    void defaultRecordedTexSubImage2DReplaysWithDefaults() {
+    @ParameterizedTest
+    @EnumSource(Upload.class)
+    void defaultRecordedUploadReplaysWithDefaults(Upload upload) {
         final int tex = makeTexture(SUB, ByteBuffer.allocateDirect(SUB * SUB * 4).order(ByteOrder.nativeOrder()));
         final ByteBuffer src = makeSource(SUB);
 
-        final int list = GLStateManager.glGenLists(1);
-        GLStateManager.glNewList(list, GL11.GL_COMPILE);
-        GLStateManager.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, SUB, SUB, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, src);
-        GLStateManager.glEndList();
+        final int list = GLSMDraws.glGenLists(1);
+        GLSMDraws.glNewList(list, GL11.GL_COMPILE);
+        upload.run(src);
+        GLSMDraws.glEndList();
 
-        GLStateManager.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1);
+        GLSMTextures.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1);
         setStridedUnpack();
 
-        GLStateManager.glCallList(list);
+        GLSMDraws.glCallList(list);
         assertTightSubImage(readback(SUB));
         assertEquals(1, GL11.glGetInteger(GL11.GL_UNPACK_ALIGNMENT), "live state must survive replay");
         assertUnpack(SRC, 1, 2);
 
-        GLStateManager.glDeleteLists(list, 1);
-        GLStateManager.glDeleteTextures(tex);
-    }
-
-    @Test
-    void defaultRecordedTexImage2DReplaysWithDefaults() {
-        final int tex = makeTexture(SUB, ByteBuffer.allocateDirect(SUB * SUB * 4).order(ByteOrder.nativeOrder()));
-        final ByteBuffer src = makeSource(SUB);
-
-        final int list = GLStateManager.glGenLists(1);
-        GLStateManager.glNewList(list, GL11.GL_COMPILE);
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, SUB, SUB, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, src);
-        GLStateManager.glEndList();
-
-        GLStateManager.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1);
-        setStridedUnpack();
-
-        GLStateManager.glCallList(list);
-        assertTightSubImage(readback(SUB));
-        assertEquals(1, GL11.glGetInteger(GL11.GL_UNPACK_ALIGNMENT), "live state must survive replay");
-        assertUnpack(SRC, 1, 2);
-
-        GLStateManager.glDeleteLists(list, 1);
-        GLStateManager.glDeleteTextures(tex);
+        GLSMDraws.glDeleteLists(list, 1);
+        GLSMTextures.glDeleteTextures(tex);
     }
 }

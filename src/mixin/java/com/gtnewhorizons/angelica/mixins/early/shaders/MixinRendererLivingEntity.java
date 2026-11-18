@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import com.gtnewhorizons.angelica.helpers.RendererLivingEntityHelper;
 import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
@@ -72,28 +73,24 @@ public abstract class MixinRendererLivingEntity {
         return j;
     }
 
-    @Inject(
+    @Surround(
         method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/model/ModelBase;render(Lnet/minecraft/entity/Entity;FFFFFF)V", ordinal = 0),
         slice = @Slice(
             from = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;shouldRenderPass(Lnet/minecraft/entity/EntityLivingBase;IF)I")
         )
     )
-    private void iris$specialRenderConditionEntityEyes(CallbackInfo ci) {
-        if (RendererLivingEntityHelper.hasEyePass(this)) {
+    private void iris$specialRenderConditionEntityEyes() {
+        @Surround.Carry
+        boolean eyes = RendererLivingEntityHelper.hasEyePass(this);
+        if (eyes) {
             GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.ENTITY_EYES);
         }
     }
 
-    @Inject(
-        method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/model/ModelBase;render(Lnet/minecraft/entity/Entity;FFFFFF)V", ordinal = 0, shift = At.Shift.AFTER),
-        slice = @Slice(
-            from = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;shouldRenderPass(Lnet/minecraft/entity/EntityLivingBase;IF)I")
-        )
-    )
-    private void iris$specialRenderConditionEntityEyesEnd(CallbackInfo ci) {
-        if (RendererLivingEntityHelper.hasEyePass(this)) {
+    @Surround.Finally
+    private void iris$specialRenderConditionEntityEyesEnd(@Surround.Carry boolean eyes) {
+        if (eyes) {
             GbufferPrograms.teardownSpecialRenderCondition();
         }
     }

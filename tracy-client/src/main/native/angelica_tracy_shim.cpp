@@ -1,6 +1,11 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <cstdlib>
+
+#if defined(_WIN32)
+#include <windows.h>
+#endif
 
 #include "tracy/TracyC.h"
 #include "client/TracyProfiler.hpp"
@@ -48,6 +53,14 @@ TRACY_API void ang_section_leave(uint32_t id) {
 
 TRACY_API void ang_section_setup(uint32_t category, const char* txt) {
     tracy::Profiler::SectionSetup((uint16_t)category, "%s", txt);
+}
+
+TRACY_API int ang_set_env(const char* name, const char* value) {
+#if defined(_WIN32)
+    return SetEnvironmentVariableA(name, value) ? 0 : 1;
+#else
+    return setenv(name, value, 1);
+#endif
 }
 
 }

@@ -1,6 +1,10 @@
 package com.gtnewhorizons.angelica.glsm.dsa;
 
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
@@ -41,23 +45,23 @@ public class DSAARB extends DSAUnsupported {
 
     @Override
     public void texParameteri(int texture, int target, int pname, int param) {
-        param = GLStateManager.remapTexClamp(pname, param);
-        if(!GLStateManager.updateTexParameteriCache(target, texture, pname, param)) return;
+        param = GLSMTextures.remapTexClamp(pname, param);
+        if(!GLSMTextures.updateTexParameteriCache(target, texture, pname, param)) return;
 
         RENDER_BACKEND.textureParameteri(texture, target, pname, param);
     }
 
     @Override
     public void texParameterf(int texture, int target, int pname, float param) {
-        param = GLStateManager.remapTexClamp(pname, param);
-        if(!GLStateManager.updateTexParameterfCache(target, texture, pname, param)) return;
+        param = GLSMTextures.remapTexClamp(pname, param);
+        if(!GLSMTextures.updateTexParameterfCache(target, texture, pname, param)) return;
 
         RENDER_BACKEND.textureParameterf(texture, target, pname, param);
     }
 
     @Override
     public void texParameteriv(int texture, int target, int pname, IntBuffer params) {
-        GLStateManager.remapTexClampBuffer(pname, params);
+        GLSMTextures.remapTexClampBuffer(pname, params);
         RENDER_BACKEND.textureParameteriv(texture, target, pname, params);
     }
 
@@ -73,7 +77,8 @@ public class DSAARB extends DSAUnsupported {
 
     @Override
     public int getTexParameteri(int texture, int target, int pname) {
-        return GLStateManager.getTexParameterOrDefault(texture, pname, () -> RENDER_BACKEND.getTextureParameteri(texture, target, pname));
+        final long v = GLSMTextures.lookupTexParameteri(TextureInfoCache.INSTANCE.getInfo(texture), pname);
+        return v != GLSMTextures.TEX_PARAM_MISS ? (int) v : RENDER_BACKEND.getTextureParameteri(texture, target, pname);
     }
 
     @Override
@@ -98,21 +103,23 @@ public class DSAARB extends DSAUnsupported {
 
     @Override
     public void bindTextureToUnit(int target, int unit, int texture) {
-        if(GLStateManager.getBoundTextureForServerState(unit) == texture) return;
+        if(GLSMTextures.getBoundTextureForServerState(unit) == texture) return;
 
         if (texture == 0) {
             super.bindTextureToUnit(target != 0 ? target : GL11.GL_TEXTURE_2D, unit, texture);
         } else {
             RENDER_BACKEND.bindTextureUnit(unit, texture);
-            GLStateManager.getTextures().getTextureUnitBindings(unit).setBinding(texture, target);
-            GLStateManager.trackMaxBoundTextureUnit(unit);
+            final var binding = GLSMTextures.getTextures().getTextureUnitBindings(unit);
+            binding.beforeModify();
+            binding.setBinding(texture, target);
+            GLSMTextures.trackMaxBoundTextureUnit(unit);
         }
     }
 
     @Override
     public int bufferStorage(int target, FloatBuffer data, int usage) {
-        final int buffer = GLStateManager.glCreateBuffers();
-        GLStateManager.glNamedBufferData(buffer, data, usage);
+        final int buffer = GLSMBuffers.glCreateBuffers();
+        GLSMBuffers.glNamedBufferData(buffer, data, usage);
         return buffer;
     }
 
@@ -124,31 +131,17 @@ public class DSAARB extends DSAUnsupported {
 
     @Override
     public void framebufferTexture2D(int fb, int fbtarget, int attachment, int target, int texture, int levels) {
-        RENDER_BACKEND.namedFramebufferTexture(fb, attachment, texture, levels);
+        GLSMFramebuffer.glNamedFramebufferTexture(fb, attachment, texture, levels);
     }
 
     @Override
     public int createFramebuffer() {
+        GLStateManager.requireContext("glCreateFramebuffers");
         return RENDER_BACKEND.createFramebuffers();
     }
 
     @Override
     public int createTexture(int target) {
-        return RENDER_BACKEND.createTextures(target);
-    }
-
-    @Override
-    public void textureStorage1D(int texture, int target, int levels, int internalFormat, int width) {
-        RENDER_BACKEND.textureStorage1D(texture, levels, internalFormat, width);
-    }
-
-    @Override
-    public void textureStorage2D(int texture, int target, int levels, int internalFormat, int width, int height) {
-        RENDER_BACKEND.textureStorage2D(texture, levels, internalFormat, width, height);
-    }
-
-    @Override
-    public void textureStorage3D(int texture, int target, int levels, int internalFormat, int width, int height, int depth) {
-        RENDER_BACKEND.textureStorage3D(texture, levels, internalFormat, width, height, depth);
+        return GLSMTextures.glCreateTextures(target);
     }
 }

@@ -9,7 +9,9 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
+import me.jellysquid.mods.sodium.client.gui.options.named.BiomeBlendMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsQuality;
+import me.jellysquid.mods.sodium.client.gui.options.named.MipmapGeneration;
 import me.jellysquid.mods.sodium.client.gui.options.named.MultiDrawMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.TexelSampling;
 import me.jellysquid.mods.sodium.client.gui.options.named.TextureFilterMode;
@@ -60,7 +62,8 @@ public class SodiumGameOptions {
         final TextureMap atlas = mc.getTextureMapBlocks();
 
         atlas.setMipmapLevels(mc.gameSettings.mipmapLevels);
-        atlas.setAnisotropicFiltering(resolvedAnisotropicFiltering());
+        // Drivers may ignore NEAREST when anisotropy is enabled
+        atlas.setAnisotropicFiltering(1);
     }
 
     public static int resolvedAnisotropicFiltering() {
@@ -150,6 +153,11 @@ public class SodiumGameOptions {
         if (config.quality.texelSampling == null) {
             config.quality.texelSampling = TexelSampling.LINEAR;
         }
+        config.quality.guiBlockSupersampling = Integer.highestOneBit(MathHelper.clamp_int(config.quality.guiBlockSupersampling, 1, 16));
+
+        if (config.quality.mipmapGeneration == null) {
+            config.quality.mipmapGeneration = MipmapGeneration.MODERN_VANILLA;
+        }
 
         if (GLStateManager.capabilities != null) {
             if (!GLStateManager.capabilities.OpenGL32) {
@@ -203,7 +211,6 @@ public class SodiumGameOptions {
     public static class AdvancedSettings {
         public VSyncMode vsyncMode;
         public boolean useVertexArrayObjects = true;
-        public boolean useChunkMultidraw = true;
         public MultiDrawMode multiDrawMode = MultiDrawMode.DIRECT;
 
         public boolean useParticleCulling = true;
@@ -244,10 +251,14 @@ public class SodiumGameOptions {
     }
 
     public static class QualitySettings {
+        public int biomeBlendRadius = 3;
+        public BiomeBlendMode biomeBlendMode = BiomeBlendMode.FANCY;
         public GraphicsQuality grassQuality = GraphicsQuality.DEFAULT;
         public boolean useCeleritasSmoothLighting = true;
         public TextureFilterMode textureFilterMode = TextureFilterMode.RGSS_ANISOTROPIC;
         public TexelSampling texelSampling = TexelSampling.LINEAR;
+        public MipmapGeneration mipmapGeneration = MipmapGeneration.MODERN_VANILLA;
+        public int guiBlockSupersampling = 1;
     }
 
     public static class ReducerSettings {

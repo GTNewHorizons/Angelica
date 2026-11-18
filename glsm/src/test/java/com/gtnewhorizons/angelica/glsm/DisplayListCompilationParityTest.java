@@ -9,6 +9,7 @@ import org.lwjgl.opengl.GL11;
 
 import java.nio.FloatBuffer;
 
+import static com.gtnewhorizons.angelica.glsm.GlTestSupport.assertMatrixEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -18,15 +19,15 @@ class DisplayListCompilationParityTest {
 
     enum Caller {
         GLSM {
-            void newList(int list, int mode) { GLStateManager.glNewList(list, mode); }
-            void endList() { GLStateManager.glEndList(); }
-            void callList(int list) { GLStateManager.glCallList(list); }
-            void enable(int cap) { GLStateManager.glEnable(cap); }
-            void translate(float x, float y, float z) { GLStateManager.glTranslatef(x, y, z); }
-            void pushMatrix() { GLStateManager.glPushMatrix(); }
-            void popMatrix() { GLStateManager.glPopMatrix(); }
-            void matrixMode(int mode) { GLStateManager.glMatrixMode(mode); }
-            void getFloat(int pname, FloatBuffer dst) { GLStateManager.glGetFloat(pname, dst); }
+            void newList(int list, int mode) { GLSMDraws.glNewList(list, mode); }
+            void endList() { GLSMDraws.glEndList(); }
+            void callList(int list) { GLSMDraws.glCallList(list); }
+            void enable(int cap) { GLSMEnable.glEnable(cap); }
+            void translate(float x, float y, float z) { GLSMMatrices.glTranslatef(x, y, z); }
+            void pushMatrix() { GLSMMatrices.glPushMatrix(); }
+            void popMatrix() { GLSMMatrices.glPopMatrix(); }
+            void matrixMode(int mode) { GLSMMatrices.glMatrixMode(mode); }
+            void getFloat(int pname, FloatBuffer dst) { GLSMQueries.glGetFloat(pname, dst); }
             void flushMatrix() { DisplayListManager.flushMatrix(); }
         },
         RAW {
@@ -64,60 +65,38 @@ class DisplayListCompilationParityTest {
         return buf;
     }
 
-    private static void assertMatrixEquals(FloatBuffer expected, FloatBuffer actual, String message) {
-        for (int i = 0; i < 16; i++) {
-            assertEquals(expected.get(i), actual.get(i), 0.001f, message + " (element " + i + ")");
-        }
-    }
-
     @BeforeEach
     void setup() {
         if (DisplayListManager.isRecording()) {
-            try { GLStateManager.glEndList(); } catch (Exception ignored) {}
+            try { GLSMDraws.glEndList(); } catch (Exception ignored) {}
         }
-        GLStateManager.disableBlend();
-        GLStateManager.disableDepthTest();
-        GLStateManager.disableCull();
+        GLSMBlend.disableBlend();
+        GLSMDepthStencilAlpha.disableDepthTest();
+        GLSMRasterizer.disableCull();
         GL11.glDisable(GL11.GL_BLEND);
         GL11.glDisable(GL11.GL_DEPTH_TEST);
         GL11.glDisable(GL11.GL_CULL_FACE);
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glLoadIdentity();
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glLoadIdentity();
     }
 
     @AfterEach
     void cleanup() {
         if (DisplayListManager.isRecording()) {
-            try { GLStateManager.glEndList(); } catch (Exception ignored) {}
+            try { GLSMDraws.glEndList(); } catch (Exception ignored) {}
         }
         if (testList > 0) {
-            GLStateManager.glDeleteLists(testList, 1);
+            GLSMDraws.glDeleteLists(testList, 1);
             testList = -1;
         }
-        GLStateManager.disableBlend();
-        GLStateManager.disableDepthTest();
-        GLStateManager.disableCull();
+        GLSMBlend.disableBlend();
+        GLSMDepthStencilAlpha.disableDepthTest();
+        GLSMRasterizer.disableCull();
         GL11.glDisable(GL11.GL_BLEND);
         GL11.glDisable(GL11.GL_DEPTH_TEST);
         GL11.glDisable(GL11.GL_CULL_FACE);
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glLoadIdentity();
-    }
-
-    @ParameterizedTest
-    @EnumSource(Caller.class)
-    void compile_doesNotChangeState(Caller c) {
-        testList = GL11.glGenLists(1);
-        c.newList(testList, GL11.GL_COMPILE);
-        c.enable(GL11.GL_BLEND);
-
-        assertFalse(GL11.glIsEnabled(GL11.GL_BLEND), "During GL_COMPILE: state unchanged");
-
-        c.endList();
-        assertFalse(GL11.glIsEnabled(GL11.GL_BLEND), "After GL_COMPILE: state unchanged");
-
-        c.callList(testList);
-        assertTrue(GL11.glIsEnabled(GL11.GL_BLEND), "After playback: state changed");
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glLoadIdentity();
     }
 
     @ParameterizedTest
@@ -191,6 +170,9 @@ class DisplayListCompilationParityTest {
         c.enable(GL11.GL_BLEND);
         c.enable(GL11.GL_DEPTH_TEST);
         c.enable(GL11.GL_CULL_FACE);
+
+        assertFalse(GL11.glIsEnabled(GL11.GL_BLEND), "During GL_COMPILE: BLEND unchanged");
+
         c.endList();
 
         assertFalse(GL11.glIsEnabled(GL11.GL_BLEND), "After GL_COMPILE: BLEND unchanged");

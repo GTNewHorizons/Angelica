@@ -7,8 +7,10 @@ import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL30;
 
+import java.util.function.Supplier;
+
 public class GlSampler extends GlObject {
-	public GlSampler(boolean linear, boolean mipmapped, boolean shadow, boolean hardwareShadow) {
+	public GlSampler(boolean linear, boolean linearMips, boolean mipmapped, boolean shadow, boolean hardwareShadow, boolean clamp) {
 		if (!RenderSystem.supportsSamplerObjects()) {
 			this.setHandle(0);
 			return;
@@ -16,13 +18,16 @@ public class GlSampler extends GlObject {
 
 		this.setHandle(RenderSystem.genSampler());
 
-		RenderSystem.samplerParameteri(getId(), GL11.GL_TEXTURE_MIN_FILTER, linear ? GL11.GL_LINEAR : GL11.GL_NEAREST);
 		RenderSystem.samplerParameteri(getId(), GL11.GL_TEXTURE_MAG_FILTER, linear ? GL11.GL_LINEAR : GL11.GL_NEAREST);
-		RenderSystem.samplerParameteri(getId(), GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
-		RenderSystem.samplerParameteri(getId(), GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
+		RenderSystem.samplerParameteri(getId(), GL11.GL_TEXTURE_WRAP_S, clamp ? GL12.GL_CLAMP_TO_EDGE : GL11.GL_REPEAT);
+		RenderSystem.samplerParameteri(getId(), GL11.GL_TEXTURE_WRAP_T, clamp ? GL12.GL_CLAMP_TO_EDGE : GL11.GL_REPEAT);
 
 		if (mipmapped) {
-			RenderSystem.samplerParameteri(getId(), GL11.GL_TEXTURE_MIN_FILTER, linear ? GL11.GL_LINEAR_MIPMAP_LINEAR : GL11.GL_NEAREST_MIPMAP_NEAREST);
+			RenderSystem.samplerParameteri(getId(), GL11.GL_TEXTURE_MIN_FILTER, linearMips
+				? (linear ? GL11.GL_LINEAR_MIPMAP_LINEAR : GL11.GL_NEAREST_MIPMAP_LINEAR)
+				: (linear ? GL11.GL_LINEAR_MIPMAP_NEAREST : GL11.GL_NEAREST_MIPMAP_NEAREST));
+		} else {
+			RenderSystem.samplerParameteri(getId(), GL11.GL_TEXTURE_MIN_FILTER, linear ? GL11.GL_LINEAR : GL11.GL_NEAREST);
 		}
 
 		if (hardwareShadow) {
@@ -37,5 +42,10 @@ public class GlSampler extends GlObject {
 
 	public int getId() {
 		return handle();
+	}
+
+	public static int idOf(Supplier<GlSampler> supplier) {
+		final GlSampler sampler = supplier == null ? null : supplier.get();
+		return sampler == null ? 0 : sampler.getId();
 	}
 }

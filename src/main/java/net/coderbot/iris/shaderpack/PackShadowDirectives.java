@@ -29,6 +29,7 @@ public class PackShadowDirectives {
 	private final boolean shouldRenderEntities;
 	private final boolean shouldRenderPlayer;
 	private final boolean shouldRenderBlockEntities;
+	private final boolean shouldRenderLightBlockEntities;
 	@Getter private final ShadowCullState cullingState;
 	private final OptionalBoolean dhShadowEnabled;
 	private float nearPlane, farPlane;
@@ -83,6 +84,7 @@ public class PackShadowDirectives {
 		this.shouldRenderEntities = properties.getShadowEntities().orElse(true);
 		this.shouldRenderPlayer = properties.getShadowPlayer().orElse(false);
 		this.shouldRenderBlockEntities = properties.getShadowBlockEntities().orElse(true);
+		this.shouldRenderLightBlockEntities = properties.getShadowLightBlockEntities().orElse(false);
 		this.cullingState = properties.getShadowCulling();
 		this.shadowEnabled = properties.getShadowEnabled();
 		this.dhShadowEnabled = properties.getDhShadowEnabled();
@@ -114,6 +116,7 @@ public class PackShadowDirectives {
 		this.shouldRenderEntities = shadowDirectives.shouldRenderEntities;
 		this.shouldRenderPlayer = shadowDirectives.shouldRenderPlayer;
 		this.shouldRenderBlockEntities = shadowDirectives.shouldRenderBlockEntities;
+		this.shouldRenderLightBlockEntities = shadowDirectives.shouldRenderLightBlockEntities;
 		this.cullingState = shadowDirectives.cullingState;
 		this.depthSamplingSettings = shadowDirectives.depthSamplingSettings;
 		this.colorSamplingSettings = shadowDirectives.colorSamplingSettings;
@@ -183,6 +186,10 @@ public class PackShadowDirectives {
 
 	public boolean shouldRenderBlockEntities() {
 		return shouldRenderBlockEntities;
+	}
+
+	public boolean shouldRenderLightBlockEntities() {
+		return shouldRenderLightBlockEntities;
 	}
 
     public OptionalBoolean isShadowEnabled() {

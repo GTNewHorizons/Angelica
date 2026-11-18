@@ -1,8 +1,8 @@
 package com.gtnewhorizons.angelica.compat.bettercrashes;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalExt;
+import com.gtnewhorizons.angelica.rendering.RenderRecovery;
 import cpw.mods.fml.common.Optional;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
@@ -29,7 +29,6 @@ public class BetterCrashesCompat implements StateManager.IResettable {
         Tessellator.instance.isDrawing = false;
         AngelicaMod.LOGGER.info("Reloading SodiumRenderer");
         ((IRenderGlobalExt) Minecraft.getMinecraft().renderGlobal).angelica$reload();
-        AngelicaMod.LOGGER.info("Resetting GLStateManager");
-        GLStateManager.reset();
+        RenderRecovery.resetAfterCrash();
     }
 }

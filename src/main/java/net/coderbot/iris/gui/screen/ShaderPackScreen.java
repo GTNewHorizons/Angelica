@@ -1,8 +1,10 @@
 package net.coderbot.iris.gui.screen;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
+import com.gtnewhorizons.angelica.glsm.shader.ProgramBinaryCache;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gui.GuiUtil;
 import net.coderbot.iris.gui.NavigationController;
@@ -58,6 +60,20 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
     private static String selectTitle()    { return EnumChatFormatting.GRAY.toString() + EnumChatFormatting.ITALIC + I18n.format("pack.iris.select.title"); }
     private static String configureTitle() { return EnumChatFormatting.GRAY.toString() + EnumChatFormatting.ITALIC + I18n.format("pack.iris.configure.title"); }
     private static final int COMMENT_PANEL_WIDTH = 314;
+    private static final int TOOLTIP_WIDTH = 300;
+
+    private static String saveCompiledLabel() {
+        return I18n.format(Iris.getIrisConfig().shouldSaveCompiledShaders() ? "options.iris.saveCompiledShaders.on" : "options.iris.saveCompiledShaders.off");
+    }
+
+    private List<String> saveCompiledTooltip() {
+        final List<String> lines = new ArrayList<>(this.fontRendererObj.listFormattedStringToWidth(I18n.format("options.iris.saveCompiledShaders.tooltip"), TOOLTIP_WIDTH));
+        if (!RenderSystem.supportsProgramBinary()) {
+            lines.add("");
+            lines.addAll(this.fontRendererObj.listFormattedStringToWidth(I18n.format("options.iris.saveCompiledShaders.unsupported"), TOOLTIP_WIDTH));
+        }
+        return lines;
+    }
 
     private final GuiScreen parent;
     private final String title;
@@ -69,6 +85,7 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
     private @Nullable ShaderPackOptionList shaderOptionList = null;
     private @Nullable NavigationController navigation = null;
     private GuiButton screenSwitchButton;
+    private @Nullable GuiButton saveCompiledButton;
 
     private String notificationDialog = null;
     private int notificationDialogTimer = 0;
@@ -115,83 +132,91 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float delta) {
-        GLStateManager.glPushAttrib(GL11.GL_COLOR_BUFFER_BIT);
-
-        if(dirty) {
-            dirty = false;
-            this.initGui();
-        }
-
-        handleDroppedFiles();
-
-        if (this.mc.theWorld == null) {
-            super.drawDefaultBackground();
-        } else if (!this.guiHidden) {
-            this.drawGradientRect(0, 0, width, height, 0x4F232323, 0x4F232323);
-        }
-
-        if (!this.guiHidden) {
-            if (optionMenuOpen && this.shaderOptionList != null) {
-                this.shaderOptionList.drawScreen(mouseX, mouseY, delta);
-                this.shaderOptionList.drawSearchBox();
-            } else {
-                this.shaderPackList.drawScreen(mouseX, mouseY, delta);
+        GLSMAttribStack.glPushAttrib(GL11.GL_COLOR_BUFFER_BIT);
+        try {
+            if(dirty) {
+                dirty = false;
+                this.initGui();
             }
-        }
 
-        if (hoveredElement != null) {
-            hoveredElementCommentTimer++;
-        } else {
-            hoveredElementCommentTimer = 0;
-        }
+            handleDroppedFiles();
 
-        super.drawScreen(mouseX, mouseY, delta);
+            if (this.mc.theWorld == null) {
+                super.drawDefaultBackground();
+            } else if (!this.guiHidden) {
+                this.drawGradientRect(0, 0, width, height, 0x4F232323, 0x4F232323);
+            }
 
-        if (!this.guiHidden) {
-            drawCenteredString(this.fontRendererObj, this.title, (int) (this.width * 0.5), 8, 0xFFFFFF);
-
-            if (notificationDialog != null && notificationDialogTimer > 0) {
-                drawCenteredString(this.fontRendererObj, notificationDialog, (int) (this.width * 0.5), 21, 0xFFFFFF);
-            } else {
-                if (optionMenuOpen) {
-                    drawCenteredString(this.fontRendererObj, configureTitle(), (int) (this.width * 0.5), 21, 0xFFFFFF);
+            if (!this.guiHidden) {
+                if (optionMenuOpen && this.shaderOptionList != null) {
+                    this.shaderOptionList.drawScreen(mouseX, mouseY, delta);
+                    this.shaderOptionList.drawSearchBox();
                 } else {
-                    drawCenteredString(this.fontRendererObj, selectTitle(), (int) (this.width * 0.5), 21, 0xFFFFFF);
+                    this.shaderPackList.drawScreen(mouseX, mouseY, delta);
                 }
             }
 
-            // Draw the comment panel
-            if (this.isDisplayingComment()) {
-                final int panelHeight = Math.max(50, 18 + (this.hoveredElementCommentBody.size() * 10));
-                final int x = (int) (0.5 * this.width) - 157;
-                final int y = this.height - (panelHeight + 4);
-                // Draw panel
-                GuiUtil.drawPanel(x, y, COMMENT_PANEL_WIDTH, panelHeight);
-                // Draw text
-                this.fontRendererObj.drawStringWithShadow(this.hoveredElementCommentTitle.orElse(""), x + 4, y + 4, 0xFFFFFF);
-                for (int i = 0; i < this.hoveredElementCommentBody.size(); i++) {
-                    this.fontRendererObj.drawStringWithShadow(this.hoveredElementCommentBody.get(i), x + 4, (y + 16) + (i * 10), 0xFFFFFF);
+            if (hoveredElement != null) {
+                hoveredElementCommentTimer++;
+            } else {
+                hoveredElementCommentTimer = 0;
+            }
+
+            super.drawScreen(mouseX, mouseY, delta);
+
+            if (!this.guiHidden) {
+                drawCenteredString(this.fontRendererObj, this.title, (int) (this.width * 0.5), 8, 0xFFFFFF);
+
+                if (notificationDialog != null && notificationDialogTimer > 0) {
+                    drawCenteredString(this.fontRendererObj, notificationDialog, (int) (this.width * 0.5), 21, 0xFFFFFF);
+                } else {
+                    if (optionMenuOpen) {
+                        drawCenteredString(this.fontRendererObj, configureTitle(), (int) (this.width * 0.5), 21, 0xFFFFFF);
+                    } else {
+                        drawCenteredString(this.fontRendererObj, selectTitle(), (int) (this.width * 0.5), 21, 0xFFFFFF);
+                    }
+                }
+
+                // Draw the comment panel
+                if (this.isDisplayingComment()) {
+                    final int panelHeight = Math.max(50, 18 + (this.hoveredElementCommentBody.size() * 10));
+                    final int x = (int) (0.5 * this.width) - 157;
+                    final int y = this.height - (panelHeight + 4);
+                    // Draw panel
+                    GuiUtil.drawPanel(x, y, COMMENT_PANEL_WIDTH, panelHeight);
+                    // Draw text
+                    this.fontRendererObj.drawStringWithShadow(this.hoveredElementCommentTitle.orElse(""), x + 4, y + 4, 0xFFFFFF);
+                    for (int i = 0; i < this.hoveredElementCommentBody.size(); i++) {
+                        this.fontRendererObj.drawStringWithShadow(this.hoveredElementCommentBody.get(i), x + 4, (y + 16) + (i * 10), 0xFFFFFF);
+                    }
                 }
             }
-        }
 
-        // Render everything queued to drawScreen last
-        for (Runnable render : TOP_LAYER_RENDER_QUEUE) {
-            render.run();
-        }
-        TOP_LAYER_RENDER_QUEUE.clear();
+            final GuiButton saveButton = this.saveCompiledButton;
+            if (saveButton != null && mouseX >= saveButton.xPosition && mouseY >= saveButton.yPosition
+                && mouseX < saveButton.xPosition + saveButton.width && mouseY < saveButton.yPosition + saveButton.height) {
+                final List<String> tooltip = saveCompiledTooltip();
+                GuiUtil.drawTextPanel(this.fontRendererObj, tooltip, saveButton.xPosition, saveButton.yPosition - (tooltip.size() * 10 + 10));
+            }
 
-        if (this.developmentComponent != null) {
-            this.fontRendererObj.drawStringWithShadow(developmentComponent, 2, this.height - 10, 0xFFFFFF);
-            this.fontRendererObj.drawStringWithShadow(irisTextComponent, 2, this.height - 20, 0xFFFFFF);
-        } else if (this.updateComponent != null) {
-            this.fontRendererObj.drawStringWithShadow(updateComponent, 2, this.height - 10, 0xFFFFFF);
-            this.fontRendererObj.drawStringWithShadow(irisTextComponent, 2, this.height - 20, 0xFFFFFF);
-        } else {
-            this.fontRendererObj.drawStringWithShadow(irisTextComponent, 2, this.height - 10, 0xFFFFFF);
-        }
+            // Render everything queued to drawScreen last
+            for (Runnable render : TOP_LAYER_RENDER_QUEUE) {
+                render.run();
+            }
+            TOP_LAYER_RENDER_QUEUE.clear();
 
-        GLStateManager.glPopAttrib();
+            if (this.developmentComponent != null) {
+                this.fontRendererObj.drawStringWithShadow(developmentComponent, 2, this.height - 10, 0xFFFFFF);
+                this.fontRendererObj.drawStringWithShadow(irisTextComponent, 2, this.height - 20, 0xFFFFFF);
+            } else if (this.updateComponent != null) {
+                this.fontRendererObj.drawStringWithShadow(updateComponent, 2, this.height - 10, 0xFFFFFF);
+                this.fontRendererObj.drawStringWithShadow(irisTextComponent, 2, this.height - 20, 0xFFFFFF);
+            } else {
+                this.fontRendererObj.drawStringWithShadow(irisTextComponent, 2, this.height - 10, 0xFFFFFF);
+            }
+        } finally {
+            GLSMAttribStack.glPopAttrib();
+        }
     }
 
     @Override
@@ -212,7 +237,7 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
             }
         }
 
-        this.shaderPackList = new ShaderPackSelectionList(this, this.mc, this.width, this.height, 32, this.height - 58, 0, this.width);
+        this.shaderPackList = new ShaderPackSelectionList(this, this.mc, this.width, this.height, 32, this.height - 82, 0, this.width);
 
         if (Iris.getCurrentPack().isPresent() && this.navigation != null) {
             final ShaderPack currentPack = Iris.getCurrentPack().get();
@@ -221,7 +246,7 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
                 currentPack.getMenuContainer().setSearchQuery(null);
             }
 
-            this.shaderOptionList = new ShaderPackOptionList(this, this.navigation, currentPack, this.mc, this.width, this.height, 32, this.height - 58, 0, this.width);
+            this.shaderOptionList = new ShaderPackOptionList(this, this.navigation, currentPack, this.mc, this.width, this.height, 32, this.height - 82, 0, this.width);
             this.navigation.setActiveOptionList(this.shaderOptionList);
 
             this.shaderOptionList.rebuild();
@@ -238,8 +263,16 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
         }
 
         this.buttonList.clear();
+        this.saveCompiledButton = null;
 
         if (!this.guiHidden) {
+
+            this.saveCompiledButton = new IrisButton(topCenter - 78, this.height - 75, 308, 20,
+                saveCompiledLabel(), button -> {
+                    this.toggleSaveCompiledShaders();
+                    button.displayString = saveCompiledLabel();
+                });
+            this.buttonList.add(this.saveCompiledButton);
 
             this.buttonList.add(new IrisButton(bottomCenter + 104, this.height - 27, 100, 20,
                 I18n.format("gui.done"), button -> this.onClose()));
@@ -628,6 +661,27 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
             IrisApi.getInstance().getConfig().setShadersEnabledAndApply(enabled);
         }
 
+        refreshForChangedPack();
+    }
+
+    public void toggleSaveCompiledShaders() {
+        final boolean save = !Iris.getIrisConfig().shouldSaveCompiledShaders();
+        try {
+            Iris.getIrisConfig().setSaveCompiledShaders(save);
+        } catch (IOException e) {
+            Iris.logger.error("Failed to save the Iris config", e);
+        }
+        if (!save) {
+            ProgramBinaryCache.deleteAll();
+            return;
+        }
+        if (!Iris.getIrisConfig().areShadersEnabled()) return;
+
+        try {
+            Iris.reload();
+        } catch (IOException e) {
+            Iris.logger.error("Failed to reload shaders after turning on Save Compiled Shaders", e);
+        }
         refreshForChangedPack();
     }
 

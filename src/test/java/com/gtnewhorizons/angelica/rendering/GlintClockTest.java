@@ -8,11 +8,23 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class GlintClockTest {
+
+    @Test
+    void cachedSecondLayerMatchesTheLegacyTransformAndRejectsModifiedFirstLayers() {
+        for (long time : new long[] {0, 1000003, 864000000123L}) {
+            GlintClock.beginFrame(time);
+            final Matrix4f first = new Matrix4f().scaling(0.33333334f).rotateZ((float) Math.toRadians(30))
+                .translate(armorU0(), armorV0(), 0);
+            final Matrix4f second = new Matrix4f().scaling(0.33333334f).rotateZ((float) Math.toRadians(-30))
+                .translate(armorU1(), armorV1(), 0);
+            assertTrue(second.equals(GlintClock.secondArmorMatrix(first), 1e-6f));
+            assertNull(GlintClock.secondArmorMatrix(first.translate(0.1f, 0, 0)));
+        }
+    }
 
     @BeforeEach
     void resetArmorPathTable() {
@@ -104,23 +116,5 @@ class GlintClockTest {
         final String second = ArmorTexturePaths.path("skeleton", 3, 0, null);
         final String third = ArmorTexturePaths.path("wither_skeleton", 3, 0, null);
         assertNotEquals(second, third);
-    }
-
-    @Test
-    void aChangedFloatGetsANewBox() {
-        final Object prev = Float.valueOf(1.5f);
-        assertSame(prev, OperationArgs.boxed(prev, 1.5f));
-        final Object next = OperationArgs.boxed(prev, 2.5f);
-        assertNotSame(prev, next);
-        assertEquals(2.5f, (Float) next);
-    }
-
-    @Test
-    void aChangedIntGetsANewBox() {
-        final Object prev = Integer.valueOf(100_000);
-        assertSame(prev, OperationArgs.boxed(prev, 100_000));
-        final Object next = OperationArgs.boxed(prev, 100_001);
-        assertNotSame(prev, next);
-        assertEquals(100_001, (Integer) next);
     }
 }

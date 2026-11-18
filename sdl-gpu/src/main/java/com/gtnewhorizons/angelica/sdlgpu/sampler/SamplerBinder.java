@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import com.gtnewhorizons.angelica.sdlgpu.resource.FormatMap;
 import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
 import com.gtnewhorizons.angelica.sdlgpu.resource.TextureSamplerState;
+import com.gtnewhorizons.angelica.sdlgpu.shader.LogicOpVariant;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
 import com.gtnewhorizons.angelica.sdlgpu.util.MemoryAccess;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
@@ -27,6 +28,7 @@ public final class SamplerBinder {
     private final Device device;
     private final ResourceManager resourceManager;
     private final ShaderManager shaderManager;
+    private final SamplerCache.Factory samplerFactory = this::createSamplerForKey;
 
     public SamplerBinder(Device device, ResourceManager resourceManager, ShaderManager shaderManager) {
         this.device = device;
@@ -41,8 +43,13 @@ public final class SamplerBinder {
     }
 
     public long getSamplerForUnit(ContextState st, int glUnit, int glTexId) {
-        if (glUnit >= 0 && glUnit < st.boundSamplerObjects.length && st.boundSamplerObjects[glUnit] != 0) {
-            final TextureSamplerState ss = resourceManager.getSamplerObject(st.boundSamplerObjects[glUnit]);
+        final int samplerObject = glUnit >= 0 && glUnit < st.boundSamplerObjects.length ? st.boundSamplerObjects[glUnit] : 0;
+        return getSampler(samplerObject, glTexId);
+    }
+
+    public long getSampler(int samplerObject, int glTexId) {
+        if (samplerObject != 0) {
+            final TextureSamplerState ss = resourceManager.getSamplerObject(samplerObject);
             if (ss != null) return getOrCreateSdlSampler(ss);
         }
         if (glTexId != 0) return getSamplerForTexture(glTexId);
@@ -57,7 +64,7 @@ public final class SamplerBinder {
             ss.minLod, ss.maxLod, ss.lodBias,
             ss.maxAnisotropy, ss.compareMode, ss.compareFunc);
 
-        final long handle = resourceManager.samplerCache().getOrCreate(key, this::createSamplerForKey);
+        final long handle = resourceManager.samplerCache().getOrCreate(key, samplerFactory);
         ss.sdlSampler = handle;
         return handle != 0 ? handle : resourceManager.getOrCreateDefaultSampler();
     }
@@ -112,7 +119,9 @@ public final class SamplerBinder {
     }
 
     private void bindStageSamplers(long renderPass, ContextState st, ShaderManager.ProgramObject prog, long fallbackTexture, boolean fragment) {
-        final int raw = fragment ? prog.fragmentResources.numSamplers() : prog.vertexResources.numSamplers();
+        final LogicOpVariant variant = fragment ? st.activeLogicOpVariant : null;
+        final int raw = variant != null ? variant.numSamplers : fragment ? prog.fragmentResources.numSamplers() : prog.vertexResources.numSamplers();
+        final int baseCount = variant != null ? variant.baseSamplers : raw;
         if (raw > ContextState.MAX_SAMPLERS) {
             throw new IllegalStateException("program " + st.boundProgram + " has " + raw + " " + (fragment ? "fragment" : "vertex") + " samplers; MAX=" + ContextState.MAX_SAMPLERS);
         }
@@ -123,11 +132,24 @@ public final class SamplerBinder {
         final long[] lastTex = fragment ? st.lastFragSamplerTex : st.lastVertSamplerTex;
         final long[] lastSmp = fragment ? st.lastFragSamplerSmp : st.lastVertSamplerSmp;
         final int lastProg = fragment ? st.lastFragSamplerProgram : st.lastVertSamplerProgram;
-        final boolean programChanged = st.boundProgram != lastProg;
+        final boolean programChanged = st.boundProgram != lastProg || fragment && variant != st.lastFragSamplerVariant;
         boolean anyChanged = programChanged;
         for (int i = 0; i < raw; i++) {
+            if (i >= baseCount) {
+                final long dst = st.logicOpScratch[variant.dstLocation[i - baseCount]];
+                final long dstSampler = resourceManager.getOrCreateDefaultSampler();
+                if (programChanged || dst != lastTex[i] || dstSampler != lastSmp[i]) {
+                    anyChanged = true;
+                    final long elemAddr = bindingsBase + (long) i * SDL_GPUTextureSamplerBinding.SIZEOF;
+                    MemoryAccess.putAddress(elemAddr + SDL_GPUTextureSamplerBinding.TEXTURE, dst);
+                    MemoryAccess.putAddress(elemAddr + SDL_GPUTextureSamplerBinding.SAMPLER, dstSampler);
+                    lastTex[i] = dst;
+                    lastSmp[i] = dstSampler;
+                }
+                continue;
+            }
             final int glUnit = samplerUnits[i];
-            final int glTexId = (glUnit >= 0 && glUnit < st.boundTextures.length) ? st.boundTextures[glUnit] : 0;
+            final int glTexId = st.boundTexture(glUnit);
             long texHandle = (glTexId != 0) ? resourceManager.getTextureHandle(glTexId) : 0;
             if (texHandle == 0) {
                 texHandle = fallbackTexture;
@@ -149,6 +171,7 @@ public final class SamplerBinder {
             if (fragment) {
                 SDL_BindGPUFragmentSamplers(renderPass, 0, bindings);
                 st.lastFragSamplerProgram = st.boundProgram;
+                st.lastFragSamplerVariant = variant;
             } else {
                 SDL_BindGPUVertexSamplers(renderPass, 0, bindings);
                 st.lastVertSamplerProgram = st.boundProgram;
@@ -173,6 +196,7 @@ public final class SamplerBinder {
         if (fragment) {
             SDL_BindGPUFragmentSamplers(renderPass, 0, bindings);
             st.lastFragSamplerProgram = 0;
+            st.lastFragSamplerVariant = null;
         } else {
             SDL_BindGPUVertexSamplers(renderPass, 0, bindings);
             st.lastVertSamplerProgram = 0;

@@ -1,16 +1,12 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
-import it.unimi.dsi.fastutil.objects.Object2IntFunction;
-import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.minecraft.client.renderer.entity.Render;
 import net.minecraft.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * Mixin to set the entity ID to "name_tag" when rendering entity name tags.
@@ -22,47 +18,17 @@ public class MixinRenderNameTag {
     @Unique
     private static final NamespacedId NAME_TAG_ID = new NamespacedId("minecraft", "name_tag");
 
-    @Unique
-    private static final int NOTHING_SAVED = Integer.MIN_VALUE;
-
-    @Unique
-    private int angelica$previousEntityId = NOTHING_SAVED;
-
-    @Unique
-    private int angelica$previousItemId = 0;
-
     /**
-     * Inject at the HEAD of func_147906_a to set the special name_tag entity ID before rendering.
      * func_147906_a is the method that renders entity name tags.
      */
-    @Inject(
-        method = "func_147906_a",
-        at = @At("HEAD")
-    )
-    private void iris$setNameTagEntityId(Entity entity, String name, double x, double y, double z, int maxDistance, CallbackInfo ci) {
-        Object2IntFunction<NamespacedId> entityIdMap = BlockRenderingSettings.INSTANCE.getEntityIds();
-        if (entityIdMap != null) {
-            angelica$previousEntityId = CapturedRenderingState.INSTANCE.getCurrentRenderedEntity();
-            angelica$previousItemId = CapturedRenderingState.INSTANCE.getCurrentRenderedItem();
-
-            // Set the special name_tag entity ID
-            int nameTagId = entityIdMap.applyAsInt(NAME_TAG_ID);
-            CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(nameTagId, 0);
-        }
+    @Surround(method = "func_147906_a")
+    private void iris$setNameTagEntityId(Entity entity, String name, double x, double y, double z, int maxDistance) {
+        CapturedRenderingState.INSTANCE.pushCurrentEntityAndItem();
+        CapturedRenderingState.INSTANCE.setCurrentNamedEntity(NAME_TAG_ID);
     }
 
-    /**
-     * Inject at the RETURN of func_147906_a to restore the previous entity ID after rendering.
-     */
-    @Inject(
-        method = "func_147906_a",
-        at = @At("RETURN")
-    )
-    private void iris$restoreEntityId(Entity entity, String name, double x, double y, double z, int maxDistance, CallbackInfo ci) {
-        if (angelica$previousEntityId != NOTHING_SAVED) {
-            CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(angelica$previousEntityId, angelica$previousItemId);
-            angelica$previousEntityId = NOTHING_SAVED;
-            angelica$previousItemId = 0;
-        }
+    @Surround.Finally
+    private void iris$restoreEntityId() {
+        CapturedRenderingState.INSTANCE.popCurrentEntityAndItem();
     }
 }

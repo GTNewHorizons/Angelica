@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.streaming;
 
 import com.gtnewhorizons.angelica.config.SystemProperties;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL31;
@@ -34,10 +34,10 @@ public final class UniformRingBuffer {
         this.stride = (blockSize + OFFSET_ALIGNMENT - 1) & -OFFSET_ALIGNMENT;
         this.ring = GlStreamingRing.create(GL31.GL_UNIFORM_BUFFER, capacity, forceOrphan);
         if (ring == null) {
-            orphanBufferId = GLStateManager.glGenBuffers();
-            GLStateManager.glBindBuffer(GL31.GL_UNIFORM_BUFFER, orphanBufferId);
-            GLStateManager.glBufferData(GL31.GL_UNIFORM_BUFFER, capacity, GL15.GL_STREAM_DRAW);
-            GLStateManager.glBindBuffer(GL31.GL_UNIFORM_BUFFER, 0);
+            orphanBufferId = GLSMBuffers.glGenBuffers();
+            GLSMBuffers.glBindBuffer(GL31.GL_UNIFORM_BUFFER, orphanBufferId);
+            GLSMBuffers.glBufferData(GL31.GL_UNIFORM_BUFFER, capacity, GL15.GL_STREAM_DRAW);
+            GLSMBuffers.glBindBuffer(GL31.GL_UNIFORM_BUFFER, 0);
         }
     }
 
@@ -55,20 +55,20 @@ public final class UniformRingBuffer {
     }
 
     private int writeOrphan(long srcAddress) {
-        GLStateManager.glBindBuffer(GL31.GL_UNIFORM_BUFFER, orphanBufferId);
+        GLSMBuffers.glBindBuffer(GL31.GL_UNIFORM_BUFFER, orphanBufferId);
         int offset = writePos;
         if (offset + stride > capacity) {
-            GLStateManager.glBufferData(GL31.GL_UNIFORM_BUFFER, capacity, GL15.GL_STREAM_DRAW);
+            GLSMBuffers.glBufferData(GL31.GL_UNIFORM_BUFFER, capacity, GL15.GL_STREAM_DRAW);
             offset = 0;
             orphanWraps++;
         }
-        final long dst = GLStateManager.glMapBufferRangeAddress(GL31.GL_UNIFORM_BUFFER, offset, blockSize, GL30.GL_MAP_WRITE_BIT | GL30.GL_MAP_INVALIDATE_RANGE_BIT | GL30.GL_MAP_UNSYNCHRONIZED_BIT);
+        final long dst = GLSMBuffers.glMapBufferRangeAddress(GL31.GL_UNIFORM_BUFFER, offset, blockSize, GL30.GL_MAP_WRITE_BIT | GL30.GL_MAP_INVALIDATE_RANGE_BIT | GL30.GL_MAP_UNSYNCHRONIZED_BIT);
         if (dst == 0L) {
             throw new IllegalStateException("mapBufferRange failed on uniform ring (offset=" + offset + ")");
         }
         memCopy(srcAddress, dst, blockSize);
-        GLStateManager.glUnmapBuffer(GL31.GL_UNIFORM_BUFFER);
-        GLStateManager.glBindBuffer(GL31.GL_UNIFORM_BUFFER, 0);
+        GLSMBuffers.glUnmapBuffer(GL31.GL_UNIFORM_BUFFER);
+        GLSMBuffers.glBindBuffer(GL31.GL_UNIFORM_BUFFER, 0);
         writePos = offset + stride;
         return offset;
     }
@@ -91,7 +91,7 @@ public final class UniformRingBuffer {
         if (ring != null) {
             ring.destroy();
         } else if (orphanBufferId != 0) {
-            GLStateManager.glDeleteBuffers(orphanBufferId);
+            GLSMBuffers.glDeleteBuffers(orphanBufferId);
             orphanBufferId = 0;
         }
     }

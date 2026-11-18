@@ -38,7 +38,7 @@ final class PacerCore {
     private LongConsumer idleWork;
 
     private long refreshPeriodNanos;
-    private boolean tearFree = true;
+    private boolean fifo = true;
     private boolean vsyncOn = true;
     private int capHz;
 
@@ -63,6 +63,7 @@ final class PacerCore {
     private boolean locked;
     private boolean probing;
     private boolean probeExhausted;
+    private boolean gateAbandoned;
     private long probeLeadNanos;
     private boolean haveCandidate;
     private long candidateEndNanos;
@@ -108,9 +109,9 @@ final class PacerCore {
         dropLock();
     }
 
-    void setTearFree(boolean value) {
-        if (value == tearFree) return;
-        tearFree = value;
+    void setFifo(boolean value) {
+        if (value == fifo) return;
+        fifo = value;
         dropLock();
     }
 
@@ -158,8 +159,8 @@ final class PacerCore {
         lastGpuWaitNanos = pendingGpuWaitNanos;
         pendingGpuWaitNanos = 0L;
 
-        final long c = cadencePeriodNanos(capHz, refreshPeriodNanos, tearFree);
-        final boolean candidate = sample && vsyncOn && tearFree && refreshPeriodNanos > 0L
+        final long c = cadencePeriodNanos(capHz, refreshPeriodNanos, fifo);
+        final boolean candidate = sample && vsyncOn && fifo && refreshPeriodNanos > 0L
             && sampleDuration > gateThresholdNanos(c);
         updateLock(candidate, sampleEnd);
 
@@ -306,9 +307,9 @@ final class PacerCore {
         return lastPresentIntervalNanos;
     }
 
-    static long cadencePeriodNanos(int capHz, long refreshPeriodNanos, boolean tearFree) {
+    static long cadencePeriodNanos(int capHz, long refreshPeriodNanos, boolean fifo) {
         final long cap = Math.max(capHz, 0);
-        if (tearFree && refreshPeriodNanos > 0L) {
+        if (fifo && refreshPeriodNanos > 0L) {
             if (cap == 0L || cap * refreshPeriodNanos * CAP_EQ_DIVISOR >= NANOS_PER_SECOND * (CAP_EQ_DIVISOR - 1)) {
                 return refreshPeriodNanos;
             }
@@ -336,7 +337,7 @@ final class PacerCore {
             if (locked && framesSinceCandidate >= LOCK_FRAMES) dropLock();
             return;
         }
-        if (haveCandidate && framesSinceCandidate <= LOCK_WINDOW) {
+        if (!gateAbandoned && haveCandidate && framesSinceCandidate <= LOCK_WINDOW) {
             final long delta = sampleEnd - candidateEndNanos;
             final long k = (delta + refreshPeriodNanos / 2) / refreshPeriodNanos;
             if (k >= 1L && Math.abs(delta - k * refreshPeriodNanos) <= refreshPeriodNanos / LOCK_TOL_DIVISOR) {
@@ -347,6 +348,7 @@ final class PacerCore {
                 if (++inconsistentPairs >= LOCK_WINDOW) {
                     dropLock();
                     probeExhausted = true;
+                    gateAbandoned = true;
                 }
             }
         }
@@ -358,6 +360,7 @@ final class PacerCore {
     private void armProbe() {
         probeLeadNanos = 0L;
         probeExhausted = false;
+        gateAbandoned = false;
     }
 
     private void dropLock() {

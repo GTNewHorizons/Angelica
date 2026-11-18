@@ -34,6 +34,7 @@ public final class FontProviderUnicode implements FontProvider, IResourceManager
     public static FontProviderUnicode get() { return FontProviderUnicode.InstLoader.instance; }
 
     private static final ResourceLocation[] unicodePageLocations = new ResourceLocation[256];
+    private static final int[] unicodePageTextures = new int[256];
     private final byte[] glyphWidth = new byte[65536];
     private final RandomXoshiro256StarStar fontRandom = new RandomXoshiro256StarStar();
 
@@ -79,12 +80,12 @@ public final class FontProviderUnicode implements FontProvider, IResourceManager
     @Override
     public float getUStart(char chr) {
         final float startColumnF = (float)((this.glyphWidth[chr] >>> 4) & 15);
-        return ((float) (chr % 16 * 16) + startColumnF + 0.21f) / 256.0f;
+        return ((float) (chr % 16 * 16) + startColumnF + 0.01f) / 256.0f;
     }
 
     @Override
     public float getVStart(char chr) {
-        return ((float) ((chr & 255) / 16 * 16) + 0.21f) / 256.0f;
+        return ((float) ((chr & 255) / 16 * 16) + 0.01f) / 256.0f;
     }
 
     @Override
@@ -113,12 +114,12 @@ public final class FontProviderUnicode implements FontProvider, IResourceManager
         final float startColumnF = (float) startColumn;
         final float endColumnF = (float) (endColumn + 1);
         final float chrWidth = endColumnF - startColumnF - 0.02F;
-        return (chrWidth - 0.42f) / 256.0f;
+        return (chrWidth - 0.02f) / 256.0f;
     }
 
     @Override
     public float getVSize(char chr) {
-        return (16.0f - 0.42f) / 256.0f;
+        return (16.0f - 0.02f) / 256.0f;
     }
 
     @Override
@@ -127,9 +128,14 @@ public final class FontProviderUnicode implements FontProvider, IResourceManager
     }
 
     @Override
-    public ResourceLocation getTexture(char chr) {
+    public int getTexture(char chr) {
         final int uniPage = chr / 256;
-        return getUnicodePageLocation(uniPage);
+        int texture = unicodePageTextures[uniPage];
+        if (texture == 0) {
+            texture = FontStrategist.getIntFromResourceLocation(getUnicodePageLocation(uniPage));
+            unicodePageTextures[uniPage] = texture;
+        }
+        return texture;
     }
 
     @Override

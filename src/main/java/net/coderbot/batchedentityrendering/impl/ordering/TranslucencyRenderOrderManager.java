@@ -1,8 +1,6 @@
 package net.coderbot.batchedentityrendering.impl.ordering;
 
-import net.coderbot.batchedentityrendering.impl.BlendingStateHolder;
 import net.coderbot.batchedentityrendering.impl.TransparencyType;
-import net.coderbot.batchedentityrendering.impl.WrappableRenderType;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 
 import java.util.ArrayList;
@@ -21,21 +19,8 @@ public class TranslucencyRenderOrderManager implements RenderOrderManager {
         }
     }
 
-    private static TransparencyType getTransparencyType(RenderLayer type) {
-        while (type instanceof WrappableRenderType) {
-            type = ((WrappableRenderType) type).unwrap();
-        }
-
-        if (type instanceof BlendingStateHolder) {
-            return ((BlendingStateHolder) type).getTransparencyType();
-        }
-
-        // Default to "generally transparent" if we can't figure it out.
-        return TransparencyType.GENERAL_TRANSPARENT;
-    }
-
     public void begin(RenderLayer type) {
-        renderTypes.get(getTransparencyType(type)).add(type);
+        renderTypes.get(type.getTransparencyType()).add(type);
     }
 
     public void startGroup() {

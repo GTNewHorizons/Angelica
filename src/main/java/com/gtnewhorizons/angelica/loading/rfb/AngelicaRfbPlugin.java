@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.loading.rfb;
 
 import com.gtnewhorizons.angelica.loading.rfb.transformers.RFBAngelicaRedirector;
 import com.gtnewhorizons.angelica.loading.rfb.transformers.RFBCeleritasBlockTransformer;
+import com.gtnewhorizons.angelica.loading.rfb.transformers.RFBDarkModeFontTransformer;
 import com.gtnewhorizons.angelica.loading.rfb.transformers.RFBIsbrhTessellatorAbuseTransformer;
 import com.gtnewhorizons.retrofuturabootstrap.api.PluginContext;
 import com.gtnewhorizons.retrofuturabootstrap.api.RetroFuturaBootstrap;
@@ -30,7 +31,8 @@ public class AngelicaRfbPlugin implements RfbPlugin {
         return new RfbClassTransformer[] {
             new RFBAngelicaRedirector(),
             new RFBCeleritasBlockTransformer(isObf),
-            new RFBIsbrhTessellatorAbuseTransformer(isObf)
+            new RFBIsbrhTessellatorAbuseTransformer(isObf),
+            new RFBDarkModeFontTransformer(isObf)
         };
     }
 }

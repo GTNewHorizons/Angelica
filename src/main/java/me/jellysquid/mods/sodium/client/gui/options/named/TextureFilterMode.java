@@ -7,7 +7,7 @@ public enum TextureFilterMode implements NamedState {
     RGSS("sodium.options.texture_filtering.rgss"),
     ANISOTROPIC("sodium.options.texture_filtering.anisotropic"),
     RGSS_ANISOTROPIC("sodium.options.texture_filtering.rgss_anisotropic"),
-    NONE("sodium.options.texture_filtering.none");
+    NONE("sodium.options.none");
 
     private static final TextureFilterMode[] WITHOUT_ANISOTROPY = {RGSS, NONE};
     private final String name;

@@ -1,9 +1,12 @@
 package com.gtnewhorizons.angelica.mixins.early.celeritas.terrain;
 
+import com.gtnewhorizons.angelica.client.rendering.AngelicaFogService;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
 import com.gtnewhorizons.angelica.event.RenderChunkEvent;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalExt;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
@@ -11,7 +14,9 @@ import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.gtnewhorizons.angelica.rendering.celeritas.BlockRenderLayer;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasSetup;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
+import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.HandRenderer;
@@ -28,9 +33,10 @@ import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.tileentity.TileEntity;
 import org.embeddedt.embeddium.impl.gl.device.RenderDevice;
-import org.embeddedt.embeddium.impl.render.chunk.shader.ChunkShaderFogComponent;
 import org.embeddedt.embeddium.impl.render.terrain.SimpleWorldRenderer;
+import org.embeddedt.embeddium.impl.render.viewport.Viewport;
 import org.embeddedt.embeddium.impl.render.viewport.ViewportProvider;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -46,6 +52,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import java.util.Collections;
+import java.util.List;
 
 import static org.joml.Math.lerp;
 
@@ -59,6 +67,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
     @Unique private static final Tracy.ZoneId Z_MT_QUEUE = Tracy.zoneId("mtQueue", Tracy.COLOR_TERRAIN);
 
     @Shadow public Minecraft mc;
+    @Shadow public WorldClient theWorld;
     @Shadow @Final private TextureManager renderEngine;
 
     @Unique private static final String SECTION_SOLID = "draw_chunk_layer_solid";
@@ -136,7 +145,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         } else {
             pipeline = Iris.getPipelineManager().getPipelineNullable();
             if (pass == 0) {
-                pipeline.setPhase(WorldRenderingPhase.TERRAIN_CUTOUT);
+                pipeline.setPhase(WorldRenderingPhase.TERRAIN_SOLID);
             } else if (pass == 1) {
                 if (!ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
                     iris$beginTranslucents(pipeline, Camera.INSTANCE);
@@ -150,12 +159,12 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
 
         RenderHelper.disableStandardItemLighting();
 
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, this.mc.getTextureMapBlocks().getGlTextureId());
-        GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, this.mc.getTextureMapBlocks().getGlTextureId());
+        GLSMEnable.glEnable(GL11.GL_TEXTURE_2D);
 
-        GLStateManager.glEnable(GL11.GL_ALPHA_TEST);
-        GLStateManager.glEnable(GL11.GL_FOG);
+        GLSMEnable.glEnable(GL11.GL_ALPHA_TEST);
+        GLSMEnable.glEnable(GL11.GL_FOG);
 
         this.mc.entityRenderer.enableLightmap(partialTicks);
 
@@ -171,8 +180,10 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         try {
             if (pass == 0) {
                 mc.mcProfiler.endStartSection(shadow ? SECTION_SHADOW_SOLID : SECTION_SOLID);
+                iris$setTerrainPhase(pipeline, WorldRenderingPhase.TERRAIN_SOLID);
                 this.celeritas$renderer.drawChunkLayer(BlockRenderLayer.SOLID, camX, camY, camZ);
                 mc.mcProfiler.endStartSection(shadow ? SECTION_SHADOW_CUTOUT_MIPPED : SECTION_CUTOUT_MIPPED);
+                iris$setTerrainPhase(pipeline, WorldRenderingPhase.TERRAIN_CUTOUT_MIPPED);
                 this.celeritas$renderer.drawChunkLayer(BlockRenderLayer.CUTOUT_MIPPED, camX, camY, camZ);
             } else {
                 mc.mcProfiler.endStartSection(shadow ? SECTION_SHADOW_TRANSLUCENT : SECTION_TRANSLUCENT);
@@ -200,7 +211,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
 
         try {
             final Entity viewEntity = this.mc.renderViewEntity;
-            final float fogDistance = ChunkShaderFogComponent.FOG_SERVICE.getFogCutoff();
+            final float fogDistance = AngelicaFogService.INSTANCE.getFogCutoff();
 
             final double camX = lerp(viewEntity.lastTickPosX, viewEntity.posX, partialTicks);
             final double camY = lerp(viewEntity.lastTickPosY, viewEntity.posY, partialTicks) + viewEntity.getEyeHeight();
@@ -222,7 +233,12 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
                 camX, camY, camZ,
                 viewEntity.rotationPitch, viewEntity.rotationYaw, fogDistance
             );
-            this.celeritas$renderer.setupTerrain(((ViewportProvider)camera).sodium$createViewport(), cameraState, this.celeritas$frame++, angelica$isSpectatorMode(), false);
+            final Viewport viewport = ((ViewportProvider) camera).sodium$createViewport();
+            if (this.celeritas$renderer.isInShadowPass()) {
+                this.celeritas$renderer.setupShadowTerrain(viewport, cameraState, this.celeritas$frame++, angelica$isSpectatorMode());
+            } else {
+                this.celeritas$renderer.setupTerrain(viewport, cameraState, this.celeritas$frame++, angelica$isSpectatorMode(), false);
+            }
         } finally {
             RenderDevice.exitManagedCode();
         }
@@ -250,13 +266,18 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
 
     @Inject(method = "loadRenderers", at = @At("RETURN"))
     private void onReload(CallbackInfo ci) {
+        if (this.celeritas$renderer.getWorld() != this.theWorld) return;
         angelica$reload();
     }
 
 
 
-    @Inject(method = "renderEntities", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderHelper;enableStandardItemLighting()V", shift = At.Shift.AFTER, ordinal = 0), cancellable = true)
-    public void celeritas$renderTileEntities(EntityLivingBase entity, ICamera camera, float partialTicks, CallbackInfo ci) {
+    @Surround(method = "renderEntities", id = "blockEntities",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderHelper;enableStandardItemLighting()V", ordinal = 0))
+    private void celeritas$enterBlockEntities() {}
+
+    @Surround.Return("blockEntities")
+    private void celeritas$renderTileEntities(@Surround.Local(argsOnly = true) float partialTicks) {
         if (Iris.enabled) {
             GbufferPrograms.beginBlockEntities();
             GbufferPrograms.setBlockEntityDefaults();
@@ -266,9 +287,11 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         if (Iris.enabled) {
             GbufferPrograms.endBlockEntities();
         }
-        this.mc.entityRenderer.disableLightmap(partialTicks);
-        this.mc.mcProfiler.endSection();
-        ci.cancel();
+    }
+
+    @ModifyExpressionValue(method = "renderEntities", at = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/RenderGlobal;tileEntities:Ljava/util/List;", opcode = Opcodes.GETFIELD))
+    private List<TileEntity> celeritas$skipVanillaTileEntities(List<TileEntity> original) {
+        return Collections.emptyList();
     }
 
     /**
@@ -317,11 +340,19 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
     }
 
     @Unique
+    private static void iris$setTerrainPhase(WorldRenderingPipeline pipeline, WorldRenderingPhase phase) {
+        if (pipeline != null) {
+            pipeline.setPhase(phase);
+        }
+    }
+
+    @Unique
     private void iris$beginTranslucents(WorldRenderingPipeline pipeline, Camera camera) {
         pipeline.beginHand();
         HandRenderer.INSTANCE.renderSolid(camera.getPartialTicks(), camera, mc.renderGlobal, pipeline);
         mc.mcProfiler.endStartSection("iris_pre_translucent");
         pipeline.beginTranslucents();
+        ModelPartBatcher.INSTANCE.flushEntitiesAfterDeferred();
         TesrBatchRenderer.INSTANCE.flushAfterDeferred();
     }
 

@@ -13,7 +13,9 @@ import net.minecraft.world.IBlockAccess;
 
 import org.lwjgl.opengl.GL11;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
 import com.prupe.mcpatcher.MCLogger;
 import com.prupe.mcpatcher.MCPatcherUtils;
 import com.prupe.mcpatcher.ctm.CTMUtils;
@@ -291,21 +293,21 @@ public class RenderPass {
             case RenderPassAPI.TRANSLUCENT_RENDER_PASS:
             case RenderPassAPI.BACKFACE_RENDER_PASS:
                 if (!backfaceCulling[pass]) {
-                    GLStateManager.glDisable(GL11.GL_CULL_FACE);
+                    GLSMEnable.glDisable(GL11.GL_CULL_FACE);
                 }
                 break;
 
             case RenderPassAPI.OVERLAY_RENDER_PASS:
-                GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-                GLStateManager.glPolygonOffset(-2.0f, -2.0f);
-                GLStateManager.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
+                GLSMCurrentAttribs.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+                GLSMRasterizer.glPolygonOffset(-2.0f, -2.0f);
+                GLSMEnable.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
                 if (backfaceCulling[pass]) {
-                    GLStateManager.glEnable(GL11.GL_CULL_FACE);
+                    GLSMEnable.glEnable(GL11.GL_CULL_FACE);
                 } else {
-                    GLStateManager.glDisable(GL11.GL_CULL_FACE);
+                    GLSMEnable.glDisable(GL11.GL_CULL_FACE);
                 }
                 if (ambientOcclusion) {
-                    GLStateManager.glShadeModel(GL11.GL_SMOOTH);
+                    GLSMRasterizer.glShadeModel(GL11.GL_SMOOTH);
                 }
                 blendMethod.applyBlending();
                 break;
@@ -324,18 +326,18 @@ public class RenderPass {
             case RenderPassAPI.TRANSLUCENT_RENDER_PASS:
             case RenderPassAPI.BACKFACE_RENDER_PASS:
                 if (!backfaceCulling[currentRenderPass]) {
-                    GLStateManager.glEnable(GL11.GL_CULL_FACE);
+                    GLSMEnable.glEnable(GL11.GL_CULL_FACE);
                 }
                 break;
 
             case RenderPassAPI.OVERLAY_RENDER_PASS:
-                GLStateManager.glPolygonOffset(0.0f, 0.0f);
-                GLStateManager.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
+                GLSMRasterizer.glPolygonOffset(0.0f, 0.0f);
+                GLSMEnable.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
                 if (!backfaceCulling[currentRenderPass]) {
-                    GLStateManager.glEnable(GL11.GL_CULL_FACE);
+                    GLSMEnable.glEnable(GL11.GL_CULL_FACE);
                 }
-                GLStateManager.glDisable(GL11.GL_BLEND);
-                GLStateManager.glShadeModel(GL11.GL_FLAT);
+                GLSMEnable.glDisable(GL11.GL_BLEND);
+                GLSMRasterizer.glShadeModel(GL11.GL_FLAT);
                 break;
 
             default:

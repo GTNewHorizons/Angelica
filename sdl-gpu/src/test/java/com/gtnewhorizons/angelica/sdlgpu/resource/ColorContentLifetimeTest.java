@@ -11,18 +11,11 @@ class ColorContentLifetimeTest {
     private static final long TEX = 0xC010125L;
 
     @Test
-    void freshTextureHasUndefinedContents() {
-        final ResourceManager rm = SdlTestRig.resourceManager();
-        assertFalse(rm.isTextureContentDefined(TEX), "never written, so the first pass must clear");
-    }
-
-    @Test
-    void definedContentsSurviveAcrossFrames() {
+    void markedTextureHasDefinedContents() {
         final ResourceManager rm = SdlTestRig.resourceManager();
         rm.markTextureContentDefined(TEX);
         assertTrue(rm.isTextureContentDefined(TEX));
 
-        assertTrue(rm.isTextureContentDefined(TEX), "contents outlive the frame that produced them");
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
+import com.gtnewhorizons.angelica.rendering.tesr.SectionBuiltBlockEntity;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.AxisAlignedBB;
@@ -10,13 +11,23 @@ import java.util.Arrays;
 
 public class AngelicaBuiltRenderSectionData extends MinecraftBuiltRenderSectionData<TextureAtlasSprite, TileEntity> {
     public static final float[] EMPTY_BOUNDS = new float[0];
+    private static final SectionBuiltBlockEntity[] NO_SECTION_BUILT = new SectionBuiltBlockEntity[0];
 
     public float[] culledBlockEntityBounds = EMPTY_BOUNDS;
+
+    public SectionBuiltBlockEntity[] sectionBuilt = NO_SECTION_BUILT;
+    public int[] sectionBuiltResults;
 
     public double maxTeRenderDistSq = Double.POSITIVE_INFINITY;
 
     public int cullEpoch = -1;
     public int cullVerdict;
+
+    public void applySectionBuilt() {
+        for (int i = 0; i < sectionBuilt.length; i++) {
+            sectionBuilt[i].angelica$applySectionResult(sectionBuiltResults[i]);
+        }
+    }
 
     public static void packSectionLocalBounds(FloatArrayList out, AxisAlignedBB aabb, int originX, int originY, int originZ) {
         out.add((float) (aabb.minX - originX));

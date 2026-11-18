@@ -1,8 +1,12 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
+import com.gtnewhorizons.angelica.glsm.streaming.LineQuads;
+import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
@@ -30,7 +34,7 @@ public final class DisplayListVBO {
         }
         if (extVbos != null) {
             for (int extVbo : extVbos) {
-                if (extVbo != 0) GLStateManager.glDeleteBuffers(extVbo);
+                if (extVbo != 0) GLSMBuffers.glDeleteBuffers(extVbo);
             }
         }
     }
@@ -55,8 +59,19 @@ public final class DisplayListVBO {
         private final int count;
         private final int vertexFlags;
         private int pendingExtVbo = 0;
+        private IVertexArrayObject lineQuads;
+        private int lineQuadStart;
+        private int lineQuadCount;
+        private int lineQuadFlags;
 
         void setPendingExtVbo(int extVbo) { this.pendingExtVbo = extVbo; }
+
+        void setLineQuads(IVertexArrayObject quads, int start, int count, int flags) {
+            this.lineQuads = quads;
+            this.lineQuadStart = start;
+            this.lineQuadCount = count;
+            this.lineQuadFlags = flags;
+        }
 
         public SubVBO(IVertexArrayObject vao, int drawMode, int start, int count, int vertexFlags) {
             this.vao = vao;
@@ -80,28 +95,50 @@ public final class DisplayListVBO {
 
         public void delete() {
             vao.delete();
+            if (lineQuads != null) lineQuads.delete();
         }
 
         public void render() {
             if (vao == null) return;
-            vao.bind();
-            if (pendingExtVbo != 0) {
-                GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, pendingExtVbo);
-                ImmediateExtendedAttribHandler.setupExtAttribPointers(0L, ImmediateExtendedAttribHandler.EXT_STRIDE);
-                GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-                pendingExtVbo = 0;
-            }
-            if (count <= 0) { vao.unbind(); return; }
-            VAOManager.setCurrentVertexFlags(vertexFlags);
-            FfpExtendedAttribs.beginInternalDraw();
+            final int prevVAO = GLSMVertexInput.getBoundVAO();
             try {
-                vao.draw(drawMode, start, count);
+                if (lineQuads != null && GLSMDraws.ffpWidensLineQuads()) {
+                    renderLineQuads();
+                    return;
+                }
+                vao.bind();
+                if (pendingExtVbo != 0) {
+                    GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, pendingExtVbo);
+                    ImmediateExtendedAttribHandler.setupExtAttribPointers(0L, ImmediateExtendedAttribHandler.EXT_STRIDE);
+                    GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+                    pendingExtVbo = 0;
+                }
+                if (count <= 0) { vao.unbind(); return; }
+                VAOManager.setCurrentVertexFlags(vertexFlags);
+                FfpExtendedAttribs.beginInternalDraw();
+                try {
+                    vao.draw(drawMode, start, count);
+                } finally {
+                    FfpExtendedAttribs.endInternalDraw();
+                }
+                vao.unbind();
             } finally {
-                FfpExtendedAttribs.endInternalDraw();
+                GLSMVertexInput.glBindVertexArray(prevVAO);
             }
-            vao.unbind();
         }
 
+        private void renderLineQuads() {
+            lineQuads.bind();
+            final boolean culled = LineQuads.beginDraw(lineQuadFlags);
+            FfpExtendedAttribs.beginInternalDraw();
+            try {
+                lineQuads.draw(GL11.GL_TRIANGLES, lineQuadStart, lineQuadCount);
+            } finally {
+                FfpExtendedAttribs.endInternalDraw();
+                LineQuads.endDraw(culled);
+            }
+            lineQuads.unbind();
+        }
 
         public IVertexArrayObject getVAO() {
             return vao;

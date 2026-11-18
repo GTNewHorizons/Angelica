@@ -9,6 +9,8 @@ import com.google.common.collect.ImmutableList;
 import me.jellysquid.mods.sodium.client.gui.options.Option;
 import me.jellysquid.mods.sodium.client.gui.options.OptionPage;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import java.util.List;
 
@@ -25,61 +27,20 @@ class StringUtilsTest {
         return new MockOptionPage(ImmutableList.copyOf(options));
     }
 
-    @Test
-    void testExactMatch() {
-        var page = mockPage(mockOption("Max Framerate", "Limits FPS"));
-        var results = StringUtils.fuzzySearch(List.of(page), "max", 2);
-        assertEquals(1, results.size());
-    }
-
-    @Test
-    void testFuzzyMatchWithTypo() {
-        var page = mockPage(mockOption("Max Framerate", "Limits FPS"));
-        // "fraemrate" is a typo for "framerate" - should match
-        var results = StringUtils.fuzzySearch(List.of(page), "fraemrate", 2);
-        assertEquals(1, results.size(), "Should match 'framerate' with typo 'fraemrate'");
-    }
-
-    @Test
-    void testFpsMatchesMaxFramerateViaTooltip() {
-        var page = mockPage(mockOption("Max Framerate", "Limits the maximum FPS (frames per second)."));
-        var results = StringUtils.fuzzySearch(List.of(page), "fps", 2);
-        assertEquals(1, results.size(), "Should match 'Max Framerate' when searching 'fps' via tooltip");
-    }
-
-    @Test
-    void testFpsDoesNotMatchFog() {
-        var page = mockPage(mockOption("Fog", "Controls fog rendering"));
-        var results = StringUtils.fuzzySearch(List.of(page), "fps", 2);
-        assertEquals(0, results.size(), "Should NOT match 'Fog' when searching 'fps'");
-    }
-
-    @Test
-    void testFpsDoesNotMatchFov() {
-        var page = mockPage(mockOption("Dynamic FOV", "Controls field of view changes"));
-        var results = StringUtils.fuzzySearch(List.of(page), "fps", 2);
-        assertEquals(0, results.size(), "Should NOT match 'Dynamic FOV' when searching 'fps'");
-    }
-
-    @Test
-    void testCloudDoesNotMatchMaxFramerate() {
-        var page = mockPage(mockOption("Max Framerate", "Limits FPS. Reduces system load when multi-tasking."));
-        var results = StringUtils.fuzzySearch(List.of(page), "cloud", 2);
-        assertEquals(0, results.size(), "Should NOT match 'Max Framerate' when searching 'cloud'");
-    }
-
-    @Test
-    void testCloudMatchesClouds() {
-        var page = mockPage(mockOption("Clouds", "Controls cloud rendering"));
-        var results = StringUtils.fuzzySearch(List.of(page), "cloud", 2);
-        assertEquals(1, results.size(), "Should match 'Clouds' when searching 'cloud'");
-    }
-
-    @Test
-    void testPrefixMatch() {
-        var page = mockPage(mockOption("Brightness", "Controls gamma"));
-        var results = StringUtils.fuzzySearch(List.of(page), "bri", 2);
-        assertEquals(1, results.size(), "Should match 'Brightness' with prefix 'bri'");
+    @ParameterizedTest(name = "''{2}'' against ''{0}'' -> {3}")
+    @CsvSource({
+        "Max Framerate, Limits FPS, max, 1",
+        "Max Framerate, Limits FPS, fraemrate, 1",
+        "Max Framerate, Limits the maximum FPS (frames per second)., fps, 1",
+        "Fog, Controls fog rendering, fps, 0",
+        "Dynamic FOV, Controls field of view changes, fps, 0",
+        "Max Framerate, Limits FPS. Reduces system load when multi-tasking., cloud, 0",
+        "Clouds, Controls cloud rendering, cloud, 1",
+        "Brightness, Controls gamma, bri, 1",
+    })
+    void singleOptionSearch(String name, String tooltip, String query, int expectedMatches) {
+        var page = mockPage(mockOption(name, tooltip));
+        assertEquals(expectedMatches, StringUtils.fuzzySearch(List.of(page), query, 2).size());
     }
 
     @Test

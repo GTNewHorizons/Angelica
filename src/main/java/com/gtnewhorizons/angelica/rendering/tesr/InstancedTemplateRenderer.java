@@ -1,7 +1,11 @@
 package com.gtnewhorizons.angelica.rendering.tesr;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.ffp.CubeInstancedAttribs;
@@ -56,6 +60,7 @@ final class InstancedTemplateRenderer {
     private final Reference2ObjectOpenHashMap<TemplateBuffer, TemplateMesh> meshes = new Reference2ObjectOpenHashMap<>();
     private final ObjectArrayList<Bucket> bucketPool = new ObjectArrayList<>();
     private final ObjectArrayList<Bucket> liveBuckets = new ObjectArrayList<>();
+    private final ObjectArrayList<TemplateBuffer> retired = new ObjectArrayList<>();
 
     private final InstanceRing ring;
     private ByteBuffer staging;
@@ -65,10 +70,15 @@ final class InstancedTemplateRenderer {
     }
 
     int drawTemplates(InstanceColumns cols, TexRun run, long nowMs) {
+        return drawTemplates(cols, run, nowMs, false);
+    }
+
+    int drawTemplates(InstanceColumns cols, TexRun run, long nowMs, boolean recordUpload) {
+        final InstanceColumns data = run.source != null ? run.source : cols;
         final long epoch = ++bucketEpochSource;
         for (TexRun seg = run; seg != null; seg = seg.next) {
             for (int i = seg.start, end = seg.end; i < end; i++) {
-                final TemplateBuffer template = cols.templates.get(i);
+                final TemplateBuffer template = data.templates.get(i);
                 final Bucket bucket;
                 if (template.bucketEpoch == epoch) {
                     bucket = liveBuckets.get(template.bucketIndex);
@@ -90,55 +100,96 @@ final class InstancedTemplateRenderer {
             final IntArrayList indices = liveBuckets.get(b).indices;
             for (int j = 0, m = indices.size(); j < m; j++) {
                 final int i = indices.getInt(j);
-                InstancedAttribs.writeHead(ptr, cols.matrices, i * 16, cols.colors.getInt(i), cols.overlays.getInt(i), cols.infos.getLong(i));
-                InstancedAttribs.writeLightmap(ptr + InstancedAttribs.OFFSET_LIGHTMAP, cols.lights.getInt(i));
+                final int color = run.source != null ? run.color : data.colors.getInt(i);
+                InstancedAttribs.writeHead(ptr, data.matrices, i * 16, color, data.overlays.getInt(i), data.infos.getLong(i));
+                InstancedAttribs.writeLightmap(ptr + InstancedAttribs.OFFSET_LIGHTMAP, data.lights.getInt(i));
                 ptr += InstancedAttribs.STRIDE;
             }
         }
         final long ringBase = uploadStaging(base, ptr, InstancedAttribs.STRIDE);
+        if (recordUpload) {
+            run.uploadOffset = ringBase;
+            run.uploadMeshes.clear();
+            run.uploadCounts.clear();
+        }
 
         int draws = 0;
         long recordOffset = ringBase;
         neutralizeExtendedAttribs();
-        GLStateManager.ffpInstancing = Instancing.TEMPLATE;
+        GLSMPrograms.setFfpInstancing(Instancing.TEMPLATE);
         for (int b = 0, n = liveBuckets.size(); b < n; b++) {
             final Bucket bucket = liveBuckets.get(b);
             final TemplateMesh mesh = bucket.mesh;
+            if (recordUpload) {
+                run.uploadMeshes.add(mesh);
+                run.uploadCounts.add(bucket.indices.size());
+            }
             bindRingTo(mesh.vao, TEMPLATE_FLAGS);
             InstancedAttribs.pointTemplate(recordOffset);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-            GLStateManager.glDrawArraysInstanced(mesh.drawMode, 0, mesh.vertexCount, bucket.indices.size());
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            GLSMDraws.glDrawArraysInstanced(mesh.drawMode, 0, mesh.vertexCount, bucket.indices.size());
             draws++;
             recordOffset += (long) bucket.indices.size() * InstancedAttribs.STRIDE;
             bucket.indices.clear();
             bucket.mesh = null;
             bucketPool.add(bucket);
         }
-        GLStateManager.ffpInstancing = Instancing.NONE;
-        GLStateManager.glBindVertexArray(0);
+        GLSMPrograms.setFfpInstancing(Instancing.NONE);
+        GLSMVertexInput.glBindVertexArray(0);
         liveBuckets.clear();
         return draws;
     }
 
-    void drawCubes(InstanceColumns cols, TexRun run) {
+    /**
+     * Draws a base run's recorded template upload again, every instance in one color.
+     */
+    int redrawTemplates(TexRun base, int colorABGR) {
+        long recordOffset = base.uploadOffset;
+        neutralizeExtendedAttribs();
+        GLSMPrograms.setFfpInstancing(Instancing.TEMPLATE);
+        for (int b = 0, n = base.uploadMeshes.size(); b < n; b++) {
+            final TemplateMesh mesh = (TemplateMesh) base.uploadMeshes.get(b);
+            final int count = base.uploadCounts.getInt(b);
+            bindRingTo(mesh.vao, TEMPLATE_FLAGS);
+            InstancedAttribs.pointTemplate(recordOffset);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            setConstantColor(colorABGR);
+            GLSMDraws.glDrawArraysInstanced(mesh.drawMode, 0, mesh.vertexCount, count);
+            GLSMVertexInput.glEnableVertexAttribArray(InstancedAttribs.LOC_COLOR);
+            recordOffset += (long) count * InstancedAttribs.STRIDE;
+        }
+        GLSMPrograms.setFfpInstancing(Instancing.NONE);
+        GLSMVertexInput.glBindVertexArray(0);
+        return base.uploadMeshes.size();
+    }
+
+    private static void setConstantColor(int colorABGR) {
+        GLSMVertexInput.glDisableVertexAttribArray(InstancedAttribs.LOC_COLOR);
+        GLSMCurrentAttribs.glVertexAttrib4f(InstancedAttribs.LOC_COLOR, (colorABGR & 0xFF) / 255.0f, (colorABGR >>> 8 & 0xFF) / 255.0f, (colorABGR >>> 16 & 0xFF) / 255.0f, (colorABGR >>> 24) / 255.0f);
+    }
+
+    /** Returns the ring offset of the uploaded instances, for {@link #redrawCubes}. */
+    long drawCubes(InstanceColumns cols, TexRun run) {
+        final InstanceColumns data = run.source != null ? run.source : cols;
         staging = MeshBuffer.ensureCapacity(staging, run.instances * CubeInstancedAttribs.STRIDE, false);
         final long base = memAddress0(staging);
         long ptr = base;
         for (TexRun seg = run; seg != null; seg = seg.next) {
             for (int i = seg.start, end = seg.end; i < end; i++) {
                 final int off = i * 16;
-                final CubeParams[] partCubes = cols.cubes.get(i);
-                final float scale = cols.scales.getFloat(i);
-                final int color = cols.colors.getInt(i);
-                final int light = cols.lights.getInt(i);
-                final int overlay = cols.overlays.getInt(i);
-                final long info = cols.infos.getLong(i);
-                for (int p = 0, n = partCubes.length; p < n; p++) {
-                    final CubeParams cube = partCubes[p];
-                    cube.writeRows(ptr, cols.matrices, off, scale);
+                final CubeParams[] partCubes = data.cubes.get(i);
+                final float scale = data.scales.getFloat(i);
+                final int color = run.source != null ? run.color : data.colors.getInt(i);
+                final int light = data.lights.getInt(i);
+                final int overlay = data.overlays.getInt(i);
+                final long info = data.infos.getLong(i);
+                final EntityTextureAtlas.Slot slot = data.atlasSlot(run, i);
+                final EntityTextureAtlas.Slot region = slot != null ? slot : EntityTextureAtlas.Slot.WHOLE_TEXTURE;
+                for (final CubeParams cube : partCubes) {
+                    cube.writeRows(ptr, data.matrices, off, scale);
                     InstancedAttribs.writeTail(ptr, color, overlay, info);
                     InstancedAttribs.writeLightmap(ptr + CubeInstancedAttribs.OFFSET_LIGHTMAP_SCALE, light);
-                    cube.writeTexture(ptr);
+                    cube.writeTexture(ptr, region.u, region.v, region.w, region.h);
                     ptr += CubeInstancedAttribs.STRIDE;
                 }
             }
@@ -148,11 +199,37 @@ final class InstancedTemplateRenderer {
         neutralizeExtendedAttribs();
         bindRingTo(UnitCubeMesh.vao(), UnitCubeMesh.VERTEX_FLAGS);
         CubeInstancedAttribs.pointInstanceAttribs(ringBase);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-        GLStateManager.ffpInstancing = Instancing.CUBE;
-        GLStateManager.glDrawArraysInstanced(GL11.GL_QUADS, 0, UnitCubeMesh.VERTEX_COUNT, run.instances);
-        GLStateManager.ffpInstancing = Instancing.NONE;
-        GLStateManager.glBindVertexArray(0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLSMPrograms.setFfpInstancing(Instancing.CUBE);
+        GLSMDraws.glDrawArraysInstanced(GL11.GL_QUADS, 0, UnitCubeMesh.VERTEX_COUNT, run.instances);
+        GLSMPrograms.setFfpInstancing(Instancing.NONE);
+        GLSMVertexInput.glBindVertexArray(0);
+        return ringBase;
+    }
+
+    boolean canRedraw(int ringEpoch, int buffer) {
+        return ringEpoch >= 0 && ringEpoch == ring.keptUploadsEpoch() && buffer == ring.bufferId();
+    }
+
+    int ringEpoch() {
+        return ring.keptUploadsEpoch();
+    }
+
+    int ringBuffer() {
+        return ring.bufferId();
+    }
+
+    void redrawCubes(long offset, int instances, int colorABGR) {
+        neutralizeExtendedAttribs();
+        bindRingTo(UnitCubeMesh.vao(), UnitCubeMesh.VERTEX_FLAGS);
+        CubeInstancedAttribs.pointInstanceAttribs(offset);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        setConstantColor(colorABGR);
+        GLSMPrograms.setFfpInstancing(Instancing.CUBE);
+        GLSMDraws.glDrawArraysInstanced(GL11.GL_QUADS, 0, UnitCubeMesh.VERTEX_COUNT, instances);
+        GLSMPrograms.setFfpInstancing(Instancing.NONE);
+        GLSMVertexInput.glEnableVertexAttribArray(InstancedAttribs.LOC_COLOR);
+        GLSMVertexInput.glBindVertexArray(0);
     }
 
     private long uploadStaging(long base, long end, int stride) {
@@ -164,9 +241,9 @@ final class InstancedTemplateRenderer {
     }
 
     private void bindRingTo(int vao, int vertexFlags) {
-        GLStateManager.glBindVertexArray(vao);
+        GLSMVertexInput.glBindVertexArray(vao);
         VAOManager.setCurrentVertexFlags(vertexFlags);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, ring.bufferId());
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, ring.bufferId());
     }
 
     private static void neutralizeExtendedAttribs() {
@@ -190,32 +267,32 @@ final class InstancedTemplateRenderer {
         final TemplateMesh mesh = new TemplateMesh();
         mesh.vertexCount = template.vertexCount;
         mesh.drawMode = template.drawMode;
-        mesh.vao = GLStateManager.glGenVertexArrays();
-        GLStateManager.glBindVertexArray(mesh.vao);
-        mesh.vbo = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, mesh.vbo);
-        GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, template.data, GL15.GL_STATIC_DRAW);
+        mesh.vao = GLSMVertexInput.glGenVertexArrays();
+        GLSMVertexInput.glBindVertexArray(mesh.vao);
+        mesh.vbo = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, mesh.vbo);
+        GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, template.data, GL15.GL_STATIC_DRAW);
 
-        GLStateManager.glEnableVertexAttribArray(0);
-        GLStateManager.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, TEMPLATE_STRIDE, 0L);
-        GLStateManager.glEnableVertexAttribArray(1);
-        GLStateManager.glVertexAttribPointer(1, 4, GL11.GL_UNSIGNED_BYTE, true, TEMPLATE_STRIDE, COLOR_INDEX * 4L);
-        GLStateManager.glEnableVertexAttribArray(2);
-        GLStateManager.glVertexAttribPointer(2, 2, GL11.GL_FLOAT, false, TEMPLATE_STRIDE, TEX_X_INDEX * 4L);
-        GLStateManager.glEnableVertexAttribArray(4);
-        GLStateManager.glVertexAttribPointer(4, 3, GL11.GL_BYTE, true, TEMPLATE_STRIDE, NORMAL_INDEX * 4L);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLSMVertexInput.glEnableVertexAttribArray(0);
+        GLSMVertexInput.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, TEMPLATE_STRIDE, 0L);
+        GLSMVertexInput.glEnableVertexAttribArray(1);
+        GLSMVertexInput.glVertexAttribPointer(1, 4, GL11.GL_UNSIGNED_BYTE, true, TEMPLATE_STRIDE, COLOR_INDEX * 4L);
+        GLSMVertexInput.glEnableVertexAttribArray(2);
+        GLSMVertexInput.glVertexAttribPointer(2, 2, GL11.GL_FLOAT, false, TEMPLATE_STRIDE, TEX_X_INDEX * 4L);
+        GLSMVertexInput.glEnableVertexAttribArray(4);
+        GLSMVertexInput.glVertexAttribPointer(4, 3, GL11.GL_BYTE, true, TEMPLATE_STRIDE, NORMAL_INDEX * 4L);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
 
         mesh.extVbo = buildExt(template);
         if (mesh.extVbo != 0) {
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, mesh.extVbo);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, mesh.extVbo);
             ImmediateExtendedAttribHandler.setupExtAttribPointers(0L, ImmediateExtendedAttribHandler.EXT_STRIDE);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         }
 
         InstancedAttribs.enableHeadArrays();
         VAOManager.setCurrentVertexFlags(TEMPLATE_FLAGS);
-        GLStateManager.glBindVertexArray(0);
+        GLSMVertexInput.glBindVertexArray(0);
         return mesh;
     }
 
@@ -230,16 +307,24 @@ final class InstancedTemplateRenderer {
         handler.build(template.data, template.vertexCount, extPrim,
             ImmediateExtendedAttribHandler.RAW_NORMAL_INDEX, memAddress0(ext), extStride);
 
-        final int extVbo = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, extVbo);
+        final int extVbo = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, extVbo);
         ext.position(0).limit(template.vertexCount * extStride);
-        GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, ext, GL15.GL_STATIC_DRAW);
+        GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, ext, GL15.GL_STATIC_DRAW);
         memFree(ext);
         return extVbo;
     }
 
-    void endFrame() {
-        ring.postDraw();
+    void retire(TemplateBuffer template) {
+        retired.add(template);
+    }
+
+    void releaseRetired() {
+        for (int i = 0, n = retired.size(); i < n; i++) {
+            final TemplateMesh mesh = meshes.remove(retired.get(i));
+            if (mesh != null) delete(mesh);
+        }
+        retired.clear();
     }
 
     void sweep(long now) {
@@ -258,6 +343,7 @@ final class InstancedTemplateRenderer {
             delete(mesh);
         }
         meshes.clear();
+        retired.clear();
         liveBuckets.clear();
         bucketPool.clear();
         staging = null;
@@ -265,9 +351,9 @@ final class InstancedTemplateRenderer {
     }
 
     private static void delete(TemplateMesh mesh) {
-        GLStateManager.glDeleteBuffers(mesh.vbo);
-        if (mesh.extVbo != 0) GLStateManager.glDeleteBuffers(mesh.extVbo);
-        GLStateManager.glDeleteVertexArrays(mesh.vao);
+        GLSMBuffers.glDeleteBuffers(mesh.vbo);
+        if (mesh.extVbo != 0) GLSMBuffers.glDeleteBuffers(mesh.extVbo);
+        GLSMVertexInput.glDeleteVertexArrays(mesh.vao);
     }
 
     int meshCount() {

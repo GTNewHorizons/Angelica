@@ -62,9 +62,10 @@ DependencyHandlerScope.of(dependencies).apply {
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:BetterLoadingScreen:1.7.9-GTNH:dev")
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:BetterQuesting:3.8.72-GTNH:dev")
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:BuildCraft:7.1.63:dev")
+    compileOnly("com.github.GTNewHorizons:Botania:1.13.32-GTNH:dev") { isTransitive = false }
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:Botania:1.13.32-GTNH:dev")
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:LogisticsPipes:1.5.32-GTNH:dev")
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:OpenComputers:1.12.55-GTNH:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:OpenComputers:1.12.64-GTNH:dev")
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:Mobs-Info:0.5.18-GTNH:dev")
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:IguanaTweaksTConstruct:2.7.10:dev")
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:OpenBlocks:1.12.18-GTNH:dev")
@@ -93,6 +94,10 @@ DependencyHandlerScope.of(dependencies).apply {
     shadowImplementation(project(":lwjgl3-backend")) { isTransitive = false }
     shadowImplementation(project(":sdl-gpu")) { isTransitive = false }
     runtimeOnlyNonPublishable(project(":tracy-client")) { isTransitive = false }
+    if (System.getProperty("os.name").lowercase().contains("mac")) {
+        runtimeOnlyNonPublishable(project(":moltenvk")) { isTransitive = false }
+    }
+    devOnlyNonPublishable(libs.async.profiler)
     shadowImplementation(libs.eventbus)
 
     shadowImplementation(libs.jcpp) // Apache 2.0
@@ -161,6 +166,7 @@ DependencyHandlerScope.of(dependencies).apply {
     compileOnly(rfg.deobf("curse.maven:security-craft-64760:2818228"))
     compileOnly("ganymedes01.etfuturum:Et-Futurum-Requiem:2.6.49-GTNH:dev")
     compileOnly("com.github.GTNewHorizons:OpenBlocks:1.12.19-GTNH:dev")
+    compileOnly("com.github.GTNewHorizons:Draconic-Evolution:1.5.30-GTNH:dev")
     compileOnly("com.github.GTNewHorizons:Chisel:2.17.31-GTNH:dev")
     compileOnly(rfg.deobf("curse.maven:biomes-o-plenty-220318:2499612"))
 
@@ -179,6 +185,8 @@ DependencyHandlerScope.of(dependencies).apply {
     compileOnly(libs.distant.horizons.api)
 
     compileOnly("mega:fluidlogged-mc1.7.10:0.1.2")
+
+    compileOnly("com.github.GTNewHorizons:LiquidLogged:0.2.0:dev") { isTransitive = false }
 
     compileOnly("com.cardinalstar.cubicchunks:CubicChunks1710:v0.1.5-alpha:dev") { isTransitive = false }
 }
@@ -199,11 +207,12 @@ afterEvaluate {
         testImplementation(libs.junit.platform.reporting)
         testImplementation(libs.junit.platform.launcher)
 
-        testImplementation(libs.archunit.junit5)
+        testImplementation(libs.retrofuturabootstrap) { isTransitive = false }
 
         glsmTestFixtures(testFixtures(project(":glsm")) as ModuleDependency) { isTransitive = false }
         testCompileOnly(testFixtures(project(":glsm")))
         testImplementation("mega:fluidlogged-mc1.7.10:0.1.2")
+        testImplementation("com.github.GTNewHorizons:LiquidLogged:0.2.0:dev") { isTransitive = false }
 
         testRuntimeOnly(libs.fastutil)
         testRuntimeOnly(libs.joml)

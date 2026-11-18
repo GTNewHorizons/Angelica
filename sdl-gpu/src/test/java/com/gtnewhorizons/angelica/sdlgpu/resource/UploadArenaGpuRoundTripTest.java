@@ -1,15 +1,17 @@
 package com.gtnewhorizons.angelica.sdlgpu.resource;
 
+import com.gtnewhorizons.angelica.sdlgpu.RealDeviceExtension;
 import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 
 import com.gtnewhorizons.angelica.sdlgpu.device.Device;
 import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.sdl.SDLError;
 import org.lwjgl.sdl.SDL_GPUBufferCreateInfo;
@@ -25,7 +27,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.lwjgl.sdl.SDLGPU.*;
 import static org.lwjgl.system.MemoryStack.stackPush;
 
+@ExtendWith(RealDeviceExtension.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@Tag("sdl-gpu-device")
 class UploadArenaGpuRoundTripTest {
 
     private static Device device;
@@ -36,19 +40,11 @@ class UploadArenaGpuRoundTripTest {
 
     @BeforeAll
     static void setUp() throws Exception {
-        final SdlTestRig rig = SdlTestRig.acquireRealDevice();
+        final SdlTestRig rig = RealDeviceExtension.rig();
         device = rig.device;
         frameManager = rig.frameManager;
         resourceManager = rig.resourceManager;
         sdlDevice = rig.sdlHandle;
-    }
-
-    @AfterAll
-    static void tearDown() {
-        if (frameManager != null && frameManager.isFrameActive()) {
-            frameManager.endFrame();
-        }
-        SdlTestRig.releaseRealDevice();
     }
 
     private static void beginFrame() {
@@ -78,6 +74,18 @@ class UploadArenaGpuRoundTripTest {
         for (int i = 0; i < size; i++) {
             assertEquals((byte) (seed * 31 + i), actual.get(i), what + ": mismatch at byte " + i);
         }
+    }
+
+    private static void uploadPattern(long dst, int size, int seed) {
+        final ByteBuffer data = pattern(size, seed);
+        assertTrue(resourceManager.arenaUpload(data, dst, 0, false));
+        MemoryUtil.memFree(data);
+    }
+
+    private static void assertDownloadedPattern(long gpuBuffer, int size, int seed, String what) {
+        final ByteBuffer got = download(gpuBuffer, size);
+        assertPattern(got, size, seed, what);
+        MemoryUtil.memFree(got);
     }
 
     private static ByteBuffer download(long gpuBuffer, int size) {
@@ -129,15 +137,11 @@ class UploadArenaGpuRoundTripTest {
         beginFrame();
         final long dst = createVertexBuffer(size);
         assertTrue(dst != 0);
-        final ByteBuffer data = pattern(size, 7);
-        assertTrue(resourceManager.arenaUpload(data, dst, 0, false));
-        MemoryUtil.memFree(data);
+        uploadPattern(dst, size, 7);
         endFrame();
 
         SDL_WaitForGPUIdle(sdlDevice);
-        final ByteBuffer got = download(dst, size);
-        assertPattern(got, size, 7, "single-frame upload");
-        MemoryUtil.memFree(got);
+        assertDownloadedPattern(dst, size, 7, "single-frame upload");
     }
 
     @Test
@@ -149,9 +153,7 @@ class UploadArenaGpuRoundTripTest {
         beginFrame();
         final long armor = createVertexBuffer(size);
         assertTrue(armor != 0);
-        final ByteBuffer armorData = pattern(size, 3);
-        assertTrue(resourceManager.arenaUpload(armorData, armor, 0, false));
-        MemoryUtil.memFree(armorData);
+        uploadPattern(armor, size, 3);
         final long junkDst = createVertexBuffer(junkSize);
         endFrame();
 
@@ -175,9 +177,7 @@ class UploadArenaGpuRoundTripTest {
         }
 
         SDL_WaitForGPUIdle(sdlDevice);
-        final ByteBuffer got = download(armor, size);
-        assertPattern(got, size, 3, "upload after 60 frames of churn");
-        MemoryUtil.memFree(got);
+        assertDownloadedPattern(armor, size, 3, "upload after 60 frames of churn");
     }
 
     @Test
@@ -190,31 +190,23 @@ class UploadArenaGpuRoundTripTest {
         // frame 66
         beginFrame();
         long big = createVertexBuffer(bigSize);
-        ByteBuffer bigData = pattern(bigSize, 41);
-        assertTrue(resourceManager.arenaUpload(bigData, big, 0, false));
-        MemoryUtil.memFree(bigData);
+        uploadPattern(big, bigSize, 41);
         final long med = createVertexBuffer(medSize);
-        final ByteBuffer medData = pattern(medSize, 42);
-        assertTrue(resourceManager.arenaUpload(medData, med, 0, false));
-        MemoryUtil.memFree(medData);
+        uploadPattern(med, medSize, 42);
         endFrame();
 
         final int bigGlId = nextGlId - 2;
         beginFrame();
         resourceManager.deleteBuffer(bigGlId);
         big = resourceManager.createBuffer(bigGlId, SDL_GPU_BUFFERUSAGE_VERTEX, bigSize);
-        bigData = pattern(bigSize, 43);
-        assertTrue(resourceManager.arenaUpload(bigData, big, 0, false));
-        MemoryUtil.memFree(bigData);
+        uploadPattern(big, bigSize, 43);
         endFrame();
 
         final long[] armor = new long[armorSizes.length];
         beginFrame();
         for (int i = 0; i < armorSizes.length; i++) {
             armor[i] = createVertexBuffer(armorSizes[i]);
-            final ByteBuffer data = pattern(armorSizes[i], 50 + i);
-            assertTrue(resourceManager.arenaUpload(data, armor[i], 0, false));
-            MemoryUtil.memFree(data);
+            uploadPattern(armor[i], armorSizes[i], 50 + i);
         }
         endFrame();
 
@@ -222,17 +214,13 @@ class UploadArenaGpuRoundTripTest {
             beginFrame();
             resourceManager.deleteBuffer(bigGlId);
             big = resourceManager.createBuffer(bigGlId, SDL_GPU_BUFFERUSAGE_VERTEX, bigSize);
-            bigData = pattern(bigSize, 60 + frame);
-            assertTrue(resourceManager.arenaUpload(bigData, big, 0, false));
-            MemoryUtil.memFree(bigData);
+            uploadPattern(big, bigSize, 60 + frame);
             endFrame();
         }
 
         SDL_WaitForGPUIdle(sdlDevice);
         for (int i = 0; i < armorSizes.length; i++) {
-            final ByteBuffer got = download(armor[i], armorSizes[i]);
-            assertPattern(got, armorSizes[i], 50 + i, "armor buffer " + i + " (size " + armorSizes[i] + ")");
-            MemoryUtil.memFree(got);
+            assertDownloadedPattern(armor[i], armorSizes[i], 50 + i, "armor buffer " + i + " (size " + armorSizes[i] + ")");
         }
     }
 
@@ -242,9 +230,7 @@ class UploadArenaGpuRoundTripTest {
         final int size = 54864;
         beginFrame();
         final long a = createVertexBuffer(size);
-        final ByteBuffer dataA = pattern(size, 11);
-        assertTrue(resourceManager.arenaUpload(dataA, a, 0, false));
-        MemoryUtil.memFree(dataA);
+        uploadPattern(a, size, 11);
 
         resourceManager.flushUploadArena();
         final ByteBuffer readback = download(a, size);
@@ -256,9 +242,7 @@ class UploadArenaGpuRoundTripTest {
         endFrame();
 
         SDL_WaitForGPUIdle(sdlDevice);
-        final ByteBuffer got = download(b, size);
-        assertPattern(got, size, 11, "B built from mid-frame readback");
-        MemoryUtil.memFree(got);
+        assertDownloadedPattern(b, size, 11, "B built from mid-frame readback");
     }
 
     @Test
@@ -270,17 +254,13 @@ class UploadArenaGpuRoundTripTest {
         beginFrame();
         for (int i = 0; i < chunks; i++) {
             dsts[i] = createVertexBuffer(chunk);
-            final ByteBuffer data = pattern(chunk, 20 + i);
-            assertTrue(resourceManager.arenaUpload(data, dsts[i], 0, false));
-            MemoryUtil.memFree(data);
+            uploadPattern(dsts[i], chunk, 20 + i);
         }
         endFrame();
 
         SDL_WaitForGPUIdle(sdlDevice);
         for (int i = 0; i < chunks; i++) {
-            final ByteBuffer got = download(dsts[i], chunk);
-            assertPattern(got, chunk, 20 + i, "grow-path upload " + i);
-            MemoryUtil.memFree(got);
+            assertDownloadedPattern(dsts[i], chunk, 20 + i, "grow-path upload " + i);
         }
     }
 }

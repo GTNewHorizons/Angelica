@@ -4,16 +4,17 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VertexBufferType;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
-import com.gtnewhorizons.angelica.client.rendering.GlUniformFloat2v;
+import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.util.AxisAlignedBB;
 import org.embeddedt.embeddium.impl.gl.shader.GlProgram;
 import org.embeddedt.embeddium.impl.gl.shader.GlShader;
 import org.embeddedt.embeddium.impl.gl.shader.ShaderConstants;
 import org.embeddedt.embeddium.impl.gl.shader.ShaderType;
-import org.embeddedt.embeddium.impl.gl.shader.uniform.GlUniformFloat;
 import org.embeddedt.embeddium.impl.gl.shader.uniform.GlUniformFloat4v;
 import org.embeddedt.embeddium.impl.gl.shader.uniform.GlUniformMatrix4f;
 import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
@@ -27,6 +28,7 @@ public final class SelectionBoxRenderer {
 
     private static GlProgram<SelectionBoxUniforms> program;
     private static IVertexArrayObject vao;
+    private static ByteBuffer edges;
     private static final Matrix4f mvpMatrix = new Matrix4f();
     private static final float[] colorBuf = new float[4];
 
@@ -43,46 +45,29 @@ public final class SelectionBoxRenderer {
     private SelectionBoxRenderer() {}
 
     public static void init() {
-        final boolean needsGS = GLStateManager.wideLineEmulationEnabled && GLStateManager.supportsGeometryShaders();
-
         final GlShader vs = ShaderLoader.loadShader(ShaderType.VERTEX, "angelica:selection_box.vert.glsl", ShaderConstants.EMPTY);
         final GlShader fs = ShaderLoader.loadShader(ShaderType.FRAGMENT, "angelica:selection_box.frag.glsl", ShaderConstants.EMPTY);
-        final GlProgram.Builder builder = GlProgram.builder("SelectionBox").attachShader(vs).attachShader(fs);
-
-        GlShader gs = null;
-        if (needsGS) {
-            gs = ShaderLoader.loadShader(ShaderType.GEOM, "angelica:selection_box.geom.glsl", ShaderConstants.EMPTY);
-            builder.attachShader(gs);
-        }
-
-        program = builder.link(ctx -> new SelectionBoxUniforms(
+        program = GlProgram.builder("SelectionBox").attachShader(vs).attachShader(fs).link(ctx -> new SelectionBoxUniforms(
                 ctx.bindUniform("u_MVP", GlUniformMatrix4f::new),
-                ctx.bindUniform("u_Color", GlUniformFloat4v::new),
-                needsGS ? ctx.bindUniform("u_ViewportSize", GlUniformFloat2v::new) : null,
-                needsGS ? ctx.bindUniform("u_LineWidth", GlUniformFloat::new) : null));
-
+                ctx.bindUniform("u_Color", GlUniformFloat4v::new)));
         vs.destroy();
         fs.destroy();
-        if (gs != null) gs.destroy();
 
-        final ByteBuffer buf = BufferUtils.createByteBuffer(UNIT_EDGES.length * Float.BYTES);
-        buf.asFloatBuffer().put(UNIT_EDGES);
-        vao = VertexBufferType.IMMUTABLE.allocate(DefaultVertexFormat.POSITION, GL11.GL_LINES, buf, VERT_COUNT);
+        edges = BufferUtils.createByteBuffer(UNIT_EDGES.length * Float.BYTES);
+        edges.asFloatBuffer().put(UNIT_EDGES);
+        vao = VertexBufferType.IMMUTABLE.allocate(DefaultVertexFormat.POSITION, GL11.GL_LINES, edges, VERT_COUNT);
     }
 
     public static void draw(AxisAlignedBB aabb, int color) {
         if (program == null || vao == null) return;
-
-        GLStateManager.enableDepthTest();
-        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
 
         final float minX = (float) aabb.minX, minY = (float) aabb.minY, minZ = (float) aabb.minZ;
         final float extX = (float) (aabb.maxX - aabb.minX);
         final float extY = (float) (aabb.maxY - aabb.minY);
         final float extZ = (float) (aabb.maxZ - aabb.minZ);
 
-        if (AngelicaConfig.enableIris && IrisApi.getInstance().isShaderPackInUse()) {
-            drawThroughShader(minX, minY, minZ, extX, extY, extZ, color);
+        if (GLSMRasterizer.wideLineEmulationEnabled || (AngelicaConfig.enableIris && IrisApi.getInstance().isShaderPackInUse())) {
+            drawAsLines(minX, minY, minZ, extX, extY, extZ, color);
         } else {
             drawFast(minX, minY, minZ, extX, extY, extZ, color);
         }
@@ -93,7 +78,7 @@ public final class SelectionBoxRenderer {
 
         program.bind();
 
-        GLStateManager.getProjectionMatrix().mul(GLStateManager.getModelViewMatrix(), mvpMatrix);
+        GLSMMatrices.getProjectionMatrix().mul(GLSMMatrices.getModelViewMatrix(), mvpMatrix);
         mvpMatrix.translate(minX, minY, minZ).scale(extX, extY, extZ);
         uniforms.mvp.set(mvpMatrix);
 
@@ -103,7 +88,7 @@ public final class SelectionBoxRenderer {
             colorBuf[2] = (color & 0xFF) / 255.0f;
             colorBuf[3] = 1.0f;
         } else {
-            final Color4 c = GLStateManager.getColor();
+            final Color4 c = GLSMCurrentAttribs.getColor();
             colorBuf[0] = c.getRed();
             colorBuf[1] = c.getGreen();
             colorBuf[2] = c.getBlue();
@@ -111,33 +96,31 @@ public final class SelectionBoxRenderer {
         }
         uniforms.color.set(colorBuf);
 
-        if (uniforms.viewportSize != null) {
-            uniforms.viewportSize.set(GLStateManager.getViewportState().width, GLStateManager.getViewportState().height);
-            uniforms.lineWidth.setFloat(GLStateManager.getLineState().getWidth());
-        }
-
         vao.render();
 
         program.unbind();
     }
 
-    private static void drawThroughShader(float minX, float minY, float minZ, float extX, float extY, float extZ, int color) {
-        GLStateManager.glPushMatrix();
-        GLStateManager.glTranslatef(minX, minY, minZ);
-        GLStateManager.glScalef(extX, extY, extZ);
+    // The streaming drawer's line path widens the edges in the FFP vertex shader or sends them to a pack's gbuffers_line
+    private static void drawAsLines(float minX, float minY, float minZ, float extX, float extY, float extZ, int color) {
+        GLSMMatrices.glPushMatrix();
+        GLSMMatrices.glTranslatef(minX, minY, minZ);
+        GLSMMatrices.glScalef(extX, extY, extZ);
 
-        final Color4 prev = GLStateManager.getColor();
+        final Color4 prev = GLSMCurrentAttribs.getColor();
+        final float prevRed = prev.getRed(), prevGreen = prev.getGreen(), prevBlue = prev.getBlue(), prevAlpha = prev.getAlpha();
         final boolean overrideColor = color != -1;
         if (overrideColor) {
-            GLStateManager.glColor4f(((color >> 16) & 0xFF) / 255.0f, ((color >> 8) & 0xFF) / 255.0f, (color & 0xFF) / 255.0f, 1.0f);
+            GLSMCurrentAttribs.glColor4f(((color >> 16) & 0xFF) / 255.0f, ((color >> 8) & 0xFF) / 255.0f, (color & 0xFF) / 255.0f, 1.0f);
         }
 
-        vao.render();
+        edges.clear();
+        TessellatorStreamingDrawer.drawPacked(edges, GL11.GL_LINES, DefaultVertexFormat.POSITION.getVertexFlags(), VERT_COUNT);
 
         if (overrideColor) {
-            GLStateManager.glColor4f(prev.getRed(), prev.getGreen(), prev.getBlue(), prev.getAlpha());
+            GLSMCurrentAttribs.glColor4f(prevRed, prevGreen, prevBlue, prevAlpha);
         }
-        GLStateManager.glPopMatrix();
+        GLSMMatrices.glPopMatrix();
     }
 
     public static void destroy() {
@@ -151,7 +134,7 @@ public final class SelectionBoxRenderer {
         }
     }
 
-    private record SelectionBoxUniforms(GlUniformMatrix4f mvp, GlUniformFloat4v color, GlUniformFloat2v viewportSize, GlUniformFloat lineWidth) {
+    private record SelectionBoxUniforms(GlUniformMatrix4f mvp, GlUniformFloat4v color) {
 
     }
 }

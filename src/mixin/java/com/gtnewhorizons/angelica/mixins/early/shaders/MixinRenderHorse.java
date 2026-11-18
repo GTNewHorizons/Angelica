@@ -1,11 +1,9 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import com.gtnewhorizons.angelica.rendering.ModelHorseArmor;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.iris.uniforms.ItemIdManager;
-import net.coderbot.iris.uniforms.ItemMaterialHelper;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.ModelBase;
 import net.minecraft.client.model.ModelRenderer;
@@ -58,14 +56,14 @@ public abstract class MixinRenderHorse {
      *         The inflate makes armor geometry sit above the base.
      *         Alpha test discards transparent (non-armor) pixels.
      */
-    @WrapOperation(
+    @Surround(
         method = "renderModel(Lnet/minecraft/entity/passive/EntityHorse;FFFFFF)V",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/model/ModelBase;render(Lnet/minecraft/entity/Entity;FFFFFF)V")
     )
-    private void iris$setHorseArmorItemId(ModelBase model, net.minecraft.entity.Entity entity, float p1, float p2, float p3, float p4, float p5, float p6, Operation<Void> original, EntityHorse horse) {
-        // Pass 1: Render the base horse normally
-        original.call(model, entity, p1, p2, p3, p4, p5, p6);
+    private void iris$setHorseArmorItemId() {}
 
+    @Surround.Return
+    private void iris$setHorseArmorItemIdAfter(ModelBase model, net.minecraft.entity.Entity entity, float p1, float p2, float p3, float p4, float p5, float p6, @Surround.Local(argsOnly = true) EntityHorse horse) {
         if (!horse.func_110259_cr()) return;
 
         int armorIndex = horse.func_110241_cb();
@@ -80,9 +78,9 @@ public abstract class MixinRenderHorse {
         }
 
         Item armorItem = angelica$getArmorItem(horse, armorIndex);
+        ItemIdManager.pushItemId();
         if (armorItem != null) {
-            int id = ItemMaterialHelper.getMaterialId(armorItem, 0);
-            CapturedRenderingState.INSTANCE.setCurrentRenderedItem(id);
+            CapturedRenderingState.INSTANCE.setCurrentRenderedItem(armorItem, 0);
         }
 
         // Copy animation state from the base model to the armor model
@@ -91,9 +89,11 @@ public abstract class MixinRenderHorse {
         ResourceLocation armorTexture = angelica$armorTextureCache.computeIfAbsent(armorTexturePath, ResourceLocation::new);
         Minecraft.getMinecraft().getTextureManager().bindTexture(armorTexture);
 
-        angelica$armorModel.render(horse, p1, p2, p3, p4, p5, p6);
-
-        ItemIdManager.resetItemId();
+        try {
+            angelica$armorModel.render(horse, p1, p2, p3, p4, p5, p6);
+        } finally {
+            ItemIdManager.popItemId();
+        }
     }
 
     // Copy rotation angles and positions from one model's renderers to another's

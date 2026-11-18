@@ -1,0 +1,8 @@
+# Clip-plane scene for -Dangelica.debug.testBlocks=true. ~ is the flight start, yaw 0 faces south (+z).
+# Each angelica:test_clip_plane TESR keeps only the lower half of a gold cube (plane 0) and leaves a reject-all plane 1 disabled.
+
+gamerule doMobSpawning false
+gamerule doDaylightCycle false
+time set 6000
+
+fill ~-2 ~-1 ~4 ~2 ~0 ~4 angelica:test_clip_plane

@@ -1,7 +1,9 @@
 package com.gtnewhorizons.angelica.mixins.early.notfine.glint;
 
+import com.gtnewhorizons.angelica.mixins.interfaces.ArmorEnchantCache;
 import jss.notfine.core.Settings;
 import net.minecraft.client.renderer.entity.RenderBiped;
+import net.minecraft.entity.EntityLiving;
 import net.minecraft.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -17,8 +19,8 @@ public abstract class MixinRenderBiped {
             target = "Lnet/minecraft/item/ItemStack;isItemEnchanted()Z"
         )
     )
-    private boolean notFine$toggleGlint(ItemStack stack) {
-        return (boolean)Settings.MODE_GLINT_WORLD.option.getStore() && stack.isItemEnchanted();
+    private boolean notFine$toggleGlint(ItemStack stack, EntityLiving entity, int slot, float partialTicks) {
+        return (boolean)Settings.MODE_GLINT_WORLD.option.getStore() && ((ArmorEnchantCache) entity).angelica$isArmorEnchanted(slot, stack);
     }
 
 }

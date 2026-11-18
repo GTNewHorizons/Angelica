@@ -31,6 +31,16 @@ public final class Lwjgl3GLCapabilitiesShim {
         LOG.info("Cleared fabricated LWJGL3 GLCapabilities on {}", Thread.currentThread().getName());
     }
 
+    /**
+     * Aware mods probe extension entry points through {@code GL.getFunctionProvider()}, which is null with no GL context.
+     * Every name resolves to 0 so those probes see the extension as absent and use the core path, which GLSM routes.
+     */
+    public static void installFunctionProvider() {
+        if (GL.getFunctionProvider() != null) return;
+        GL.create(name -> 0L);
+        LOG.info("Installed null-address LWJGL3 GL function provider");
+    }
+
     public static GLCapabilities create(Set<String> advertised) {
         final FunctionProvider provider = name -> SENTINEL_ADDRESS;
         final IntFunction<PointerBuffer> bufferFactory = BufferUtils::createPointerBuffer;

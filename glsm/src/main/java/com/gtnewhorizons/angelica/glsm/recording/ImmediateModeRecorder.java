@@ -4,7 +4,10 @@ import com.gtnewhorizon.gtnhlib.client.renderer.CallbackTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement.Usage;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLTypes;
+import com.gtnewhorizons.angelica.glsm.QuadConverter;
 import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
 import org.lwjgl.opengl.GL11;
 
@@ -12,6 +15,10 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetByte;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetShort;
 
 /**
  * Records immediate mode GL calls (glBegin/glEnd/glVertex) via {@link DirectTessellator}.
@@ -71,7 +78,7 @@ public final class ImmediateModeRecorder {
 
     /**
      * Set the current lightmap coordinate as packed brightness.
-     * Called by GLStateManager.glMultiTexCoord2f for unit 1 during recording/drawing.
+     * Called by GLSMCurrentAttribs.glMultiTexCoord2f for unit 1 during recording/drawing.
      */
     public static void setLightmapCoord(float s, float t) {
         tessellator().setBrightness(((int) t << 16) | ((int) s & 0xFFFF));
@@ -113,7 +120,7 @@ public final class ImmediateModeRecorder {
         final DirectTessellator t = tessellator();
         t.reset();
         t.startDrawing(primitiveType);
-        final var c = GLStateManager.getColor();
+        final var c = GLSMCurrentAttribs.getColor();
         t.setColorRGBA((int) (c.getRed() * 255.0f), (int) (c.getGreen() * 255.0f), (int) (c.getBlue() * 255.0f), (int) (c.getAlpha() * 255.0f));
     }
 
@@ -208,6 +215,34 @@ public final class ImmediateModeRecorder {
             prepareReaders(snap);
             if (positionReaderIndex < 0) return null;
             return readVerticesFromBuffer(mode, first, count);
+        } finally {
+            snap.free();
+        }
+    }
+
+    public static DirectTessellator processDrawElementsFromAttribs(int mode, int count, int indexType, long indices) {
+        final long minMax = QuadConverter.scanMinMaxIndex(indices, indexType, count);
+        if (minMax == -1L) return null;
+        final int minVertex = (int) (minMax & 0xFFFFFFFFL);
+        final int maxVertex = (int) (minMax >>> 32);
+        final AttribSnapshot snap = AttribSnapshot.snapshot(minVertex, maxVertex - minVertex + 1);
+        if (snap == null) return null;
+        try {
+            prepareReaders(snap);
+            if (positionReaderIndex < 0) return null;
+            begin(mode);
+            final DirectTessellator t = tessellator();
+            final int indexSize = GLTypes.sizeBytes(indexType);
+            for (int i = 0; i < count; i++) {
+                final long at = indices + (long) i * indexSize;
+                final int vertex = switch (indexType) {
+                    case GL11.GL_UNSIGNED_BYTE -> memGetByte(at) & 0xFF;
+                    case GL11.GL_UNSIGNED_SHORT -> memGetShort(at) & 0xFFFF;
+                    default -> memGetInt(at);
+                };
+                readVertexFromBuffer(t, vertex);
+            }
+            return end();
         } finally {
             snap.free();
         }

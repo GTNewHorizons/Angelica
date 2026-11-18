@@ -3,12 +3,20 @@ package net.coderbot.iris.gl.program;
 import lombok.Getter;
 import net.coderbot.iris.gl.GlResource;
 import net.coderbot.iris.gl.blending.DepthColorStorage;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL42;
 import org.lwjgl.opengl.GL43;
 
 public final class Program extends GlResource {
+
+	private static int managedBindProgram;
+
+	public static boolean isManagedBind(int program) {
+		return program != 0 && managedBindProgram == program;
+	}
 
 	@Getter
 	private final ProgramUniforms uniforms;
@@ -19,8 +27,13 @@ public final class Program extends GlResource {
 	@Getter
 	private final ProgramImages images;
 
-	Program(int program, ProgramUniforms uniforms, ProgramSamplers samplers, ProgramImages images) {
+	@Nullable
+	private final RetainedPrograms.Sources sources;
+
+	Program(int program, @Nullable RetainedPrograms.Sources sources, ProgramUniforms uniforms, ProgramSamplers samplers, ProgramImages images) {
 		super(program);
+
+		this.sources = sources;
 
 		this.uniforms = uniforms;
 		this.samplers = samplers;
@@ -30,24 +43,48 @@ public final class Program extends GlResource {
 	}
 
 	public void use() {
-		RenderSystem.memoryBarrier(GL42.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL42.GL_TEXTURE_FETCH_BARRIER_BIT | GL43.GL_SHADER_STORAGE_BARRIER_BIT);
-		GLStateManager.glUseProgram(getGlId());
+		final boolean suspended = GLStateManager.suspendExitCapture();
+		try {
+			RenderSystem.memoryBarrier(GL42.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL42.GL_TEXTURE_FETCH_BARRIER_BIT | GL43.GL_SHADER_STORAGE_BARRIER_BIT);
+			bindManaged(getGlId());
 
-		uniforms.update();
-		samplers.update();
-		images.update();
+			uniforms.update();
+			samplers.update();
+			images.update();
+		} finally {
+			GLStateManager.resumeExitCapture(suspended);
+		}
+	}
+
+	static void bindManaged(int program) {
+		final int previousManagedBind = managedBindProgram;
+		managedBindProgram = program;
+		try {
+			GLSMPrograms.glUseProgram(program);
+		} finally {
+			managedBindProgram = previousManagedBind;
+		}
 	}
 
 	public static void unbind() {
-		ProgramUniforms.clearActiveUniforms();
-		ProgramSamplers.clearActiveSamplers();
-		GLStateManager.glUseProgram(0);
+		final boolean suspended = GLStateManager.suspendExitCapture();
+		try {
+			ProgramUniforms.clearActiveUniforms();
+			ProgramSamplers.clearActiveSamplers();
+			GLSMPrograms.glUseProgram(0);
+		} finally {
+			GLStateManager.resumeExitCapture(suspended);
+		}
 	}
 
 	@Override
     public void destroyInternal() {
 		DepthColorStorage.unregisterOwnedProgram(getGlId());
-		GLStateManager.glDeleteProgram(getGlId());
+		if (sources != null) {
+			RetainedPrograms.retain(sources, getGlId());
+		} else {
+			GLSMPrograms.glDeleteProgram(getGlId());
+		}
 	}
 
 	public int getProgramId() {

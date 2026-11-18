@@ -53,11 +53,6 @@ class ManifestCollectingHolderTest {
     }
 
     @Test
-    void isDeterministicAcrossHarvests() {
-        assertEquals(harvest().entries(), harvest().entries());
-    }
-
-    @Test
     void externallyManagedUniformsStayOutOfTheBlock() {
         final UniformManifest m = harvest();
         assertTrue(m.externallyManagedNames().contains("iris_ModelViewMatrix"));

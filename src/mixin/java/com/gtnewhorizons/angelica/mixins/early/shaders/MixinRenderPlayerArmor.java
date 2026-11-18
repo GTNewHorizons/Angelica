@@ -1,22 +1,17 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.iris.uniforms.ItemIdManager;
 import net.minecraft.client.entity.AbstractClientPlayer;
-import net.minecraft.client.model.ModelBiped;
 import net.minecraft.client.renderer.entity.RenderPlayer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-
-import java.util.Objects;
 
 /**
  * Mixin to set currentRenderedItem ID when rendering armor and equipment on players.
@@ -46,23 +41,20 @@ public class MixinRenderPlayerArmor {
     /**
      * Set "minecraft:player_cape" when rendering the player's cape, and declare the cape opaque.
      */
-    @WrapOperation(
+    @Surround(
         method = "renderEquippedItems(Lnet/minecraft/client/entity/AbstractClientPlayer;F)V",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/model/ModelBiped;renderCloak(F)V")
     )
-    private void iris$setCapeItemId(ModelBiped modelBiped, float scale, Operation<Void> original) {
-        if (BlockRenderingSettings.INSTANCE.getItemIds() != null) {
-            assert BlockRenderingSettings.INSTANCE.getItemIds() != null;
-            int capeId = Objects.requireNonNull(BlockRenderingSettings.INSTANCE.getItemIds()).applyAsInt(PLAYER_CAPE);
-            CapturedRenderingState.INSTANCE.setCurrentRenderedItem(capeId);
-        }
+    private void iris$setCapeItemId() {
+        ItemIdManager.pushItemId();
+        CapturedRenderingState.INSTANCE.setCurrentNamedItem(PLAYER_CAPE);
 
-        final Boolean previous = GbufferPrograms.beginTranslucencyDeclaration(Boolean.FALSE);
-        try {
-            original.call(modelBiped, scale);
-        } finally {
-            GbufferPrograms.endTranslucencyDeclaration(previous);
-        }
-        ItemIdManager.resetItemId();
+        @Surround.Carry Boolean previous = GbufferPrograms.beginTranslucencyDeclaration(Boolean.FALSE);
+    }
+
+    @Surround.Finally
+    private void iris$setCapeItemIdEnd(@Surround.Carry Boolean previous) {
+        GbufferPrograms.endTranslucencyDeclaration(previous);
+        ItemIdManager.popItemId();
     }
 }

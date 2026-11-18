@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu.shader.dxbc;
 
+import com.gtnewhorizons.angelica.glsm.shader.ShaderCacheIO;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.JNI;
 import org.lwjgl.system.Library;
@@ -33,6 +34,8 @@ import static org.lwjgl.system.libffi.LibFFI.ffi_type_uint64;
 public final class D3DCompiler {
 
     private static final SharedLibrary D3DCOMPILER = Library.loadNative(D3DCompiler.class, "com.gtnewhorizons.angelica.sdlgpu", null, "d3dcompiler_47", "d3dcompiler");
+
+    public static final String LIBRARY_ID = ShaderCacheIO.libraryId(D3DCOMPILER);
 
     private static final long D3D_COMPILE_ADDR = apiGetFunctionAddress(D3DCOMPILER, "D3DCompile");
 

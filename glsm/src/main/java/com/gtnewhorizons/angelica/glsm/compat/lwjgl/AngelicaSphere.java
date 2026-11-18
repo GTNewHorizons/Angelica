@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.compat.lwjgl;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
 import org.lwjgl.util.glu.Sphere;
 
 import static org.lwjgl.opengl.GL11.GL_LINE_LOOP;
@@ -30,11 +31,11 @@ public class AngelicaSphere extends Sphere {
             y /= mag;
             z /= mag;
         }
-        GLStateManager.glNormal3f(x, y, z);
+        GLSMCurrentAttribs.glNormal3f(x, y, z);
     }
 
     private void emitTexCoord(float x, float y) {
-        if (super.textureFlag) GLStateManager.glTexCoord2f(x, y);
+        if (super.textureFlag) GLSMCurrentAttribs.glTexCoord2f(x, y);
     }
 
     @Override
@@ -54,9 +55,9 @@ public class AngelicaSphere extends Sphere {
         if (super.drawStyle == GLU_FILL) {
             if (!super.textureFlag) {
                 // draw +Z end as a triangle fan
-                GLStateManager.glBegin(GL_TRIANGLE_FAN);
-                GLStateManager.glNormal3f(0.0f, 0.0f, 1.0f);
-                GLStateManager.glVertex3f(0.0f, 0.0f, nsign * radius);
+                GLSMDraws.glBegin(GL_TRIANGLE_FAN);
+                GLSMCurrentAttribs.glNormal3f(0.0f, 0.0f, 1.0f);
+                GLSMDraws.glVertex3f(0.0f, 0.0f, nsign * radius);
                 for (int j = 0; j <= slices; j++) {
                     theta = (j == slices) ? 0.0f : j * dtheta;
                     x = -sin(theta) * sin(drho);
@@ -65,9 +66,9 @@ public class AngelicaSphere extends Sphere {
                     if (normals) {
                         emitNormal(x * nsign, y * nsign, z * nsign);
                     }
-                    GLStateManager.glVertex3f(x * radius, y * radius, z * radius);
+                    GLSMDraws.glVertex3f(x * radius, y * radius, z * radius);
                 }
-                GLStateManager.glEnd();
+                GLSMDraws.glEnd();
             }
 
             ds = 1.0f / slices;
@@ -84,7 +85,7 @@ public class AngelicaSphere extends Sphere {
             // draw intermediate stacks as triangle strips (GL_QUAD_STRIP removed in core profile)
             for (int i = imin; i < imax; i++) {
                 rho = i * drho;
-                GLStateManager.glBegin(GL_TRIANGLE_STRIP);
+                GLSMDraws.glBegin(GL_TRIANGLE_STRIP);
                 s = 0.0f;
                 for (int j = 0; j <= slices; j++) {
                     theta = (j == slices) ? 0.0f : j * dtheta;
@@ -95,7 +96,7 @@ public class AngelicaSphere extends Sphere {
                         emitNormal(x * nsign, y * nsign, z * nsign);
                     }
                     emitTexCoord(s, t);
-                    GLStateManager.glVertex3f(x * radius, y * radius, z * radius);
+                    GLSMDraws.glVertex3f(x * radius, y * radius, z * radius);
                     x = -sin(theta) * sin(rho + drho);
                     y = cos(theta) * sin(rho + drho);
                     z = nsign * cos(rho + drho);
@@ -104,17 +105,17 @@ public class AngelicaSphere extends Sphere {
                     }
                     emitTexCoord(s, t - dt);
                     s += ds;
-                    GLStateManager.glVertex3f(x * radius, y * radius, z * radius);
+                    GLSMDraws.glVertex3f(x * radius, y * radius, z * radius);
                 }
-                GLStateManager.glEnd();
+                GLSMDraws.glEnd();
                 t -= dt;
             }
 
             if (!super.textureFlag) {
                 // draw -Z end as a triangle fan
-                GLStateManager.glBegin(GL_TRIANGLE_FAN);
-                GLStateManager.glNormal3f(0.0f, 0.0f, -1.0f);
-                GLStateManager.glVertex3f(0.0f, 0.0f, -radius * nsign);
+                GLSMDraws.glBegin(GL_TRIANGLE_FAN);
+                GLSMCurrentAttribs.glNormal3f(0.0f, 0.0f, -1.0f);
+                GLSMDraws.glVertex3f(0.0f, 0.0f, -radius * nsign);
                 rho = PI - drho;
                 s = 1.0f;
                 for (int j = slices; j >= 0; j--) {
@@ -124,46 +125,46 @@ public class AngelicaSphere extends Sphere {
                     z = nsign * cos(rho);
                     if (normals) emitNormal(x * nsign, y * nsign, z * nsign);
                     s -= ds;
-                    GLStateManager.glVertex3f(x * radius, y * radius, z * radius);
+                    GLSMDraws.glVertex3f(x * radius, y * radius, z * radius);
                 }
-                GLStateManager.glEnd();
+                GLSMDraws.glEnd();
             }
         } else if (super.drawStyle == GLU_LINE || super.drawStyle == GLU_SILHOUETTE) {
             // draw stack lines
             for (int i = 1; i < stacks; i++) {
                 rho = i * drho;
-                GLStateManager.glBegin(GL_LINE_LOOP);
+                GLSMDraws.glBegin(GL_LINE_LOOP);
                 for (int j = 0; j < slices; j++) {
                     theta = j * dtheta;
                     x = cos(theta) * sin(rho);
                     y = sin(theta) * sin(rho);
                     z = cos(rho);
                     if (normals) emitNormal(x * nsign, y * nsign, z * nsign);
-                    GLStateManager.glVertex3f(x * radius, y * radius, z * radius);
+                    GLSMDraws.glVertex3f(x * radius, y * radius, z * radius);
                 }
-                GLStateManager.glEnd();
+                GLSMDraws.glEnd();
             }
             // draw slice lines
             for (int j = 0; j < slices; j++) {
                 theta = j * dtheta;
-                GLStateManager.glBegin(GL_LINE_STRIP);
+                GLSMDraws.glBegin(GL_LINE_STRIP);
                 for (int i = 0; i <= stacks; i++) {
                     rho = i * drho;
                     x = cos(theta) * sin(rho);
                     y = sin(theta) * sin(rho);
                     z = cos(rho);
                     if (normals) emitNormal(x * nsign, y * nsign, z * nsign);
-                    GLStateManager.glVertex3f(x * radius, y * radius, z * radius);
+                    GLSMDraws.glVertex3f(x * radius, y * radius, z * radius);
                 }
-                GLStateManager.glEnd();
+                GLSMDraws.glEnd();
             }
         } else if (super.drawStyle == GLU_POINT) {
             // top and bottom-most points
-            GLStateManager.glBegin(GL_POINTS);
-            if (normals) GLStateManager.glNormal3f(0.0f, 0.0f, nsign);
-            GLStateManager.glVertex3f(0.0f, 0.0f, radius);
-            if (normals) GLStateManager.glNormal3f(0.0f, 0.0f, -nsign);
-            GLStateManager.glVertex3f(0.0f, 0.0f, -radius);
+            GLSMDraws.glBegin(GL_POINTS);
+            if (normals) GLSMCurrentAttribs.glNormal3f(0.0f, 0.0f, nsign);
+            GLSMDraws.glVertex3f(0.0f, 0.0f, radius);
+            if (normals) GLSMCurrentAttribs.glNormal3f(0.0f, 0.0f, -nsign);
+            GLSMDraws.glVertex3f(0.0f, 0.0f, -radius);
 
             // loop over stacks
             for (int i = 1; i < stacks - 1; i++) {
@@ -174,10 +175,10 @@ public class AngelicaSphere extends Sphere {
                     y = sin(theta) * sin(rho);
                     z = cos(rho);
                     if (normals) emitNormal(x * nsign, y * nsign, z * nsign);
-                    GLStateManager.glVertex3f(x * radius, y * radius, z * radius);
+                    GLSMDraws.glVertex3f(x * radius, y * radius, z * radius);
                 }
             }
-            GLStateManager.glEnd();
+            GLSMDraws.glEnd();
         }
     }
 }

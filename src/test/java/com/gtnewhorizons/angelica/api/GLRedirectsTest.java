@@ -6,8 +6,8 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GLRedirectsTest {
@@ -70,24 +70,10 @@ class GLRedirectsTest {
         "GL42, glTexStorage2D, glTexStorage2D",
         "GL43, glDispatchCompute, glDispatchCompute",
         "GL44, glBufferStorage, glBufferStorage",
-    })
-    void glVersionClassMethodRedirects(String className, String method, String expected) {
-        assertEquals(expected, GLRedirects.getTargetMethodName(className + "." + method));
-    }
-
-    @ParameterizedTest(name = "{0}.{1} -> {2}")
-    @CsvSource({
         "GL11C, glDrawArrays, glDrawArrays",
         "GL20C, glUseProgram, glUseProgram",
         "GL30C, glBindFramebuffer, glBindFramebuffer",
         "GL33C, glBindSampler, glBindSampler",
-    })
-    void cVariantsUseGLPrefixMap(String className, String method, String expected) {
-        assertEquals(expected, GLRedirects.getTargetMethodName(className + "." + method));
-    }
-
-    @ParameterizedTest(name = "{0}.{1} -> {2}")
-    @CsvSource({
         "EXTBlendFuncSeparate, glBlendFuncSeparateEXT, tryBlendFuncSeparate",
         "ARBMultitexture, glActiveTextureARB, glActiveTextureARB",
         "ARBShaderObjects, glUseProgramObjectARB, glUseProgram",
@@ -116,7 +102,7 @@ class GLRedirectsTest {
         "Project, gluPerspective, gluPerspective",
         "Project, gluPickMatrix, gluPickMatrix",
     })
-    void namedClassMethodRedirects(String className, String method, String expected) {
+    void classMethodRedirects(String className, String method, String expected) {
         assertEquals(expected, GLRedirects.getTargetMethodName(className + "." + method));
     }
 
@@ -128,14 +114,10 @@ class GLRedirectsTest {
         "Foo.bar",
         "String.valueOf",
         "ARBShaderObjects.GL_OBJECT_COMPILE_STATUS_ARB",
+        "noDotHere",
     })
     void nonRedirectedReturnsNull(String classAndMethod) {
         assertNull(GLRedirects.getTargetMethodName(classAndMethod));
-    }
-
-    @Test
-    void nullDotReturnsNull() {
-        assertNull(GLRedirects.getTargetMethodName("noDotHere"));
     }
 
     @ParameterizedTest(name = "pattern matches {0}")
@@ -170,17 +152,55 @@ class GLRedirectsTest {
         String script = "GL11.glPushMatrix();\nGL11.glTranslatef(1,2,3);\nGL11.glEnable(GL11.GL_BLEND);";
 
         String result = GLRedirects.getMethodRedirectPattern().matcher(script).replaceAll(mr -> {
-            String target = GLRedirects.getTargetMethodName(mr.group(0));
-            return target != null ? "GLStateManager." + target : mr.group(0);
+            String ref = GLRedirects.getTargetReference(mr.group(0));
+            return ref != null ? ref : mr.group(0);
         });
 
-        assertTrue(result.contains("GLStateManager.glPushMatrix()"), "glPushMatrix not redirected: " + result);
-        assertTrue(result.contains("GLStateManager.glTranslatef(1,2,3)"), "glTranslatef not redirected: " + result);
-        assertTrue(result.contains("GLStateManager.glEnable(GL11.GL_BLEND)"), "glEnable not redirected or GL_BLEND mangled: " + result);
+        assertTrue(result.contains("GLSMMatrices.glPushMatrix()"), "glPushMatrix not redirected: " + result);
+        assertTrue(result.contains("GLSMMatrices.glTranslatef(1,2,3)"), "glTranslatef not redirected: " + result);
+        assertTrue(result.contains("GLSMEnable.glEnable(GL11.GL_BLEND)"), "glEnable not redirected or GL_BLEND mangled: " + result);
+    }
+
+    private static final String IMPORT = "importPackage(Packages.com.gtnewhorizons.angelica.glsm)";
+
+    @Test
+    void redirectScriptRewritesGlCallAndAddsImportOnce() {
+        final String result = GLRedirects.redirectScript("GL11.glPushMatrix();");
+        assertTrue(result.contains("GLSMMatrices.glPushMatrix();"), result);
+        assertEquals(result.indexOf(IMPORT), result.lastIndexOf(IMPORT), result);
+        assertTrue(result.startsWith(IMPORT), result);
     }
 
     @Test
-    void patternIsNotNull() {
-        assertNotNull(GLRedirects.getMethodRedirectPattern());
+    void redirectScriptRewritesMovedGlStateManagerMember() {
+        assertTrue(GLRedirects.redirectScript("GLStateManager.glPushMatrix();").contains("GLSMMatrices.glPushMatrix();"));
+    }
+
+    @Test
+    void redirectScriptLeavesUnmovedMemberAndWordPrefixed() {
+        final String unmoved = "GLStateManager.ctx();";
+        assertSame(unmoved, GLRedirects.redirectScript(unmoved));
+        final String prefixed = "xGLStateManager.glPushMatrix();";
+        assertSame(prefixed, GLRedirects.redirectScript(prefixed));
+    }
+
+    @Test
+    void redirectScriptLeavesDottedAndAlreadyMovedReferences() {
+        final String dotted = "Packages.org.lwjgl.opengl.GL11.glPushMatrix();";
+        assertSame(dotted, GLRedirects.redirectScript(dotted));
+        final String moved = "GLSMMatrices.glPushMatrix();";
+        assertSame(moved, GLRedirects.redirectScript(moved));
+    }
+
+    @Test
+    void redirectScriptIsIdempotent() {
+        final String once = GLRedirects.redirectScript("GL11.glPushMatrix();\nGLStateManager.glPopMatrix();");
+        assertEquals(once, GLRedirects.redirectScript(once));
+    }
+
+    @Test
+    void redirectScriptKeepsExistingImport() {
+        final String result = GLRedirects.redirectScript(IMPORT + ";\nGL11.glPushMatrix();");
+        assertEquals(result.indexOf(IMPORT), result.lastIndexOf(IMPORT), result);
     }
 }

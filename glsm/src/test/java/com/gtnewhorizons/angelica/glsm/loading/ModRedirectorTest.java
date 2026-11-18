@@ -2,6 +2,9 @@ package com.gtnewhorizons.angelica.glsm.loading;
 
 import com.gtnewhorizons.angelica.glsm.redirect.GLSMRedirector;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.ClassNode;
@@ -12,6 +15,7 @@ import org.objectweb.asm.tree.MethodNode;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
@@ -71,14 +75,16 @@ class ModRedirectorTest {
         assertEquals(coreExclusions.length + 2, exclusions.size(), exclusions.toString());
     }
 
-    @Test
-    void exclusionsCombineCoreLwjgl3AndExtra() {
-        assertStandardExclusions(redirector().getTransformerExclusions());
+    static Stream<Arguments> exclusionLists() {
+        return Stream.of(
+            Arguments.of("ModRedirector", redirector().getTransformerExclusions()),
+            Arguments.of("EarlyRedirectorCore", new EarlyRedirectorCore(EXTRA_EXCLUSION).getTransformerExclusions()));
     }
 
-    @Test
-    void earlyRedirectorExclusionsCombineCoreLwjgl3AndExtra() {
-        assertStandardExclusions(new EarlyRedirectorCore(EXTRA_EXCLUSION).getTransformerExclusions());
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("exclusionLists")
+    void exclusionsCombineCoreLwjgl3AndExtra(String name, String[] exclusions) {
+        assertStandardExclusions(exclusions);
     }
 
     @Test
@@ -86,22 +92,17 @@ class ModRedirectorTest {
         assertNull(redirector().transform("com.example.TestClass", null, this));
     }
 
-    @Test
-    void excludedPrefixReturnsOriginalArray() {
-        final byte[] original = bytesWithGlCall();
-        assertSame(original, redirector().transform(EXTRA_EXCLUSION + ".TestClass", original, this));
+    static Stream<Arguments> untouchedClasses() {
+        return Stream.of(
+            Arguments.of("extra exclusion prefix", EXTRA_EXCLUSION + ".TestClass", bytesWithGlCall()),
+            Arguments.of("core exclusion prefix", "org.lwjgl.opengl.TestClass", bytesWithGlCall()),
+            Arguments.of("no GL call", "com.example.TestClass", bytesWithoutGlCall()));
     }
 
-    @Test
-    void coreExcludedPrefixReturnsOriginalArray() {
-        final byte[] original = bytesWithGlCall();
-        assertSame(original, redirector().transform("org.lwjgl.opengl.TestClass", original, this));
-    }
-
-    @Test
-    void unchangedClassReturnsOriginalArray() {
-        final byte[] original = bytesWithoutGlCall();
-        assertSame(original, redirector().transform("com.example.TestClass", original, this));
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("untouchedClasses")
+    void untouchedClassReturnsOriginalArray(String name, String className, byte[] original) {
+        assertSame(original, redirector().transform(className, original, this));
     }
 
     @Test

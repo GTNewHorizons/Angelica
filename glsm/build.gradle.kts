@@ -67,6 +67,22 @@ artifacts {
     }
 }
 
+// LWJGL2-API stubs for test JVMs that strip the lwjgl-2 jars (glsmSdlTest, glesTest).
+val lwjgl2StubsSourceSet = sourceSets.create("lwjgl2Stubs") {
+    java.srcDir("src/lwjgl2Stubs/java")
+}
+
+val lwjgl2Stubs by configurations.creating {
+    isCanBeConsumed = true
+    isCanBeResolved = false
+}
+
+artifacts {
+    add(lwjgl2Stubs.name, lwjgl2StubsSourceSet.java.classesDirectory) {
+        builtBy(tasks.named("lwjgl2StubsClasses"))
+    }
+}
+
 repositories {
     maven {
         name = "Mojang"
@@ -111,6 +127,7 @@ val spirvTestRuntime by configurations.creating {
 dependencies {
     // MC compile stubs
     compileOnly(sourceSets["stubs"].output)
+    "lwjgl2StubsCompileOnly"(libs.lwjgl3.opengl)
 
     // LWJGL
     compileOnly(libs.lwjgl2)
@@ -158,6 +175,7 @@ dependencies {
     testFixturesApi(platform(libs.junit.bom))
     testFixturesApi(libs.junit.jupiter.api)
     testFixturesApi(libs.lwjgl2)
+    testFixturesCompileOnly(libs.asm.tree.test)
 
     // Test
     testImplementation(sourceSets["stubs"].output)
@@ -183,6 +201,7 @@ dependencies {
 }
 
 tasks.withType<DowngradeFiles>().configureEach {
+    outputs.cacheIf { true }
     downgradeTo.set(JavaVersion.VERSION_1_8)
     multiReleaseOriginal.set(false)
     multiReleaseVersions.set(emptySet())
@@ -256,6 +275,13 @@ fun Test.configureGlsmJava8() {
     }
 }
 
+val mutableStaticsAgentJar by tasks.registering(Jar::class) {
+    archiveClassifier = "mutable-statics-agent"
+    manifest {
+        attributes("Premain-Class" to "com.gtnewhorizons.angelica.glsm.testutil.MutableStatics")
+    }
+}
+
 tasks.test {
     useJUnitPlatform {
         excludeTags = GL_TASK_TAGS.values.toSet() + "lwjgl3"
@@ -264,6 +290,29 @@ tasks.test {
         excludeTestsMatching("com.gtnewhorizons.angelica.glsm.shader.SpirvShaderTranslator*Test")
     }
     configureGlsmJava8()
+    javaAgent(files(mutableStaticsAgentJar))
+}
+
+val redirectAgentJar by tasks.registering(Jar::class) {
+    archiveClassifier = "redirect-agent"
+    manifest {
+        attributes("Premain-Class" to "com.gtnewhorizons.angelica.glsm.GlsmRedirectAgent")
+    }
+}
+
+val redirectAgent by configurations.creating {
+    isCanBeConsumed = true
+    isCanBeResolved = false
+}
+
+val mutableStaticsAgent by configurations.creating {
+    isCanBeConsumed = true
+    isCanBeResolved = false
+}
+
+artifacts {
+    add(redirectAgent.name, redirectAgentJar)
+    add(mutableStaticsAgent.name, mutableStaticsAgentJar)
 }
 
 val glTestTasks = GL_TASK_TAGS.map { (taskName, tag) ->
@@ -274,6 +323,7 @@ val glTestTasks = GL_TASK_TAGS.map { (taskName, tag) ->
             includeTags = setOf(tag)
         }
         configureGlsmJava8()
+        javaAgent(files(redirectAgentJar))
     }
 }
 
@@ -302,6 +352,8 @@ val verifyTestsRan by tasks.registering {
 }
 tasks.check { dependsOn(verifyTestsRan) }
 
+val unpackLwjgl3Natives = registerLwjgl3NativesUnpack()
+
 val spirvTest by tasks.registering(Test::class) {
     description = "Runs SpirvShaderTranslator* tests against native shaderc + spvc on Java 21."
     group = "verification"
@@ -320,6 +372,7 @@ val spirvTest by tasks.registering(Test::class) {
     filter {
         includeTestsMatching("com.gtnewhorizons.angelica.glsm.shader.SpirvShaderTranslator*Test")
         includeTestsMatching("com.gtnewhorizons.angelica.glsm.ffp.FFPUniformBlockSpirvLayoutTest")
+        includeTestsMatching("com.gtnewhorizons.angelica.glsm.shader.SpirvCompilerDiskCacheTest")
     }
 
     // libshaderc.so / libspirv-cross.so are extracted by extractNatives3.
@@ -329,6 +382,7 @@ val spirvTest by tasks.registering(Test::class) {
         "-Djava.library.path=${extractNatives3.get().property("destinationFolder").let { (it as DirectoryProperty).asFile.get().path }}",
         "--enable-native-access=ALL-UNNAMED"
     )
+    loadLwjgl3NativesFrom(unpackLwjgl3Natives)
 
     testLogging {
         showStandardStreams = true

@@ -1,8 +1,9 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
+import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
-import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
+import com.gtnewhorizons.angelica.rendering.RenderThreadContext;
 import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
 import com.gtnewhorizons.angelica.mixins.interfaces.OverridesGetDistanceFrom;
 import com.gtnewhorizons.angelica.rendering.TileEntityRenderBoundsRegistry;
@@ -10,12 +11,19 @@ import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.BlockRenderContext;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.ContextAwareChunkVertexEncoder;
+import com.gtnewhorizons.angelica.rendering.celeritas.threading.RenderPassHelper;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.WorldSlice;
+import com.gtnewhorizons.angelica.rendering.tesr.SectionBuiltBlockEntity;
+import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.utils.NaturalTextureUtils;
+import com.gtnewhorizons.liquidlogged.api.LiquidLoggedAPI;
+import com.gtnewhorizons.liquidlogged.api.LiquidLoggedRenderAPI;
 import com.prupe.mcpatcher.mal.block.RenderBlocksUtils;
 import it.unimi.dsi.fastutil.floats.FloatArrayList;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceMap;
+import mega.fluidlogged.api.FLBlockAccess;
 import net.coderbot.iris.block_rendering.BlockMaterialMapping;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.block_rendering.NbtConditionalIdMap;
@@ -35,10 +43,12 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.ReportedException;
 import net.minecraft.world.IBlockAccess;
+import net.minecraftforge.fluids.Fluid;
 import org.embeddedt.embeddium.impl.render.chunk.RenderSection;
 import org.embeddedt.embeddium.impl.render.chunk.compile.ChunkBuildBuffers;
 import org.embeddedt.embeddium.impl.render.chunk.compile.ChunkBuildContext;
 import org.embeddedt.embeddium.impl.render.chunk.compile.ChunkBuildOutput;
+import org.embeddedt.embeddium.impl.render.chunk.compile.executor.ChunkJobResult;
 import org.embeddedt.embeddium.impl.render.chunk.compile.tasks.ChunkBuilderTask;
 import org.embeddedt.embeddium.impl.render.chunk.data.BuiltSectionMeshParts;
 import org.embeddedt.embeddium.impl.render.chunk.occlusion.SectionVisibilityBuilder;
@@ -48,26 +58,22 @@ import org.embeddedt.embeddium.impl.util.task.CancellationToken;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<ChunkBuildOutput> {
     private static final Tracy.ZoneId Z_MESH_SECTION = Tracy.zoneId("meshSection");
-    private static final Tracy.ZoneId Z_MESH_DEFERRED = Tracy.zoneId("meshDeferred");
+    private static final Tracy.ZoneId Z_MESH_PRESCAN = Tracy.zoneId("meshPrescan");
+    private static final Tracy.ZoneId Z_MESH_DEFERRED_MAIN = Tracy.zoneId("meshDeferredMain");
     private static final Tracy.ZoneId Z_MESH_FINALIZE = Tracy.zoneId("meshFinalize");
 
     protected final RenderSection render;
     protected final int buildTime;
     protected final Vector3d camera;
 
-    private static final long DEFERRED_BLOCK_TIMEOUT_MS = 10_000; // 10 seconds
-    private static final int MAX_RETRIES = 2;
-
-    protected record DeferredBlock(int x, int y, int z, Block block, int meta, int pass, Material materialOverride, boolean isShaderPackOverride) {}
+    private DeferredMeshScheduler scheduler;
+    private boolean important;
 
     public AngelicaChunkBuilderMeshingTask(RenderSection render, int time, Vector3d camera) {
         this.render = render;
@@ -88,6 +94,15 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         return false;
     }
 
+    protected boolean canHandOff() {
+        return false;
+    }
+
+    public void bindScheduler(DeferredMeshScheduler s, boolean important) {
+        this.scheduler = s;
+        this.important = important;
+    }
+
     protected void onEnterExecute() {}
 
     protected void onExitExecute() {}
@@ -96,12 +111,10 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
 
     @Override
     public ChunkBuildOutput execute(ChunkBuildContext context, CancellationToken cancellationToken) {
+        final long start = System.nanoTime();
         final AngelicaChunkBuildContext buildContext = (AngelicaChunkBuildContext) context;
         final AngelicaBuiltRenderSectionData renderData = new AngelicaBuiltRenderSectionData();
         final SectionVisibilityBuilder occluder = new SectionVisibilityBuilder();
-
-        final ChunkBuildBuffers buffers = buildContext.buffers;
-        buffers.init(renderData, this.render.getSectionIndex());
 
         final int minX = this.render.getOriginX();
         final int minY = this.render.getOriginY();
@@ -125,7 +138,35 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         final Tessellator tessellator = getTessellator();
         ((StateAwareTessellator)tessellator).angelica$setCeleritasMeshing(true);
 
+        ChunkBuildBuffers handoffBuffers = null;
+
         try {
+            final boolean threaded = isThreaded();
+            final long[] deferredMask = buildContext.getDeferredMask();
+            final boolean handoff;
+            if (threaded) {
+                if (!canHandOff() || scheduler == null) {
+                    throw new IllegalStateException("Threaded meshing task cannot hand off deferred blocks for " + this.render);
+                }
+                if (Tracy.ENABLED) Tracy.beginZone(Z_MESH_PRESCAN);
+                try {
+                    handoff = prescanDeferred(region, minX, minY, minZ, deferredMask);
+                } finally {
+                    if (Tracy.ENABLED) Tracy.endZone();
+                }
+            } else {
+                handoff = false;
+            }
+
+            final ChunkBuildBuffers buffers;
+            if (handoff) {
+                handoffBuffers = scheduler.acquireBuffers();
+                buffers = handoffBuffers;
+            } else {
+                buffers = buildContext.buffers;
+            }
+            buffers.init(renderData, this.render.getSectionIndex());
+
             tessellator.setTranslation(-minX, -minY, -minZ);
             SmoothBiomeColorCache.setActiveCache(biomeColorCache);
 
@@ -137,11 +178,12 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
             final World mcWorld = Minecraft.getMinecraft().theWorld;
             final long currentTick = mcWorld != null ? mcWorld.getTotalWorldTime() : 0L;
 
-            final boolean threaded = isThreaded();
-            final List<DeferredBlock> deferredBlocks = threaded ? new ArrayList<>() : null;
+            final List<DeferredBlock> deferredBlocks = handoff ? new ArrayList<>() : null;
 
             final FloatArrayList culledBounds = buildContext.getTeBoundsScratch();
             culledBounds.clear();
+            List<SectionBuiltBlockEntity> sectionBuilt = null;
+            IntArrayList sectionBuiltResults = null;
             double maxTeRenderDistSq = 0;
 
             final RenderBlocks renderBlocks = new RenderBlocks(region);
@@ -168,6 +210,14 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
                         if (block.hasTileEntity(meta)) {
                             final TileEntity tileEntity = region.getTileEntity(x, y, z);
                             if (tileEntity != null && TileEntityRendererDispatcher.instance.hasSpecialRenderer(tileEntity)) {
+                                if (tileEntity instanceof SectionBuiltBlockEntity built) {
+                                    if (sectionBuilt == null) {
+                                        sectionBuilt = new ArrayList<>();
+                                        sectionBuiltResults = new IntArrayList();
+                                    }
+                                    sectionBuilt.add(built);
+                                    sectionBuiltResults.add(built.angelica$prepareFromSection(region));
+                                }
                                 final boolean isGlobal;
                                 AxisAlignedBB aabb = null;
                                 final byte boundsClass = TileEntityRenderBoundsRegistry.classify(tileEntity);
@@ -207,35 +257,15 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
                             }
                         }
 
-                        final boolean canRenderOffThread = !threaded || canRenderOffThread(block);
+                        final boolean canRenderOffThread = !handoff || !isDeferred(deferredMask, x, y, z);
 
-                        // Check for shader pack override
-                        final BlockRenderLayer override = blockTypeIds != null ? blockTypeIds.get(block) : null;
+                        renderBlockPasses(block, meta, x, y, z, canRenderOffThread, blockTypeIds, deferredBlocks, tessellator, renderBlocks, buffers, buildContext, blockRenderContext, minX, minY, minZ, teMap, currentTick);
 
-                        for (int pass = 0; pass < AngelicaChunkBuildContext.NUM_PASSES; pass++) {
-                            final boolean canRender;
-                            Material materialOverride = null;
-
-                            if (override != null) {
-                                // Shader pack override controls both pass and material
-                                canRender = (pass == override.toVanillaPass());
-                                if (canRender) {
-                                    materialOverride = buffers.getRenderPassConfiguration().getMaterialForRenderType(override);
-                                }
-                            } else {
-                                // Normal block rendering
-                                canRender = block.canRenderInPass(pass);
-                            }
-
-                            if (canRender) {
-                                final boolean isShaderPackOverride = materialOverride != null;
-                                if (!canRenderOffThread) {
-                                    deferredBlocks.add(new DeferredBlock(x, y, z, block, meta, pass, materialOverride, isShaderPackOverride));
-                                    continue;
-                                }
-
-                                renderBlock(block, meta, x, y, z, pass, tessellator, renderBlocks, buffers, buildContext, blockRenderContext, minX, minY, minZ, materialOverride, isShaderPackOverride, teMap, currentTick);
-                            }
+                        // FluidLogged stores the fluid apart from the block, and this loop only sees the block
+                        final Block loggedFluid = getLoggedFluidBlock(region, x, y, z);
+                        if (loggedFluid != null) {
+                            if (reportingSlice != null) reportingSlice.setRenderingBlock(loggedFluid);
+                            renderBlockPasses(loggedFluid, 0, x, y, z, canRenderOffThread, blockTypeIds, deferredBlocks, tessellator, renderBlocks, buffers, buildContext, blockRenderContext, minX, minY, minZ, teMap, currentTick);
                         }
 
                         if (block.isOpaqueCube()) {
@@ -245,52 +275,41 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
                 }
             }
 
-            // Process deferred blocks on main thread if any
-            if (deferredBlocks != null && !deferredBlocks.isEmpty()) {
-                if (Tracy.ENABLED) Tracy.beginZone(Z_MESH_DEFERRED);
-                try {
-                    processDeferredBlocks(deferredBlocks, buildContext, buffers, region, minX, minY, minZ, teMap, currentTick);
-                } finally {
-                    if (Tracy.ENABLED) Tracy.endZone();
-                }
-            }
-
-            if (Tracy.ENABLED) Tracy.beginZone(Z_MESH_FINALIZE);
-            final Reference2ReferenceMap<TerrainRenderPass, BuiltSectionMeshParts> meshes;
-            try {
-                meshes = BuiltSectionMeshParts.groupFromBuildBuffers(buffers,
-                    (float) camera.x - minX, (float) camera.y - minY, (float) camera.z - minZ);
-                renderData.visibilityData = occluder.computeVisibilityEncoding();
-            } finally {
-                if (Tracy.ENABLED) Tracy.endZone();
-            }
-
-            if (!meshes.isEmpty()) {
-                renderData.hasBlockGeometry = true;
-                if (Tracy.ENABLED) {
-                    long meshBytes = 0;
-                    for (BuiltSectionMeshParts parts : meshes.values()) {
-                        if (parts.vertexBuffer() != null) meshBytes += parts.vertexBuffer().getLength();
-                    }
-                    Tracy.zoneValue(meshBytes);
-                }
-            }
-
+            renderData.visibilityData = occluder.computeVisibilityEncoding();
             renderData.culledBlockEntityBounds = culledBounds.isEmpty() ? AngelicaBuiltRenderSectionData.EMPTY_BOUNDS : culledBounds.toFloatArray();
             renderData.maxTeRenderDistSq = maxTeRenderDistSq;
+            if (sectionBuilt != null) {
+                renderData.sectionBuilt = sectionBuilt.toArray(new SectionBuiltBlockEntity[0]);
+                renderData.sectionBuiltResults = sectionBuiltResults.toIntArray();
+            }
+
+            if (handoff) {
+                if (region != buildContext.getWorldSlice()) {
+                    throw new IllegalStateException("Deferred handoff requires the context WorldSlice for " + this.render);
+                }
+                final WorldSlice slice = buildContext.swapWorldSlice(scheduler.acquireSlice());
+                final long priority = (long) this.render.getSquaredDistanceFromBlockCenter((int) Math.floor(camera.x), (int) Math.floor(camera.y), (int) Math.floor(camera.z));
+                final DeferredSectionMesh mesh = new DeferredSectionMesh(this, cancellationToken, buffers, slice, renderData, deferredBlocks, teMap, currentTick, this.important, priority, System.nanoTime() - start);
+                scheduler.submit(mesh);
+                handoffBuffers = null;
+
+                SmoothBiomeColorCache.clearActiveCache();
+                tessellator.setTranslation(0, 0, 0);
+
+                return null;
+            }
 
             SmoothBiomeColorCache.clearActiveCache();
             tessellator.setTranslation(0, 0, 0);
 
-            CeleritasDebug.incrementChunkUpdateCounter();
-
-            return new ChunkBuildOutput(this.render, renderData, meshes, this.buildTime);
+            return finalizeSection(buffers, renderData, minX, minY, minZ);
 
         } catch (ReportedException ex) {
             throw fillCrashInfo(ex.getCrashReport(), region, blockPos);
         } catch (Throwable ex) {
             throw fillCrashInfo(CrashReport.makeCrashReport(ex, "Encountered exception while building chunk meshes"), region, blockPos);
         } finally {
+            if (handoffBuffers != null) scheduler.releaseBuffers(handoffBuffers);
             ((StateAwareTessellator)tessellator).angelica$setCeleritasMeshing(false);
             SmoothBiomeColorCache.clearActiveCache();
             if (Tracy.ENABLED) Tracy.endZone();
@@ -298,22 +317,247 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         }
     }
 
-    protected void renderBlock(Block block, int metadata, int x, int y, int z, int pass, Tessellator tessellator, RenderBlocks renderBlocks, ChunkBuildBuffers buffers, AngelicaChunkBuildContext buildContext, BlockRenderContext blockRenderContext, int originX, int originY, int originZ, Material materialOverride, boolean isShaderPackOverride, NbtConditionalIdMap<Block> teMap, long currentTick) {
+    private boolean prescanDeferred(IBlockAccess region, int minX, int minY, int minZ, long[] mask) {
+        Arrays.fill(mask, 0L);
+        boolean any = false;
+        for (int y = 0; y < 16; y++) {
+            for (int z = 0; z < 16; z++) {
+                for (int x = 0; x < 16; x++) {
+                    final Block block = region.getBlock(minX + x, minY + y, minZ + z);
+                    if (block == Blocks.air) {
+                        continue;
+                    }
+                    final Block loggedFluid = getLoggedFluidBlock(region, minX + x, minY + y, minZ + z);
+                    if (!canRenderOffThread(block) || (loggedFluid != null && !canRenderOffThread(loggedFluid))) {
+                        final int bit = (y << 8) | (z << 4) | x;
+                        mask[bit >>> 6] |= 1L << bit;
+                        any = true;
+                    }
+                }
+            }
+        }
+        return any;
+    }
 
-        final var blockMaterial = block.getMaterial();
-        final boolean isFluid = blockMaterial == net.minecraft.block.material.Material.water || blockMaterial == net.minecraft.block.material.Material.lava;
+    private static boolean isDeferred(long[] mask, int x, int y, int z) {
+        final int bit = ((y & 15) << 8) | ((z & 15) << 4) | (x & 15);
+        return (mask[bit >>> 6] & (1L << bit)) != 0;
+    }
 
-        // Use material override if provided, otherwise derive from pass
-        // Lava is opaque - use solid to skip unnecessary alpha testing
-        final Material passMaterial;
-        if (materialOverride != null) {
-            passMaterial = materialOverride;
-        } else if (blockMaterial == net.minecraft.block.material.Material.lava) {
-            passMaterial = AngelicaRenderPassConfiguration.SOLID_MATERIAL;
+    private static Block getLoggedFluidBlock(IBlockAccess region, int x, int y, int z) {
+        final Fluid fluid;
+        if (ModStatus.isLiquidLoggedLoaded) {
+            fluid = LiquidLoggedAPI.getFluid(region, x, y, z);
+        } else if (ModStatus.isFluidLoggedLoaded && region instanceof FLBlockAccess fluidAccess) {
+            fluid = fluidAccess.fl$getFluid(x, y, z);
         } else {
-            passMaterial = buffers.getRenderPassConfiguration().getMaterialForRenderType(BlockRenderLayer.fromVanillaPass(pass));
+            return null;
+        }
+        return fluid != null ? fluid.getBlock() : null;
+    }
+
+    ChunkJobResult<ChunkBuildOutput> captureDeferred(DeferredSectionMesh m) {
+        final long start = System.nanoTime();
+
+        final int minX = this.render.getOriginX();
+        final int minY = this.render.getOriginY();
+        final int minZ = this.render.getOriginZ();
+
+        final WorldSlice slice = m.slice;
+        final BlockPos blockPos = new BlockPos(minX, minY, minZ);
+        final Tessellator tessellator = Tessellator.instance;
+        final StateAwareTessellator stateTessellator = (StateAwareTessellator) tessellator;
+        final List<DeferredBlock> blocks = m.blocks;
+        final DeferredSectionMesh.DeferredCapture capture = m.capture;
+        final NbtConditionalIdMap<Block> teMap = m.teMap;
+
+        if (Tracy.ENABLED) {
+            Tracy.beginZone(Z_MESH_DEFERRED_MAIN);
+            Tracy.zoneValue(blocks.size());
         }
 
+        try {
+            slice.setRenderingBlock(null);
+
+            SmoothBiomeColorCache.setActiveCache(slice.getBiomeColorCache());
+            stateTessellator.angelica$setCeleritasMeshing(true);
+            tessellator.setTranslation(-minX, -minY, -minZ);
+
+            final RenderBlocks renderBlocks = new RenderBlocks(slice);
+
+            for (int i = 0, n = blocks.size(); i < n; i++) {
+                final DeferredBlock deferred = blocks.get(i);
+                final Block block = deferred.block();
+                final int x = deferred.x(), y = deferred.y(), z = deferred.z();
+                blockPos.set(x, y, z);
+                slice.setRenderingBlock(block);
+                for (int pass = 0; pass < AngelicaChunkBuildContext.NUM_PASSES; pass++) {
+                    if ((deferred.passMask() & (1 << pass)) == 0) continue;
+                    if (!deferred.isShaderPackOverride()) {
+                        setRenderPass(pass);
+                        if (!block.canRenderInPass(pass)) continue;
+                    }
+                    final int teBlockId = resolveTeBlockId(teMap, slice, block, deferred.meta(), x, y, z, m.buffers, pass, deferred.materialOverride(), m.currentTick);
+                    drawBlock(block, x, y, z, pass, tessellator, renderBlocks);
+                    if (tessellator.vertexCount > 0) {
+                        capture.add(i * AngelicaChunkBuildContext.NUM_PASSES + pass, tessellator.rawBuffer, tessellator.vertexCount, stateTessellator.angelica$getVertexStates(), stateTessellator.angelica$getShaderOverrideBlockIds(), teBlockId);
+                    }
+                    tessellator.reset();
+                    tessellator.isDrawing = false;
+                }
+            }
+
+            m.mainNanos = System.nanoTime() - start;
+            return null;
+        } catch (ReportedException ex) {
+            return new ChunkJobResult.Failure<>(fillCrashInfo(ex.getCrashReport(), slice, blockPos));
+        } catch (Throwable ex) {
+            return new ChunkJobResult.Failure<>(fillCrashInfo(CrashReport.makeCrashReport(ex, "Encountered exception while building deferred chunk meshes"), slice, blockPos));
+        } finally {
+            stateTessellator.angelica$setCeleritasMeshing(false);
+            tessellator.setTranslation(0, 0, 0);
+            SmoothBiomeColorCache.clearActiveCache();
+            RenderPassHelper.resetWorldRenderPass();
+            if (Tracy.ENABLED) Tracy.endZone();
+        }
+    }
+
+    ChunkBuildOutput finishDeferred(DeferredSectionMesh m, AngelicaChunkBuildContext ctx) {
+        final int minX = this.render.getOriginX();
+        final int minY = this.render.getOriginY();
+        final int minZ = this.render.getOriginZ();
+
+        final WorldSlice slice = m.slice;
+        final BlockPos blockPos = new BlockPos(minX, minY, minZ);
+        final ChunkBuildBuffers buffers = m.buffers;
+        final List<DeferredBlock> blocks = m.blocks;
+        final DeferredSectionMesh.DeferredCapture capture = m.capture;
+        final boolean bindSlice = !TessellatorManager.isOnMainThread();
+
+        try {
+            ctx.setupLightPipeline(slice, minX, minY, minZ);
+            ctx.setupDynamicLights(minX, minY, minZ);
+            if (bindSlice) RenderThreadContext.set(slice);
+            slice.setRenderingBlock(null);
+
+            final BlockRenderContext blockRenderContext = ctx.getBlockRenderContext();
+            final int[] raw = capture.raw.elements();
+            final int[] vertexStates = capture.vertexStates.elements();
+            final int[] shaderBlockIds = capture.shaderBlockIds.elements();
+
+            for (int i = 0, n = capture.blockCount(); i < n; i++) {
+                final int entry = capture.blockIndex.getInt(i);
+                final DeferredBlock deferred = blocks.get(entry / AngelicaChunkBuildContext.NUM_PASSES);
+                final Block block = deferred.block();
+                final int x = deferred.x(), y = deferred.y(), z = deferred.z();
+                blockPos.set(x, y, z);
+                slice.setRenderingBlock(block);
+                final Material passMaterial = resolvePassMaterial(block, entry % AngelicaChunkBuildContext.NUM_PASSES, buffers, deferred.materialOverride());
+                final ContextAwareChunkVertexEncoder contextEncoder = prepareEncode(block, deferred.meta(), x, y, z, slice, buffers, blockRenderContext, passMaterial, capture.teBlockIds.getInt(i));
+                encodeTessellated(raw, capture.blockStart.getInt(i), capture.blockVertexCount.getInt(i), vertexStates, shaderBlockIds, block, buffers, ctx, passMaterial, deferred.isShaderPackOverride(), contextEncoder);
+            }
+
+            return finalizeSection(buffers, m.renderData, minX, minY, minZ);
+        } catch (ReportedException ex) {
+            throw fillCrashInfo(ex.getCrashReport(), slice, blockPos);
+        } catch (Throwable ex) {
+            throw fillCrashInfo(CrashReport.makeCrashReport(ex, "Encountered exception while building deferred chunk meshes"), slice, blockPos);
+        } finally {
+            if (bindSlice) RenderThreadContext.clear();
+        }
+    }
+
+    private ChunkBuildOutput finalizeSection(ChunkBuildBuffers buffers, AngelicaBuiltRenderSectionData renderData, int minX, int minY, int minZ) {
+        if (Tracy.ENABLED) Tracy.beginZone(Z_MESH_FINALIZE);
+        final Reference2ReferenceMap<TerrainRenderPass, BuiltSectionMeshParts> meshes;
+        try {
+            meshes = BuiltSectionMeshParts.groupFromBuildBuffers(buffers, (float) (camera.x - minX), (float) (camera.y - minY), (float) (camera.z - minZ));
+        } finally {
+            if (Tracy.ENABLED) Tracy.endZone();
+        }
+
+        if (!meshes.isEmpty()) {
+            renderData.hasBlockGeometry = true;
+            if (Tracy.ENABLED) {
+                long meshBytes = 0;
+                for (BuiltSectionMeshParts parts : meshes.values()) {
+                    if (parts.vertexBuffer() != null) meshBytes += parts.vertexBuffer().getLength();
+                }
+                Tracy.zoneValue(meshBytes);
+            }
+        }
+
+        CeleritasDebug.incrementChunkUpdateCounter();
+
+        return new ChunkBuildOutput(this.render, renderData, meshes, this.buildTime);
+    }
+
+    private void renderBlockPasses(Block block, int meta, int x, int y, int z, boolean canRenderOffThread, Map<Block, BlockRenderLayer> blockTypeIds, List<DeferredBlock> deferredBlocks, Tessellator tessellator, RenderBlocks renderBlocks, ChunkBuildBuffers buffers, AngelicaChunkBuildContext buildContext, BlockRenderContext blockRenderContext, int originX, int originY, int originZ, NbtConditionalIdMap<Block> teMap, long currentTick) {
+        // Check for shader pack override
+        final BlockRenderLayer override = blockTypeIds != null ? blockTypeIds.get(block) : null;
+        int deferredPasses = 0;
+        Material deferredOverride = null;
+
+        for (int pass = 0; pass < AngelicaChunkBuildContext.NUM_PASSES; pass++) {
+            final boolean canRender;
+            Material materialOverride = null;
+
+            if (override != null) {
+                // Shader pack override controls both pass and material
+                canRender = (pass == override.toVanillaPass());
+                if (canRender) {
+                    materialOverride = buffers.getRenderPassConfiguration().getMaterialForRenderType(override);
+                }
+            } else {
+                // Normal block rendering
+                canRender = !canRenderOffThread || block.canRenderInPass(pass);
+            }
+
+            if (canRender) {
+                final boolean isShaderPackOverride = materialOverride != null;
+                if (!canRenderOffThread) {
+                    deferredPasses |= 1 << pass;
+                    deferredOverride = materialOverride;
+                    continue;
+                }
+
+                renderBlock(block, meta, x, y, z, pass, tessellator, renderBlocks, buffers, buildContext, blockRenderContext, originX, originY, originZ, materialOverride, isShaderPackOverride, teMap, currentTick);
+            }
+        }
+        if (deferredPasses != 0) {
+            deferredBlocks.add(new DeferredBlock(x, y, z, block, meta, deferredPasses, deferredOverride));
+        }
+    }
+
+    protected void renderBlock(Block block, int metadata, int x, int y, int z, int pass, Tessellator tessellator, RenderBlocks renderBlocks, ChunkBuildBuffers buffers, AngelicaChunkBuildContext buildContext, BlockRenderContext blockRenderContext, int originX, int originY, int originZ, Material materialOverride, boolean isShaderPackOverride, NbtConditionalIdMap<Block> teMap, long currentTick) {
+        final Material passMaterial = resolvePassMaterial(block, pass, buffers, materialOverride);
+        final int teBlockId = resolveTeBlockId(teMap, renderBlocks.blockAccess, block, metadata, x, y, z, buffers, pass, materialOverride, currentTick);
+        final ContextAwareChunkVertexEncoder contextEncoder = prepareEncode(block, metadata, x, y, z, renderBlocks.blockAccess, buffers, blockRenderContext, passMaterial, teBlockId);
+        drawBlock(block, x, y, z, pass, tessellator, renderBlocks);
+        encodeTessellated(tessellator.rawBuffer, 0, tessellator.vertexCount, ((StateAwareTessellator) tessellator).angelica$getVertexStates(),
+            ((StateAwareTessellator) tessellator).angelica$getShaderOverrideBlockIds(), block, buffers, buildContext, passMaterial, isShaderPackOverride, contextEncoder);
+        tessellator.reset();
+        tessellator.isDrawing = false;
+    }
+
+    private static Material resolvePassMaterial(Block block, int pass, ChunkBuildBuffers buffers, Material materialOverride) {
+        // Use material override if provided, otherwise derive from pass
+        // Lava is opaque - use solid to skip unnecessary alpha testing
+        if (materialOverride != null) {
+            return materialOverride;
+        } else if (block.getMaterial() == net.minecraft.block.material.Material.lava) {
+            return AngelicaRenderPassConfiguration.SOLID_MATERIAL;
+        } else {
+            return buffers.getRenderPassConfiguration().getMaterialForRenderType(BlockRenderLayer.fromVanillaPass(pass));
+        }
+    }
+
+    private static boolean isFluid(Block block) {
+        final var blockMaterial = block.getMaterial();
+        return blockMaterial == net.minecraft.block.material.Material.water || blockMaterial == net.minecraft.block.material.Material.lava;
+    }
+
+    private static ContextAwareChunkVertexEncoder prepareEncode(Block block, int metadata, int x, int y, int z, IBlockAccess blockAccess, ChunkBuildBuffers buffers, BlockRenderContext blockRenderContext, Material passMaterial, int teBlockId) {
         final var encoder = buffers.get(passMaterial).getEncoder();
         final ContextAwareChunkVertexEncoder contextEncoder = (encoder instanceof ContextAwareChunkVertexEncoder) ? (ContextAwareChunkVertexEncoder) encoder : null;
 
@@ -323,43 +567,49 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
 
         if (contextEncoder != null) {
             final byte lightValue = (byte) block.getLightValue();
-            if (isFluid) {
+            if (isFluid(block)) {
                 contextEncoder.prepareToRenderFluid(blockRenderContext, block, metadata, lightValue);
             } else {
                 int effectiveMeta = metadata;
                 if (BlockRenderingSettings.INSTANCE.hasSnowyEntries()
                     && BlockRenderingSettings.INSTANCE.getSnowyBlocks().contains(block)
-                    && RenderBlocksUtils.isSnowCovered(renderBlocks.blockAccess, x, y, z)) {
+                    && RenderBlocksUtils.isSnowCovered(blockAccess, x, y, z)) {
                     effectiveMeta |= BlockMaterialMapping.SNOWY_META_BIT;
                 } else if (block instanceof BlockDoublePlant doublePlant && BlockDoublePlant.func_149887_c(metadata)) {
-                    effectiveMeta = 0x8 | (doublePlant.func_149885_e(renderBlocks.blockAccess, x, y, z) & 7);
+                    effectiveMeta = 0x8 | (doublePlant.func_149885_e(blockAccess, x, y, z) & 7);
                 }
                 contextEncoder.prepareToRenderBlock(blockRenderContext, block, effectiveMeta,
                     ExtendedDataHelper.BLOCK_RENDER_TYPE, lightValue);
-                // Check for TileEntity NBT-conditional shader block ID override
-                if (teMap != null && teMap.hasConditions(block)) {
-                    final long packedPos = BlockRenderingSettings.packBlockPos(x, y, z);
-                    int teBlockId = BlockRenderingSettings.getCachedTeNbtId(packedPos, currentTick);
-
-                    if (teBlockId == BlockRenderingSettings.CACHE_MISS) {
-                        final TileEntity te = getBlockAccess().getTileEntity(x, y, z);
-                        if (te != null) {
-                            final NBTTagCompound teNbt = new NBTTagCompound();
-                            te.writeToNBT(teNbt);
-                            teBlockId = teMap.resolve(block, teNbt);
-                        } else {
-                            teBlockId = -1;
-                        }
-                        BlockRenderingSettings.cacheTeNbtId(packedPos, teBlockId, currentTick);
-                    }
-
-                    if (teBlockId != -1) {
-                        blockRenderContext.blockId = (short) teBlockId;
-                    }
+                if (teBlockId != -1) {
+                    blockRenderContext.blockId = (short) teBlockId;
                 }
             }
         }
+        return contextEncoder;
+    }
 
+    private static int resolveTeBlockId(NbtConditionalIdMap<Block> teMap, IBlockAccess blockAccess, Block block, int metadata, int x, int y, int z, ChunkBuildBuffers buffers, int pass, Material materialOverride, long currentTick) {
+        // Check for TileEntity NBT-conditional shader block ID override
+        if (teMap == null || !teMap.hasConditions(block) || isFluid(block)) return -1;
+        if (!(buffers.get(resolvePassMaterial(block, pass, buffers, materialOverride)).getEncoder() instanceof ContextAwareChunkVertexEncoder)) return -1;
+        final long packedPos = BlockRenderingSettings.packBlockPos(x, y, z);
+        int teBlockId = BlockRenderingSettings.getCachedTeNbtId(packedPos, currentTick);
+
+        if (teBlockId == BlockRenderingSettings.CACHE_MISS) {
+            final TileEntity te = blockAccess.getTileEntity(x, y, z);
+            if (te != null) {
+                final NBTTagCompound teNbt = new NBTTagCompound();
+                te.writeToNBT(teNbt);
+                teBlockId = teMap.resolve(block, teNbt, metadata);
+            } else {
+                teBlockId = -1;
+            }
+            BlockRenderingSettings.cacheTeNbtId(packedPos, teBlockId, currentTick);
+        }
+        return teBlockId;
+    }
+
+    private void drawBlock(Block block, int x, int y, int z, int pass, Tessellator tessellator, RenderBlocks renderBlocks) {
         setRenderPass(pass);
         // Trigger side effects from canRenderInPass (some ISBRHs like BuildCraft set global state in this method that gets read elsewhere renderWorldBlock)
         block.canRenderInPass(pass);
@@ -369,69 +619,26 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         if (applyNaturalTex) { renderBlocks.uvRotateTop = NaturalTextureUtils.getTopRotation(x, y, z); }
 
         tessellator.startDrawingQuads();
-        renderBlocks.renderBlockByRenderType(block, x, y, z);
+        // A block that differs from the cell's own block is the fluid stored in it
+        final boolean storedFluid = ModStatus.isLiquidLoggedLoaded && renderBlocks.blockAccess.getBlock(x, y, z) != block;
+        if (storedFluid) LiquidLoggedRenderAPI.beginStoredFluid();
+        try {
+            renderBlocks.renderBlockByRenderType(block, x, y, z);
+        } finally {
+            if (storedFluid) LiquidLoggedRenderAPI.endStoredFluid();
+        }
 
         if (applyNaturalTex) { renderBlocks.uvRotateTop = 0; } // Reset
+    }
 
+    private static void encodeTessellated(int[] rawBuffer, int vertexOffset, int vertexCount, int[] vertexStates, int[] shaderOverrideBlockIds, Block block, ChunkBuildBuffers buffers, AngelicaChunkBuildContext buildContext, Material passMaterial, boolean isShaderPackOverride, ContextAwareChunkVertexEncoder contextEncoder) {
         boolean blockAllowsSmoothLighting = Minecraft.isAmbientOcclusionEnabled() // smooth lighting on
             && block.getLightValue() == 0; // does not emit real block light
-        buildContext.copyRawBuffer(tessellator.rawBuffer, tessellator.vertexCount,
-            ((StateAwareTessellator)tessellator).angelica$getVertexStates(),
-            ((StateAwareTessellator)tessellator).angelica$getShaderOverrideBlockIds(),
+        buildContext.copyRawBuffer(rawBuffer, vertexOffset, vertexCount, vertexStates, shaderOverrideBlockIds,
             buffers, passMaterial, isShaderPackOverride, blockAllowsSmoothLighting);
-        tessellator.reset();
-        tessellator.isDrawing = false;
 
         if (contextEncoder != null) {
             contextEncoder.finishRenderingBlock();
-        }
-    }
-
-    private void processDeferredBlocks(List<DeferredBlock> deferredBlocks, AngelicaChunkBuildContext buildContext, ChunkBuildBuffers buffers, IBlockAccess region, int minX, int minY, int minZ, NbtConditionalIdMap<Block> teMap, long currentTick) {
-
-        final BlockRenderContext blockRenderContext = buildContext.getBlockRenderContext();
-
-        final CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
-            final RenderBlocks mainThreadRenderBlocks = new RenderBlocks(region);
-            final Tessellator mainTessellator = Tessellator.instance;
-            ((StateAwareTessellator)mainTessellator).angelica$setCeleritasMeshing(true);
-            mainTessellator.setTranslation(-minX, -minY, -minZ);
-
-            try {
-                for (DeferredBlock deferred : deferredBlocks) {
-                    renderBlock(deferred.block(), deferred.meta(), deferred.x(), deferred.y(), deferred.z(), deferred.pass(),
-                        mainTessellator, mainThreadRenderBlocks, buffers, buildContext,
-                        blockRenderContext, minX, minY, minZ, deferred.materialOverride(), deferred.isShaderPackOverride(), teMap, currentTick);
-                }
-            } finally {
-                ((StateAwareTessellator)mainTessellator).angelica$setCeleritasMeshing(false);
-                mainTessellator.setTranslation(0, 0, 0);
-            }
-        }, AngelicaRenderQueue.executor());
-
-        if (Thread.currentThread().isInterrupted()) {
-            return;
-        }
-
-        int retries = 0;
-        while (retries < MAX_RETRIES) {
-            try {
-                future.get(DEFERRED_BLOCK_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-                return;
-            } catch (TimeoutException e) {
-                retries++;
-                if (Thread.currentThread().isInterrupted()) {
-                    return;
-                }
-                if (retries >= MAX_RETRIES) {
-                    return;
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return;
-            } catch (ExecutionException e) {
-                throw new RuntimeException("Error during main thread deferred block rendering", e);
-            }
         }
     }
 

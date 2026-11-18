@@ -49,6 +49,23 @@ class ShaderSourceTransformCacheTest {
         }
         """;
 
+    private static final String CONDITIONAL_MAIN_VERT = """
+        #version 330 core
+        #define OC_CORE
+        #ifdef OC_CORE
+        layout(location = 0) in vec3 a_Position;
+        uniform mat4 u_MVP;
+        void main() {
+            gl_Position = u_MVP * vec4(a_Position, 1.0);
+        }
+        #else
+        uniform mat4 u_ModelMatrix;
+        void main() {
+            gl_Position = gl_ModelViewProjectionMatrix * u_ModelMatrix * gl_Vertex;
+        }
+        #endif
+        """;
+
     private static final String CLIP_Z = "gl_Position.z = gl_Position.z * 0.5 + gl_Position.w * 0.5;";
 
     @BeforeEach
@@ -66,8 +83,8 @@ class ShaderSourceTransformCacheTest {
     }
 
     @Test
-    void repeatedSourceReusesTheChainedTransform() {
-        final String expected = ShaderTransformChain.run(FRAG, GL20.GL_FRAGMENT_SHADER);
+    void repeatedSourceReusesTheTransform() {
+        final String expected = ShaderManager.applyPrewarmTransformsFull(FRAG, GL20.GL_FRAGMENT_SHADER, GLSMHooks.perFrameUniformBlock, GLSMHooks.perPassUniformBlock).source();
         GlslVulkanPreprocess.clearCache();
 
         final ShaderManager sm = new ShaderManager(null);
@@ -81,8 +98,8 @@ class ShaderSourceTransformCacheTest {
     }
 
     @Test
-    void vertexSourceMatchesTheChainAndCarriesClipZ() {
-        final String expected = ShaderTransformChain.run(VERT, GL20.GL_VERTEX_SHADER);
+    void vertexSourceMatchesTheSingleParseAndCarriesClipZ() {
+        final String expected = ShaderManager.applyPrewarmTransformsFull(VERT, GL20.GL_VERTEX_SHADER, GLSMHooks.perFrameUniformBlock, GLSMHooks.perPassUniformBlock).source();
         GlslVulkanPreprocess.clearCache();
 
         final ShaderManager sm = new ShaderManager(null);
@@ -91,6 +108,18 @@ class ShaderSourceTransformCacheTest {
 
         assertEquals(expected, sm.getShaderSource(v));
         assertTrue(sm.getShaderSource(v).contains(CLIP_Z));
+    }
+
+    @Test
+    void mainInsideConditionalBlocksIsPreprocessedAndCarriesClipZOnce() {
+        final ShaderManager sm = new ShaderManager(null);
+        final int v = sm.createShader(GL20.GL_VERTEX_SHADER);
+        sm.shaderSource(v, CONDITIONAL_MAIN_VERT);
+
+        final String out = sm.getShaderSource(v);
+        assertEquals(out.indexOf(CLIP_Z), out.lastIndexOf(CLIP_Z), out);
+        assertTrue(out.contains(CLIP_Z), out);
+        assertFalse(out.contains("gl_ModelViewProjectionMatrix"), out);
     }
 
     @Test
@@ -104,7 +133,7 @@ class ShaderSourceTransformCacheTest {
 
         GLSMHooks.perFrameUniformBlock = null;
         GlslVulkanPreprocess.clearCache();
-        final String expected = ShaderTransformChain.run(PFB_FRAG, GL20.GL_FRAGMENT_SHADER);
+        final String expected = ShaderManager.applyPrewarmTransformsFull(PFB_FRAG, GL20.GL_FRAGMENT_SHADER, GLSMHooks.perFrameUniformBlock, GLSMHooks.perPassUniformBlock).source();
         GlslVulkanPreprocess.clearCache();
 
         final int withoutBlock = sm.createShader(GL20.GL_FRAGMENT_SHADER);

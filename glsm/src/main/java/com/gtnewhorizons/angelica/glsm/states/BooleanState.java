@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.states;
 
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import lombok.Getter;
 import org.lwjgl.opengl.GL11;
@@ -22,8 +23,12 @@ public class BooleanState implements ISettableState<BooleanState> {
         this.ffpStateOnly = ffpStateOnly;
     }
 
+    protected boolean forwardsToBackend() {
+        return !ffpStateOnly;
+    }
+
     public void applyToBackend() {
-        if (ffpStateOnly) return;
+        if (!forwardsToBackend()) return;
         if (enabled) {
             RENDER_BACKEND.enable(glCap);
         } else {
@@ -45,10 +50,12 @@ public class BooleanState implements ISettableState<BooleanState> {
 
     public void setEnabled(boolean enabled) {
         final boolean bypass = !GLStateManager.isCachingEnabled();
-        if (stateUnknown || bypass || enabled != this.enabled || (this.glCap == GL11.GL_BLEND && GLStateManager.vendorIsAMD() && GLStateManager.isPoppingAttributes())) {
+        if (stateUnknown || bypass || enabled != this.enabled || (this.glCap == GL11.GL_BLEND && GLStateManager.vendorIsAMD() && GLSMAttribStack.isPoppingAttributes())) {
+            GLStateManager.beforeUncapturedCapabilityChange(glCap);
             stateUnknown = false;
             this.enabled = enabled;
-            if (!ffpStateOnly) {
+            onEnabledChanged();
+            if (forwardsToBackend()) {
                 if (enabled) {
                     RENDER_BACKEND.enable(this.glCap);
                 } else {
@@ -57,6 +64,8 @@ public class BooleanState implements ISettableState<BooleanState> {
             }
         }
     }
+
+    protected void onEnabledChanged() {}
 
     @Override
     public BooleanState set(BooleanState state) {

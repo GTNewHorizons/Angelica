@@ -4,7 +4,7 @@ import org.embeddedt.embeddium.impl.gl.util.VertexRange;
 import org.embeddedt.embeddium.impl.model.quad.properties.ModelQuadFacing;
 import org.embeddedt.embeddium.impl.render.chunk.compile.sorting.ChunkPrimitiveType;
 import org.embeddedt.embeddium.impl.render.chunk.region.RenderRegion;
-import org.embeddedt.embeddium.impl.render.chunk.sorting.TranslucentQuadAnalyzer;
+import org.embeddedt.embeddium.impl.render.chunk.sorting.SortState;
 import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
@@ -41,7 +41,7 @@ class SectionRenderDataLayoutTest {
         }
 
         @Override
-        public void generateSortedIndexBuffer(ByteBuffer indexBuffer, int numPrimitives, TranslucentQuadAnalyzer.SortState chunkData, float x, float y, float z) {
+        public void generateSortedIndexBuffer(ByteBuffer indexBuffer, int numPrimitives, SortState chunkData, float x, float y, float z) {
             throw new UnsupportedOperationException();
         }
     }

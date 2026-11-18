@@ -3,7 +3,7 @@ package net.coderbot.iris.uniforms.custom.cached;
 import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
 import net.coderbot.iris.parsing.VectorType;
 import org.joml.Vector2f;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
 
 import java.util.function.Supplier;
 
@@ -20,7 +20,7 @@ public class Float2VectorCachedUniform extends VectorCachedUniform<Vector2f> {
 
 	@Override
 	public void push(int location) {
-		GLStateManager.glUniform2f(location, this.cached.x, this.cached.y);
+		GLSMPrograms.glUniform2f(location, this.cached.x, this.cached.y);
 	}
 
 	@Override

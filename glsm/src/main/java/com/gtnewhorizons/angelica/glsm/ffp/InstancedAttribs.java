@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import org.lwjgl.opengl.GL11;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutFloat;
@@ -24,6 +24,8 @@ public final class InstancedAttribs {
     public static final int HEAD_SIZE = 64;
     public static final int OFFSET_LIGHTMAP = HEAD_SIZE;
     public static final int STRIDE = 72;
+
+    public static final long DEFAULT_ENTITY_IDS = packEntityInfo(-1, 0, -1);
 
     public static void writeHead(long ptr, float[] colMajor, int off, int colorABGR, int overlayABGR, long entityInfo) {
         writeRows(ptr, colMajor, off);
@@ -55,18 +57,31 @@ public final class InstancedAttribs {
         return (entity & 0xFFFFL) | ((blockEntity & 0xFFFFL) << 16) | ((item & 0xFFFFL) << 32);
     }
 
+    public static int unpackId(long info, int shift) {
+        final int id = (int) (info >>> shift) & 0xFFFF;
+        return id == 0xFFFF ? -1 : id;
+    }
+
+    public static float normalizedId(long info, int shift) {
+        return ((info >>> shift) & 0xFFFF) / 65535.0f;
+    }
+
     public static void pointHead(long base, int stride) {
         for (int r = 0; r < 3; r++) {
-            GLStateManager.glVertexAttribPointer(LOC_ROW0 + r, 4, GL11.GL_FLOAT, false, stride, base + OFFSET_ROWS + r * 16L);
+            GLSMVertexInput.glVertexAttribPointer(LOC_ROW0 + r, 4, GL11.GL_FLOAT, false, stride, base + OFFSET_ROWS + r * 16L);
         }
-        GLStateManager.glVertexAttribPointer(LOC_COLOR, 4, GL11.GL_UNSIGNED_BYTE, true, stride, base + OFFSET_COLOR);
-        GLStateManager.glVertexAttribPointer(LOC_OVERLAY, 4, GL11.GL_UNSIGNED_BYTE, true, stride, base + OFFSET_OVERLAY);
-        GLStateManager.glVertexAttribIPointer(LOC_ENTITY, 4, GL11.GL_SHORT, stride, base + OFFSET_ENTITY);
+        GLSMVertexInput.glVertexAttribPointer(LOC_COLOR, 4, GL11.GL_UNSIGNED_BYTE, true, stride, base + OFFSET_COLOR);
+        GLSMVertexInput.glVertexAttribPointer(LOC_OVERLAY, 4, GL11.GL_UNSIGNED_BYTE, true, stride, base + OFFSET_OVERLAY);
+        pointEntityIds(LOC_ENTITY, stride, base + OFFSET_ENTITY);
+    }
+
+    public static void pointEntityIds(int location, int stride, long offset) {
+        GLSMVertexInput.glVertexAttribPointer(location, 4, GL11.GL_UNSIGNED_SHORT, true, stride, offset);
     }
 
     public static void pointTemplate(long base) {
         pointHead(base, STRIDE);
-        GLStateManager.glVertexAttribPointer(LOC_LIGHTMAP, 2, GL11.GL_FLOAT, false, STRIDE, base + OFFSET_LIGHTMAP);
+        GLSMVertexInput.glVertexAttribPointer(LOC_LIGHTMAP, 2, GL11.GL_FLOAT, false, STRIDE, base + OFFSET_LIGHTMAP);
     }
 
     public static void enableHeadArrays() {
@@ -76,8 +91,8 @@ public final class InstancedAttribs {
     }
 
     static void enableInstanced(int loc) {
-        GLStateManager.glEnableVertexAttribArray(loc);
-        GLStateManager.glVertexAttribDivisor(loc, 1);
+        GLSMVertexInput.glEnableVertexAttribArray(loc);
+        GLSMVertexInput.glVertexAttribDivisor(loc, 1);
     }
 
     private InstancedAttribs() {}

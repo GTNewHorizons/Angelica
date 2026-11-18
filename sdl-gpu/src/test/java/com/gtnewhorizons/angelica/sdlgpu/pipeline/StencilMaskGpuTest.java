@@ -1,16 +1,15 @@
 package com.gtnewhorizons.angelica.sdlgpu.pipeline;
 
-import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
+import com.gtnewhorizons.angelica.sdlgpu.RealDeviceExtension;
 import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
-import com.gtnewhorizons.angelica.sdlgpu.resource.PixelOps;
+import com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.lwjgl.opengl.GL11;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.opengl.GL20;
-import org.lwjgl.opengl.GL30;
 import org.lwjgl.sdl.SDLError;
 import org.lwjgl.sdl.SDL_GPUColorTargetInfo;
 import org.lwjgl.sdl.SDL_GPUDepthStencilTargetInfo;
@@ -23,6 +22,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.lwjgl.sdl.SDLGPU.*;
 
+@ExtendWith(RealDeviceExtension.class)
+@Tag("sdl-gpu-device")
 class StencilMaskGpuTest {
 
     private static SdlTestRig rig;
@@ -38,14 +39,6 @@ class StencilMaskGpuTest {
     private static int depthFormat;
     private static long maskPipeline;
     private static long fillPipeline;
-
-    private static final String VERTEX = String.join("\n",
-        "#version 460 core",
-        "void main() {",
-        "    vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);",
-        "    gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);",
-        "}",
-        "");
 
     private static final String MASK_FRAGMENT = String.join("\n",
         "#version 460 core",
@@ -66,35 +59,26 @@ class StencilMaskGpuTest {
 
     @BeforeAll
     static void setUp() throws Exception {
-        rig = SdlTestRig.acquireRealDevice();
-        rig.resourceManager.cachePreferredDepthFormats();
+        rig = RealDeviceExtension.rig();
         sm = new ShaderManager(rig.device);
-        VAOManager.init(0);
         store = new PipelineStore(rig.device);
 
-        colorTexture = rig.resourceManager.createTexture(9500, GL11.GL_TEXTURE_2D, GL11.GL_RGBA8, SIZE, SIZE, 1, 1);
-        assertTrue(colorTexture != 0, "color target creation failed");
-        colorFormat = rig.resourceManager.getTextureMeta(9500).sdlFormat();
+        final RealDeviceExtension.Target color = RealDeviceExtension.colorTarget(9500, SIZE, SIZE);
+        colorTexture = color.texture();
+        colorFormat = color.sdlFormat();
         PipelineCache.setSwapchainFormats(new int[]{ colorFormat });
 
-        rig.resourceManager.createTexture(9501, GL11.GL_TEXTURE_2D, GL30.GL_DEPTH24_STENCIL8, SIZE, SIZE, 1, 1);
-        depthTexture = rig.resourceManager.ensureTextureUsage(9501, SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET);
-        assertTrue(depthTexture != 0, "depth+stencil target creation failed");
-        depthFormat = rig.resourceManager.getTextureMeta(9501).sdlFormat();
-        assertEquals(8, PixelOps.stencilBits(depthFormat), "test needs a packed depth+stencil format");
+        final RealDeviceExtension.Target depth = RealDeviceExtension.depthStencilTarget(9501, SIZE, SIZE);
+        depthTexture = depth.texture();
+        depthFormat = depth.sdlFormat();
 
         maskPipeline = createPipeline(MASK_FRAGMENT, true);
         fillPipeline = createPipeline(FILL_FRAGMENT, false);
     }
 
-    @AfterAll
-    static void tearDown() {
-        SdlTestRig.releaseRealDevice();
-    }
-
     private static long createPipeline(String fragmentSource, boolean writesMask) {
         final int vs = sm.createShader(GL20.GL_VERTEX_SHADER);
-        sm.shaderSource(vs, VERTEX);
+        sm.shaderSource(vs, GlsmSdlHeadlessRig.FULLSCREEN_VERTEX);
         sm.compileShader(vs);
         final int fs = sm.createShader(GL20.GL_FRAGMENT_SHADER);
         sm.shaderSource(fs, fragmentSource);

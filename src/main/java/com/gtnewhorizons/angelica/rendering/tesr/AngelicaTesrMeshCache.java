@@ -33,6 +33,7 @@ public final class AngelicaTesrMeshCache {
 
     public static final long LRU_TIMEOUT_MS = 60_000L;
 
+    private static final BatchRendererSink SINK = new BatchRendererSink();
     public static final AngelicaTesrMeshCache INSTANCE = new AngelicaTesrMeshCache(new GtnhMeshBackend(), System::currentTimeMillis);
     private static final Logger LOG = LogManager.getLogger("AngelicaTesrMeshCache");
 
@@ -53,7 +54,35 @@ public final class AngelicaTesrMeshCache {
     }
 
     public interface ReplaySink {
+        void beginScope();
+
+        void endScope();
+
         void queue(TemplateBuffer template, ResourceLocation texture, TesrMaterial material);
+
+        void retire(TemplateBuffer template);
+    }
+
+    private static final class BatchRendererSink implements ReplaySink {
+        @Override
+        public void beginScope() {
+            TesrBatchRenderer.INSTANCE.beginScope();
+        }
+
+        @Override
+        public void endScope() {
+            TesrBatchRenderer.INSTANCE.endScope();
+        }
+
+        @Override
+        public void queue(TemplateBuffer template, ResourceLocation texture, TesrMaterial material) {
+            TesrBatchRenderer.INSTANCE.queue(template, texture, material);
+        }
+
+        @Override
+        public void retire(TemplateBuffer template) {
+            TesrBatchRenderer.INSTANCE.retire(template);
+        }
     }
 
     private static final class Bucket {
@@ -77,7 +106,7 @@ public final class AngelicaTesrMeshCache {
     private static final Tracy.ZoneId Z_TESR_CAPTURE = Tracy.zoneId("tesrCapture", Tracy.COLOR_CLIENT);
 
     AngelicaTesrMeshCache(MeshBackend backend, LongSupplier clock) {
-        this(backend, clock, (template, texture, material) -> TesrBatchRenderer.INSTANCE.queue(template, texture, material));
+        this(backend, clock, SINK);
     }
 
     AngelicaTesrMeshCache(MeshBackend backend, LongSupplier clock, ReplaySink replaySink) {
@@ -113,8 +142,16 @@ public final class AngelicaTesrMeshCache {
     public void invalidate(Object key) {
         final Entry entry = entries.remove(key);
         if (entry != null) {
-            entry.buckets.clear();
+            retireBuckets(entry);
         }
+    }
+
+    private void retireBuckets(Entry entry) {
+        final List<Bucket> buckets = entry.buckets;
+        for (int i = 0, n = buckets.size(); i < n; i++) {
+            replaySink.retire(buckets.get(i).template);
+        }
+        buckets.clear();
     }
 
     private Entry capture(Object key, Entry existing, TesrMeshBuilder builder) {
@@ -132,7 +169,7 @@ public final class AngelicaTesrMeshCache {
             entry = new Entry();
             entries.put(key, entry);
         } else {
-            entry.buckets.clear();
+            retireBuckets(entry);
         }
         final CaptureSink sink = new CaptureSink(entry);
         builder.angelica$build(sink);
@@ -181,9 +218,14 @@ public final class AngelicaTesrMeshCache {
 
     private void replay(Entry entry) {
         final List<Bucket> buckets = entry.buckets;
-        for (int i = 0, n = buckets.size(); i < n; i++) {
-            final Bucket b = buckets.get(i);
-            replaySink.queue(b.template, b.texture, b.material);
+        replaySink.beginScope();
+        try {
+            for (int i = 0, n = buckets.size(); i < n; i++) {
+                final Bucket b = buckets.get(i);
+                replaySink.queue(b.template, b.texture, b.material);
+            }
+        } finally {
+            replaySink.endScope();
         }
     }
 
@@ -194,6 +236,7 @@ public final class AngelicaTesrMeshCache {
             DroppedItemInstancer.clear();
             BopParticleDescriptors.invalidate();
             ShaderGlint.invalidate();
+            TesrShaderPrograms.invalidateAll();
         }
     }
 
@@ -202,6 +245,9 @@ public final class AngelicaTesrMeshCache {
     }
 
     public void clear() {
+        for (final Entry entry : entries.values()) {
+            retireBuckets(entry);
+        }
         entries.clear();
     }
 
@@ -215,7 +261,7 @@ public final class AngelicaTesrMeshCache {
         while (it.hasNext()) {
             final Entry entry = it.next().getValue();
             if (entry.lastUsedMs + LRU_TIMEOUT_MS < nowMs) {
-                entry.buckets.clear();
+                retireBuckets(entry);
                 it.remove();
             }
         }

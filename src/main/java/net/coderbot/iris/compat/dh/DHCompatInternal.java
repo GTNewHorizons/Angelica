@@ -1,6 +1,6 @@
 package net.coderbot.iris.compat.dh;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.seibel.distanthorizons.api.DhApi;
 import com.seibel.distanthorizons.api.interfaces.override.rendering.IDhApiFramebuffer;
 import com.seibel.distanthorizons.api.interfaces.override.rendering.IDhApiGenericObjectShaderProgram;
@@ -260,9 +260,9 @@ public class DHCompatInternal {
     public void copyTranslucents(int width, int height) {
         if (translucentDepthDirty) {
             translucentDepthDirty = false;
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, depthTexNoTranslucent.getTextureId());
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, depthTexNoTranslucent.getTextureId());
             dhTerrainFramebuffer.bindAsReadBuffer();
-            GLStateManager.glCopyTexImage2D(GL11.GL_TEXTURE_2D, 0, DepthBufferFormat.DEPTH32F.getGlInternalFormat(), 0, 0, width, height, 0);
+            GLSMTextures.glCopyTexImage2D(GL11.GL_TEXTURE_2D, 0, DepthBufferFormat.DEPTH32F.getGlInternalFormat(), 0, 0, width, height, 0);
         } else {
             DepthCopyStrategy.fastest(false).copy(dhTerrainFramebuffer, storedDepthTex, null, depthTexNoTranslucent.getTextureId(), width, height);
         }

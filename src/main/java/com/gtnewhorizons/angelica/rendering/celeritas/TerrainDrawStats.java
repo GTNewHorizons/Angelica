@@ -8,11 +8,17 @@ public final class TerrainDrawStats {
     private static int commandsSubmitted;
     private static int regionsDrawn;
     private static int batchRebuilds;
+    private static int batchRebuildsTranslucent;
 
     private static int cullCommandsSubmitted;
     private static int cullRegionsDrawn;
     private static int cullMaxRegionCommands;
     private static long sectionMetaBytes;
+
+    // Running totals
+    private static long indexBufferGrowths;
+    private static long sectionsUploaded;
+    private static long bytesUploaded;
 
     private TerrainDrawStats() {
     }
@@ -30,8 +36,9 @@ public final class TerrainDrawStats {
         regionsDrawn++;
     }
 
-    public static void recordRebuild() {
+    public static void recordRebuild(boolean translucent) {
         batchRebuilds++;
+        if (translucent) batchRebuildsTranslucent++;
     }
 
     public static void recordCullRegion(int commandCount) {
@@ -44,9 +51,36 @@ public final class TerrainDrawStats {
         sectionMetaBytes += bytes;
     }
 
+    public static void recordIndexBufferGrowth() {
+        indexBufferGrowths++;
+    }
+
+    public static void recordSectionUpload(long bytes) {
+        sectionsUploaded++;
+        bytesUploaded += bytes;
+    }
+
+    public static long getIndexBufferGrowths() {
+        return indexBufferGrowths;
+    }
+
+    public static long getSectionsUploaded() {
+        return sectionsUploaded;
+    }
+
+    public static long getBytesUploaded() {
+        return bytesUploaded;
+    }
+
     public static int takeBatchRebuilds() {
         final int n = batchRebuilds;
         batchRebuilds = 0;
+        return n;
+    }
+
+    public static int takeBatchRebuildsTranslucent() {
+        final int n = batchRebuildsTranslucent;
+        batchRebuildsTranslucent = 0;
         return n;
     }
 

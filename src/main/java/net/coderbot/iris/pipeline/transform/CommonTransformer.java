@@ -1,7 +1,10 @@
 package net.coderbot.iris.pipeline.transform;
 
 import com.gtnewhorizons.angelica.glsm.GlslTransformUtils;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.ffp.ClipDistanceGlsl;
 import com.gtnewhorizons.angelica.glsm.shader.ShaderType;
+import net.coderbot.iris.pipeline.transform.parameter.AttributeParameters;
 import net.coderbot.iris.pipeline.transform.parameter.Parameters;
 import org.taumc.glsl.Transformer;
 import org.taumc.glsl.grammar.GLSLParser;
@@ -123,7 +126,9 @@ public class CommonTransformer {
 			});
 		}
 
-		if (parameters.patch == Patch.ATTRIBUTES && parameters.type == ShaderType.VERTEX) {
+		if (parameters.patch == Patch.ATTRIBUTES && RenderSystem.isClipDistanceEmulated()) {
+			injectClipDiscard(root, (AttributeParameters) parameters);
+		} else if (parameters.patch == Patch.ATTRIBUTES && parameters.type == ShaderType.VERTEX) {
 			root.injectVariable("uniform bool angelica_ClipPlanesEnabled;");
 			root.injectVariable("uniform vec4 angelica_ClipPlane[8];");
 			root.appendMain(
@@ -142,6 +147,33 @@ public class CommonTransformer {
 				+ "gl_ClipDistance[4] = 0.0; gl_ClipDistance[5] = 0.0; "
 				+ "gl_ClipDistance[6] = 0.0; gl_ClipDistance[7] = 0.0; } }"
 			);
+		}
+	}
+
+	private static final String CLIP_VS_BLOCK;
+	static {
+		final String[] distances = new String[8];
+		for (int i = 0; i < distances.length; i++) {
+			distances[i] = "dot(angelica_ClipPlane[" + i + "], _cp_ep)";
+		}
+		final StringBuilder sb = new StringBuilder(256).append("{ vec4 _cp_ep = iris_ModelViewMatrix * iris_Vertex;\n");
+		ClipDistanceGlsl.appendVsAssign(sb, distances);
+		CLIP_VS_BLOCK = sb.append('}').toString();
+	}
+
+	private static void injectClipDiscard(Transformer root, AttributeParameters parameters) {
+		if (!parameters.clipDiscard) {
+			return;
+		}
+		if (parameters.type == ShaderType.VERTEX) {
+			root.injectVariable("uniform vec4 angelica_ClipPlane[8];");
+			root.injectVariable(ClipDistanceGlsl.VS_OUT_DIST0);
+			root.injectVariable(ClipDistanceGlsl.VS_OUT_DIST1);
+			root.appendMain(CLIP_VS_BLOCK);
+		} else if (parameters.type == ShaderType.FRAGMENT) {
+			root.injectVariable(ClipDistanceGlsl.FS_IN_DIST0);
+			root.injectVariable(ClipDistanceGlsl.FS_IN_DIST1);
+			root.prependMain(ClipDistanceGlsl.FS_DISCARD);
 		}
 	}
 }

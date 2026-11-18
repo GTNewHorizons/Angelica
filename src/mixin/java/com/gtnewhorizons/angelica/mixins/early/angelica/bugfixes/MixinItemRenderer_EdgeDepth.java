@@ -1,141 +1,173 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.bugfixes;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.gtnewhorizons.angelica.glsm.ffp.CombinedGlint;
+import com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
+import com.gtnewhorizons.angelica.rendering.items.ItemGlint;
 import net.coderbot.iris.pipeline.ShadowRenderer;
 import net.minecraft.client.renderer.ItemRenderer;
 import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.IIcon;
+import net.minecraftforge.client.IItemRenderer.ItemRenderType;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.Redirect;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/**
- * Fix enchantment glint z-fighting on held item edges using stencil masking.
- *
- * Vanilla uses GL_EQUAL to restrict the glint to item pixels, but GPU depth
- * non-determinism between draw calls causes GL_EQUAL to fail on edge quads.
- *
- * This mixin uses a stencil-based check instead of a GL_EQUAL check.
- * 1. During item render: write stencil value 1 wherever the item draws.
- * 2. During each glint renderItemIn2D call:
- *    a. Pre-pass: no color/depth writes, GL_LEQUAL depth test, increment the stencil 1→2
- *       where depth passes. This determines pixel ownership without corrupting the depth buffer (damn potions...)
- *    b. Color pass: draw only where stencil == 2, GL_LEQUAL depth test, decrement the stencil
- *       2→1 to reset for the next glint pass.
- *
- * For the shadow pass, all stencil operations are skipped. Shadow FBOs have no stencil attachment.
- * On AMD Windows, glClear(GL_STENCIL_BUFFER_BIT) on a depth-only FBO causes the driver to
- * promote it to GL_DEPTH24_STENCIL8 internally, corrupting depth values and breaking shadows.
- * Someone needs to yell at AMD to fix this decade old bug.
- */
+/** Match item depth and prevent coplanar extrusion faces from blending the same glint layer twice. */
 @Mixin(value = ItemRenderer.class, priority = 1100)
 public class MixinItemRenderer_EdgeDepth {
 
-    @Unique private static boolean angelica$glintMode = false;
-    @Unique private static boolean angelica$inPrepass = false;
+    @Unique private static final String RENDER_ITEM = "renderItem(Lnet/minecraft/entity/EntityLivingBase;Lnet/minecraft/item/ItemStack;ILnet/minecraftforge/client/IItemRenderer$ItemRenderType;)V";
+    @Unique private static final Tracy.ZoneId angelica$Z_HELD_ITEM = Tracy.zoneId("heldItem", Tracy.COLOR_CLIENT);
+    @Unique private static IIcon angelica$glintIcon;
+    @Unique private static boolean angelica$combinedGlint;
+    @Unique private static boolean angelica$stencilPrepared;
+    @Unique private static boolean angelica$firstLayerMarked;
+    @Unique private static boolean angelica$drawingGlint;
 
-    // Item render: write stencil value 1 at all visible item pixels
+    @Surround(method = RENDER_ITEM, id = "heldItem", remap = false)
+    private void angelica$enterRenderItem(EntityLivingBase entity, ItemStack stack, int pass, ItemRenderType type) {
+        @Surround.Carry final IIcon glintIcon = angelica$glintIcon;
+        @Surround.Carry("combined") final boolean combinedGlint = angelica$combinedGlint;
+        @Surround.Carry("prepared") final boolean stencilPrepared = angelica$stencilPrepared;
+        angelica$glintIcon = null;
+        angelica$combinedGlint = false;
+        angelica$stencilPrepared = false;
+        angelica$firstLayerMarked = false;
+        if (Tracy.FINE_ZONES) Tracy.beginZone(angelica$Z_HELD_ITEM);
+    }
 
-    @Inject(
-        method = "renderItem(Lnet/minecraft/entity/EntityLivingBase;Lnet/minecraft/item/ItemStack;ILnet/minecraftforge/client/IItemRenderer$ItemRenderType;)V",
+    @Surround.Finally("heldItem")
+    private void angelica$exitRenderItem(@Surround.Carry IIcon glintIcon, @Surround.Carry("combined") boolean combinedGlint,
+                                         @Surround.Carry("prepared") boolean stencilPrepared) {
+        if (Tracy.FINE_ZONES) Tracy.endZone();
+        angelica$glintIcon = glintIcon;
+        angelica$combinedGlint = combinedGlint;
+        angelica$stencilPrepared = stencilPrepared;
+        angelica$firstLayerMarked = false;
+    }
+
+    @Surround(method = RENDER_ITEM,
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ItemRenderer;renderItemIn2D(Lnet/minecraft/client/renderer/Tessellator;FFFFIIF)V", ordinal = 0, remap = true),
-        remap = false
-    )
-    private void angelica$stencilWriteStart(CallbackInfo ci) {
-        if (ShadowRenderer.ACTIVE) return;
-        GLStateManager.glEnable(GL11.GL_STENCIL_TEST);
-        GLStateManager.glStencilMask(0x03);
-        GLStateManager.glClearStencil(0);
-        GLStateManager.glClear(GL11.GL_STENCIL_BUFFER_BIT);
-        GLStateManager.glStencilFunc(GL11.GL_ALWAYS, 1, 0x03);
-        GLStateManager.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_REPLACE);
-    }
-
-    @Inject(
-        method = "renderItem(Lnet/minecraft/entity/EntityLivingBase;Lnet/minecraft/item/ItemStack;ILnet/minecraftforge/client/IItemRenderer$ItemRenderType;)V",
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ItemRenderer;renderItemIn2D(Lnet/minecraft/client/renderer/Tessellator;FFFFIIF)V", ordinal = 0, remap = true, shift = At.Shift.AFTER),
-        remap = false
-    )
-    private void angelica$stencilWriteEnd(CallbackInfo ci) {
-        if (ShadowRenderer.ACTIVE) return;
-        GLStateManager.glStencilMask(0x00);
-        GLStateManager.glDisable(GL11.GL_STENCIL_TEST);
-    }
-
-    // Glint section: replace GL_EQUAL with stencil-based masking
-
-    @Redirect(
-        method = "renderItem(Lnet/minecraft/entity/EntityLivingBase;Lnet/minecraft/item/ItemStack;ILnet/minecraftforge/client/IItemRenderer$ItemRenderType;)V",
-        at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDepthFunc(I)V", ordinal = 0, remap = false),
-        remap = false
-    )
-    private void angelica$glintStart(int func) {
-        if (ShadowRenderer.ACTIVE) {
-            GLStateManager.glDepthFunc(func);
-            return;
+        id = "stencil", remap = false)
+    private void angelica$prepareGlintStencil(Tessellator tess,
+                                             @Surround.Local(argsOnly = true) ItemStack stack, @Surround.Local(argsOnly = true) int pass) {
+        @Surround.Carry
+        final boolean preparing = !ShadowRenderer.ACTIVE && !GLStateManager.isRecordingDisplayList()
+            && !TessellatorManager.isCurrentlyCapturing() && !TessellatorManager.shouldInterceptDraw(tess)
+            && GLSMDepthStencilAlpha.getDepthTest().isEnabled() && GLSMDepthStencilAlpha.getDepthState().isEnabled()
+            && ItemGlint.canResetStencil() && ItemGlint.eligible() && ItemGlint.needsImmediateBase(stack, pass);
+        if (preparing) {
+            BatchStateGuard.suspend();
+            try {
+                GLSMAttribStack.glPushAttrib(GL11.GL_STENCIL_BUFFER_BIT);
+                GLSMEnable.glEnable(GL11.GL_STENCIL_TEST);
+                GLSMDepthStencilAlpha.glStencilMask(1);
+                GLSMDepthStencilAlpha.glStencilFunc(GL11.GL_ALWAYS, 0, 1);
+                GLSMDepthStencilAlpha.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_REPLACE);
+            } finally {
+                BatchStateGuard.resume();
+            }
         }
-        angelica$glintMode = true;
-        GLStateManager.glEnable(GL11.GL_STENCIL_TEST);
-        GLStateManager.glStencilFunc(GL11.GL_EQUAL, 1, 0x03);
-        GLStateManager.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_KEEP);
     }
 
-    @Redirect(
-        method = "renderItem(Lnet/minecraft/entity/EntityLivingBase;Lnet/minecraft/item/ItemStack;ILnet/minecraftforge/client/IItemRenderer$ItemRenderType;)V",
-        at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDepthFunc(I)V", ordinal = 1, remap = false),
-        remap = false
-    )
-    private void angelica$glintEnd(int func) {
-        if (ShadowRenderer.ACTIVE) {
-            GLStateManager.glDepthFunc(func);
-            return;
+    @Surround.Finally("stencil")
+    private void angelica$finishGlintStencil(@Surround.Carry boolean preparing) {
+        if (preparing) {
+            BatchStateGuard.suspend();
+            try {
+                GLSMAttribStack.glPopAttrib();
+            } finally {
+                BatchStateGuard.resume();
+            }
         }
-        angelica$glintMode = false;
-        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
-        GLStateManager.glDepthMask(true);
-        GLStateManager.glDisable(GL11.GL_STENCIL_TEST);
-        GLStateManager.glStencilMask(0x03);
+        angelica$stencilPrepared = preparing;
     }
 
-    // Stencil pre-pass inside renderItemIn2D when in glint mode
+    @Surround.Return("stencil")
+    private void angelica$rememberGlintIcon(@Surround.Local IIcon icon) {
+        angelica$glintIcon = icon;
+    }
 
-    @WrapMethod(method = "renderItemIn2D")
-    private static void angelica$glintPrepass(Tessellator tess, float minU, float minV, float maxU, float maxV,
-                                               int w, int h, float thickness, Operation<Void> original) {
-        if (ShadowRenderer.ACTIVE || !angelica$glintMode || angelica$inPrepass) {
-            original.call(tess, minU, minV, maxU, maxV, w, h, thickness);
-            return;
+    // Surround the geometry method so mods redirecting the caller retain their glint color and blending.
+    @Surround(method = "renderItemIn2D", id = "glintGeometry")
+    private static void angelica$matchGlintGeometry(Tessellator tess, float minU, float minV, float maxU, float maxV,
+                                                   int width, int height, float thickness) {
+        @Surround.Skip
+        final boolean drawn = !angelica$drawingGlint && angelica$drawGlintGeometry(tess, minU, minV, maxU, maxV, width, height, thickness);
+    }
+
+    @Unique
+    private static boolean angelica$drawGlintGeometry(Tessellator tess, float minU, float minV, float maxU, float maxV,
+                                                     int width, int height, float thickness) {
+        final IIcon icon = angelica$glintIcon;
+        if (icon == null || thickness != 0.0625F
+            || !((width == 256 && height == 256) || (width == icon.getIconWidth() && height == icon.getIconHeight()))
+            || minU != 0 || minV != 0 || maxU != 1 || maxV != 1) {
+            return false;
         }
+        final int iconWidth = icon.getIconWidth();
+        final int iconHeight = icon.getIconHeight();
+        if (ShadowRenderer.ACTIVE || GLStateManager.isRecordingDisplayList()
+            || TessellatorManager.isCurrentlyCapturing() || TessellatorManager.shouldInterceptDraw(tess)) {
+            if (width == iconWidth && height == iconHeight) return false;
+            angelica$drawGlint(tess, iconWidth, iconHeight, thickness);
+            return true;
+        }
+        if (angelica$combinedGlint) return true;
+        final boolean secondLayer = angelica$firstLayerMarked;
+        BatchStateGuard.suspend();
+        try {
+            final boolean combined = !secondLayer && ItemGlint.begin();
+            // Depth selects the surface, stencil limits it to one blend.
+            // The base draw's stencil reset or the first layer's marks avoid a masked full-screen clear.
+            GLSMAttribStack.glPushAttrib(GL11.GL_STENCIL_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
+            try {
+                GLSMDepthStencilAlpha.glDepthMask(false);
+                GLSMEnable.glEnable(GL11.GL_STENCIL_TEST);
+                GLSMDepthStencilAlpha.glStencilMask(1);
+                if (secondLayer) {
+                    // Same pixels as the first layer, so removing its marks leaves the stencil reset.
+                    GLSMDepthStencilAlpha.glStencilFunc(GL11.GL_EQUAL, 1, 1);
+                    GLSMDepthStencilAlpha.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_DECR);
+                } else {
+                    if (!angelica$stencilPrepared) {
+                        GLSMDepthStencilAlpha.glClearStencil(0);
+                        GLSMFramebuffer.glClear(GL11.GL_STENCIL_BUFFER_BIT);
+                    }
+                    GLSMDepthStencilAlpha.glStencilFunc(GL11.GL_EQUAL, 0, 1);
+                    GLSMDepthStencilAlpha.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_INCR);
+                }
+                angelica$drawGlint(tess, iconWidth, iconHeight, thickness);
+            } finally {
+                GLSMAttribStack.glPopAttrib();
+                if (combined) CombinedGlint.end();
+            }
+            angelica$combinedGlint = combined;
+            angelica$firstLayerMarked = !combined && !secondLayer && ItemGlint.layersCoverSamePixels();
+        } finally {
+            BatchStateGuard.resume();
+        }
+        return true;
+    }
 
-        angelica$inPrepass = true;
-
-        // Pre-pass: determine pixel ownership via GL_LEQUAL depth test.
-        GLStateManager.glColorMask(false, false, false, false);
-        GLStateManager.glDepthMask(false);
-        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
-        GLStateManager.glStencilMask(0x03);
-        GLStateManager.glStencilFunc(GL11.GL_EQUAL, 1, 0x03);
-        GLStateManager.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_INCR);
-        original.call(tess, minU, minV, maxU, maxV, w, h, thickness);
-
-        // Color pass: draw only at pre-pass pixels.
-        GLStateManager.glColorMask(true, true, true, true);
-        GLStateManager.glStencilFunc(GL11.GL_EQUAL, 2, 0x03);
-        GLStateManager.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_DECR);
-        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
-        original.call(tess, minU, minV, maxU, maxV, w, h, thickness);
-
-        // Restore state for the next glint renderItemIn2D call
-        GLStateManager.glStencilMask(0x00);
-        GLStateManager.glStencilFunc(GL11.GL_EQUAL, 1, 0x03);
-        GLStateManager.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_KEEP);
-        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
-
-        angelica$inPrepass = false;
+    @Unique
+    private static void angelica$drawGlint(Tessellator tess, int width, int height, float thickness) {
+        angelica$drawingGlint = true;
+        try {
+            ItemRenderer.renderItemIn2D(tess, 0, 0, 1, 1, width, height, thickness);
+        } finally {
+            angelica$drawingGlint = false;
+        }
     }
 }

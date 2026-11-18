@@ -15,7 +15,7 @@ import net.coderbot.iris.texture.format.TextureFormat;
 import net.coderbot.iris.texture.format.TextureFormatLoader;
 import net.coderbot.iris.uniforms.VanillaBiomeList;
 import net.minecraft.world.biome.BiomeGenBase;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMQueries;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import org.lwjgl.LWJGLUtil;
@@ -31,6 +31,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class StandardMacros {
@@ -42,21 +44,24 @@ public class StandardMacros {
 		defines.add(new StringPair(key, value));
 	}
 
+    private static final Pattern ANGELICA_VERSION_PATTERN = Pattern.compile("^(\\d+)\\.(\\d+)\\.(\\d+)(?:-(?:alpha|beta|pre|rc)(\\d{1,3}))?");
+
     private static String makeAngelicaVersion()
     {
-        String[] parts = Tags.VERSION.split("[.-]");
-        int major = Integer.parseInt(parts[0]);
-        int minor = Integer.parseInt(parts[1]);
-        int patch = Integer.parseInt(parts[2]);
-        int sub = 0;
+        return formatAngelicaVersion(Tags.VERSION);
+    }
 
-        // Handle optional prerelease (like beta62)
-        if (parts.length > 3) {
-            String pre = parts[3];
-            String num = pre.replaceAll("\\D+", ""); // remove all non-digits
-            if (!num.isEmpty())
-                sub = Integer.parseInt(num);
+    static String formatAngelicaVersion(String raw)
+    {
+        final Matcher matcher = ANGELICA_VERSION_PATTERN.matcher(raw);
+        if (!matcher.find()) {
+            Iris.logger.warn("Could not parse Angelica version \"{}\"; defining ANGELICA_VERSION as 99999999", raw);
+            return "99999999";
         }
+        final int major = Integer.parseInt(matcher.group(1));
+        final int minor = Integer.parseInt(matcher.group(2));
+        final int patch = Integer.parseInt(matcher.group(3));
+        final int sub = matcher.group(4) == null ? 0 : Integer.parseInt(matcher.group(4));
         return String.format("%d%02d%02d%03d", major, minor, patch, sub);
     }
 
@@ -89,7 +94,7 @@ public class StandardMacros {
 			define(standardDefines, "IS_ANGELICA_SDLGPU");
 		}
 
-		if (DHCompat.isPresent()) {
+		if (DHCompat.hasRenderingEnabled()) {
 			define(standardDefines, "DISTANT_HORIZONS");
 		}
 
@@ -185,7 +190,7 @@ public class StandardMacros {
 	 * @see <a href="https://github.com/sp614x/optifine/blob/9c6a5b5326558ccc57c6490b66b3be3b2dc8cbef/OptiFineDoc/doc/shaders.txt#L705-L707">Optifine Doc for GLSL Version</a>
 	 */
 	public static String getGlVersion(int name) {
-		return RenderSystem.parseGlVersionString(GLStateManager.glGetString(name));
+		return RenderSystem.parseGlVersionString(GLSMQueries.glGetString(name));
 	}
 
 	/**
@@ -214,7 +219,7 @@ public class StandardMacros {
 	 * @see <a href="https://github.com/sp614x/optifine/blob/9c6a5b5326558ccc57c6490b66b3be3b2dc8cbef/OptiFineDoc/doc/shaders.txt#L716-L723">Optifine Doc</a>
 	 */
 	public static String getVendor() {
-		String vendor = Objects.requireNonNull(GLStateManager.glGetString(GL11.GL_VENDOR)).toLowerCase(Locale.ROOT);
+		String vendor = Objects.requireNonNull(GLSMQueries.glGetString(GL11.GL_VENDOR)).toLowerCase(Locale.ROOT);
 		if (vendor.startsWith("ati")) {
 			return "MC_GL_VENDOR_ATI";
 		} else if (vendor.startsWith("intel")) {
@@ -236,7 +241,7 @@ public class StandardMacros {
 	 * @see <a href="https://github.com/sp614x/optifine/blob/9c6a5b5326558ccc57c6490b66b3be3b2dc8cbef/OptiFineDoc/doc/shaders.txt#L725-L733">Optifine Doc</a>
 	 */
 	public static String getRenderer() {
-		String renderer = Objects.requireNonNull(GLStateManager.glGetString(GL11.GL_RENDERER)).toLowerCase(Locale.ROOT);
+		String renderer = Objects.requireNonNull(GLSMQueries.glGetString(GL11.GL_RENDERER)).toLowerCase(Locale.ROOT);
 		if (renderer.startsWith("amd")) {
 			return "MC_GL_RENDERER_RADEON";
 		} else if (renderer.startsWith("ati")) {
@@ -269,10 +274,10 @@ public class StandardMacros {
 	 * @see <a href="https://github.com/sp614x/optifine/blob/9c6a5b5326558ccc57c6490b66b3be3b2dc8cbef/OptiFineDoc/doc/shaders.txt#L735-L738">Optifine Doc</a>
 	 */
 	public static Set<String> getGlExtensions() {
-		int numExtensions = GLStateManager.glGetInteger(GL30.GL_NUM_EXTENSIONS);
+		int numExtensions = GLSMQueries.glGetInteger(GL30.GL_NUM_EXTENSIONS);
 		String[] extensions = new String[numExtensions];
 		for (int i = 0; i < numExtensions; i++) {
-			extensions[i] = GLStateManager.glGetStringi(GL11.GL_EXTENSIONS, i);
+			extensions[i] = GLSMQueries.glGetStringi(GL11.GL_EXTENSIONS, i);
 		}
 
 		// TODO note that we do not add extensions based on if the shader uses them and if they are supported

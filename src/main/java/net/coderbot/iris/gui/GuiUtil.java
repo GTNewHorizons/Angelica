@@ -1,6 +1,9 @@
 package net.coderbot.iris.gui;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import cpw.mods.fml.client.config.GuiUtils;
 import lombok.Getter;
 import net.minecraft.client.Minecraft;
@@ -11,6 +14,8 @@ import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
+
+import java.util.List;
 
 /**
  * Class serving as abstraction and
@@ -61,11 +66,11 @@ public final class GuiUtil {
         final int vOffset = disabled ? 46 : hovered ? 86 : 66;
 
 		// Sets RenderSystem to use solid white as the tint color for blend mode, and enables blend mode
-		GLStateManager.glBlendColor(1.0f, 1.0f, 1.0f, 1.0f);
-		GLStateManager.enableBlend();
+		GLSMBlend.glBlendColor(1.0f, 1.0f, 1.0f, 1.0f);
+		GLSMBlend.enableBlend();
 
 		// Sets RenderSystem to be able to use textures when drawing
-        GLStateManager.enableTexture();
+        GLSMTextures.enableTexture();
 
 		// Top left section
 		GuiUtils.drawTexturedModalRect(x, y, 0, vOffset, halfWidth, halfHeight, 0);
@@ -114,6 +119,17 @@ public final class GuiUtil {
 		font.drawStringWithShadow(text, x + 4, y + 4, 0xFFFFFF);
 	}
 
+	public static void drawTextPanel(FontRenderer font, List<String> lines, int x, int y) {
+		int width = 0;
+		for (String line : lines) {
+			width = Math.max(width, font.getStringWidth(line));
+		}
+		drawPanel(x, y, width + 8, lines.size() * 10 + 6);
+		for (int i = 0; i < lines.size(); i++) {
+			font.drawStringWithShadow(lines.get(i), x + 4, y + 4 + i * 10, 0xFFFFFF);
+		}
+	}
+
 	public static void drawScrollingText(FontRenderer font, String text, int centerX, int minX, int maxX, int minY, int maxY, int color) {
 		final int textWidth = font.getStringWidth(text);
 		final int boxWidth = maxX - minX;
@@ -128,10 +144,10 @@ public final class GuiUtil {
 
 			final Minecraft mc = client();
 			final int scale = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight).getScaleFactor();
-			GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
-			GLStateManager.glScissor(minX * scale, mc.displayHeight - (maxY * scale), boxWidth * scale, (maxY - minY) * scale);
+			GLSMEnable.glEnable(GL11.GL_SCISSOR_TEST);
+			GLSMRasterizer.glScissor(minX * scale, mc.displayHeight - (maxY * scale), boxWidth * scale, (maxY - minY) * scale);
 			font.drawStringWithShadow(text, minX - scroll, textY, color);
-			GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
+			GLSMEnable.glDisable(GL11.GL_SCISSOR_TEST);
 		} else {
 			int textX = centerX - (textWidth / 2);
 			textX = Math.min(textX, maxX - textWidth);
@@ -234,11 +250,11 @@ public final class GuiUtil {
 		 */
 		public void draw(int x, int y) {
 			// Sets RenderSystem to use solid white as the tint color for blend mode, and enables blend mode
-            GLStateManager.glBlendColor(1.0f, 1.0f, 1.0f, 1.0f);
-            GLStateManager.enableBlend();
+            GLSMBlend.glBlendColor(1.0f, 1.0f, 1.0f, 1.0f);
+            GLSMBlend.enableBlend();
 
 			// Sets RenderSystem to be able to use textures when drawing
-            GLStateManager.enableTexture();
+            GLSMTextures.enableTexture();
 
 			// Draw the texture to the screen
 			GuiUtils.drawTexturedModalRect(x, y, u, v, width, height, 256);

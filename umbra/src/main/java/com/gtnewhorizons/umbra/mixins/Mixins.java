@@ -2,7 +2,7 @@ package com.gtnewhorizons.umbra.mixins;
 
 import com.gtnewhorizon.gtnhmixins.builders.IMixins;
 import com.gtnewhorizon.gtnhmixins.builders.MixinBuilder;
-import com.gtnewhorizons.angelica.config.SystemProperties;
+import com.gtnewhorizons.angelica.glsm.backend.BackendOptions;
 import com.gtnewhorizons.angelica.sdlgpu.SDLGPUGate;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -41,7 +41,7 @@ public enum Mixins implements IMixins {
 
     UMBRA_SDL_GPU_DISPLAY(new MixinBuilder("SDL-GPU-aware Display.create path")
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> SystemProperties.USE_SDL_GPU && SDLGPUGate.isSDLGPUAvailable())
+        .setApplyIf(() -> BackendOptions.sdlGpuRequested() && SDLGPUGate.isSDLGPUAvailable())
         .addClientMixins(
             "early.sdlgpu.MixinForgeHooksClient_SDLGPUDisplay",
             "early.sdlgpu.MixinMinecraft_SDLGPUIcons"

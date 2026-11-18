@@ -1,10 +1,15 @@
 package com.gtnewhorizons.angelica.glsm.backend;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
+import com.gtnewhorizons.angelica.glsm.GLESFormatRemap;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.texture.TextureStaging;
 import org.lwjgl.LWJGLException;
 import org.lwjgl.opengl.Display;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL20;
 
 import java.nio.ByteBuffer;
@@ -22,6 +27,8 @@ import java.util.function.Predicate;
  */
 public abstract class RenderBackend {
 
+    public static final int MAX_FRAMES_IN_FLIGHT = 3;
+
     public void onPostWindowCreate(long window) {}
 
     public abstract void init();
@@ -31,6 +38,9 @@ public abstract class RenderBackend {
 
     /** Returns true if the current thread has a valid render context. */
     public abstract boolean hasContext();
+
+    /** Returns true if the calling thread may issue render commands. */
+    public boolean hasContextOnThread() { return hasContext(); }
 
     /** Returns true if the calling thread owns the "GL Context" */
     public abstract boolean isCurrent();
@@ -52,6 +62,7 @@ public abstract class RenderBackend {
 
     public boolean framebufferCompletenessIsMeaningful() { return true; }
     public void onPersistentBufferWrite(int glId, long offset, long size) {}
+    public boolean isBufferImmutable(int glId) { return false; }
 
     public boolean isAnisotropicSupported() { return true; }
 
@@ -66,6 +77,7 @@ public abstract class RenderBackend {
     public abstract void flush();
     public abstract void finish();
 
+    private final ByteBuffer[] clientStagingCache = new ByteBuffer[16];
     private VSyncMode effectiveVSyncMode = VSyncMode.ON;
     private VSyncMode preferredTearFreeMode;
 
@@ -90,7 +102,7 @@ public abstract class RenderBackend {
 
     static VSyncMode resolveTearFreeMode(VSyncMode preferred, Predicate<VSyncMode> supported) {
         if (preferred != null && preferred.tearFree() && supported.test(preferred)) return preferred;
-        return supported.test(VSyncMode.MAILBOX) ? VSyncMode.MAILBOX : VSyncMode.ON;
+        return VSyncMode.ON;
     }
 
     protected abstract VSyncMode applyVSyncMode(VSyncMode preferred);
@@ -238,9 +250,11 @@ public abstract class RenderBackend {
 
     public void onFrameBegin() {
         if (GLStateManager.takeStateSeedPending()) {
-            GLStateManager.replayStateToBackend();
+            GLSMAttribStack.replayStateToBackend();
         }
     }
+
+    public void invalidateStateMirror() {}
 
     public void onFrameEnd() {}
 
@@ -261,10 +275,15 @@ public abstract class RenderBackend {
 
     public String getTransferDebugInfo() { return null; }
 
-    public boolean bindVoxelizationRegion(int ssboBinding, long openPass, float x, float y, float z) { return false; }
     public long beginVoxelizationBatch(int ssboBinding) { return 0L; }
-    public void voxelizeRange(long pass, int vertexOffset, int vertexCount) {}
+    public void voxelizeRegion(long pass, boolean rebindVertexBuffer, float x, float y, float z, int rangeBase, int rangeCount, int vertexTotal) {}
     public void endVoxelizationBatch(long pass) {}
+
+    public void setVertexWriteReplay(int graphicsProgram, VertexWriteReplaySetup setup) {}
+
+    public boolean supportsComputeImageAtomics() { return true; }
+
+    public boolean supportsComputeImageAtomics(int width, int height, int depth) { return supportsComputeImageAtomics(); }
 
     public abstract void enable(int cap);
     public abstract void enablei(int cap, int index);
@@ -349,6 +368,71 @@ public abstract class RenderBackend {
     public void texImage3D(int target, int level, int internalFormat, int width, int height, int depth, int border, int format, int type, IntBuffer pixels) {}
     public void texSubImage1D(int target, int level, int xoffset, int width, int format, int type, ByteBuffer pixels) {}
     public void texSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, long pboOffset) {}
+
+    public TextureStaging beginTextureStaging(int level, int x, int y, int width, int height) {
+        final int size = Math.multiplyExact(Math.multiplyExact(width, height), 4);
+        ByteBuffer buffer = null;
+        for (int i = 0; i < clientStagingCache.length; i++) {
+            final ByteBuffer cached = clientStagingCache[i];
+            if (cached != null && cached.capacity() == size) {
+                clientStagingCache[i] = null;
+                buffer = cached;
+                break;
+            }
+        }
+        if (buffer == null) buffer = MemoryUtilities.memAlloc(size);
+        buffer.clear();
+        return new ClientTextureStaging(buffer, level, x, y, width, height);
+    }
+
+    public boolean commitTextureStaging(TextureStaging staging) {
+        final int type = RenderSystem.isGLES() ? GLESFormatRemap.remapPixelType(GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV) : GL12.GL_UNSIGNED_INT_8_8_8_8_REV;
+        try {
+            final ClientTextureStaging s = (ClientTextureStaging) staging;
+            texSubImage2D(GL11.GL_TEXTURE_2D, s.level(), s.x(), s.y(), s.width(), s.height(), GL12.GL_BGRA, type, s.buffer());
+        } finally {
+            recycleClientStaging(staging.buffer());
+        }
+        return true;
+    }
+
+    public void abandonTextureStaging(TextureStaging staging) {
+        recycleClientStaging(staging.buffer());
+    }
+
+    public void trimTextureStaging() {
+        for (int i = 0; i < clientStagingCache.length; i++) {
+            MemoryUtilities.memFree(clientStagingCache[i]);
+            clientStagingCache[i] = null;
+        }
+    }
+
+    private record ClientTextureStaging(ByteBuffer buffer, int level, int x, int y, int width, int height) implements TextureStaging {
+        @Override
+        public boolean bgra() {
+            return true;
+        }
+    }
+
+    private void recycleClientStaging(ByteBuffer buffer) {
+        int victim = -1;
+        for (int i = 0; i < clientStagingCache.length; i++) {
+            final ByteBuffer cached = clientStagingCache[i];
+            if (cached == null) {
+                clientStagingCache[i] = buffer;
+                return;
+            }
+            if (cached.capacity() < buffer.capacity() && (victim < 0 || cached.capacity() < clientStagingCache[victim].capacity())) {
+                victim = i;
+            }
+        }
+        if (victim < 0) {
+            MemoryUtilities.memFree(buffer);
+            return;
+        }
+        MemoryUtilities.memFree(clientStagingCache[victim]);
+        clientStagingCache[victim] = buffer;
+    }
     public void texSubImage3D(int target, int level, int xoffset, int yoffset, int zoffset, int width, int height, int depth, int format, int type, ByteBuffer pixels) {}
     public void copyTexImage1D(int target, int level, int internalFormat, int x, int y, int width, int border) {}
     public void copyTexImage2D(int target, int level, int internalFormat, int x, int y, int width, int height, int border) {}
@@ -376,6 +460,9 @@ public abstract class RenderBackend {
     public abstract void deleteFramebuffers(int framebuffer);
     public abstract void bindFramebuffer(int target, int framebuffer);
     public abstract void framebufferTexture2D(int target, int attachment, int textarget, int texture, int level);
+    public abstract void framebufferTexture1D(int target, int attachment, int textarget, int texture, int level);
+    public abstract void framebufferTexture3D(int target, int attachment, int textarget, int texture, int level, int zoffset);
+    public abstract void framebufferTextureLayer(int target, int attachment, int texture, int level, int layer);
     public abstract void framebufferTexture(int target, int attachment, int texture, int level);
     public abstract int genRenderbuffers();
     public abstract void deleteRenderbuffers(int renderbuffer);
@@ -391,6 +478,8 @@ public abstract class RenderBackend {
     public abstract void readPixels(int x, int y, int width, int height, int format, int type, ByteBuffer pixels);
     public abstract void readPixels(int x, int y, int width, int height, int format, int type, FloatBuffer pixels);
     public abstract void readPixels(int x, int y, int width, int height, int format, int type, IntBuffer pixels);
+    public abstract void readPixels(int x, int y, int width, int height, int format, int type, long pixelBufferOffset);
+    public abstract ScreenCapture createScreenCapture(int width, int height);
     public abstract void getTexImage(int target, int level, int format, int type, ByteBuffer pixels);
     public abstract void getTexImage(int target, int level, int format, int type, IntBuffer pixels);
     public abstract void getTexImage(int target, int level, int format, int type, long pixelBufferOffset);
@@ -432,6 +521,10 @@ public abstract class RenderBackend {
     public abstract int getUniformLocation(int program, ByteBuffer name);
     public boolean isShader(int obj) { return false; }
     public boolean isProgram(int obj) { return false; }
+    public boolean supportsProgramBinary() { return false; }
+    public void programParameteri(int program, int pname, int value) {}
+    public void getProgramBinary(int program, IntBuffer length, IntBuffer binaryFormat, ByteBuffer binary) {}
+    public void programBinary(int program, int binaryFormat, ByteBuffer binary) {}
     public void validateProgram(int program) {}
     public void getAttachedShaders(int program, IntBuffer count, IntBuffer shaders) {
         if (count != null) count.put(0, 0);
@@ -540,12 +633,7 @@ public abstract class RenderBackend {
     public abstract void textureParameteri(int texture, int target, int pname, int param);
     public abstract void textureParameterf(int texture, int target, int pname, float param);
     public abstract void textureParameteriv(int texture, int target, int pname, IntBuffer params);
-    public abstract void texStorage1D(int target, int levels, int internalFormat, int width);
     public abstract void texStorage2D(int target, int levels, int internalFormat, int width, int height);
-    public abstract void texStorage3D(int target, int levels, int internalFormat, int width, int height, int depth);
-    public abstract void textureStorage1D(int texture, int levels, int internalFormat, int width);
-    public abstract void textureStorage2D(int texture, int levels, int internalFormat, int width, int height);
-    public abstract void textureStorage3D(int texture, int levels, int internalFormat, int width, int height, int depth);
     public abstract void generateTextureMipmap(int texture);
     public abstract void textureImage2DEXT(int texture, int target, int level, int internalformat, int width, int height, int border, int format, int type, ByteBuffer pixels);
     public abstract void textureImage2DEXT(int texture, int target, int level, int internalformat, int width, int height, int border, int format, int type, IntBuffer pixels);

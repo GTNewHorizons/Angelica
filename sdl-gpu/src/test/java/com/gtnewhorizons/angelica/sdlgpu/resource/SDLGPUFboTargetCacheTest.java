@@ -1,11 +1,21 @@
 package com.gtnewhorizons.angelica.sdlgpu.resource;
 
 
+import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
+import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.lwjgl.opengl.GL11;
+
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SDLGPUFboTargetCacheTest {
@@ -20,70 +30,49 @@ class SDLGPUFboTargetCacheTest {
         assertEquals(0L, fbo.primaryTarget);
     }
 
-    @Test
-    void depthOnly_primaryTargetIsDepth() {
-        final FboState fbo = new FboState();
-        fbo.depthTexture = 0xDDDDL;
-        fbo.recomputeTargets();
-        assertFalse(fbo.hasAnyColor);
-        assertEquals(0xDDDDL, fbo.primaryTarget);
+    private static Arguments row(String name, Consumer<FboState> setup, boolean anyColor, long primary) {
+        return Arguments.of(name, setup, anyColor, primary);
     }
 
-    @Test
-    void singleColor_primaryTargetIsColor() {
-        final FboState fbo = new FboState();
-        fbo.colorTextures[0] = 0xAAAAL;
-        fbo.depthTexture = 0xDDDDL;
-        // default drawBuffers = {0}
-        fbo.recomputeTargets();
-        assertTrue(fbo.hasAnyColor);
-        assertEquals(0xAAAAL, fbo.primaryTarget);
+    private static Stream<Arguments> recomputedTargets() {
+        return Stream.of(
+            row("depth only", f -> f.depthTexture = 0xDDDDL, false, 0xDDDDL),
+            row("single color over depth, default drawBuffers", f -> {
+                f.colorTextures[0] = 0xAAAAL;
+                f.depthTexture = 0xDDDDL;
+            }, true, 0xAAAAL),
+            row("disabled slot 0, first enabled drawBuffer is index 1", f -> {
+                f.colorTextures[0] = 0xAAAAL;
+                f.colorTextures[1] = 0xBBBBL;
+                f.drawBuffers = new int[]{-1, 1};
+                f.depthTexture = 0xDDDDL;
+            }, true, 0xBBBBL),
+            row("all drawBuffers disabled falls through to depth", f -> {
+                f.colorTextures[0] = 0xAAAAL;
+                f.drawBuffers = new int[]{-1};
+                f.depthTexture = 0xDDDDL;
+            }, false, 0xDDDDL),
+            row("MRT first color wins", f -> {
+                f.colorTextures[0] = 0xAAAAL;
+                f.colorTextures[1] = 0xBBBBL;
+                f.colorTextures[2] = 0xCCCCL;
+                f.drawBuffers = new int[]{0, 1, 2};
+            }, true, 0xAAAAL),
+            row("empty drawBuffers means no color even if bound", f -> {
+                f.colorTextures[0] = 0xAAAAL;
+                f.drawBuffers = new int[0];
+                f.depthTexture = 0xDDDDL;
+            }, false, 0xDDDDL));
     }
 
-    @Test
-    void disabledDrawBuffer_doesNotCount() {
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("recomputedTargets")
+    void recomputeTargets_picksPrimaryTarget(String name, Consumer<FboState> setup, boolean anyColor, long primary) {
         final FboState fbo = new FboState();
-        fbo.colorTextures[0] = 0xAAAAL;
-        fbo.colorTextures[1] = 0xBBBBL;
-        fbo.drawBuffers = new int[]{-1, 1}; // GL_NONE then attachment 1
-        fbo.depthTexture = 0xDDDDL;
+        setup.accept(fbo);
         fbo.recomputeTargets();
-        assertTrue(fbo.hasAnyColor);
-        assertEquals(0xBBBBL, fbo.primaryTarget, "first enabled drawBuffer is index 1");
-    }
-
-    @Test
-    void allDrawBuffersDisabled_falsThroughToDepth() {
-        final FboState fbo = new FboState();
-        fbo.colorTextures[0] = 0xAAAAL;
-        fbo.drawBuffers = new int[]{-1};
-        fbo.depthTexture = 0xDDDDL;
-        fbo.recomputeTargets();
-        assertFalse(fbo.hasAnyColor);
-        assertEquals(0xDDDDL, fbo.primaryTarget);
-    }
-
-    @Test
-    void mrtFirstColorWins_evenWhenMultipleAttached() {
-        final FboState fbo = new FboState();
-        fbo.colorTextures[0] = 0xAAAAL;
-        fbo.colorTextures[1] = 0xBBBBL;
-        fbo.colorTextures[2] = 0xCCCCL;
-        fbo.drawBuffers = new int[]{0, 1, 2};
-        fbo.recomputeTargets();
-        assertTrue(fbo.hasAnyColor);
-        assertEquals(0xAAAAL, fbo.primaryTarget);
-    }
-
-    @Test
-    void emptyDrawBuffers_noColorEvenIfBound() {
-        final FboState fbo = new FboState();
-        fbo.colorTextures[0] = 0xAAAAL;
-        fbo.drawBuffers = new int[0];
-        fbo.depthTexture = 0xDDDDL;
-        fbo.recomputeTargets();
-        assertFalse(fbo.hasAnyColor);
-        assertEquals(0xDDDDL, fbo.primaryTarget);
+        assertEquals(anyColor, fbo.hasAnyColor);
+        assertEquals(primary, fbo.primaryTarget);
     }
 
     @Test
@@ -141,6 +130,30 @@ class SDLGPUFboTargetCacheTest {
     }
 
     @Test
+    void sameTextureAtAnotherLevelChangesStructuralHash() {
+        final FboState fbo = new FboState();
+        fbo.colorTextures[0] = 0xAAAAL;
+        fbo.depthTexture = 0xDDDDL;
+        fbo.recomputeTargets();
+        final long level0 = fbo.structuralLayoutHash;
+
+        fbo.colorLevels[0] = 1;
+        fbo.recomputeTargets();
+        final long colorLevel1 = fbo.structuralLayoutHash;
+        assertNotEquals(level0, colorLevel1);
+
+        fbo.colorLevels[0] = 0;
+        fbo.depthLevel = 1;
+        fbo.recomputeTargets();
+        assertNotEquals(level0, fbo.structuralLayoutHash);
+        assertNotEquals(colorLevel1, fbo.structuralLayoutHash);
+
+        fbo.depthLevel = 0;
+        fbo.recomputeTargets();
+        assertEquals(level0, fbo.structuralLayoutHash);
+    }
+
+    @Test
     void detachColor_outOfBounds_noOp() {
         final FboState fbo = new FboState();
         fbo.colorTextures[0] = 0xAAAAL;
@@ -155,5 +168,32 @@ class SDLGPUFboTargetCacheTest {
         assertEquals(1, fbo.colorAttachmentCount);
         assertFalse(fbo.targetsDirty);
         assertFalse(fbo.cachedFormatsDirty);
+    }
+
+    @Test
+    void textureDeleteAndRespecUpdateAttachedFbos() {
+        final ResourceManager rm = SdlTestRig.resourceManager();
+        final FboState fbo = rm.createFbo(rm.genFboId());
+        fbo.colorGlIds[0] = 42; fbo.colorTextures[0] = 0xAAAAL; fbo.colorFormats[0] = 1;
+        fbo.colorGlIds[1] = 43; fbo.colorTextures[1] = 0xBBBBL; fbo.colorFormats[1] = 1; fbo.colorLevels[1] = 1;
+        fbo.depthGlId = 43; fbo.depthTexture = 0xBBBBL; fbo.depthLevel = 1;
+        fbo.colorAttachmentCount = 2;
+
+        fbo.cachedFormatsDirty = false;
+        Reflect.invoke(rm, "restoreTextureHandle", new Class<?>[] { int.class, long.class, ResourceManager.TextureMeta.class }, 42, 0xCCCCL, new ResourceManager.TextureMeta(GL11.GL_TEXTURE_2D, GL11.GL_RGBA8, 2, 16, 16, 1, 1, 0));
+        rm.refreshTextureReferences(42);
+        assertEquals(0xCCCCL, fbo.colorTextures[0]);
+        assertEquals(2, fbo.colorFormats[0]);
+        assertTrue(fbo.cachedFormatsDirty, "a respecified color attachment must rebuild the pipeline color formats");
+
+        fbo.cachedFormatsDirty = false;
+        rm.deleteTexture(43);
+        assertEquals(0, fbo.colorGlIds[1]);
+        assertEquals(0, fbo.colorLevels[1]);
+        assertEquals(1, fbo.colorAttachmentCount);
+        assertTrue(fbo.cachedFormatsDirty, "a deleted color attachment must rebuild the pipeline color formats");
+        assertEquals(0, fbo.depthGlId);
+        assertEquals(0, fbo.depthLevel);
+        assertEquals(42, fbo.colorGlIds[0]);
     }
 }

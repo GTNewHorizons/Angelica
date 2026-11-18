@@ -36,17 +36,6 @@ class UploadArenaTest {
     }
 
     @Test
-    void resetClearsOffsetAndCountButKeepsCapacity() {
-        final UploadArena a = new UploadArena();
-        a.reserve(500);
-        a.reset();
-        assertEquals(0, a.usedBytes());
-        assertEquals(0, a.copyCount());
-        assertEquals(UploadArena.INITIAL_CAPACITY, a.capacity());
-        assertEquals(0, a.reserve(10));
-    }
-
-    @Test
     void growIsDeferredUntilApplyGrow() {
         final UploadArena a = new UploadArena();
         a.requestGrow(UploadArena.INITIAL_CAPACITY + 1);
@@ -92,6 +81,9 @@ class UploadArenaTest {
         assertEquals(-1, a.reserve(4096));
         a.requestGrow(want);
         a.reset();
+        assertEquals(0, a.usedBytes());
+        assertEquals(0, a.copyCount());
+        assertEquals(UploadArena.INITIAL_CAPACITY, a.capacity());
         assertTrue(a.applyGrow());
         assertEquals(0, a.reserve(a.capacity()));
         assertEquals(1, a.copyCount());

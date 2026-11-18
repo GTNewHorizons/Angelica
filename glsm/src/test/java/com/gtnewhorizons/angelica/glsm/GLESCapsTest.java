@@ -40,7 +40,7 @@ class GLESCapsTest {
     };
 
     private static boolean onGles(int cap) {
-        return GLESCaps.isCapAllowed(cap, true, true);
+        return GLESCaps.isCapAllowed(cap, true);
     }
 
     @Test
@@ -60,25 +60,10 @@ class GLESCapsTest {
     @Test
     void desktopContextAllowsEveryCap() {
         for (int cap : DESKTOP_ONLY) {
-            assertTrue(GLESCaps.isCapAllowed(cap, false, false), () -> "cap 0x" + Integer.toHexString(cap) + " is legal on desktop core and the gate must never suppress it there");
+            assertTrue(GLESCaps.isCapAllowed(cap, false), () -> "cap 0x" + Integer.toHexString(cap) + " is legal on desktop core and the gate must never suppress it there");
         }
         for (int cap : VALID_ON_GLES) {
-            assertTrue(GLESCaps.isCapAllowed(cap, false, false));
+            assertTrue(GLESCaps.isCapAllowed(cap, false));
         }
-    }
-
-    @Test
-    void clipPlanesFollowClipCullDistance() {
-        for (int i = 0; i < GLStateManager.MAX_CLIP_PLANES; i++) {
-            final int cap = GL11.GL_CLIP_PLANE0 + i;
-            assertTrue(GLESCaps.isCapAllowed(cap, true, true), () -> "clip plane " + cap + " works where EXT_clip_cull_distance is present and must not be suppressed");
-            assertFalse(GLESCaps.isCapAllowed(cap, true, false), () -> "clip plane " + cap + " is invalid on GLES without EXT_clip_cull_distance");
-        }
-    }
-
-    @Test
-    void capsOutsideTheClipPlaneRangeAreUnaffectedByClipCullDistance() {
-        assertTrue(GLESCaps.isCapAllowed(GL11.GL_BLEND, true, false));
-        assertTrue(GLESCaps.isCapAllowed(GL11.GL_CLIP_PLANE0 + GLStateManager.MAX_CLIP_PLANES, true, false));
     }
 }

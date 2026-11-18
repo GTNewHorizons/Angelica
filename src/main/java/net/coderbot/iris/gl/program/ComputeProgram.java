@@ -6,10 +6,11 @@ import net.coderbot.iris.gl.GlResource;
 import net.coderbot.iris.gl.blending.DepthColorStorage;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.shaderpack.FilledIndirectPointer;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2f;
 import org.joml.Vector3i;
 import org.lwjgl.BufferUtils;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
 import org.lwjgl.opengl.GL42;
 import org.lwjgl.opengl.GL43;
 
@@ -27,8 +28,13 @@ public final class ComputeProgram extends GlResource {
 	private float cachedHeight;
 	private Vector3i cachedWorkGroups;
 
-	ComputeProgram(int program, ProgramUniforms uniforms, ProgramSamplers samplers, ProgramImages images) {
+	@Nullable
+	private final RetainedPrograms.Sources sources;
+
+	ComputeProgram(int program, @Nullable RetainedPrograms.Sources sources, ProgramUniforms uniforms, ProgramSamplers samplers, ProgramImages images) {
 		super(program);
+
+		this.sources = sources;
 
         localSizeBuffer = BufferUtils.createIntBuffer(3);
 		RenderSystem.getProgramiv(program, GL43.GL_COMPUTE_WORK_GROUP_SIZE, localSizeBuffer);
@@ -65,7 +71,7 @@ public final class ComputeProgram extends GlResource {
 	}
 
     public void use() {
-        GLStateManager.glUseProgram(getGlId());
+        GLSMPrograms.glUseProgram(getGlId());
 
         uniforms.update();
         samplers.update();
@@ -87,13 +93,18 @@ public final class ComputeProgram extends GlResource {
 
 	public static void unbind() {
 		ProgramUniforms.clearActiveUniforms();
-		GLStateManager.glUseProgram(0);
+		ProgramSamplers.clearActiveSamplers();
+		GLSMPrograms.glUseProgram(0);
 	}
 
 	@Override
     public void destroyInternal() {
 		DepthColorStorage.unregisterOwnedProgram(getGlId());
-		GLStateManager.glDeleteProgram(getGlId());
+		if (sources != null) {
+			RetainedPrograms.retain(sources, getGlId());
+		} else {
+			GLSMPrograms.glDeleteProgram(getGlId());
+		}
 	}
 
 	/**

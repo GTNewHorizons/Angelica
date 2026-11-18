@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.rendering;
 
+import com.gtnewhorizons.angelica.debug.screen.DebugScreen;
 import com.gtnewhorizons.angelica.rendering.ReducerStateMachine.State;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
@@ -42,8 +43,8 @@ public final class FpsReducer {
     private FpsReducer() {}
 
     public static void init() {
-        forceKey = new KeyBinding("angelica.keybind.fps_reducer_force", 0, "key.categories.misc");
-        disableKey = new KeyBinding("angelica.keybind.fps_reducer_disable", 0, "key.categories.misc");
+        forceKey = new KeyBinding("angelica.keybind.fps_reducer_force", 0, AngelicaMod.KEY_CATEGORY);
+        disableKey = new KeyBinding("angelica.keybind.fps_reducer_disable", 0, AngelicaMod.KEY_CATEGORY);
         ClientRegistry.registerKeyBinding(forceKey);
         ClientRegistry.registerKeyBinding(disableKey);
         FMLCommonHandler.instance().bus().register(INSTANCE);
@@ -167,7 +168,7 @@ public final class FpsReducer {
 
     private static void drawHud(boolean requireNoWorld) {
         final Minecraft mc = Minecraft.getMinecraft();
-        if (mc.gameSettings.showDebugInfo) return;
+        if (DebugScreen.isOverlayVisible() || DebugScreen.isAlwaysOnTextAtTopLeft()) return;
         if (requireNoWorld && mc.theWorld != null) return;
         mc.fontRenderer.drawStringWithShadow(hudText, 2, 2, 0xFFFFFF);
     }

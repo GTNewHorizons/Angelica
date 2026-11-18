@@ -1,6 +1,7 @@
 package net.coderbot.iris.texture.pbr;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMQueries;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.client.rendering.TextureTracker;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -28,6 +29,7 @@ public class PBRTextureManager {
 	}
 
 	private final Int2ObjectMap<PBRTextureHolder> holders = new Int2ObjectOpenHashMap<>();
+	private int holderChanges;
 	private final PBRTextureConsumerImpl consumer = new PBRTextureConsumerImpl();
 
 	private NativeImageBackedSingleColorTexture defaultNormalTexture;
@@ -61,13 +63,22 @@ public class PBRTextureManager {
 		return holder;
 	}
 
+	public boolean hasLoadedPbrTextures(int id) {
+		return getHolder(id) != defaultHolder;
+	}
+
 	public PBRTextureHolder getOrLoadHolder(int id) {
 		PBRTextureHolder holder = holders.get(id);
 		if (holder == null) {
 			holder = loadHolder(id);
 			holders.put(id, holder);
+			holderChanges++;
 		}
 		return holder;
+	}
+
+	public int holderChanges() {
+		return holderChanges;
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
@@ -77,7 +88,7 @@ public class PBRTextureManager {
 			Class<? extends AbstractTexture> clazz = texture.getClass();
 			PBRTextureLoader loader = PBRTextureLoaderRegistry.INSTANCE.getLoader(clazz);
 			if (loader != null) {
-				int previousTextureBinding = GLStateManager.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+				int previousTextureBinding = GLSMQueries.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
 				consumer.clear();
 				try {
 					loader.load(texture, Minecraft.getMinecraft().getResourceManager(), consumer);
@@ -85,7 +96,7 @@ public class PBRTextureManager {
 				} catch (Exception e) {
 					Iris.logger.error("Failed to load PBR textures for texture " + id, e);
 				} finally {
-					GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, previousTextureBinding);
+					GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, previousTextureBinding);
 				}
 			}
 		}
@@ -96,6 +107,7 @@ public class PBRTextureManager {
 		PBRTextureHolder holder = holders.remove(id);
 		if (holder != null) {
 			closeHolder(holder);
+			holderChanges++;
 		}
 	}
 
@@ -106,6 +118,7 @@ public class PBRTextureManager {
 			}
 		}
 		holders.clear();
+		holderChanges++;
 	}
 
 	public void close() {

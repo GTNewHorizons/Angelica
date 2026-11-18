@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu.shader;
 
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess;
-import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
 import com.gtnewhorizons.angelica.glsm.testutil.TestPaths;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL43;
@@ -11,8 +10,8 @@ import org.lwjgl.util.shaderc.Shaderc;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import static com.gtnewhorizons.angelica.sdlgpu.shader.SpirvTestShaders.compileOrFail;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 class ClearImage3DReflectionTest {
 
@@ -61,9 +60,7 @@ class ClearImage3DReflectionTest {
     void looseUniformsReflectAsBindingZeroUboMembers() {
         final GlslVulkanPreprocess.Result pre = GlslVulkanPreprocess.run(source(), GL43.GL_COMPUTE_SHADER, SHADER, true);
         final String src = pre != null ? pre.rewrittenSource() : source();
-        final SpirvCompiler.Result r = SpirvCompiler.compile(src, Shaderc.shaderc_compute_shader, SHADER, SpirvCompiler.Options.vulkanForced460Core());
-        if (r.spirv() == null) fail(SHADER + " failed to compile: " + r.error() + "\nsource:\n" + src);
-        final ByteBuffer spirv = r.spirv();
+        final ByteBuffer spirv = compileOrFail(src, Shaderc.shaderc_compute_shader);
         try {
             ShaderManager.remapSpirvForComputeSDLGPU(spirv);
             final ShaderManager.StageReflection refl = ShaderManager.reflectStage(spirv, false);

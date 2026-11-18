@@ -2,12 +2,16 @@ package com.gtnewhorizons.angelica.mixins.early.angelica;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.debug.DebugKeyHandler;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.FpsReducer;
 import com.gtnewhorizons.angelica.rendering.FramePacer;
+import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
 import net.minecraft.client.Minecraft;
@@ -16,6 +20,7 @@ import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.settings.GameSettings;
 import org.embeddedt.embeddium.impl.render.frame.RenderAheadManager;
 import org.lwjgl.input.Keyboard;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.lwjgl.opengl.GL11;
 import org.objectweb.asm.Opcodes;
@@ -44,12 +49,14 @@ public abstract class MixinMinecraft {
     @Unique
     private static boolean angelica$hadWorld;
 
+    @Unique private static final Tracy.ZoneId angelica$Z_STREAMING_END_FRAME = Tracy.zoneId("streamingEndFrame", Tracy.COLOR_CLIENT);
+
     @Inject(
         method = "runGameLoop",
         at = @At(value = "INVOKE", target = "Lcpw/mods/fml/common/FMLCommonHandler;onRenderTickEnd(F)V", shift = At.Shift.AFTER, remap = false)
     )
     private void angelica$injectLightingFixPostRenderTick(CallbackInfo ci) {
-        GLStateManager.glEnable(GL11.GL_LIGHTING);
+        GLSMEnable.glEnable(GL11.GL_LIGHTING);
     }
 
     @Unique
@@ -106,14 +113,31 @@ public abstract class MixinMinecraft {
 
     @Inject(method = "runTick", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiScreen;isShiftKeyDown()Z", shift = At.Shift.AFTER))
     private void angelica$setShowFpsGraph(CallbackInfo ci) {
+        if (AngelicaConfig.modernizeF3Screen && DebugKeyHandler.F3_TOGGLE.isArmed()) return;
         ((IGameSettingsExt) gameSettings).angelica$setShowFpsGraph(Keyboard.isKeyDown(Keyboard.KEY_LMENU) || Keyboard.isKeyDown(Keyboard.KEY_RMENU));
+    }
+
+    @Inject(method = "func_152348_aa", at = @At("HEAD"), cancellable = true, require = 1)
+    private void angelica$disableStreamKeys(CallbackInfo ci) {
+        if (!Keyboard.getEventKeyState() || !Keyboard.isKeyDown(Keyboard.KEY_F3)) return;
+        final int key = Keyboard.getEventKey();
+        if (key == gameSettings.field_152396_an.getKeyCode() || key == gameSettings.field_152397_ao.getKeyCode()
+            || key == gameSettings.field_152398_ap.getKeyCode() || key == gameSettings.field_152399_aq.getKeyCode()) {
+            ci.cancel();
+        }
     }
 
     @Inject(method = "runGameLoop", at = @At("RETURN"))
     private void angelica$streamingBufferEndFrame(CallbackInfo ci) {
-        TessellatorStreamingDrawer.endFrame();
-        BatchingFontRenderer.endFrame();
-        ShaderManager.endFrame();
+        if (Tracy.ENABLED) Tracy.beginZone(angelica$Z_STREAMING_END_FRAME);
+        try {
+            TessellatorStreamingDrawer.endFrame();
+            BatchingFontRenderer.endFrame();
+            TesrBatchRenderer.INSTANCE.instanceRing().endFrame();
+            ShaderManager.endFrame();
+        } finally {
+            if (Tracy.ENABLED) Tracy.endZone();
+        }
     }
 
     @ModifyExpressionValue(

@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
 import org.lwjgl.opengl.GL11;
+import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
 
 /**
  * Generates GLSL 330 core fragment shaders for FFP emulation.
@@ -17,9 +18,25 @@ public final class FragmentShaderGenerator {
 
         emitInputs(sb, key);
         emitUniforms(sb, key);
+        if (key.combinedGlint()) {
+            sb.append("#define GLINT_REPLACE_ALPHA ").append(key.glintReplaceAlpha() ? 1 : 0).append('\n');
+            sb.append("#define GLINT_FOG_MODE ").append(key.fogMode()).append('\n');
+            sb.append("#define GLINT_ALPHA_FUNC ").append(key.alphaTestEnabled() ? key.alphaTestFunc() : 7).append('\n');
+            sb.append("#define GLINT_OVERLAY ").append(key.overlayInstanced() ? 2 : key.overlayEnabled() ? 1 : 0).append('\n');
+            sb.append("#define GLINT_LIGHTMAP ").append(key.nrEnabledUnits() > 1 && key.unitEnabled(1) ? 1 : 0).append('\n');
+            sb.append(ShaderLoader.getShaderSource("angelica:combined_glint.frag.glsl"));
+            return sb.toString();
+        }
         sb.append("out vec4 fragColor;\n\n");
+        if (key.textureSupersamplingSamples() > 1) {
+            sb.append("#define TEXTURE_SUPERSAMPLING_SAMPLES ").append(key.textureSupersamplingSamples()).append('\n');
+            sb.append(ShaderLoader.getShaderSource("angelica:texture_supersampling.glsl"));
+        }
 
         sb.append("void main() {\n");
+        if (key.clipDiscard()) {
+            sb.append(ClipDistanceGlsl.FS_DISCARD);
+        }
         emitLineStipple(sb, key);
         emitTextureSampling(sb, key);
         emitTexEnvChain(sb, key);
@@ -35,6 +52,9 @@ public final class FragmentShaderGenerator {
     private static void emitInputs(StringBuilder sb, FragmentKey key) {
         sb.append("// Inputs from vertex shader\n");
         sb.append("in vec4 v_Color;\n");
+        if (key.clipDiscard()) {
+            sb.append(ClipDistanceGlsl.FS_IN_DIST0).append('\n').append(ClipDistanceGlsl.FS_IN_DIST1).append('\n');
+        }
         if (key.overlayInstanced()) {
             sb.append("in vec4 v_Overlay;\n");
         }
@@ -76,7 +96,8 @@ public final class FragmentShaderGenerator {
     private static void emitTextureSampling(StringBuilder sb, FragmentKey key) {
         for (int i = 0; i < key.nrEnabledUnits(); i++) {
             if (!key.unitEnabled(i)) continue;
-            sb.append("  vec4 tex").append(i).append("Color = textureProj(u_Sampler").append(i).append(", v_TexCoord").append(i).append(");\n");
+            final String sample = i == 0 && key.textureSupersamplingSamples() > 1 ? "sampleSupersampledTexture" : "textureProj";
+            sb.append("  vec4 tex").append(i).append("Color = ").append(sample).append("(u_Sampler").append(i).append(", v_TexCoord").append(i).append(");\n");
         }
     }
 
@@ -295,7 +316,7 @@ public final class FragmentShaderGenerator {
         final int func = FragmentKey.decodeAlphaFunc(key.alphaTestFunc());
 
 
-        sb.append("  float qa = round(color.a * 255.0);\n");
+        sb.append("  float qa = ").append(FfpGlsl.quantizeAlpha("color.a")).append(";\n");
         switch (func) {
             case GL11.GL_NEVER ->
                 sb.append("  discard;\n");
@@ -325,18 +346,7 @@ public final class FragmentShaderGenerator {
 
         sb.append("  // Fog\n");
         sb.append("  float f;\n");
-
-        switch (fogMode) {
-            case FragmentKey.FOG_LINEAR ->
-                sb.append("  f = v_FogCoord * u_FogParams.x + u_FogParams.y;\n");
-            case FragmentKey.FOG_EXP ->
-                sb.append("  f = exp2(-(v_FogCoord * u_FogParams.z));\n");
-            case FragmentKey.FOG_EXP2 -> {
-                sb.append("  float fogTmp = v_FogCoord * u_FogParams.w;\n");
-                sb.append("  f = exp2(-(fogTmp * fogTmp));\n");
-            }
-        }
-
+        FfpGlsl.appendFogFactor(sb, "  ", fogMode, "v_FogCoord", "u_FogParams");
         sb.append("  f = clamp(f, 0.0, 1.0);\n");
         sb.append("  color.rgb = mix(u_FogColor.rgb, color.rgb, f);\n");
     }

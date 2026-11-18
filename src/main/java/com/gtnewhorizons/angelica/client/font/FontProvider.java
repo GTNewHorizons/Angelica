@@ -1,7 +1,5 @@
 package com.gtnewhorizons.angelica.client.font;
 
-import net.minecraft.util.ResourceLocation;
-
 public interface FontProvider {
 
     /** Tries before {@link #getRandomReplacement} gives up and leaves the character alone. */
@@ -20,6 +18,9 @@ public interface FontProvider {
     float getUSize(char chr);
     float getVSize(char chr);
     float getShadowOffset();
-    ResourceLocation getTexture(char chr);
+    int getTexture(char chr);
     float getYScaleMultiplier();
+
+    /** Vertical offset in font pixels, applied after the glyph is centered on the line. */
+    default float getBaselineShift() { return 0.0f; }
 }

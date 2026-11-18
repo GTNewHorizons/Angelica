@@ -25,13 +25,35 @@ public class AngelicaConfig {
     @Config.RequiresWorldRestart
     public static int chunkBuilderThreadCount;
 
-    @Config.Comment("Enable NotFine Options")
-    @Config.DefaultBoolean(false)
-    public static boolean enableNotFineOptions;
-
-    @Config.Comment("Enable Reese's Sodium Options")
+    @Config.Comment("Decode block and item textures on multiple threads for faster startup. Disable if you notice missing or broken textures.")
     @Config.DefaultBoolean(true)
-    public static boolean enableReesesSodiumOptions;
+    public static boolean enableParallelAtlasDecode;
+
+    @Config.Comment("Generate texture mipmaps on multiple threads for faster startup. Disable if you notice broken mipmaps.")
+    @Config.DefaultBoolean(true)
+    public static boolean enableParallelAtlasMipmaps;
+
+    @Config.Comment("Upload the block and item texture atlas in large batches instead of one texture at a time. Disable if you notice missing or broken textures.")
+    @Config.DefaultBoolean(true)
+    public static boolean enableBatchedAtlasUpload;
+
+    @Config.Comment("Resource pack classes the player allows to be read on worker threads during texture loading.")
+    @Config.DefaultStringList({})
+    public static String[] atlasTrustedPacks;
+
+    @Config.Comment("Built-in trusted resource pack classes the player has turned off.")
+    @Config.DefaultStringList({})
+    public static String[] atlasDistrustedPacks;
+
+    @Config.Comment("Resource pack classes seen during texture loading that are not trusted. Recorded automatically; trust them from Video Settings > Performance.")
+    @Config.DefaultStringList({})
+    public static String[] atlasObservedPacks;
+
+    @Config.Comment("Worker threads for startup and shader loading work. 0 = automatic.")
+    @Config.DefaultInt(0)
+    @Config.RangeInt(min = 0, max = 32)
+    @Config.RequiresMcRestart
+    public static int workerThreadCount;
 
     @Config.Comment("Inject BakedModel rendering into some vanilla blocks")
     @Config.DefaultBoolean(false)
@@ -63,6 +85,10 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableVBOClouds;
 
+    @Config.Comment("Replace rain/snow rendering with a cached, instanced version.")
+    @Config.DefaultBoolean(true)
+    public static boolean enableInstancedWeather;
+
     @Config.Comment("Uses cached attributes for VBO rendering, resulting in less CPU overhead. Disable if you notice any graphical issues.")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
@@ -82,10 +108,6 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(true)
     public static boolean modernizeF3Screen;
 
-    @Config.Comment("Show block registry name and meta value in F3, similar to 1.8+. [From ArchaicFix]")
-    @Config.DefaultBoolean(true)
-    public static boolean showBlockDebugInfo;
-
     @Config.DefaultBoolean(true)
     @Config.Comment("Hide downloading terrain screen. [From ArchaicFix]")
     public static boolean hideDownloadingTerrainScreen;
@@ -94,7 +116,7 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(true)
     public static boolean showSplashMemoryBar;
 
-    @Config.Comment("Renders the HUD elements once per 20 frames (by default) and reuses the pixels to improve performance. [Experimental]")
+    @Config.Comment("Renders the HUD elements once per 20 frames (by default) and reuses the pixels to improve performance. [Semi-stable]")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean enableHudCaching;
@@ -103,7 +125,7 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableHudCachingEventTransformer;
 
-    @Config.Comment("Enable HUD Caching at runtime. Requires enableHudCaching to be on at startup. [Experimental]")
+    @Config.Comment("Enable HUD Caching at runtime. Requires enableHudCaching to be on at startup. [Semi-stable]")
     @Config.DefaultBoolean(false)
     public static boolean hudCachingActive;
 
@@ -137,15 +159,28 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableCubeInstancing;
 
+    @Config.Comment("Stitch a texture atlas between entity and block entity models so different textures draw together (requires cube instancing)")
+    @Config.DefaultBoolean(true)
+    public static boolean enableEntityTextureAtlas;
+
+    @Config.Comment("Replay entity draws recorded in the shader shadow pass in the main view instead of running each entity renderer again (experimental, requires entity batching)")
+    @Config.DefaultBoolean(false)
+    @Config.RequiresMcRestart
+    public static boolean enableEntityShadowReplay;
+
+    @Config.Comment("Entity classes that run their renderer again in the main view instead of replaying shadow pass draws. Players are always excluded.")
+    @Config.DefaultStringList({
+        "chylex.hee.entity.boss.EntityBossDragon",
+        "twilightforest.entity.passive.EntityTFMobileFirefly",
+        "gregtech.common.entity.EntityDrone"
+    })
+    @Config.RequiresMcRestart
+    public static String[] entityShadowReplayExcludedClasses;
+
     @Config.Comment("Skip the end-of-frame shader buffer copy by ping-ponging buffers. Disable if a shader pack misrenders.")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean shaderParityFlip;
-
-    @Config.Comment("Skip the end-of-frame glFlush before the buffer swap [Experimental]")
-    @Config.DefaultBoolean(false)
-    @Config.RequiresMcRestart
-    public static boolean skipEndOfFrameFlush;
 
     @Config.Comment("Cache the vanilla skull mesh per skull type/player skin and batch skull draws")
     @Config.DefaultBoolean(true)
@@ -166,6 +201,11 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean enableTESRProviderDispatch;
+
+    @Config.Comment("Cache the lightmap the tile-entity dispatcher looks up per tile per frame, refreshing it once a tick")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableTESRLightCache;
 
     @Config.Comment("Enable full RGB color support (16.7M colors) using &#RRGGBB syntax in text")
     @Config.DefaultBoolean(true)
@@ -261,9 +301,9 @@ public class AngelicaConfig {
     @Config.RangeInt(min = 256, max = 1024)
     public static int itemRendererCacheSize;
 
-    @Config.Comment("Render distance for the spinning mob inside mod spawners")
+    @Config.Comment("Render distance for the spinning mob inside mob spawners. Set to 0 to disable rendering.")
     @Config.DefaultDouble(16D)
-    @Config.RangeDouble(min = 16D, max = 64D)
+    @Config.RangeDouble(min = 0D, max = 64D)
     public static double mobSpawnerRenderDistance;
 
     @Config.Comment("Allows unicode languages to use an odd gui scale")
@@ -405,15 +445,25 @@ public class AngelicaConfig {
         @Config.DefaultBoolean(true)
         @Config.RequiresMcRestart
         public boolean narrowLegendsMod;
+
+        @Config.Comment("Narrow Power Converters transformer exclusions to allow GL redirection")
+        @Config.DefaultBoolean(true)
+        @Config.RequiresMcRestart
+        public boolean narrowPowerConverters;
     }
 
     @Config.Comment("Renders chunks before neighbors are ready. Improves loading at render distance edges, useful for low render distance servers.")
     @Config.DefaultBoolean(false)
     public static boolean useVanillaChunkTracking;
 
-    @Config.Comment("Disables additional F3 information added by Angelica.")
-    @Config.DefaultBoolean(false)
-    public static boolean disableF3Additions;
+    @Config.Comment({"Size of the F3 text.",
+        "-1 = same as your GUI Scale (default, the size vanilla F3 uses)",
+        "0 = Auto: half the largest size that fits the window",
+        "1-16 = that size",
+        "F3 is never drawn larger than your GUI Scale."})
+    @Config.DefaultInt(-1)
+    @Config.RangeInt(min = -1, max = 16)
+    public static int debugGuiScale;
 
     @Config.Comment("Replaces various FFP uploads with statically allocated VBO's.")
     @Config.DefaultBoolean(true)
@@ -429,6 +479,22 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart
     public static boolean disableGLVersionPinning;
+
+    @Config.Comment("Requested OpenGL context version as an integer (e.g. 46, 41, 33). 0 = highest available. Falls back to probing when the version cannot be created.")
+    @Config.DefaultInt(0)
+    @Config.RangeInt(min = 0, max = 46)
+    @Config.RequiresMcRestart
+    public static int glVersion;
+
+    @Config.Comment("Render backend: OPENGL, or SDL_GPU (experimental; Vulkan/Metal/Direct3D 12 through SDL3, falls back to OpenGL when no device can be created). -Dangelica.sdlgpu.enable=true|false overrides this.")
+    @Config.DefaultEnum("OPENGL")
+    @Config.RequiresMcRestart
+    public static RenderBackendChoice renderBackend;
+
+    @Config.Comment("SDL GPU driver: AUTO, VULKAN, METAL (macOS), D3D12 (Windows). Vulkan on macOS needs MoltenVK and uses Metal without it. -Dangelica.sdlgpu.driver overrides this.")
+    @Config.DefaultEnum("AUTO")
+    @Config.RequiresMcRestart
+    public static SdlGpuDriver sdlGpuDriver;
 
     @Config.Comment("Disables GL Error checks. Always set to false in dev env or if LWJGL debug is on. Improves performance.")
     @Config.DefaultBoolean(true)
@@ -464,12 +530,59 @@ public class AngelicaConfig {
         "minecraft:andesite", "minecraft:dirt", "minecraft:granite", "minecraft:grass", "minecraft:mycelium", "minecraft:sand", "minecraft:soul_sand", "etfuturum:calcite", "etfuturum:coarse_dirt", "etfuturum:concrete_powder", "etfuturum:grass_path", "BiomesOPlenty:ash", "BiomesOPlenty:driedDirt", "BiomesOPlenty:hardDirt", "BiomesOPlenty:hardSand", "BiomesOPlenty:mud", "BiomesOPlenty:newBopDirt", "Botania:dirtPath", "Botania:enchantedSoil", "Botania:livingrock", "Botania:prismarine", "Botania:shimmerrock", "Botany:loam", "Botany:loamNoWeed", "Botany:soil", "Botany:soilNoWeed", "chisel:moss", "chisel:moss_carpet", "ExtraUtilities:color_hellsand", "ExtraUtilities:cursedearthside", "GalaxySpace:acentauribbgrunt", "GalaxySpace:acentauribbsubgrunt", "GalaxySpace:barnardaCdirt", "GalaxySpace:barnardaEgrunt", "GalaxySpace:barnardaEsubgrunt", "GalaxySpace:barnardaFgrunt", "GalaxySpace:barnardaFsubgrunt", "GalaxySpace:callistoblocks", "GalaxySpace:ceresblocks", "GalaxySpace:deimosblocks", "GalaxySpace:europagrunt", "GalaxySpace:ganymedeblocks", "GalaxySpace:haumeablocks", "GalaxySpace:ioblocks", "GalaxySpace:makemakegrunt", "GalaxySpace:mercuryblocks", "GalaxySpace:mirandablocks", "GalaxySpace:oberonblocks", "GalaxySpace:phobosblocks", "GalaxySpace:proteusblocks", "GalaxySpace:tcetieblocks", "GalaxySpace:titanblocks", "GalaxySpace:tritonblocks", "GalaxySpace:vegabgrunt", "GalaxySpace:vegabsubgrunt", "GalaxySpace:venusblocks", "gregtech:gt.blockgranites", "IC2:blockBasalt", "MagicBees:magicbees.enchantedEarth", "RandomThings:fertilizedDirt", "ToxicEverglades:blockDarkWorldGround2", "VillageNames:concretePowder", "witchery:pitdirt"
     };
 
+    @Config.Comment("Enable the Tracy profiler backend. Requires angelica-tracy.jar on the classpath. Overridden by -Dangelica.tracy")
+    @Config.DefaultBoolean(false)
+    @Config.RequiresMcRestart
+    public static boolean enableTracy;
+
+    @Config.Comment("Allow Tracy to accept connections from other machines, not just localhost")
+    @Config.DefaultBoolean(false)
+    @Config.RequiresMcRestart
+    public static boolean tracyAllowRemote;
+
+    @Config.Comment("Emit Tracy zones for many more call sites. More detail, more overhead. Overridden by -Dangelica.tracy.fineZones")
+    @Config.DefaultBoolean(false)
+    @Config.RequiresMcRestart
+    public static boolean tracyFineZones;
+
+    @Config.Comment("Max distinct Tracy zone/message call sites to preallocate. Overridden by -Dangelica.tracy.maxSrcLocs")
+    @Config.DefaultInt(4096)
+    @Config.RangeInt(min = 1024, max = 16384)
+    @Config.RequiresMcRestart
+    public static int tracyMaxSrcLocs;
+
+    @Config.Comment("Default length in seconds for a Tracy capture started from the command or video settings. 0 = until stopped")
+    @Config.DefaultInt(60)
+    @Config.RangeInt(min = 0, max = 3600)
+    public static int tracyCaptureSeconds;
+
+    @Config.Comment("If enabled, attaches downscaled screenshots to Tracy frames. Overridden by -Dangelica.tracy.frameImages")
+    @Config.DefaultBoolean(false)
+    public static boolean tracyFrameImages;
+
+    @Config.Comment("Tracy frame images captured per second. 0 = every frame. Overridden by -Dangelica.tracy.frameImageRate")
+    @Config.DefaultInt(10)
+    @Config.RangeInt(min = 0, max = 60)
+    public static int tracyFrameImageRate;
+
     public static void applyGpuCullingMode() {
         GpuCulling.setMode(gpuCullingMode == null ? GpuCullingMode.CPU_ONLY : gpuCullingMode);
     }
 
     public static boolean cubeInstancingEnabled() {
         return enableEntityBatching && enableCubeInstancing;
+    }
+
+    public static boolean entityShadowReplayEnabled() {
+        return enableEntityBatching && enableEntityShadowReplay;
+    }
+
+    public static boolean sdlGpuConfigured() {
+        return renderBackend == RenderBackendChoice.SDL_GPU;
+    }
+
+    public static String sdlGpuDriverName() {
+        return sdlGpuDriver == null ? "" : sdlGpuDriver.sdlName();
     }
 
     public static GLProfile getEffectiveGlProfile() {

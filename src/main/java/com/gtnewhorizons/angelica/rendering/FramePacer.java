@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.rendering;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend.GateSample;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
@@ -112,7 +113,7 @@ public final class FramePacer {
         final int refreshHz = refreshHz(mode, cap, refreshPeriodNanos);
 
         core.setRefreshPeriodNanos(refreshPeriodNanos);
-        core.setTearFree(mode.tearFree());
+        core.setFifo(mode == VSyncMode.ON);
         core.setVsyncOn(mode == VSyncMode.ON && honored);
         core.setCap(cap);
 
@@ -165,7 +166,7 @@ public final class FramePacer {
     }
 
     public static void beforePresent() {
-        final long firstClearBlockNanos = GLStateManager.takeFirstClearBlockNanos();
+        final long firstClearBlockNanos = GLSMFramebuffer.takeFirstClearBlockNanos();
         Tracy.beginZone(Z_PACER_PRESENT_SLEEP);
         try {
             core.beforePresent(nanoTime(), firstClearBlockNanos);
@@ -216,7 +217,7 @@ public final class FramePacer {
 
     private static int refreshHz(VSyncMode mode, int capHz, long refreshPeriodNanos) {
         final int hz = RenderBackend.hzFromPeriod(refreshPeriodNanos);
-        if (hz == 0 && capHz == 0 && mode.tearFree() && !warnedUncapped) {
+        if (hz == 0 && capHz == 0 && mode == VSyncMode.ON && !warnedUncapped) {
             warnedUncapped = true;
             AngelicaMod.LOGGER.warn("Display refresh rate is unknown, so the frame rate cannot be bounded if the driver ignores vsync. Set Max Framerate to bound it.");
         }

@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.bugfixes;
 
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.pipeline.FixedFunctionWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
@@ -38,7 +38,7 @@ public class MixinRenderMooshroom_MushroomTint {
         if (angelica$mushroomTintShaderPath) {
             CapturedRenderingState.INSTANCE.setCurrentEntityColor(1.0F, 0.0F, 0.0F, ANGELICA$RED_MIX);
         } else {
-            GLStateManager.setOverlayColor(1.0F, 0.0F, 0.0F, ANGELICA$RED_MIX);
+            GLSMCurrentAttribs.setOverlayColor(1.0F, 0.0F, 0.0F, ANGELICA$RED_MIX);
         }
         angelica$mushroomTintActive = true;
     }
@@ -56,7 +56,7 @@ public class MixinRenderMooshroom_MushroomTint {
         if (angelica$mushroomTintShaderPath) {
             CapturedRenderingState.INSTANCE.setCurrentEntityColor(0.0F, 0.0F, 0.0F, 0.0F);
         } else {
-            GLStateManager.setOverlayColor(0.0F, 0.0F, 0.0F, 0.0F);
+            GLSMCurrentAttribs.setOverlayColor(0.0F, 0.0F, 0.0F, 0.0F);
         }
         angelica$mushroomTintActive = false;
     }

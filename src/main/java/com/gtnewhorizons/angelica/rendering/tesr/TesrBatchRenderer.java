@@ -1,12 +1,22 @@
 package com.gtnewhorizons.angelica.rendering.tesr;
 
+import com.gtnewhorizons.angelica.rendering.RenderFailures;
 import com.gtnewhorizon.gtnhlib.client.renderer.MatrixHelper;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
 import com.gtnewhorizons.angelica.api.tesr.TesrShader;
 import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
+import com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard;
+import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
@@ -14,6 +24,7 @@ import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
 import com.gtnewhorizons.angelica.glsm.states.PolygonState;
+import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.coderbot.batchedentityrendering.impl.AngelicaBufferSource;
@@ -55,7 +66,6 @@ public final class TesrBatchRenderer {
 
     private static final Tracy.ZoneId Z_TESR_OPAQUE = Tracy.zoneId("tesrOpaque", Tracy.COLOR_CLIENT);
     private static final Tracy.ZoneId Z_TESR_BATCH = Tracy.zoneId("tesrBatch", Tracy.COLOR_CLIENT);
-    private static final Tracy.ZoneId Z_TESR_INSTANCED = Tracy.zoneId("tesrInstanced", Tracy.COLOR_CLIENT);
     private static final Tracy.ZoneId Z_TESR_TEXT = Tracy.zoneId("tesrText", Tracy.COLOR_CLIENT);
     private static final Tracy.ZoneId Z_TESR_DEFERRED = Tracy.zoneId("tesrDeferred", Tracy.COLOR_CLIENT);
 
@@ -64,6 +74,9 @@ public final class TesrBatchRenderer {
     final InstanceRing instanceRing = new InstanceRing();
     final InstancedTemplateRenderer instancedRenderer = new InstancedTemplateRenderer(instanceRing);
     private int activePass = -1;
+    private long scopeCounter;
+    private long currentScope;
+    private int scopeDepth;
     private long lastSweepMs;
     private boolean deferredFlushPending;
     private RetainedTesrGroups pendingDeferredHook;
@@ -78,13 +91,30 @@ public final class TesrBatchRenderer {
         }
     }
 
+    public void beginScope() {
+        if (scopeDepth++ == 0) currentScope = ++scopeCounter;
+    }
+
+    public boolean inScope() {
+        return scopeDepth != 0;
+    }
+
+    public void endScope() {
+        if (--scopeDepth == 0) currentScope = 0;
+    }
+
     public void beginPass(int passKey, Matrix4f baseMV, double camX, double camY, double camZ) {
+        BatchStateFallback.install();
         if (deferredFlushPending) {
             discardDeferred();
         }
         activePass = passKey;
-        retained[passKey].beginPass(baseMV, camX, camY, camZ, instancedCapable() ? instancedRenderer : null, deferredPipeline());
+        bufferSource.capturePassLighting();
+        BatchDrawDefaults.capturePassFramebuffer();
+        final DeferredWorldRenderingPipeline deferred = deferredPipeline();
+        retained[passKey].beginPass(baseMV, camX, camY, camZ, instancedCapable() ? instancedRenderer : null, deferred);
         if (passKey == PASS_MAIN_0) {
+            instancedRenderer.releaseRetired();
             final long now = System.currentTimeMillis();
             if (now - lastSweepMs >= SWEEP_INTERVAL_MS) {
                 lastSweepMs = now;
@@ -108,13 +138,14 @@ public final class TesrBatchRenderer {
         return pipeline instanceof DeferredWorldRenderingPipeline deferred && deferred.supportsInstancing(Instancing.TEMPLATE);
     }
 
-    static DeferredWorldRenderingPipeline deferredPipeline() {
+    public static DeferredWorldRenderingPipeline deferredPipeline() {
         if (!Iris.enabled) return null;
         return Iris.getPipelineManager().getPipelineNullable() instanceof DeferredWorldRenderingPipeline deferred
             ? deferred : null;
     }
 
     private void discardDeferred() {
+        activePass = -1;
         deferredFlushPending = false;
         pendingDeferredHook = null;
         bufferSource.discard();
@@ -135,9 +166,13 @@ public final class TesrBatchRenderer {
         lastLayerTexture = null;
         lastLayerMaterial = null;
         lastLayerPass = null;
+        lastLayerCull = DrawState.DISABLED;
+        lastLayerLit = false;
         lastLayer = null;
         lastImmediateTexture = null;
         lastImmediateMaterial = null;
+        lastImmediateCull = DrawState.DISABLED;
+        lastImmediateLit = false;
         lastImmediateLayer = null;
         AngelicaTesrMeshCache.INSTANCE.clear();
     }
@@ -150,28 +185,39 @@ public final class TesrBatchRenderer {
         return activePass >= 0 || deferredFlushPending;
     }
 
+    boolean hasQueuedGeometry() {
+        return hasPendingGeometry() && bufferSource.hasPendingLayers();
+    }
+
+    void retire(TemplateBuffer template) {
+        instancedRenderer.retire(template);
+    }
+
     public void queue(TemplateBuffer template, ResourceLocation texture, TesrMaterial material) {
-        modelView.set(GLStateManager.getModelViewMatrix());
+        modelView.set(GLSMMatrices.getModelViewMatrix());
         final int packedLight = currentPackedLight(material);
         final int colorABGR = resolveColor(material);
         if (activePass >= 0) {
-            final boolean offset = GLStateManager.glIsEnabled(GL11.GL_POLYGON_OFFSET_FILL);
-            final PolygonState polygon = GLStateManager.getPolygonState();
+            final boolean offset = GLSMEnable.glIsEnabled(GL11.GL_POLYGON_OFFSET_FILL);
+            final PolygonState polygon = GLSMRasterizer.getPolygonState();
             final PassOverride pass = PassOverride.capture();
+            final int cullCode = DrawState.liveCull(material);
+            final boolean lit = DrawState.liveLit(material);
             final RenderLayer layer = layerFor(texture, material, pass,
-                offset ? polygon.getOffsetFactor() : 0.0f, offset ? polygon.getOffsetUnits() : 0.0f);
+                offset ? polygon.getOffsetFactor() : 0.0f, offset ? polygon.getOffsetUnits() : 0.0f, cullCode, lit, DrawState.liveLightmap());
             final int blockEntityId = pass.isEntityPhase()
                 ? CapturedRenderingState.INSTANCE.getCurrentRenderedEntity()
                 : CapturedRenderingState.INSTANCE.getCurrentRenderedBlockEntity();
             final long entityInfo = InstancedAttribs.packEntityInfo(CapturedRenderingState.INSTANCE.getCurrentRenderedEntity(), CapturedRenderingState.INSTANCE.getCurrentRenderedBlockEntity(), CapturedRenderingState.INSTANCE.getCurrentRenderedItem());
-            retained[activePass].queue(template, layer, material, modelView, packedLight, colorABGR, 0, entityInfo, blockEntityId, captureTextureMatrix());
+            retained[activePass].queue(currentScope, template, layer, material, modelView, packedLight, colorABGR,
+                AngelicaBufferSource.packEntityColor(CapturedRenderingState.INSTANCE.getCurrentEntityColor()), entityInfo, blockEntityId, captureTextureMatrix());
         } else {
             drawImmediate(template, texture, material, packedLight, colorABGR);
         }
     }
 
     private static Matrix4f captureTextureMatrix() {
-        final Matrix4f texMatrix = GLStateManager.getTextures().getTextureUnitMatrix(0);
+        final Matrix4f texMatrix = GLSMTextures.getTextures().getTextureUnitMatrix(0);
         return MatrixHelper.isIdentity(texMatrix) ? null : texMatrix;
     }
 
@@ -190,8 +236,11 @@ public final class TesrBatchRenderer {
         PassOverride pass;
         float offsetFactor;
         float offsetUnits;
+        int cull;
+        boolean lit;
+        boolean lightmap;
 
-        LayerKey set(ResourceLocation texture, TesrMaterial.Transparency transparency, boolean noCull, boolean unlit, boolean noDepthWrite, boolean depthOnly, float cutoutAlpha, boolean depthEqual, TesrMaterial.SpecialRender special, TesrShader shader, boolean noPass, PassOverride pass, float offsetFactor, float offsetUnits) {
+        LayerKey set(ResourceLocation texture, TesrMaterial.Transparency transparency, boolean noCull, boolean unlit, boolean noDepthWrite, boolean depthOnly, float cutoutAlpha, boolean depthEqual, TesrMaterial.SpecialRender special, TesrShader shader, boolean noPass, PassOverride pass, float offsetFactor, float offsetUnits, int cull, boolean lit, boolean lightmap) {
             this.texture = texture;
             this.transparency = transparency;
             this.noCull = noCull;
@@ -206,11 +255,14 @@ public final class TesrBatchRenderer {
             this.pass = pass;
             this.offsetFactor = offsetFactor;
             this.offsetUnits = offsetUnits;
+            this.cull = cull;
+            this.lit = lit;
+            this.lightmap = lightmap;
             return this;
         }
 
         LayerKey copy() {
-            return new LayerKey().set(texture, transparency, noCull, unlit, noDepthWrite, depthOnly, cutoutAlpha, depthEqual, special, shader, noPass, pass, offsetFactor, offsetUnits);
+            return new LayerKey().set(texture, transparency, noCull, unlit, noDepthWrite, depthOnly, cutoutAlpha, depthEqual, special, shader, noPass, pass, offsetFactor, offsetUnits, cull, lit, lightmap);
         }
 
         @Override
@@ -221,9 +273,10 @@ public final class TesrBatchRenderer {
                 && depthOnly == other.depthOnly
                 && Float.floatToIntBits(cutoutAlpha) == Float.floatToIntBits(other.cutoutAlpha)
                 && depthEqual == other.depthEqual && special == other.special && shader == other.shader && noPass == other.noPass
-                && Objects.equals(pass, other.pass)
+                && pass == other.pass
                 && Float.floatToIntBits(offsetFactor) == Float.floatToIntBits(other.offsetFactor)
-                && Float.floatToIntBits(offsetUnits) == Float.floatToIntBits(other.offsetUnits);
+                && Float.floatToIntBits(offsetUnits) == Float.floatToIntBits(other.offsetUnits)
+                && cull == other.cull && lit == other.lit && lightmap == other.lightmap;
         }
 
         @Override
@@ -239,9 +292,12 @@ public final class TesrBatchRenderer {
             h = h * 31 + Objects.hashCode(special);
             h = h * 31 + System.identityHashCode(shader);
             h = h * 31 + (noPass ? 1 : 0);
-            h = h * 31 + Objects.hashCode(pass);
+            h = h * 31 + System.identityHashCode(pass);
             h = h * 31 + Float.floatToIntBits(offsetFactor);
             h = h * 31 + Float.floatToIntBits(offsetUnits);
+            h = h * 31 + cull;
+            h = h * 31 + (lit ? 1 : 0);
+            h = h * 31 + (lightmap ? 1 : 0);
             return h;
         }
     }
@@ -253,42 +309,59 @@ public final class TesrBatchRenderer {
     private PassOverride lastLayerPass;
     private float lastLayerOffsetFactor;
     private float lastLayerOffsetUnits;
+    private int lastLayerCull;
+    private boolean lastLayerLit;
+    private boolean lastLayerLightmap;
     private RenderLayer lastLayer;
     private ResourceLocation lastImmediateTexture;
     private TesrMaterial lastImmediateMaterial;
+    private int lastImmediateCull;
+    private boolean lastImmediateLit;
+    private boolean lastImmediateLightmap;
     private RenderLayer lastImmediateLayer;
 
-    private RenderLayer layerFor(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits) {
-        if (texture == lastLayerTexture && material == lastLayerMaterial && pass.equals(lastLayerPass)
-            && offsetFactor == lastLayerOffsetFactor && offsetUnits == lastLayerOffsetUnits) {
+    private RenderLayer layerFor(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int cullCode, boolean lit, boolean lightmap) {
+        if (texture == lastLayerTexture && material == lastLayerMaterial && pass == lastLayerPass
+            && offsetFactor == lastLayerOffsetFactor && offsetUnits == lastLayerOffsetUnits && cullCode == lastLayerCull && lit == lastLayerLit
+            && lightmap == lastLayerLightmap) {
             return lastLayer;
         }
-        final RenderLayer layer = layerLookup(texture, material, false, pass, offsetFactor, offsetUnits);
+        final RenderLayer layer = layerLookup(texture, material, false, pass, offsetFactor, offsetUnits, cullCode, lit, lightmap);
         lastLayerTexture = texture;
         lastLayerMaterial = material;
         lastLayerPass = pass;
         lastLayerOffsetFactor = offsetFactor;
         lastLayerOffsetUnits = offsetUnits;
+        lastLayerCull = cullCode;
+        lastLayerLit = lit;
+        lastLayerLightmap = lightmap;
         lastLayer = layer;
         return layer;
     }
 
     private RenderLayer noPassLayerFor(ResourceLocation texture, TesrMaterial material) {
-        if (texture == lastImmediateTexture && material == lastImmediateMaterial) {
+        final int cullCode = DrawState.liveCull(material);
+        final boolean lit = DrawState.liveLit(material);
+        final boolean lightmap = DrawState.liveLightmap();
+        if (texture == lastImmediateTexture && material == lastImmediateMaterial && cullCode == lastImmediateCull && lit == lastImmediateLit
+            && lightmap == lastImmediateLightmap) {
             return lastImmediateLayer;
         }
-        final RenderLayer layer = layerLookup(texture, material, true, PassOverride.NONE, 0.0f, 0.0f);
+        final RenderLayer layer = layerLookup(texture, material, true, PassOverride.NONE, 0.0f, 0.0f, cullCode, lit, lightmap);
         lastImmediateTexture = texture;
         lastImmediateMaterial = material;
+        lastImmediateCull = cullCode;
+        lastImmediateLit = lit;
+        lastImmediateLightmap = lightmap;
         lastImmediateLayer = layer;
         return layer;
     }
 
-    private RenderLayer layerLookup(ResourceLocation texture, TesrMaterial material, boolean noPass, PassOverride pass, float offsetFactor, float offsetUnits) {
-        final LayerKey key = scratchKey.set(texture, material.transparency(), material.isNoCull(), material.isUnlit(), material.isNoDepthWrite(), material.isDepthOnly(), material.cutoutAlpha(), material.isDepthEqual(), material.special(), material.shader(), noPass, pass, offsetFactor, offsetUnits);
+    private RenderLayer layerLookup(ResourceLocation texture, TesrMaterial material, boolean noPass, PassOverride pass, float offsetFactor, float offsetUnits, int cullCode, boolean lit, boolean lightmap) {
+        final LayerKey key = scratchKey.set(texture, material.transparency(), material.isNoCull(), material.isUnlit(), material.isNoDepthWrite(), material.isDepthOnly(), material.cutoutAlpha(), material.isDepthEqual(), material.special(), material.shader(), noPass, pass, offsetFactor, offsetUnits, cullCode, lit, lightmap);
         RenderLayer layer = layers.get(key);
         if (layer == null) {
-            layer = noPass ? RenderLayer.tesrNoPass(texture, material) : RenderLayer.tesr(texture, material, pass, offsetFactor, offsetUnits);
+            layer = noPass ? RenderLayer.tesrNoPass(texture, material, cullCode, lit, lightmap) : RenderLayer.tesr(texture, material, pass, offsetFactor, offsetUnits, ShaderGlint.NO_TINT, cullCode, lit, lightmap);
             layers.put(key.copy(), layer);
         }
         return layer;
@@ -305,11 +378,30 @@ public final class TesrBatchRenderer {
         if (material.hasColor()) {
             return AngelicaBufferSource.packAbgr(material.colorRed(), material.colorGreen(), material.colorBlue(), material.colorAlpha());
         }
-        final Color4 color = GLStateManager.getColor();
+        final Color4 color = GLSMCurrentAttribs.getColor();
         return AngelicaBufferSource.packAbgr(color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha());
     }
 
     public void flush() {
+        BatchStateGuard.suspend();
+        try {
+            flushNow();
+        } finally {
+            BatchStateGuard.resume();
+        }
+    }
+
+    void flushForStateChange() {
+        final RetainedTesrGroups hook = activePass >= 0 ? retained[activePass] : pendingDeferredHook;
+        if (!hasPendingGeometry()) return;
+        activePass = -1;
+        deferredFlushPending = false;
+        pendingDeferredHook = null;
+        bufferSource.endBatch(hook);
+        BatchingFontRenderer.flushDeferredText();
+    }
+
+    private void flushNow() {
         final RetainedTesrGroups hook = activePass >= 0 ? retained[activePass] : null;
         if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_OPAQUE);
         try {
@@ -330,12 +422,6 @@ public final class TesrBatchRenderer {
         } finally {
             if (Tracy.ENABLED) Tracy.endZone();
         }
-        if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_INSTANCED);
-        try {
-            instancedRenderer.endFrame();
-        } finally {
-            if (Tracy.ENABLED) Tracy.endZone();
-        }
         if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_TEXT);
         try {
             BatchingFontRenderer.flushDeferredText();
@@ -346,6 +432,15 @@ public final class TesrBatchRenderer {
     }
 
     public void flushAfterDeferred() {
+        BatchStateGuard.suspend();
+        try {
+            flushAfterDeferredNow();
+        } finally {
+            BatchStateGuard.resume();
+        }
+    }
+
+    private void flushAfterDeferredNow() {
         if (!deferredFlushPending) return;
         deferredFlushPending = false;
         final RetainedTesrGroups hook = pendingDeferredHook;
@@ -353,55 +448,46 @@ public final class TesrBatchRenderer {
         if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_DEFERRED);
         try {
             final EntityRenderer entityRenderer = Minecraft.getMinecraft().entityRenderer;
-            final boolean savedDepthMask = GLStateManager.getDepthState().isEnabled();
-            final boolean savedDepthTest = GLStateManager.getDepthTest().isEnabled();
-            final boolean savedBlend = GLStateManager.getBlendMode().isEnabled();
-            final int savedSrcRgb = GLStateManager.getBlendState().getSrcRgb();
-            final int savedDstRgb = GLStateManager.getBlendState().getDstRgb();
-            final int savedSrcAlpha = GLStateManager.getBlendState().getSrcAlpha();
-            final int savedDstAlpha = GLStateManager.getBlendState().getDstAlpha();
-            final boolean savedAlphaTest = GLStateManager.getAlphaTest().isEnabled();
-            final int savedAlphaFunc = GLStateManager.getAlphaState().getFunction();
-            final float savedAlphaRef = GLStateManager.getAlphaState().getReference();
-
-            GLStateManager.glDepthMask(true);
-            GLStateManager.enableDepthTest();
-            GLStateManager.enableBlend();
-            GLStateManager.defaultBlendFunc();
-            entityRenderer.enableLightmap(0);
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-            GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
-            final boolean wrap = Iris.enabled && GbufferPrograms.getCurrentPhase() == WorldRenderingPhase.NONE;
-            if (wrap) GbufferPrograms.beginBlockEntities();
+            final int deferredDepth = GLSMAttribStack.pushState(StateSet.BATCH);
             try {
-                bufferSource.endBatch(hook);
-                instancedRenderer.endFrame();
-                AngelicaBufferSource.rebindPass();
-                        BatchingFontRenderer.flushDeferredText();
+                GLSMDepthStencilAlpha.glDepthMask(true);
+                GLSMDepthStencilAlpha.enableDepthTest();
+                GLSMBlend.enableBlend();
+                GLSMBlend.defaultBlendFunc();
+                entityRenderer.enableLightmap(0);
+                GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+                GLSMEnable.glEnable(GL11.GL_TEXTURE_2D);
+                final boolean wrap = Iris.enabled && GbufferPrograms.getCurrentPhase() == WorldRenderingPhase.NONE;
+                boolean blockEntitiesBegun = false;
+                if (wrap) {
+                    GbufferPrograms.beginBlockEntities();
+                    blockEntitiesBegun = true;
+                }
+                try {
+                    bufferSource.endBatch(hook);
+                    AngelicaBufferSource.rebindPass();
+                    BatchingFontRenderer.flushDeferredText();
+                } finally {
+                    if (blockEntitiesBegun) GbufferPrograms.endBlockEntities();
+                    entityRenderer.disableLightmap(0);
+                }
             } finally {
-                if (wrap) GbufferPrograms.endBlockEntities();
-                entityRenderer.disableLightmap(0);
-                GLStateManager.glDepthMask(savedDepthMask);
-                if (savedDepthTest) GLStateManager.enableDepthTest(); else GLStateManager.disableDepthTest();
-                if (savedBlend) GLStateManager.enableBlend(); else GLStateManager.disableBlend();
-                GLStateManager.tryBlendFuncSeparate(savedSrcRgb, savedDstRgb, savedSrcAlpha, savedDstAlpha);
-                if (savedAlphaTest) GLStateManager.enableAlphaTest(); else GLStateManager.disableAlphaTest();
-                GLStateManager.glAlphaFunc(savedAlphaFunc, savedAlphaRef);
+                GLSMAttribStack.popStateTo(deferredDepth);
             }
         } finally {
             if (Tracy.ENABLED) Tracy.endZone();
         }
     }
 
-    private long lastRebuilds, lastRetainedDraws, lastStreamed, lastInstInstances;
+    private long lastRebakes, lastRetainedDraws, lastStreamed, lastInstInstances;
     private long lastSummaryNanos;
 
     public String getDebugSummaryLine() {
-        long rebuilds = 0, retainedDraws = 0, streamed = 0, instInstances = 0, retainedBytes = 0;
+        long rebakes = 0, retainedDraws = 0, streamed = 0, instInstances = 0, retainedBytes = 0;
         int groupCount = 0, streamingCount = 0;
         for (int i = 0; i < PASS_COUNT; i++) {
             final RetainedTesrGroups r = retained[i];
-            rebuilds += r.rebuilds;
+            rebakes += r.rebakes;
             retainedDraws += r.retainedDraws;
             streamed += r.streamedInstances;
             instInstances += r.instancedInstances;
@@ -413,13 +499,13 @@ public final class TesrBatchRenderer {
         final long elapsed = now - lastSummaryNanos;
         final String line = String.format("TESR: %d grp (%d strm), reb %d/s, drw %d/s, inst %d/s, stream %d/s, mem %.1fMB",
             groupCount, streamingCount,
-            perSecond(rebuilds - lastRebuilds, elapsed),
+            perSecond(rebakes - lastRebakes, elapsed),
             perSecond(retainedDraws - lastRetainedDraws, elapsed),
             perSecond(instInstances - lastInstInstances, elapsed),
             perSecond(streamed - lastStreamed, elapsed),
             (retainedBytes + bufferSource.allocatedBytes() + instancedRenderer.meshBytes()) / 1048576.0);
         lastSummaryNanos = now;
-        lastRebuilds = rebuilds;
+        lastRebakes = rebakes;
         lastRetainedDraws = retainedDraws;
         lastStreamed = streamed;
         lastInstInstances = instInstances;
@@ -439,37 +525,37 @@ public final class TesrBatchRenderer {
             retainedBytes / 1048576.0, bufferSource.allocatedBytes() / 1048576.0,
             instancedRenderer.meshCount(), instancedRenderer.meshBytes() / 1048576.0,
             AngelicaTesrMeshCache.INSTANCE.size());
-        final String attribution = rebuildAttributionLine();
+        final String attribution = rebakeAttributionLine();
         return attribution == null ? Arrays.asList(mem) : Arrays.asList(mem, attribution);
     }
 
-    private final ObjectArrayList<RetainedTesrGroups.Group> rebuilders = new ObjectArrayList<>();
+    private final ObjectArrayList<RetainedTesrGroups.Group> rebakers = new ObjectArrayList<>();
 
-    private String rebuildAttributionLine() {
-        rebuilders.clear();
+    private String rebakeAttributionLine() {
+        rebakers.clear();
         for (int i = 0; i < PASS_COUNT; i++) {
-            retained[i].collectRebuilders(rebuilders);
+            retained[i].collectRebakers(rebakers);
         }
-        if (rebuilders.isEmpty()) return null;
-        rebuilders.sort((a, b) -> Integer.compare(b.rebuildsWindow, a.rebuildsWindow));
+        if (rebakers.isEmpty()) return null;
+        rebakers.sort((a, b) -> Integer.compare(b.rebakesWindow, a.rebakesWindow));
         final StringBuilder sb = new StringBuilder("TESR reb:");
-        final int shown = Math.min(3, rebuilders.size());
+        final int shown = Math.min(3, rebakers.size());
         for (int i = 0; i < shown; i++) {
-            final RetainedTesrGroups.Group group = rebuilders.get(i);
+            final RetainedTesrGroups.Group group = rebakers.get(i);
             if (i > 0) sb.append(',');
-            sb.append(' ').append(group.rebuildsWindow).append("x ").append(RetainedTesrGroups.attribution(group)).append(' ').append(group.builtVertexCount).append('v');
+            sb.append(' ').append(group.rebakesWindow).append("x ").append(RetainedTesrGroups.attribution(group)).append(' ').append(group.builtVertexCount).append('v');
         }
-        if (rebuilders.size() > shown) {
-            sb.append(" +").append(rebuilders.size() - shown);
+        if (rebakers.size() > shown) {
+            sb.append(" +").append(rebakers.size() - shown);
         }
-        for (int i = 0, n = rebuilders.size(); i < n; i++) {
-            rebuilders.get(i).rebuildsWindow = 0;
+        for (int i = 0, n = rebakers.size(); i < n; i++) {
+            rebakers.get(i).rebakesWindow = 0;
         }
-        rebuilders.clear();
+        rebakers.clear();
         return sb.toString();
     }
 
-    public long statRebuilds() { return sumStat(0); }
+    public long statRebakes() { return sumStat(0); }
     public long statRetainedDraws() { return sumStat(1); }
     public long statInstancedDraws() { return sumStat(2); }
     public long statInstancedInstances() { return sumStat(3); }
@@ -481,7 +567,7 @@ public final class TesrBatchRenderer {
         for (int i = 0; i < PASS_COUNT; i++) {
             final RetainedTesrGroups r = retained[i];
             v += switch (which) {
-                case 0 -> r.rebuilds;
+                case 0 -> r.rebakes;
                 case 1 -> r.retainedDraws;
                 case 2 -> r.instancedDraws;
                 case 3 -> r.instancedInstances;
@@ -519,12 +605,30 @@ public final class TesrBatchRenderer {
         immediateScratch.position((int) (end - addr));
         immediateScratch.flip();
         final RenderLayer layer = noPassLayerFor(texture, material);
-        GLStateManager.glPushAttrib(AngelicaBufferSource.SAVED_STATE_BITS);
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        layer.startDrawing();
-        immediateMesh.upload(format, template.drawMode, immediateScratch, vertexCount);
-        immediateMesh.render();
-        layer.endDrawing();
-        GLStateManager.glPopAttrib();
+        final int d = GLSMAttribStack.pushState(StateSet.BATCH);
+        try {
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+            boolean layerStarted = false;
+            Throwable failure = null;
+            try {
+                layer.startDrawing();
+                layerStarted = true;
+                immediateMesh.upload(format, template.drawMode, immediateScratch, vertexCount);
+                immediateMesh.render();
+            } catch (Throwable t) {
+                failure = t;
+            } finally {
+                if (layerStarted) {
+                    try {
+                        layer.endDrawing();
+                    } catch (Throwable cleanup) {
+                        failure = RenderFailures.suppress(failure, cleanup);
+                    }
+                }
+            }
+            if (failure != null) RenderFailures.rethrow(failure);
+        } finally {
+            GLSMAttribStack.popStateTo(d);
+        }
     }
 }

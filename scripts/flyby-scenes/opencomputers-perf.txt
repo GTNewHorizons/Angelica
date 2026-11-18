@@ -1,0 +1,67 @@
+# OpenComputers TESR perf scene: running machines and a 12x12 overlay grid. ~ is the flight start; ground-standing level is ~-2. Yaw 0 faces south (+z).
+# Use with FLYBY_ORIGIN=x,z,-21 SMOKE_PITCH=20 SMOKE_WARMUP_TICKS=400.
+
+define BUFFER_3X2 {width:24,height:8,depth:1,buffer:["ANGELICA TESR FLYBY TEST","RED GREEN BLUE YELLOW ok","0123456789ABCDEF01234567","========================","abcdefghijklmnopqrstuvwx","The quick brown fox jump","+-*/=<>#%&!?.+-*/=<>#%&!","screen1 3x2 16 color pal"],color:[11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,3599,3599,3599,2063,1295,1295,1295,1295,1295,2063,783,783,783,783,2063,1039,1039,1039,1039,1039,1039,2063,2063,2063,7,263,519,775,1031,1287,1543,1807,2055,2311,2567,2823,3079,3335,3591,3847,7,263,519,775,1031,1287,1543,1807,3840,3840,3841,3842,3842,3843,3844,3844,3845,3846,3846,3847,3848,3848,3849,3850,3850,3851,3852,3852,3853,3854,3854,3855,1039,1039,1039,1039,1039,1039,1039,1039,1039,1039,1039,1039,1039,1039,1039,1039,1039,1039,1039,1039,1039,1039,1039,1039,1295,1295,1295,1295,1295,1295,1295,1295,1295,1295,1295,1295,1295,1295,1295,1295,1295,1295,1295,1295,1295,1295,1295,1295,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,266,266,266,266,266,266,266,266,266,266,266,266,266,266,266,266,266,266,266,266,266,266,266,266]}
+define BUFFER_1X1 {width:8,height:4,depth:0,buffer:["ONE BIT.","01234567","abcdefgh","+-*/=<>#"],color:[256,256,256,256,256,256,256,256,1,1,1,1,1,1,1,1,256,256,256,256,256,256,256,256,256,1,256,1,256,1,256,1]}
+define EEPROM {id:"OpenComputers:eeprom",Count:1b,Damage:0s,tag:{oc;data:{oc;eeprom#:"local c,k=component,computer local function f(t) return (c.list(t)()) end local h,m,r,g=f('hologram'),f('modem'),f('robot'),f('debug') local function s(t) if g then pcall(c.invoke,g,'runCommand','say flyby-oc '..t) end end s('boot hologram='..tostring(h)..' modem='..tostring(m)..' robot='..tostring(r)) if h then s('hologram '..tostring(pcall(function() c.invoke(h,'clear') local n=1 if c.invoke(h,'maxDepth')==2 then n=3 end for x=1,48 do for z=1,48 do local a,b=x-24.5,z-24.5 local d=math.sqrt(a*a+b*b) if d<23 then c.invoke(h,'fill',x,z,1,math.floor(math.sqrt(529-d*d))+1,math.floor(d/4)%n+1) end end end end))) end while true do if m then pcall(c.invoke,m,'broadcast',1,'flyby') end if r then pcall(c.invoke,r,'turn',true) end k.pullSignal(0.5) end",oc;label:"flyby",oc;readonly:1b}}}
+
+# setup
+gamerule doMobSpawning false
+gamerule doFireTick false
+difficulty 1
+
+# held screen: up-facing screens draw the up indicator
+clear @p
+give @p OpenComputers:screen1 1
+
+# south: test ISBRH
+setblock ~0 ~-2 ~5 angelica:test_isbrh
+
+# southwest: up-facing screen on a creative case
+setblock ~-3 ~-2 ~4 OpenComputers:caseCreative
+tile ~-3 ~-2 ~3 OpenComputers:screen1 0 {oc;pitch:1,buffer:${BUFFER_1X1}}
+
+# north: creative case, 3x2 16-color screen, 1x1 mono screen (every wall block carries the buffer, the merge keeps the origin's)
+setblock ~2 ~-2 ~-5 OpenComputers:caseCreative
+setblock ~-1 ~-2 ~-5 OpenComputers:screen1 0 replace {buffer:${BUFFER_3X2}}
+setblock ~0 ~-2 ~-5 OpenComputers:screen1 0 replace {buffer:${BUFFER_3X2}}
+setblock ~1 ~-2 ~-5 OpenComputers:screen1 0 replace {buffer:${BUFFER_3X2}}
+setblock ~-1 ~-1 ~-5 OpenComputers:screen1 0 replace {buffer:${BUFFER_3X2}}
+setblock ~0 ~-1 ~-5 OpenComputers:screen1 0 replace {buffer:${BUFFER_3X2}}
+setblock ~1 ~-1 ~-5 OpenComputers:screen1 0 replace {buffer:${BUFFER_3X2}}
+setblock ~3 ~-2 ~-5 OpenComputers:screen1 0 replace {buffer:${BUFFER_1X1}}
+
+# west: powered case, distributor, capacitor, chargers
+setblock ~-4 ~-2 ~0 OpenComputers:caseCreative
+setblock ~-4 ~-1 ~0 OpenComputers:powerDistributor
+setblock ~-4 ~-2 ~1 OpenComputers:capacitor
+setblock ~-4 ~-2 ~-1 OpenComputers:charger
+setblock ~-5 ~-2 ~-1 minecraft:redstone_block
+setblock ~-4 ~-2 ~2 OpenComputers:charger
+setblock ~-5 ~-2 ~2 minecraft:redstone_block
+
+# east: running computer, tier 2 projector on top, relay
+tile ~5 ~-2 ~0 OpenComputers:caseCreative 0 {oc;tier:3b,oc;yaw:4,oc;items:[{slot:0b,item:{id:"OpenComputers:item",Count:1b,Damage:11s}},{slot:1b,item:{id:"OpenComputers:item",Count:1b,Damage:73s}},{slot:3b,item:{id:"OpenComputers:item",Count:1b,Damage:39s}},{slot:8b,item:{id:"OpenComputers:item",Count:1b,Damage:43s}},{slot:9b,item:${EEPROM}}]}
+tile ~5 ~-1 ~0 OpenComputers:hologram2 0 {oc;tier:1b,oc;scale:1.0d}
+setblock ~5 ~-2 ~1 OpenComputers:relay
+after 30 activate ~5 ~-2 ~0 sneak
+
+# far southeast: same computer, projector at scale 4 in the hologram fade band
+tile ~40 ~-2 ~40 OpenComputers:caseCreative 0 {oc;tier:3b,oc;yaw:4,oc;items:[{slot:1b,item:{id:"OpenComputers:item",Count:1b,Damage:73s}},{slot:3b,item:{id:"OpenComputers:item",Count:1b,Damage:39s}},{slot:8b,item:{id:"OpenComputers:item",Count:1b,Damage:43s}},{slot:9b,item:${EEPROM}}]}
+tile ~40 ~-1 ~40 OpenComputers:hologram2 0 {oc;tier:1b,oc;scale:4.0d}
+after 30 activate ~40 ~-2 ~40 sneak
+
+# southeast: empty tier 1 and 2 projectors
+setblock ~3 ~-3 ~2 OpenComputers:caseCreative
+setblock ~3 ~-2 ~2 OpenComputers:hologram1
+setblock ~3 ~-3 ~4 OpenComputers:caseCreative
+setblock ~3 ~-2 ~4 OpenComputers:hologram2
+
+# northwest: turning robot
+tile ~-4 ~-2 ~-4 OpenComputers:robot 0 {display:{Name:"Flyby"},oc;tier:3,oc;components:[{id:"OpenComputers:item",Count:1b,Damage:73s},{id:"OpenComputers:item",Count:1b,Damage:43s},{id:"OpenComputers:item",Count:1b,Damage:39s},${EEPROM}]}
+after 30 activate ~-4 ~-2 ~-4 sneak
+
+# south: 12x12 overlay grid, one 12x4 band per block
+fill ~-6 ~-2 ~9 ~5 ~-2 ~12 OpenComputers:geolyzer
+fill ~-6 ~-2 ~13 ~5 ~-2 ~16 OpenComputers:microcontroller
+fill ~-6 ~-2 ~17 ~5 ~-2 ~20 OpenComputers:raid

@@ -1,9 +1,10 @@
 package net.coderbot.iris.pipeline;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import lombok.Getter;
 import net.coderbot.iris.Iris;
+import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.uniforms.SystemTimeUniforms;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL11;
@@ -43,6 +44,7 @@ public class PipelineManager {
 			Iris.logger.info("Creating pipeline for dimension '{}'", currentDimension);
 			pipeline = pipelineFactory.apply(currentDimension);
 			pipelinesPerDimension.put(currentDimension, pipeline);
+			BlockRenderingSettings.INSTANCE.reloadRendererIfRequired();
 			if (Tracy.ENABLED) {
 				shaderSection = Tracy.sectionEnter(Tracy.SECTION_SHADERS, "shaders " + Iris.getCurrentPackName() + " / " + currentDimension);
 			}
@@ -89,6 +91,11 @@ public class PipelineManager {
 		versionCounterForSodiumShaderReload++;
 	}
 
+	public void discardPipeline(WorldRenderingPipeline unused) {
+		resetTextureState();
+		unused.destroy();
+	}
+
 	private void resetTextureState() {
 		// Unbind all textures
 		//
@@ -98,13 +105,13 @@ public class PipelineManager {
 		//
 		// Without this code, there will be weird issues when reloading certain shaderpacks.
 		for (int i = 0; i < 16; i++) {
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + i);
-			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0 + i);
+			GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
 		}
 
 		// Set the active texture unit to unit 0
 		//
 		// This seems to be what most code expects. It's a sane default in any case.
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
 	}
 }

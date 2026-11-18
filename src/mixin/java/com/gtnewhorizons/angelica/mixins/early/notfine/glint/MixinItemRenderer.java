@@ -1,16 +1,15 @@
 package com.gtnewhorizons.angelica.mixins.early.notfine.glint;
 
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import jss.notfine.core.Settings;
 import net.minecraft.client.renderer.ItemRenderer;
-import net.minecraft.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Redirect;
 
 @Mixin(value = ItemRenderer.class)
 public abstract class MixinItemRenderer {
 
-    @Redirect(
+    @ModifyExpressionValue(
         method = "renderItem(Lnet/minecraft/entity/EntityLivingBase;Lnet/minecraft/item/ItemStack;ILnet/minecraftforge/client/IItemRenderer$ItemRenderType;)V",
         at = @At(
             value = "INVOKE",
@@ -18,8 +17,8 @@ public abstract class MixinItemRenderer {
         ),
         remap = false
     )
-    private boolean notFine$toggleGlint(ItemStack stack, int pass) {
-        return (boolean)Settings.MODE_GLINT_WORLD.option.getStore() && stack.hasEffect(pass);
+    private boolean notFine$toggleGlint(boolean hasEffect) {
+        return hasEffect && (boolean) Settings.MODE_GLINT_WORLD.option.getStore();
     }
 
 }

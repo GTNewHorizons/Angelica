@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.GLTypes;
 import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
@@ -67,7 +68,8 @@ public final class AttribSnapshot {
     public static AttribSnapshot snapshot(int firstVertex, int vertexCount) {
         final AttribDesc[] out = new AttribDesc[VAOManager.MAX_ATTRIBS];
         final List<ByteBuffer> allocated = new ArrayList<>();
-        final int prevVBO = GLStateManager.getBoundVBO();
+        final int prevVBO = GLSMBuffers.getBoundVBO();
+        final VAOManager vaos = GLStateManager.ctx().vaos;
         boolean success = false;
 
         // Pass 1 — unioned [start,end] per vboId. Hot path: one source VBO, zero allocations.
@@ -78,7 +80,7 @@ public final class AttribSnapshot {
 
         final long lastVtx = (long) firstVertex + vertexCount - 1;
         for (int i = 0; i < VAOManager.MAX_ATTRIBS; i++) {
-            final VAOManager.Attrib a = VAOManager.get(i);
+            final VAOManager.Attrib a = vaos.attrib(i);
             if (a == null || !a.enabled || a.vboId == 0) continue;
             final int stride = a.effectiveStride();
             final long typeBytes = (long) a.size * GLTypes.sizeBytes(a.type);
@@ -114,7 +116,7 @@ public final class AttribSnapshot {
 
         try {
             for (int i = 0; i < VAOManager.MAX_ATTRIBS; i++) {
-                final VAOManager.Attrib a = VAOManager.get(i);
+                final VAOManager.Attrib a = vaos.attrib(i);
                 if (a == null || !a.enabled) continue;
 
                 if (a.vboId != 0) {
@@ -132,8 +134,8 @@ public final class AttribSnapshot {
                     }
 
                     if (buf == null) {
-                        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, a.vboId);
-                        final int bufferSize = GLStateManager.glGetBufferParameteri(GL15.GL_ARRAY_BUFFER, GL15.GL_BUFFER_SIZE);
+                        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, a.vboId);
+                        final int bufferSize = GLSMBuffers.glGetBufferParameteri(GL15.GL_ARRAY_BUFFER, GL15.GL_BUFFER_SIZE);
                         if (bufferSize <= 0) {
                             warnOnce("vbo-orphaned", "[AttribSnapshot] GL_BUFFER_SIZE={} for VBO {} -- skipping capture", bufferSize, a.vboId);
                             return null;
@@ -161,7 +163,7 @@ public final class AttribSnapshot {
                         }
 
                         buf = MemoryUtilities.memAlloc(rs);
-                        GLStateManager.glGetBufferSubData(GL15.GL_ARRAY_BUFFER, ro, buf);
+                        GLSMBuffers.glGetBufferSubData(GL15.GL_ARRAY_BUFFER, ro, buf);
                         allocated.add(buf);
                         readOffset = ro;
 
@@ -189,7 +191,7 @@ public final class AttribSnapshot {
             success = true;
             return new AttribSnapshot(out, allocated);
         } finally {
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, prevVBO);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, prevVBO);
             if (!success) {
                 for (ByteBuffer b : allocated) MemoryUtilities.memFree(b);
             }

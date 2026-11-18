@@ -1,7 +1,10 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.states.PixelUnpackState;
+import com.gtnewhorizons.angelica.glsm.states.PixelStoreState;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.sdlgpu.SDLGPULWJGLService;
 import org.junit.jupiter.api.BeforeAll;
@@ -26,7 +29,6 @@ class GlsmSdlLWJGLServiceRoutingTest {
 
     @BeforeAll
     static void boot() {
-        GlsmSdlHeadlessRig.boot();
         svc = SDLGPULWJGLService.create();
     }
 
@@ -35,7 +37,7 @@ class GlsmSdlLWJGLServiceRoutingTest {
     }
 
     private static int glsmUnpackAlignment() {
-        final PixelUnpackState state = Reflect.get(glsmContext(), "pixelUnpackState");
+        final PixelStoreState state = Reflect.get(glsmContext(), "pixelUnpackState");
         return state.alignment();
     }
 
@@ -44,11 +46,11 @@ class GlsmSdlLWJGLServiceRoutingTest {
         final int buffer = svc.glGenBuffers();
         svc.glBindBuffer(GL15.GL_ARRAY_BUFFER, buffer);
         svc.glBufferData(GL15.GL_ARRAY_BUFFER, 64L, GL15.GL_STATIC_DRAW);
-        assertEquals(buffer, GLStateManager.getBoundVBO());
+        assertEquals(buffer, GLSMBuffers.getBoundVBO());
 
         svc.glDeleteBuffers(buffer);
 
-        assertEquals(0, GLStateManager.getBoundVBO());
+        assertEquals(0, GLSMBuffers.getBoundVBO());
     }
 
     @Test
@@ -72,9 +74,9 @@ class GlsmSdlLWJGLServiceRoutingTest {
     void clearColorUpdatesTheGlsmCache() {
         svc.glClearColor(0.25f, 0.5f, 0.75f, 1.0f);
 
-        assertEquals(0.25f, GLStateManager.getClearColor().getRed());
-        assertEquals(0.5f, GLStateManager.getClearColor().getGreen());
-        assertEquals(0.75f, GLStateManager.getClearColor().getBlue());
+        assertEquals(0.25f, GLSMBlend.getClearColor().getRed());
+        assertEquals(0.5f, GLSMBlend.getClearColor().getGreen());
+        assertEquals(0.75f, GLSMBlend.getClearColor().getBlue());
     }
 
     @Test
@@ -94,11 +96,11 @@ class GlsmSdlLWJGLServiceRoutingTest {
         final int framebuffer = svc.glGenFramebuffers();
         try {
             svc.glBindFramebuffer(GL30.GL_FRAMEBUFFER, framebuffer);
-            assertEquals(framebuffer, GLStateManager.getDrawFramebuffer());
+            assertEquals(framebuffer, GLSMFramebuffer.getDrawFramebuffer());
 
             svc.glDeleteFramebuffers(framebuffer);
 
-            assertEquals(0, GLStateManager.getDrawFramebuffer());
+            assertEquals(0, GLSMFramebuffer.getDrawFramebuffer());
         } finally {
             GlsmSdlHeadlessRig.bindTarget();
         }

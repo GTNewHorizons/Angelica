@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.common;
 
+import com.gtnewhorizons.angelica.rendering.TextureAtlasType;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.block.Block;
@@ -39,7 +40,7 @@ public class BlockError extends Block {
         @SubscribeEvent
         @SideOnly(Side.CLIENT)
         public void onTextureStitch(TextureStitchEvent.Pre event) {
-            if (event.map.getTextureType() == 0) {
+            if (event.map.getTextureType() == TextureAtlasType.BLOCK) {
                 for (int i = 0; i < icons.length; i++) {
                     icons[i] = event.map.registerIcon("angelica:error_block_" + i);
                 }

@@ -1,9 +1,13 @@
 package com.gtnewhorizons.angelica.sdlgpu.device;
 
 import com.gtnewhorizons.angelica.config.SystemProperties;
+import com.gtnewhorizons.angelica.glsm.backend.BackendOptions;
+import com.gtnewhorizons.angelica.glsm.backend.MoltenVK;
 import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
+import com.gtnewhorizons.angelica.sdlgpu.compute.ImageAtomicsProbe;
 import com.gtnewhorizons.angelica.sdlgpu.util.DebugMessageRelay;
+import it.unimi.dsi.fastutil.longs.Long2BooleanOpenHashMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.sdl.SDLError;
@@ -20,11 +24,12 @@ import org.lwjgl.system.Platform;
 import org.lwjglx.opengl.Display;
 
 import java.nio.IntBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
 import static org.lwjgl.sdl.SDLGPU.*;
-import static org.lwjgl.sdl.SDLHints.SDL_HINT_GPU_DRIVER;
+import static org.lwjgl.sdl.SDLHints.SDL_HINT_VULKAN_LIBRARY;
 import static org.lwjgl.sdl.SDLHints.SDL_SetHint;
 import static org.lwjgl.sdl.SDLVideo.*;
 import static org.lwjgl.system.MemoryUtil.memUTF8;
@@ -32,9 +37,7 @@ import static org.lwjgl.system.MemoryUtil.memUTF8;
 public final class Device {
     private static final Logger LOG = LogManager.getLogger("Angelica-SDLGPU");
 
-    public static final int MAX_FRAMES_IN_FLIGHT = 3;
-
-    private static final int FRAMES_IN_FLIGHT = Math.min(Math.max(SystemProperties.SDL_FRAMES_IN_FLIGHT, 1), MAX_FRAMES_IN_FLIGHT);
+    private static final int FRAMES_IN_FLIGHT = Math.min(Math.max(SystemProperties.SDL_FRAMES_IN_FLIGHT, 1), RenderBackend.MAX_FRAMES_IN_FLIGHT);
 
     public static int framesInFlight() { return FRAMES_IN_FLIGHT; }
 
@@ -42,8 +45,15 @@ public final class Device {
 
     private long device;
     private boolean claimed;
+    private boolean clipDistance = true;
     private int supportedShaderFormats;
     private String driverName;
+    private boolean fencePollEnabled;
+    private boolean fenceQueryInverted;
+    private int defaultMslVersion;
+    private ImageAtomicsProbe imageAtomicsProbe;
+    private final Long2BooleanOpenHashMap imageAtomicsBySize = new Long2BooleanOpenHashMap();
+    private final FenceReleaser fenceReleaser = new FenceReleaser(fence -> device == 0 || FenceWait.isSignaled(this, fence), fence -> { if (device != 0) SDL_ReleaseGPUFence(device, fence); });
     private String deviceName;
     private String driverVersion;
     private String driverInfo;
@@ -79,16 +89,38 @@ public final class Device {
         throw new GpuDeviceLostException(operation, err);
     }
 
-    // Default to vulkan for now until D3D is more tested
-    static String resolveDriverName(String userHint, boolean windows) {
-        return userHint.isEmpty() && windows ? "vulkan" : null;
+    static String[] driverCandidates(String requested, Platform platform) {
+        final String[] platformOrder = switch (platform) {
+            case MACOSX -> new String[] { "metal", "vulkan" };
+            case WINDOWS -> new String[] { "vulkan", "direct3d12" };
+            default -> new String[] { "vulkan" };
+        };
+        if (requested.isEmpty()) return platformOrder;
+        final List<String> candidates = new ArrayList<>(platformOrder.length + 1);
+        candidates.add(requested);
+        for (final String driver : platformOrder) {
+            if (!driver.equalsIgnoreCase(requested)) candidates.add(driver);
+        }
+        return candidates.toArray(new String[0]);
+    }
+
+    static boolean isVulkan(String driverName) {
+        return "vulkan".equalsIgnoreCase(driverName);
+    }
+
+    static boolean isMetal(String driverName) {
+        return "metal".equalsIgnoreCase(driverName);
     }
 
     static boolean metalNeedsNewerSdl(String driverName, int sdlVersion) {
-        return "metal".equalsIgnoreCase(driverName) && sdlVersion < SDLVersion.SDL_VERSIONNUM(3, 4, 6);
+        return isMetal(driverName) && sdlVersion < SDLVersion.SDL_VERSIONNUM(3, 4, 6);
     }
 
     public boolean createDevice() {
+        return createDevice(!SystemProperties.EMULATE_CLIP_DISTANCES);
+    }
+
+    boolean createDevice(boolean requestClipDistance) {
         if (device != 0) return true;
 
         installLogCallback();
@@ -96,17 +128,16 @@ public final class Device {
         final int ver = SDLVersion.SDL_GetVersion();
         LOG.info("SDL runtime version {}.{}.{} (raw {})", SDLVersion.SDL_VERSIONNUM_MAJOR(ver), SDLVersion.SDL_VERSIONNUM_MINOR(ver), SDLVersion.SDL_VERSIONNUM_MICRO(ver), ver);
 
-        final String driverHint = SystemProperties.SDL_GPU_DRIVER;
-        if (!driverHint.isEmpty()) {
-            SDL_SetHint(SDL_HINT_GPU_DRIVER, driverHint);
-            LOG.info("SDL GPU driver hint set to '{}'", driverHint);
+        final String requestedDriver = BackendOptions.sdlGpuDriver();
+        final String[] candidates = driverCandidates(requestedDriver, Platform.get());
+        if (!requestedDriver.isEmpty()) {
+            LOG.info("SDL GPU driver requested: '{}'", requestedDriver);
         }
 
         final boolean gpuDebug = SystemProperties.LWJGL_DEBUG || SystemProperties.SDL_GPU_DEBUG;
-        final String forcedDriver = resolveDriverName(driverHint, Platform.get() == Platform.WINDOWS);
-        device = createGPUDevice(gpuDebug, forcedDriver);
+        device = createGPUDevice(gpuDebug, candidates, requestClipDistance);
         if (device == 0 && VideoDriverRecovery.shouldRetryOnX11(SDL_GetCurrentVideoDriver(), vulkanLoaderAvailable(), System.getenv("DISPLAY"))) {
-            device = VideoDriverRecovery.retryUnderX11(() -> createGPUDevice(gpuDebug, forcedDriver));
+            device = VideoDriverRecovery.retryUnderX11(() -> createGPUDevice(gpuDebug, candidates, requestClipDistance));
         }
         if (device == 0) {
             logDeviceCreationFailure(REQUESTED_SHADER_FORMATS);
@@ -121,7 +152,7 @@ public final class Device {
         driverVersion = SDLProperties.SDL_GetStringProperty(props, SDL_PROP_GPU_DEVICE_DRIVER_VERSION_STRING, "");
         driverInfo = SDLProperties.SDL_GetStringProperty(props, SDL_PROP_GPU_DEVICE_DRIVER_INFO_STRING, "");
 
-        LOG.info("SDL GPU device created: gpu={}, driver={} {}, video={}, formats=0x{}, debug={}, forcedDriver={}", deviceName, driverName, driverVersion, SDL_GetCurrentVideoDriver(), Integer.toHexString(supportedShaderFormats), gpuDebug, forcedDriver);
+        LOG.info("SDL GPU device created: gpu={}, driver={} {}, video={}, formats=0x{}, debug={}, requestedDriver={}", deviceName, driverName, driverVersion, SDL_GetCurrentVideoDriver(), Integer.toHexString(supportedShaderFormats), gpuDebug, requestedDriver);
 
         if (metalNeedsNewerSdl(driverName, ver)) {
             LOG.error("SDL GPU on Metal requires SDL 3.4.6 or newer (have {}.{}.{}); falling back to OpenGL", SDLVersion.SDL_VERSIONNUM_MAJOR(ver), SDLVersion.SDL_VERSIONNUM_MINOR(ver), SDLVersion.SDL_VERSIONNUM_MICRO(ver));
@@ -129,16 +160,95 @@ public final class Device {
             return false;
         }
 
+        probeFences(ver);
+        readMetalLanguageVersion();
+
         return true;
     }
 
-    private long createGPUDevice(boolean gpuDebug, String forcedDriver) {
-        long dev = SDL_CreateGPUDevice(REQUESTED_SHADER_FORMATS, gpuDebug, forcedDriver);
-        if (dev == 0 && forcedDriver != null) {
-            LOG.warn("Failed to create a '{}' SDL GPU device ({}); falling back to SDL's default backend. Set -D{} to pin one.", forcedDriver, SDLError.SDL_GetError(), SystemProperties.KEY_SDL_GPU_DRIVER);
-            dev = SDL_CreateGPUDevice(REQUESTED_SHADER_FORMATS, gpuDebug, (CharSequence) null);
+    private void readMetalLanguageVersion() {
+        if (!isMetal(driverName)) return;
+        defaultMslVersion = ImageAtomicsProbe.defaultMslVersion();
+        if (metalTextureAtomics()) {
+            LOG.info("Metal image atomics: MSL 3.1 available, checked per image size");
+        } else {
+            LOG.info("Metal image atomics: unavailable, this Java runtime compiles Metal shaders as MSL {}.{} and they need 3.1. A runtime built with the macOS 14 SDK or newer enables them.", defaultMslVersion >>> 16, defaultMslVersion & 0xFFFF);
         }
-        return dev;
+    }
+
+    public boolean metalTextureAtomics() {
+        return defaultMslVersion >= ImageAtomicsProbe.MTL_LANGUAGE_VERSION_3_1;
+    }
+
+    public boolean supportsImageAtomics(int width, int height, int depth) {
+        if (!metalTextureAtomics() || width <= 0 || height <= 0 || depth > 1) return false;
+        final long key = (long) width << 32 | height;
+        if (imageAtomicsBySize.containsKey(key)) return imageAtomicsBySize.get(key);
+        if (imageAtomicsProbe == null) imageAtomicsProbe = new ImageAtomicsProbe(device);
+        final boolean ok = imageAtomicsProbe.run(width, height);
+        if (ok) LOG.info("Metal image atomics on {}x{}: ok", width, height);
+        imageAtomicsBySize.put(key, ok);
+        return ok;
+    }
+
+    private void probeFences(int ver) {
+        fencePollEnabled = FenceWait.pollEnabled(driverName, ver);
+        final boolean expectInverted = isMetal(driverName) && ver == SDLVersion.SDL_VERSIONNUM(3, 4, 14);
+        fenceQueryInverted = FenceProbe.queryInverted(device, driverName, expectInverted);
+        LOG.info("SDL {}.{}.{} driver={} fenceQueryInverted={} fencePoll={}", SDLVersion.SDL_VERSIONNUM_MAJOR(ver), SDLVersion.SDL_VERSIONNUM_MINOR(ver), SDLVersion.SDL_VERSIONNUM_MICRO(ver), driverName, fenceQueryInverted, fencePollEnabled);
+        if (fenceQueryInverted != expectInverted) {
+            LOG.warn("Fence query probe disagrees with the SDL version table: inverted={}, expected {}", fenceQueryInverted, expectInverted);
+        }
+    }
+
+    private static void useMoltenVk() {
+        final String path = MoltenVK.locate();
+        if (path == null || MoltenVK.source() == MoltenVK.Source.ENV) return;
+        if (SDL_SetHint(SDL_HINT_VULKAN_LIBRARY, path)) {
+            LOG.info("MoltenVK: {}", path);
+        } else {
+            LOG.warn("Could not point SDL at MoltenVK {}: {}", path, SDLError.SDL_GetError());
+        }
+    }
+
+    private long createGPUDevice(boolean gpuDebug, String[] candidates, boolean requestClipDistance) {
+        final boolean macos = Platform.get() == Platform.MACOSX;
+        for (final String driver : candidates) {
+            final boolean macVulkan = macos && isVulkan(driver);
+            if (macVulkan) useMoltenVk();
+            long dev = createWithProperties(gpuDebug, driver, requestClipDistance);
+            boolean clip = requestClipDistance;
+            if (dev == 0 && clip && isVulkan(driver)) {
+                LOG.info("SDL GPU Vulkan device creation failed with shaderClipDistance ({}); the device may lack it, retrying without it, clip distances will be emulated", SDLError.SDL_GetError());
+                dev = createWithProperties(gpuDebug, driver, false);
+                clip = false;
+            }
+            if (dev != 0) {
+                clipDistance = clip;
+                return dev;
+            }
+            LOG.warn("Failed to create a '{}' SDL GPU device: {}", driver, SDLError.SDL_GetError());
+            if (macVulkan && MoltenVK.locate() == null) {
+                LOG.warn("Vulkan on macOS needs MoltenVK. Add {} to the mods folder or install MoltenVK.", MoltenVK.JAR_NAME);
+            }
+        }
+        return 0;
+    }
+
+    private static long createWithProperties(boolean gpuDebug, String driver, boolean clipDistance) {
+        final int props = SDLProperties.SDL_CreateProperties();
+        try {
+            SDLProperties.SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_SPIRV_BOOLEAN, (REQUESTED_SHADER_FORMATS & SDL_GPU_SHADERFORMAT_SPIRV) != 0);
+            SDLProperties.SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_DXBC_BOOLEAN, (REQUESTED_SHADER_FORMATS & SDL_GPU_SHADERFORMAT_DXBC) != 0);
+            SDLProperties.SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_DXIL_BOOLEAN, (REQUESTED_SHADER_FORMATS & SDL_GPU_SHADERFORMAT_DXIL) != 0);
+            SDLProperties.SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_MSL_BOOLEAN, (REQUESTED_SHADER_FORMATS & SDL_GPU_SHADERFORMAT_MSL) != 0);
+            SDLProperties.SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_DEBUGMODE_BOOLEAN, gpuDebug);
+            SDLProperties.SDL_SetStringProperty(props, SDL_PROP_GPU_DEVICE_CREATE_NAME_STRING, driver);
+            SDLProperties.SDL_SetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_FEATURE_CLIP_DISTANCE_BOOLEAN, clipDistance);
+            return SDL_CreateGPUDeviceWithProperties(props);
+        } finally {
+            SDLProperties.SDL_DestroyProperties(props);
+        }
     }
 
     public void claimWindow(long window) {
@@ -194,7 +304,7 @@ public final class Device {
                 }
             }
         }
-        LOG.error("Continuing on OpenGL. Set -D{}=false to skip this probe entirely.", SystemProperties.KEY_USE_SDL_GPU);
+        LOG.error("Continuing on OpenGL. Set Video Settings > Renderer > Backend to OpenGL, or -D{}=false, to skip this probe entirely.", SystemProperties.KEY_USE_SDL_GPU);
     }
 
     public void destroyDevice() {
@@ -204,13 +314,21 @@ public final class Device {
             if (window != 0) SDL_ReleaseWindowFromGPUDevice(device, window);
             claimed = false;
         }
+        fenceReleaser.releaseAll();
+        if (imageAtomicsProbe != null) imageAtomicsProbe.release();
+        imageAtomicsProbe = null;
         SDL_DestroyGPUDevice(device);
         device = 0;
         driverName = null;
+        fencePollEnabled = false;
+        fenceQueryInverted = false;
+        defaultMslVersion = 0;
+        imageAtomicsBySize.clear();
         deviceName = null;
         driverVersion = null;
         driverInfo = null;
         supportedShaderFormats = 0;
+        clipDistance = true;
     }
 
     private void logWindowDiagnostics(long window) {
@@ -264,8 +382,32 @@ public final class Device {
         return device;
     }
 
+    public boolean hasClipDistance() {
+        return clipDistance;
+    }
+
     public String getDriverName() {
         return driverName;
+    }
+
+    public boolean isMetal() {
+        return isMetal(driverName);
+    }
+
+    public boolean isVulkan() {
+        return isVulkan(driverName);
+    }
+
+    public boolean isFencePollEnabled() {
+        return fencePollEnabled;
+    }
+
+    public boolean isFenceQueryInverted() {
+        return fenceQueryInverted;
+    }
+
+    public FenceReleaser fenceReleaser() {
+        return fenceReleaser;
     }
 
     public Thread getWindowThread() {

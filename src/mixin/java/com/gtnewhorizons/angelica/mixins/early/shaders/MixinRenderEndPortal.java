@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.uniforms.SystemTimeUniforms;
 import net.minecraft.client.Minecraft;
@@ -41,7 +41,7 @@ public class MixinRenderEndPortal {
         float bottom = (float) y + iris$BOTTOM;
 
         Minecraft.getMinecraft().getTextureManager().bindTexture(iris$END_PORTAL_TEXTURE);
-        GLStateManager.enableTexture();
+        GLSMTextures.enableTexture();
 
         Tessellator tess = Tessellator.instance;
         tess.startDrawingQuads();

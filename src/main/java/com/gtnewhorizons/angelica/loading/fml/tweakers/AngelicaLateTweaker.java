@@ -64,9 +64,14 @@ public class AngelicaLateTweaker implements ITweaker {
             FMLRelaunchLog.warning("[Angelica] Failed to remove EarlyRedirectorTransformer: %s", e.getMessage());
         }
 
-        final String transformer = "com.gtnewhorizons.angelica.loading.fml.transformers.AngelicaRedirectorTransformer";
-        FMLRelaunchLog.finer("Registering transformer %s", transformer);
-        Launch.classLoader.registerTransformer(transformer);
+        final String[] transformers = {
+            "com.gtnewhorizons.angelica.loading.fml.transformers.AngelicaRedirectorTransformer",
+            "com.gtnewhorizons.angelica.loading.fml.transformers.DarkModeFontTransformer"
+        };
+        for (String transformer : transformers) {
+            FMLRelaunchLog.finer("Registering transformer %s", transformer);
+            Launch.classLoader.registerTransformer(transformer);
+        }
         return new String[0];
     }
 }

@@ -1,7 +1,8 @@
 package net.coderbot.iris.shadows;
 
 import com.google.common.collect.ImmutableSet;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
@@ -147,7 +148,7 @@ public class ShadowRenderTargets {
 		}
 		if (terrainColorCache != null) {
 			for (int tex : terrainColorCache) {
-				if (tex != 0) GLStateManager.glDeleteTextures(tex);
+				if (tex != 0) GLSMTextures.glDeleteTextures(tex);
 			}
 			terrainColorCache = null;
 		}
@@ -236,7 +237,7 @@ public class ShadowRenderTargets {
 	}
 
 	private int createCacheTexture(InternalTextureFormat format) {
-		final int tex = GLStateManager.glGenTextures();
+		final int tex = GLSMTextures.glGenTextures();
 		RenderSystem.texImage2D(tex, GL11.GL_TEXTURE_2D, 0, format.getGlFormat(), resolution, resolution, 0, format.getPixelFormat().getGlFormat(), PixelType.UNSIGNED_BYTE.getGlFormat(), (ByteBuffer) null);
 		RenderSystem.texParameteri(tex, GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
 		RenderSystem.texParameteri(tex, GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
@@ -364,7 +365,7 @@ public class ShadowRenderTargets {
 		framebuffer.drawBuffers(actualDrawBuffers);
 		framebuffer.readBuffer(0);
 
-		if (GLStateManager.framebufferCompletenessIsMeaningful()) {
+		if (GLSMFramebuffer.framebufferCompletenessIsMeaningful()) {
 			final int status = framebuffer.getStatus();
 			if (status != GL30.GL_FRAMEBUFFER_COMPLETE) {
 				throw new IllegalStateException(String.format("Unexpected error while creating shadow framebuffer: glCheckFramebufferStatus=0x%X, resolution=%d, drawBuffers=%d", status, resolution, drawBuffers.length));

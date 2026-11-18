@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.client.rendering;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 
@@ -10,12 +10,12 @@ public final class ModelViewDelta {
     private final Matrix4f baseInverse = new Matrix4f();
 
     public void snapshot() {
-        base.set(GLStateManager.getModelViewMatrix());
+        base.set(GLSMMatrices.getModelViewMatrix());
         base.invert(baseInverse);
     }
 
     public Matrix4fc deltaOrNull(Matrix4f scratch) {
-        final Matrix4f current = GLStateManager.getModelViewMatrix();
+        final Matrix4f current = GLSMMatrices.getModelViewMatrix();
         if (current.equals(base)) return null;
         return baseInverse.mul(current, scratch);
     }

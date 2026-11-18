@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import org.lwjgl.opengl.GL11;
 
 public final class CubeInstancedAttribs {
@@ -14,8 +14,8 @@ public final class CubeInstancedAttribs {
 
     public static void pointInstanceAttribs(long base) {
         InstancedAttribs.pointHead(base, STRIDE);
-        GLStateManager.glVertexAttribPointer(LOC_LIGHTMAP_SCALE, 4, GL11.GL_FLOAT, false, STRIDE, base + OFFSET_LIGHTMAP_SCALE);
-        GLStateManager.glVertexAttribPointer(LOC_CUBE_TEX, 4, GL11.GL_FLOAT, false, STRIDE, base + OFFSET_CUBE_TEX);
+        GLSMVertexInput.glVertexAttribPointer(LOC_LIGHTMAP_SCALE, 4, GL11.GL_FLOAT, false, STRIDE, base + OFFSET_LIGHTMAP_SCALE);
+        GLSMVertexInput.glVertexAttribPointer(LOC_CUBE_TEX, 4, GL11.GL_FLOAT, false, STRIDE, base + OFFSET_CUBE_TEX);
     }
 
     static void enableInstanceArrays() {

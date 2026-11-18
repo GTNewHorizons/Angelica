@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement;
+import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
 
 /**
  * Generates GLSL 330 core vertex shaders for FFP emulation.
@@ -19,8 +20,15 @@ public final class VertexShaderGenerator {
         emitAttributes(sb, key);
         emitUniforms(sb, key);
         emitOutputs(sb, key);
+        if (key.lineQuads()) {
+            sb.append(ShaderLoader.getShaderSource("angelica:include/line_quads.glsl")).append('\n');
+        }
 
         sb.append("void main() {\n");
+        if (key.instancing() == Instancing.WEATHER) {
+            sb.append("  ").append(InstancedGlslHelpers.weatherPrologue("u_", "a_", "a_TexCoord0",
+                "vec4 weatherVertex", "vec4 weatherColor", "vec4 weatherTex0", "vec4 weatherTex1", "\n  ")).append('\n');
+        }
         emitPositionTransform(sb, key);
         if (key.lightingEnabled()) {
             emitNormalTransform(sb, key);
@@ -30,35 +38,23 @@ public final class VertexShaderGenerator {
         }
         emitTexCoordPassthrough(sb, key);
         if (key.lineStipple()) {
-            emitLineStart(sb);
+            emitLineStart(sb, key.lineQuads() ? "lineCenter" : "gl_Position");
         }
         if (key.fogEnabled()) {
             emitFogDistance(sb, key);
         }
         if (key.clipPlanesEnabled()) {
-            emitClipDistances(sb);
+            emitClipDistances(sb, key);
         }
         sb.append("}\n");
-
-        String source = sb.toString();
-        if (key.wideLineEmulation()) {
-            source = source.replace("v_SpecularColor", "v_SpecularColor_gs")
-                           .replace("v_TexCoord0", "v_TexCoord0_gs")
-                           .replace("v_TexCoord1", "v_TexCoord1_gs")
-                           .replace("v_TexCoord2", "v_TexCoord2_gs")
-                           .replace("v_TexCoord3", "v_TexCoord3_gs")
-                           .replace("v_FogCoord", "v_FogCoord_gs")
-                           .replace("v_LineStart", "v_LineStart_gs")
-                           .replace("v_Color", "v_Color_gs");
-        }
-        return source;
+        return sb.toString();
     }
 
     private static void emitAttributes(StringBuilder sb, VertexKey key) {
         final Instancing kind = key.instancing();
         sb.append("// Vertex attributes\n");
         sb.append("layout(location = ").append(VertexFormatElement.Usage.POSITION.getAttributeLocation()).append(") in vec3 a_Position;\n");
-        if (kind == Instancing.PARTICLE) {
+        if (kind == Instancing.PARTICLE || kind == Instancing.WEATHER) {
             sb.append("layout(location = ").append(VertexFormatElement.Usage.PRIMARY_UV.getAttributeLocation()).append(") in vec2 a_TexCoord0;\n");
         } else {
             if (key.hasVertexColor()) {
@@ -74,6 +70,8 @@ public final class VertexShaderGenerator {
             }
             if (key.hasVertexNormal() || kind == Instancing.CUBE) {
                 sb.append("layout(location = ").append(VertexFormatElement.Usage.NORMAL.getAttributeLocation()).append(") in vec3 a_Normal;\n");
+            } else if (key.lineQuads()) {
+                sb.append("layout(location = ").append(VertexFormatElement.Usage.NORMAL.getAttributeLocation()).append(") in vec3 a_LineOtherEnd;\n");
             }
         }
         for (String d : InstancedGlslHelpers.attributeDecls("a_", kind)) {
@@ -88,12 +86,13 @@ public final class VertexShaderGenerator {
         return switch (key.instancing()) {
             case CUBE -> "cubeUv";
             case PARTICLE -> PARTICLE_UV;
+            case WEATHER -> "weatherTex0";
             case NONE, TEMPLATE -> key.hasVertexTexCoord() ? "vec4(a_TexCoord0, 0.0, 1.0)" : "u_CurrentTexCoord0";
         };
     }
 
-    private static void emitLineStart(StringBuilder sb) {
-        sb.append("  vec2 ndc = gl_Position.xy / gl_Position.w;\n");
+    private static void emitLineStart(StringBuilder sb, String clipPosition) {
+        sb.append("  vec2 ndc = ").append(clipPosition).append(".xy / ").append(clipPosition).append(".w;\n");
         sb.append("  v_LineStart = u_Viewport.xy + (ndc * 0.5 + 0.5) * u_Viewport.zw;\n\n");
     }
 
@@ -105,12 +104,15 @@ public final class VertexShaderGenerator {
     private static void emitOutputs(StringBuilder sb, VertexKey key) {
         sb.append("// Outputs\n");
         sb.append("out vec4 v_Color;\n");
+        sb.append("invariant gl_Position;\n");
         if (key.instancing().hasInstanceHead()) {
             sb.append("out vec4 v_Overlay;\n");
-            sb.append("invariant gl_Position;\n");
         }
         if (key.lineStipple()) {
             sb.append("flat out vec2 v_LineStart;\n");
+        }
+        if (key.clipEmulated()) {
+            sb.append(ClipDistanceGlsl.VS_OUT_DIST0).append('\n').append(ClipDistanceGlsl.VS_OUT_DIST1).append('\n');
         }
         if (key.separateSpecular()) {
             sb.append("out vec3 v_SpecularColor;\n");
@@ -134,6 +136,8 @@ public final class VertexShaderGenerator {
         sb.append("  // Position transform\n");
         if (key.instancing() == Instancing.PARTICLE) {
             sb.append("  vec4 pos4 = ").append(InstancedGlslHelpers.particlePos("a_InstCenterHalf", "a_Position")).append(";\n");
+        } else if (key.instancing() == Instancing.WEATHER) {
+            sb.append("  vec4 pos4 = weatherVertex;\n");
         } else {
             sb.append("  vec4 pos4 = vec4(a_Position, 1.0);\n");
         }
@@ -144,13 +148,30 @@ public final class VertexShaderGenerator {
             sb.append("  v_Overlay = a_InstOverlay;\n");
         } else {
             sb.append("  gl_Position = u_MVPMatrix * pos4;\n");
+            if (key.lineQuads()) {
+                emitLineQuadWidening(sb, key);
+            }
 
             // Eye position needed for lighting, fog, EYE_LINEAR texgen, and clip planes
             if (key.lightingEnabled() || key.fogEnabled() || texGenNeedsEyePos(key) || key.clipPlanesEnabled()) {
                 sb.append("  vec4 eyePos = u_ModelViewMatrix * pos4;\n");
             }
+            if (key.lineQuads() && (key.fogEnabled() || key.clipPlanesEnabled())) {
+                sb.append("  vec4 lineEyeOther = u_ModelViewMatrix * vec4(a_LineOtherEnd, 1.0);\n");
+            }
         }
         sb.append('\n');
+    }
+
+    private static void emitLineQuadWidening(StringBuilder sb, VertexKey key) {
+        sb.append("  int lineCorner = gl_VertexID % 6;\n");
+        sb.append("  bool lineStart = angelica_lineStart(lineCorner);\n");
+        sb.append("  vec4 lineOther = u_MVPMatrix * vec4(a_LineOtherEnd, 1.0);\n");
+        if (key.lineStipple()) {
+            sb.append("  vec4 lineCenter = lineStart ? gl_Position : lineOther;\n");
+        }
+        sb.append("  float lineT;\n");
+        sb.append("  gl_Position = angelica_lineQuad(gl_Position, lineOther, lineCorner, u_ViewportSize, u_LineWidth, lineT);\n");
     }
 
     private static void emitNormalTransform(StringBuilder sb, VertexKey key) {
@@ -282,6 +303,7 @@ public final class VertexShaderGenerator {
         final String src = key.hasVertexColor() ? "a_Color" : "u_CurrentColor";
         switch (key.instancing()) {
             case PARTICLE -> sb.append("  v_Color = a_InstColor;\n");
+            case WEATHER -> sb.append("  v_Color = weatherColor;\n");
             case TEMPLATE, CUBE -> sb.append("  v_Color = ").append(src).append(" * a_InstColor;\n");
             case NONE -> sb.append("  v_Color = ").append(src).append(";\n");
         }
@@ -312,6 +334,7 @@ public final class VertexShaderGenerator {
             final String lightmap = switch (key.instancing()) {
                 case PARTICLE, TEMPLATE -> "a_InstLightmap";
                 case CUBE -> "a_InstLightmapScale.xy";
+                case WEATHER -> "weatherTex1.xy";
                 case NONE -> key.hasVertexLightmap() ? "a_TexCoord1" : "u_CurrentLightmapCoord";
             };
             sb.append("  v_TexCoord1 = u_LightmapTextureMatrix * vec4(").append(lightmap).append(", 0.0, 1.0);\n");
@@ -371,24 +394,30 @@ public final class VertexShaderGenerator {
 
     private static void emitFogDistance(StringBuilder sb, VertexKey key) {
         sb.append("  // Fog distance\n");
-        // Mesa ffvertex_prog.c build_fog(): FDM_EYE_RADIAL/EYE_PLANE/EYE_PLANE_ABS
-        final int fogDistMode = key.fogDistanceMode();
-        switch (fogDistMode) {
-            case 0 -> // FDM_EYE_RADIAL: Euclidean distance
-                sb.append("  v_FogCoord = length(eyePos.xyz);\n");
-            case 1 -> // FDM_EYE_PLANE: raw Z (can be negative, clamped by fog factor)
-                sb.append("  v_FogCoord = eyePos.z;\n");
-            case 2 -> // FDM_EYE_PLANE_ABS: absolute Z
-                sb.append("  v_FogCoord = abs(eyePos.z);\n");
-            default ->
-                sb.append("  v_FogCoord = abs(eyePos.z);\n");
+        final String own = FfpGlsl.fogDistance(key.fogDistanceMode(), "eyePos");
+        final String fog = key.lineQuads() ? acrossLine(own, FfpGlsl.fogDistance(key.fogDistanceMode(), "lineEyeOther")) : own;
+        sb.append("  v_FogCoord = ").append(fog).append(";\n");
+    }
+
+    private static void emitClipDistances(StringBuilder sb, VertexKey key) {
+        sb.append("  // Clip distances\n");
+        final boolean emulated = key.clipEmulated();
+        final String[] distances = emulated ? new String[8] : null;
+        for (int i = 0; i < 8; i++) {
+            final String own = "dot(u_ClipPlane[" + i + "], eyePos)";
+            final String distance = key.lineQuads() ? acrossLine(own, "dot(u_ClipPlane[" + i + "], lineEyeOther)") : own;
+            if (emulated) {
+                distances[i] = distance;
+            } else {
+                sb.append("  gl_ClipDistance[").append(i).append("] = ").append(distance).append(";\n");
+            }
+        }
+        if (emulated) {
+            ClipDistanceGlsl.appendVsAssign(sb, distances);
         }
     }
 
-    private static void emitClipDistances(StringBuilder sb) {
-        sb.append("  // Clip distances\n");
-        for (int i = 0; i < 8; i++) {
-            sb.append("  gl_ClipDistance[").append(i).append("] = dot(u_ClipPlane[").append(i).append("], eyePos);\n");
-        }
+    private static String acrossLine(String own, String other) {
+        return "mix(lineStart ? " + own + " : " + other + ", lineStart ? " + other + " : " + own + ", lineT)";
     }
 }

@@ -1,14 +1,16 @@
 package com.gtnewhorizons.angelica.glsm.states;
 
 import lombok.Getter;
+import org.lwjgl.opengl.GL15;
+import org.lwjgl.opengl.GL30;
 
 public class ImageUnitBinding implements ISettableState<ImageUnitBinding> {
     @Getter protected int texture;
     @Getter protected int level;
     @Getter protected boolean layered;
     @Getter protected int layer;
-    @Getter protected int access;
-    @Getter protected int format;
+    @Getter protected int access = GL15.GL_READ_ONLY;
+    @Getter protected int format = GL30.GL_R8;
 
     public void setBinding(int texture, int level, boolean layered, int layer, int access, int format) {
         this.texture = texture;
@@ -17,6 +19,10 @@ public class ImageUnitBinding implements ISettableState<ImageUnitBinding> {
         this.layer = layer;
         this.access = access;
         this.format = format;
+    }
+
+    public void reset() {
+        setBinding(0, 0, false, 0, GL15.GL_READ_ONLY, GL30.GL_R8);
     }
 
     @Override

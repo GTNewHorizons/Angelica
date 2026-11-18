@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.rendering.tesr;
 
+import com.gtnewhorizons.angelica.api.tesr.TesrMeshProvider;
 import com.gtnewhorizons.angelica.api.tesr.TesrMeshSink;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
@@ -7,10 +8,14 @@ import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
 import com.gtnewhorizons.angelica.rendering.tesr.AngelicaTesrMeshCache.MeshBackend;
 import com.gtnewhorizons.angelica.rendering.tesr.TemplateBuffer;
 import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ResourceLocation;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.LongSupplier;
 
@@ -32,17 +37,6 @@ class AngelicaTesrMeshCacheTest {
     private final Object key = new Object();
 
     @Test
-    void firstFrameCapturesAndReplays() {
-        cache.renderCached(key, sink -> sink.angelica$bucket(DefaultVertexFormat.POSITION_TEXTURE_NORMAL, TEX_A));
-
-        assertEquals(1, backend.beginCaptures);
-        assertTrue(cache.hasEntry(key));
-        assertEquals(1, cache.version(key));
-        assertEquals(1, replay.calls.size());
-        assertSame(TEX_A, replay.calls.get(0).texture);
-    }
-
-    @Test
     void cleanFrameReplaysWithoutRecapture() {
         cache.renderCached(key, this::oneBucket);
         cache.renderCached(key, sink -> { throw new AssertionError("builder must not run on a clean frame"); });
@@ -53,24 +47,69 @@ class AngelicaTesrMeshCacheTest {
     }
 
     @Test
-    void invalidateForcesRecapture() {
-        cache.renderCached(key, this::oneBucket);
-        cache.invalidate(key);
-        assertFalse(cache.hasEntry(key));
+    void replayIsWrappedInOneScope() {
+        cache.renderCached(key, sink -> {
+            sink.angelica$bucket(DefaultVertexFormat.POSITION_TEXTURE_NORMAL, TEX_A);
+            sink.angelica$bucket(DefaultVertexFormat.POSITION_TEXTURE_NORMAL, TEX_B);
+        });
 
-        cache.renderCached(key, this::oneBucket);
-        assertEquals(2, backend.beginCaptures);
+        assertEquals(List.of("begin", "queue", "queue", "end"), replay.events);
+    }
+
+    enum RetireTrigger { INVALIDATE, DIRTY_RECAPTURE, EVICT, CLEAR }
+
+    @ParameterizedTest
+    @EnumSource(RetireTrigger.class)
+    void droppedTemplatesAreRetiredOnce(RetireTrigger trigger) {
+        final TesrMeshProvider provider = new TesrMeshProvider() {
+            @Override
+            public Object angelica$meshKey(TileEntity te) {
+                return key;
+            }
+
+            @Override
+            public void angelica$build(TesrMeshSink sink, TileEntity te) {
+                oneBucket(sink);
+            }
+        };
+        cache.renderCached(key, false, provider, null);
+        final TemplateBuffer captured = replay.calls.get(0).template;
+        assertTrue(replay.retired.isEmpty());
+
+        switch (trigger) {
+            case INVALIDATE -> cache.invalidate(key);
+            case DIRTY_RECAPTURE -> cache.renderCached(key, true, provider, null);
+            case EVICT -> {
+                now[0] = 1_000L + AngelicaTesrMeshCache.LRU_TIMEOUT_MS + 1;
+                cache.tick();
+            }
+            case CLEAR -> cache.clear();
+        }
+        assertEquals(List.of(captured), replay.retired);
+
+        if (trigger != RetireTrigger.DIRTY_RECAPTURE) {
+            assertFalse(cache.hasEntry(key));
+            cache.renderCached(key, false, provider, null);
+            assertEquals(2, backend.beginCaptures);
+        }
+
+        cache.clear();
+        assertEquals(1, Collections.frequency(replay.retired, captured), "a dropped template must not be retired again");
     }
 
     @Test
     void lruEvicts() {
+        final long timeout = AngelicaTesrMeshCache.LRU_TIMEOUT_MS;
         cache.renderCached(key, this::oneBucket);
 
-        now[0] = 1_000L + AngelicaTesrMeshCache.LRU_TIMEOUT_MS; // boundary -> retained
-        cache.tick();
-        assertTrue(cache.hasEntry(key));
+        now[0] = 1_000L + timeout;
+        cache.renderCached(key, this::oneBucket);
 
-        now[0] = 1_000L + AngelicaTesrMeshCache.LRU_TIMEOUT_MS + 1; // past timeout -> evicted
+        now[0] = 1_000L + timeout + 1;
+        cache.tick();
+        assertTrue(cache.hasEntry(key), "a hit refreshes the entry");
+
+        now[0] = 1_000L + 2 * timeout + 1;
         cache.tick();
         assertFalse(cache.hasEntry(key));
     }
@@ -113,10 +152,28 @@ class AngelicaTesrMeshCacheTest {
 
     private static final class RecordingReplay implements AngelicaTesrMeshCache.ReplaySink {
         final List<Recorded> calls = new ArrayList<>();
+        final List<String> events = new ArrayList<>();
+        final List<TemplateBuffer> retired = new ArrayList<>();
+
+        @Override
+        public void beginScope() {
+            events.add("begin");
+        }
+
+        @Override
+        public void endScope() {
+            events.add("end");
+        }
 
         @Override
         public void queue(TemplateBuffer template, ResourceLocation texture, TesrMaterial material) {
             calls.add(new Recorded(template, texture, material));
+            events.add("queue");
+        }
+
+        @Override
+        public void retire(TemplateBuffer template) {
+            retired.add(template);
         }
     }
 }

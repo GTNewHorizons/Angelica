@@ -1,15 +1,14 @@
 package com.gtnewhorizons.angelica.sdlgpu.resource;
 
+import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
 import com.gtnewhorizons.angelica.sdlgpu.device.Device;
+import com.gtnewhorizons.angelica.sdlgpu.device.Submits;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
 import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.lwjgl.opengl.EXTTextureFilterAnisotropic;
 import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL12;
-import org.lwjgl.opengl.GL14;
 import org.lwjgl.sdl.SDLError;
 import org.lwjgl.sdl.SDL_GPUBlitInfo;
 import org.lwjgl.sdl.SDL_GPUTextureLocation;
@@ -29,6 +28,8 @@ public final class TextureOps {
     private final FrameManager frameManager;
     private final ResourceManager resourceManager;
     private final FBOClearTracker fboClearTracker;
+    private ByteBuffer readbackStaging;
+    private long readbackStagingAddress;
 
     public TextureOps(Device device, FrameManager frameManager, ResourceManager resourceManager, FBOClearTracker fboClearTracker) {
         this.device = device;
@@ -45,11 +46,11 @@ public final class TextureOps {
     public boolean uploadTextureRegion(ContextState st, int glId, ResourceManager.TextureMeta meta, long texHandle, ByteBuffer src, int x, int y, int w, int h, int level, int srcFormat, int srcType) {
         if (meta == null || level >= meta.levels()) return false;
         if (src == null || texHandle == 0 || frameManager.getCommandBuffer() == 0) return false;
-        final boolean defer = st.deferUploads && !resourceManager.isFboAttachment(glId);
+        final boolean defer = resourceManager.shouldDeferTextureUpload(st, glId);
         final long cp = defer ? 0L : frameManager.ensureCopyPass();
         if (!defer && cp == 0) return false;
         final ByteBuffer unpacked = PixelOps.applyUnpackPixelStore(src, w, h, srcFormat, srcType, st.pixelStore);
-        final ByteBuffer prepped = PixelOps.prepareUploadBuffer(srcFormat, meta.sdlFormat(), unpacked, w, h);
+        final ByteBuffer prepped = PixelOps.prepareUploadBuffer(srcFormat, srcType, meta.sdlFormat(), unpacked, w, h);
         try {
             final boolean handled = defer && resourceManager.enqueueDeferredTextureUpload(st, prepped, texHandle, x, y, w, h, level);
             if (!handled) {
@@ -68,38 +69,13 @@ public final class TextureOps {
     public void texParameteri(ContextState st, int pname, int param, int glId) {
         if (glId == 0) return;
         final TextureSamplerState ss = resourceManager.getOrCreateTexSamplerState(glId);
-        switch (pname) {
-            case GL11.GL_TEXTURE_MIN_FILTER -> ss.minFilter = param;
-            case GL11.GL_TEXTURE_MAG_FILTER -> ss.magFilter = param;
-            case GL11.GL_TEXTURE_WRAP_S -> ss.wrapS = param;
-            case GL11.GL_TEXTURE_WRAP_T -> ss.wrapT = param;
-            case GL12.GL_TEXTURE_WRAP_R -> ss.wrapR = param;
-            case GL12.GL_TEXTURE_MAX_LEVEL -> {
-                ss.maxLevel = param; return;
-            }
-            case GL12.GL_TEXTURE_MIN_LOD -> ss.minLod = (float) param;
-            case GL12.GL_TEXTURE_MAX_LOD -> ss.maxLod = (float) param;
-            case GL14.GL_TEXTURE_COMPARE_MODE -> ss.compareMode = param;
-            case GL14.GL_TEXTURE_COMPARE_FUNC -> ss.compareFunc = param;
-            case EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT -> ss.maxAnisotropy = param;
-            default -> { return; }
-        }
-        ss.sdlSampler = 0;
-        st.samplerBindGen++;
+        if (ss.invalidate(ss.seti(pname, param))) st.samplerBindGen++;
     }
 
     public void texParameterf(ContextState st, int pname, float param, int glId) {
         if (glId == 0) return;
         final TextureSamplerState ss = resourceManager.getOrCreateTexSamplerState(glId);
-        switch (pname) {
-            case GL12.GL_TEXTURE_MIN_LOD -> ss.minLod = param;
-            case GL12.GL_TEXTURE_MAX_LOD -> ss.maxLod = param;
-            case GL14.GL_TEXTURE_LOD_BIAS -> ss.lodBias = param;
-            case EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT -> ss.maxAnisotropy = param;
-            default -> { texParameteri(st, pname, (int) param, glId); return; }
-        }
-        ss.sdlSampler = 0;
-        st.samplerBindGen++;
+        if (ss.invalidate(ss.setf(pname, param))) st.samplerBindGen++;
     }
 
     /// requires a flush + submit to not read stale data
@@ -109,6 +85,35 @@ public final class TextureOps {
         final long cb = SDL_AcquireGPUCommandBuffer(device.getDevice());
         if (cb == 0) return;
         resourceManager.downloadFromTexture(cb, texHandle, x, y, w, h, level, output);
+    }
+
+    public long ensureReadbackStaging(long bytes) {
+        if (bytes > Integer.MAX_VALUE) throw new IllegalArgumentException("readback of " + bytes + " bytes exceeds the staging limit");
+        if (readbackStaging == null || readbackStaging.capacity() < bytes) {
+            if (readbackStaging != null) MemoryUtil.memFree(readbackStaging);
+            readbackStaging = MemoryUtil.memAlloc((int) Math.max(bytes, 64 * 1024));
+            readbackStagingAddress = MemoryUtil.memAddress(readbackStaging);
+        }
+        return readbackStagingAddress;
+    }
+
+    public ByteBuffer readbackStagingRegion(int offset, int size) {
+        readbackStaging.limit(offset + size);
+        readbackStaging.position(offset);
+        return readbackStaging;
+    }
+
+    public void readbackTextureToStaging(long texHandle, int x, int y, int w, int h, int level, int offset, int size) {
+        readbackTexture(texHandle, x, y, w, h, level, readbackStagingRegion(offset, size));
+        readbackStaging.clear();
+    }
+
+    public void shutdown() {
+        if (readbackStaging != null) {
+            MemoryUtil.memFree(readbackStaging);
+            readbackStaging = null;
+            readbackStagingAddress = 0L;
+        }
     }
 
     public void copyTexSubImageImpl(ContextState st, int destGlId, int level, int xoffset, int yoffset, int x, int y, int width, int height) {
@@ -130,8 +135,9 @@ public final class TextureOps {
         if (srcTex == 0) return;
 
         final int srcGlId = isDepthDest ? fbo.depthGlId : fbo.colorGlIds[fbo.readBufferIndex];
+        final int srcLevel = isDepthDest ? fbo.depthLevel : fbo.colorLevels[fbo.readBufferIndex];
         final ResourceManager.TextureMeta srcMeta = srcGlId != 0 ? resourceManager.getTextureMeta(srcGlId) : null;
-        final long clip = CopyRectClip.clipCopyRect(x, y, xoffset, yoffset, width, height, srcMeta != null ? srcMeta.width() : fbo.width, srcMeta != null ? srcMeta.height() : fbo.height, levelWidth(destMeta, level), levelHeight(destMeta, level));
+        final long clip = CopyRectClip.clipCopyRect(x, y, xoffset, yoffset, width, height, srcMeta != null ? levelWidth(srcMeta, srcLevel) : fbo.width, srcMeta != null ? levelHeight(srcMeta, srcLevel) : fbo.height, levelWidth(destMeta, level), levelHeight(destMeta, level));
         if (clip == CopyRectClip.EMPTY) return;
         final int sx = CopyRectClip.srcX(clip);
         final int sy = CopyRectClip.srcY(clip);
@@ -141,21 +147,21 @@ public final class TextureOps {
         final int h = CopyRectClip.height(clip);
 
         fboClearTracker.materializePendingClearForTexture(st, srcTex);
-        fboClearTracker.resolveDestinationForWrite(st, destTex, destMeta, level, dx, dy, 0, w, h);
+        fboClearTracker.resolveDestinationForWrite(st, destTex, destMeta, level, dx, dy, 0, w, h, true);
 
         if (isDepthDest || (srcMeta != null && destMeta != null && srcMeta.sdlFormat() == destMeta.sdlFormat())) {
-            copyTexture(srcTex, sx, sy, destTex, level, dx, dy, w, h);
+            copyTexture(srcTex, srcLevel, sx, sy, destTex, level, dx, dy, w, h);
         } else {
-            blitTexture(srcTex, sx, sy, w, h, destTex, level, dx, dy, w, h, GL11.GL_NEAREST);
+            blitTexture(srcTex, srcLevel, sx, sy, w, h, destTex, level, dx, dy, w, h, GL11.GL_NEAREST);
         }
     }
 
-    private static int levelWidth(ResourceManager.TextureMeta meta, int level) {
-        return meta != null ? PixelOps.mipLevelSize(meta.width(), level) : 0;
+    public static int levelWidth(ResourceManager.TextureMeta meta, int level) {
+        return meta != null ? TextureInfo.mipLevelSize(meta.width(), level) : 0;
     }
 
-    private static int levelHeight(ResourceManager.TextureMeta meta, int level) {
-        return meta != null ? PixelOps.mipLevelSize(meta.height(), level) : 0;
+    public static int levelHeight(ResourceManager.TextureMeta meta, int level) {
+        return meta != null ? TextureInfo.mipLevelSize(meta.height(), level) : 0;
     }
 
     private void copyFromDefaultFramebuffer(ContextState st, int destGlId, long destTex, int level, int xoffset, int yoffset, int x, int y, int width, int height) {
@@ -180,43 +186,51 @@ public final class TextureOps {
         if (st.pendingSwapchainClear || st.pendingSwapchainDepthClear || st.pendingSwapchainStencilClear) {
             frameManager.ensureFbo0RenderPass(frameManager.frame(), st);
         }
-        fboClearTracker.resolveDestinationForWrite(st, destTex, destMeta, level, dx, dy, 0, w, h);
+        fboClearTracker.resolveDestinationForWrite(st, destTex, destMeta, level, dx, dy, 0, w, h, true);
 
-        blitTexture(srcTex, sx, srcFullH - sy - h, w, h, destTex, level, dx, dy, w, h, GL11.GL_NEAREST, SDL_FLIP_VERTICAL);
+        blitTexture(srcTex, 0, sx, srcFullH - sy - h, w, h, destTex, level, dx, dy, w, h, GL11.GL_NEAREST, SDL_FLIP_VERTICAL);
     }
 
     public static boolean canCopyInsteadOfBlit(ResourceManager.TextureMeta src, ResourceManager.TextureMeta dst, int srcW, int srcH, int dstW, int dstH) {
         return src != null && dst != null && src.sdlFormat() == dst.sdlFormat() && srcW > 0 && srcH > 0 && srcW == dstW && srcH == dstH;
     }
 
-    public void copyTexture(long srcTex, int srcX, int srcY, long dstTex, int dstLevel, int dstX, int dstY, int w, int h) {
+    public void copyTexture(long srcTex, int srcLevel, int srcX, int srcY, long dstTex, int dstLevel, int dstX, int dstY, int w, int h) {
         final long cp = frameManager.ensureCopyPass();
         if (cp == 0) return;
+        resourceManager.flushBatchedUploads(cp);
+        copyTexture(resourceManager, cp, srcTex, srcLevel, srcX, srcY, dstTex, dstLevel, dstX, dstY, w, h);
+    }
+
+    public static void copyTexture(ResourceManager resourceManager, long cp, long srcTex, int srcLevel, int srcX, int srcY, long dstTex, int dstLevel, int dstX, int dstY, int w, int h) {
+        if (cp == 0) return;
         try (var stack = MemoryStack.stackPush()) {
-            final var src = SDL_GPUTextureLocation.calloc(stack).texture(srcTex).x(srcX).y(srcY);
+            final var src = SDL_GPUTextureLocation.calloc(stack).texture(srcTex).mip_level(srcLevel).x(srcX).y(srcY);
             final var dst = SDL_GPUTextureLocation.calloc(stack).texture(dstTex).mip_level(dstLevel).x(dstX).y(dstY);
             SDL_CopyGPUTextureToTexture(cp, src, dst, w, h, 1, false);
+            resourceManager.markTextureWritten(dstTex);
         }
     }
 
-    public void blitTexture(long srcTex, int srcX, int srcY, int srcW, int srcH, long dstTex, int dstLevel, int dstX, int dstY, int dstW, int dstH, int glFilter) {
-        blitTexture(srcTex, srcX, srcY, srcW, srcH, dstTex, dstLevel, dstX, dstY, dstW, dstH, glFilter, SDL_FLIP_NONE);
+    public void blitTexture(long srcTex, int srcLevel, int srcX, int srcY, int srcW, int srcH, long dstTex, int dstLevel, int dstX, int dstY, int dstW, int dstH, int glFilter) {
+        blitTexture(srcTex, srcLevel, srcX, srcY, srcW, srcH, dstTex, dstLevel, dstX, dstY, dstW, dstH, glFilter, SDL_FLIP_NONE);
     }
 
-    public void blitTexture(long srcTex, int srcX, int srcY, int srcW, int srcH, long dstTex, int dstLevel, int dstX, int dstY, int dstW, int dstH, int glFilter, int flipMode) {
+    public void blitTexture(long srcTex, int srcLevel, int srcX, int srcY, int srcW, int srcH, long dstTex, int dstLevel, int dstX, int dstY, int dstW, int dstH, int glFilter, int flipMode) {
         frameManager.endCopyPassIfActive();
-        frameManager.endRenderPassIfActive();
+        frameManager.endRenderPassIfActive(FrameManager.PASS_END_COPY);
         final long cb = frameManager.getCommandBuffer();
         if (cb == 0) return;
 
         try (var stack = MemoryStack.stackPush()) {
             final var info = SDL_GPUBlitInfo.calloc(stack);
-            info.source(s -> s.texture(srcTex).x(srcX).y(srcY).w(srcW).h(srcH));
-            info.destination(d -> d.texture(dstTex).mip_level(dstLevel).x(dstX).y(dstY).w(dstW).h(dstH));
+            info.source().texture(srcTex).mip_level(srcLevel).x(srcX).y(srcY).w(srcW).h(srcH);
+            info.destination().texture(dstTex).mip_level(dstLevel).x(dstX).y(dstY).w(dstW).h(dstH);
             info.filter(glFilter == GL11.GL_LINEAR ? SDL_GPU_FILTER_LINEAR : SDL_GPU_FILTER_NEAREST);
             info.flip_mode(flipMode);
             frameManager.noteBlit();
             SDL_BlitGPUTexture(cb, info);
+            resourceManager.markTextureWritten(dstTex);
         }
     }
 
@@ -243,7 +257,7 @@ public final class TextureOps {
         f.pendingMipGen.clear();
 
         frameManager.endCopyPassIfActive();
-        frameManager.endRenderPassIfActive();
+        frameManager.endRenderPassIfActive(FrameManager.PASS_END_COPY);
 
         for (int glId : glIds) {
             final long handle = resourceManager.getTextureHandle(glId);
@@ -251,9 +265,10 @@ public final class TextureOps {
             final ResourceManager.TextureMeta meta = resourceManager.getTextureMeta(glId);
             if (meta == null || meta.levels() <= 1) continue;
             SDL_GenerateMipmapsForGPUTexture(uploadCb, handle);
+            resourceManager.markTextureWritten(handle);
         }
 
-        if (!SDL_SubmitGPUCommandBuffer(uploadCb)) {
+        if (!Submits.submit(uploadCb)) {
             device.reportGpuFailure("submit mipmap generation CB");
         }
         frameManager.noteMipGenSubmit();

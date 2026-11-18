@@ -1,3 +1,5 @@
+import java.time.Duration
+
 plugins {
     `java-library`
     `maven-publish`
@@ -73,6 +75,80 @@ dependencies {
 
     compileOnly(libs.log4j.api)
     compileOnly(libs.annotations)
+}
+
+val glesTag = "gles"
+
+val glsmRedirectAgent: Configuration by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
+val glsmLwjgl2Stubs: Configuration by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
+dependencies {
+    glsmRedirectAgent(project(":glsm", "redirectAgent"))
+    glsmLwjgl2Stubs(project(":glsm", "lwjgl2Stubs"))
+
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
+    testImplementation(testFixtures(project(":glsm")))
+    testImplementation(project(":glsm")) {
+        capabilities { requireCapability("${project.group}:glsm-stubs") }
+    }
+    listOf(libs.lwjgl3.sdl, libs.lwjgl3.shaderc, libs.lwjgl3.spvc).forEach {
+        testImplementation(it)
+        testRuntimeOnly(it) { artifact { classifier = lwjglNatives } }
+    }
+    testRuntimeOnly(libs.junit.platform.launcher)
+    testRuntimeOnly(libs.log4j.core)
+    testRuntimeOnly(libs.fastutil)
+    testRuntimeOnly(libs.joml)
+    testRuntimeOnly(libs.commons.lang3)
+    testRuntimeOnly(libs.guava)
+    testRuntimeOnly(libs.celeritas.common) { isTransitive = false }
+    testRuntimeOnly(libs.asm.tree.test)
+}
+
+tasks.test {
+    useJUnitPlatform {
+        excludeTags(glesTag)
+    }
+}
+
+val unpackLwjgl3Natives = registerLwjgl3NativesUnpack()
+
+val glesTest by tasks.registering(Test::class) {
+    description = "Boots GLSM on the LWJGL3 GL backend in a real OpenGL ES 3.2 context."
+    group = "verification"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = glsmLwjgl2Stubs.plus(
+        sourceSets["test"].runtimeClasspath.filter { file ->
+            !file.name.startsWith("lwjgl-2.") && !file.name.startsWith("lwjgl_util-") && !file.name.startsWith("lwjgl-platform-")
+        }
+    )
+    useJUnitPlatform {
+        includeTags(glesTag)
+    }
+    systemProperty("glsm.stubs.capabilities", "lwjgl3")
+    javaAgent(glsmRedirectAgent)
+    loadLwjgl3NativesFrom(unpackLwjgl3Natives)
+    outputs.cacheIf { false }
+    timeout = Duration.ofMinutes(5)
+    systemProperty("junit.jupiter.execution.timeout.default", "60s")
+    systemProperty("junit.jupiter.execution.timeout.threaddump.enabled", "true")
+    testLogging {
+        events("passed", "skipped", "failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+    mustRunAfter(tasks.test)
+}
+
+if (!providers.environmentVariable("CI").isPresent) {
+    tasks.check { dependsOn(glesTest) }
 }
 
 tasks.named<JavaCompile>("compileJava") {

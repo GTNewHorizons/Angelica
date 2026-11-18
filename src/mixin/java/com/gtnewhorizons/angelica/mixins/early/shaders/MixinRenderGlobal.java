@@ -1,15 +1,13 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.ITessellatorInstance;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import com.llamalad7.mixinextras.sugar.Share;
-import com.llamalad7.mixinextras.sugar.ref.LocalRef;
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
+import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.entity.player.EntityPlayer;
@@ -23,102 +21,111 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(RenderGlobal.class)
 public class MixinRenderGlobal {
 
+    @Inject(method = "setWorldAndLoadRenderers", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderGlobal;loadRenderers()V"))
+    private void iris$preparePipelineForNewWorld(WorldClient world, CallbackInfo ci) {
+        Iris.getPipelineManager().preparePipeline(Iris.getCurrentDimensionName());
+    }
+
     @Inject(method = "renderSky", at = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/Tessellator;instance:Lnet/minecraft/client/renderer/Tessellator;"))
-    private void iris$renderSky$beginNormalSky(float partialTicks, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
+    private void iris$renderSky$beginNormalSky(float partialTicks, CallbackInfo ci) {
         // None of the vanilla sky is rendered until after this call, so if anything is rendered before, it's CUSTOM_SKY.
-        pipeline.set(Iris.getPipelineManager().getPipelineNullable());
-        pipeline.get().setPhase(WorldRenderingPhase.SKY);
+        Iris.getPipelineManager().getPipelineNullable().setPhase(WorldRenderingPhase.SKY);
     }
 
     @Inject(method = "renderSky", at = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/RenderGlobal;locationSunPng:Lnet/minecraft/util/ResourceLocation;"))
-    private void iris$setSunRenderStage(float p_72714_1_, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
-        pipeline.get().setPhase(WorldRenderingPhase.SUN);
+    private void iris$setSunRenderStage(float p_72714_1_, CallbackInfo ci) {
+        Iris.getPipelineManager().getPipelineNullable().setPhase(WorldRenderingPhase.SUN);
     }
 
     @Inject(method = "renderSky", at = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/RenderGlobal;locationMoonPhasesPng:Lnet/minecraft/util/ResourceLocation;"))
-    private void iris$setMoonRenderStage(float p_72714_1_, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
-        pipeline.get().setPhase(WorldRenderingPhase.MOON);
+    private void iris$setMoonRenderStage(float p_72714_1_, CallbackInfo ci) {
+        Iris.getPipelineManager().getPipelineNullable().setPhase(WorldRenderingPhase.MOON);
     }
 
     @Inject(method = "renderSky", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/WorldProvider;calcSunriseSunsetColors(FF)[F"))
-    private void iris$setSunsetRenderStage(float p_72714_1_, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
-        pipeline.get().setPhase(WorldRenderingPhase.SUNSET);
+    private void iris$setSunsetRenderStage(float p_72714_1_, CallbackInfo ci) {
+        Iris.getPipelineManager().getPipelineNullable().setPhase(WorldRenderingPhase.SUNSET);
     }
 
     @Inject(method = "renderSky", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/WorldClient;getStarBrightness(F)F"))
-    private void iris$setStarRenderStage(float p_72714_1_, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
-        pipeline.get().setPhase(WorldRenderingPhase.STARS);
+    private void iris$setStarRenderStage(float p_72714_1_, CallbackInfo ci) {
+        Iris.getPipelineManager().getPipelineNullable().setPhase(WorldRenderingPhase.STARS);
     }
 
     @Inject(method = "renderSky", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/entity/EntityClientPlayerMP;getPosition(F)Lnet/minecraft/util/Vec3;"))
-    private void iris$setVoidRenderStage(float p_72714_1_, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
-        pipeline.get().setPhase(WorldRenderingPhase.VOID);
+    private void iris$setVoidRenderStage(float p_72714_1_, CallbackInfo ci) {
+        Iris.getPipelineManager().getPipelineNullable().setPhase(WorldRenderingPhase.VOID);
     }
 
     @Inject(method = "renderSky", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/WorldClient;getCelestialAngle(F)F"),
         slice = @Slice(from = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/WorldClient;getRainStrength(F)F")))
-    private void iris$renderSky$tiltSun(float p_72714_1_, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
-        GLStateManager.glRotatef(pipeline.get().getSunPathRotation(), 0.0F, 0.0F, 1.0F);
+    private void iris$renderSky$tiltSun(float p_72714_1_, CallbackInfo ci) {
+        GLSMMatrices.glRotatef(Iris.getPipelineManager().getPipelineNullable().getSunPathRotation(), 0.0F, 0.0F, 1.0F);
     }
 
     // Sky disc: wrap the glCallList(glSkyList) call — the first glCallList in the surface world branch
-    @WrapOperation(method = "renderSky",
+    @Surround(id = "skipSkyDisc", method = "renderSky",
         at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glCallList(I)V", ordinal = 0, remap = false),
         slice = @Slice(from = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/WorldClient;getSkyColor(Lnet/minecraft/entity/Entity;F)Lnet/minecraft/util/Vec3;")))
-    private void iris$skipSkyDisc(int list, Operation<Void> original) {
+    private void iris$skipSkyDisc() {
         WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
-        if (pipeline == null || pipeline.shouldRenderSkyDisc()) {
-            original.call(list);
-        }
+        @Surround.Skip
+        boolean skip = !(pipeline == null || pipeline.shouldRenderSkyDisc());
     }
 
     // Sun: wrap Tessellator.draw() after sun texture bind, before moon texture bind
-    @WrapOperation(method = "renderSky",
+    @Surround(id = "skipSun", method = "renderSky",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/Tessellator;draw()I", ordinal = 0),
         slice = @Slice(
             from = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/RenderGlobal;locationSunPng:Lnet/minecraft/util/ResourceLocation;"),
             to = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/RenderGlobal;locationMoonPhasesPng:Lnet/minecraft/util/ResourceLocation;")))
-    private int iris$skipSun(Tessellator instance, Operation<Integer> original) {
+    private void iris$skipSun() {
         WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
-        if (pipeline == null || pipeline.shouldRenderSun()) {
-            return original.call(instance);
-        }
+        @Surround.Skip
+        boolean skip = !(pipeline == null || pipeline.shouldRenderSun());
+    }
+
+    @Surround.Skipped("skipSun")
+    private int iris$skipSunSkipped(Tessellator instance) {
         ((ITessellatorInstance) instance).discard();
         return 0;
     }
 
     // Moon: wrap Tessellator.draw() after moon texture bind, before getStarBrightness
-    @WrapOperation(method = "renderSky",
+    @Surround(id = "skipMoon", method = "renderSky",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/Tessellator;draw()I", ordinal = 0),
         slice = @Slice(
             from = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/RenderGlobal;locationMoonPhasesPng:Lnet/minecraft/util/ResourceLocation;"),
             to = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/WorldClient;getStarBrightness(F)F")))
-    private int iris$skipMoon(Tessellator instance, Operation<Integer> original) {
+    private void iris$skipMoon() {
         WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
-        if (pipeline == null || pipeline.shouldRenderMoon()) {
-            return original.call(instance);
-        }
+        @Surround.Skip
+        boolean skip = !(pipeline == null || pipeline.shouldRenderMoon());
+    }
+
+    @Surround.Skipped("skipMoon")
+    private int iris$skipMoonSkipped(Tessellator instance) {
         ((ITessellatorInstance) instance).discard();
         return 0;
     }
 
     // Stars: wrap glCallList(starGLCallList) — the glCallList after getStarBrightness
-    @WrapOperation(method = "renderSky",
+    @Surround(id = "skipStars", method = "renderSky",
         at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glCallList(I)V", ordinal = 0, remap = false),
         slice = @Slice(from = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/WorldClient;getStarBrightness(F)F")))
-    private void iris$skipStars(int list, Operation<Void> original) {
+    private void iris$skipStars() {
         WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
-        if (pipeline == null || pipeline.shouldRenderStars()) {
-            original.call(list);
-        }
+        @Surround.Skip
+        boolean skip = !(pipeline == null || pipeline.shouldRenderStars());
     }
 
-    @Inject(method="drawSelectionBox", at=@At(value="HEAD"))
-    private void iris$startOutline(EntityPlayer player, MovingObjectPosition pos, int p_72731_3_, float p_72731_4_, CallbackInfo ci) {
+    @Surround(id = "startOutline", method = "drawSelectionBox")
+    private void iris$startOutline(EntityPlayer player, MovingObjectPosition pos, int p_72731_3_, float p_72731_4_) {
         GbufferPrograms.beginOutline();
     }
-    @Inject(method="drawSelectionBox", at=@At(value="RETURN"))
-    private void iris$endOutline(EntityPlayer player, MovingObjectPosition pos, int p_72731_3_, float p_72731_4_, CallbackInfo ci) {
+
+    @Surround.Finally("startOutline")
+    private void iris$endOutline() {
         GbufferPrograms.endOutline();
     }
 

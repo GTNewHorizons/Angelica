@@ -1,10 +1,10 @@
 package com.gtnewhorizons.angelica.sdlgpu.compute;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 
 public final class VoxelizationDispatcher {
-    private static final int WORKGROUP_SIZE = 64;
+    private static final InvocationDispatch.IntUniformWriter UNIFORM_1I = (st, location, value) -> GLSMPrograms.glUniform1i(location, value);
 
     private final ComputeDispatchSink computeBinder;
 
@@ -20,19 +20,14 @@ public final class VoxelizationDispatcher {
         computeBinder.rebindRoStorageBuffers(st, pass);
     }
 
-    public void dispatchRange(long pass, int locStart, int locCount, int vertexOffset, int vertexCount, ContextState st) {
-        if (pass == 0 || vertexCount <= 0) return;
-        if (locStart >= 0) GLStateManager.glUniform1i(locStart, vertexOffset);
-        if (locCount >= 0) GLStateManager.glUniform1i(locCount, vertexCount);
-        computeBinder.pushPendingComputeUniforms(st);
-        final int groups = (vertexCount + WORKGROUP_SIZE - 1) / WORKGROUP_SIZE;
-        computeBinder.dispatchInBatch(pass, groups, 1, 1);
+    public void dispatchRegion(long pass, int locBase, int locCount, int locTotal, int locInvBase, int rangeBase, int rangeCount, int vertexTotal, ContextState st) {
+        if (locBase >= 0) GLSMPrograms.glUniform1i(locBase, rangeBase);
+        if (locCount >= 0) GLSMPrograms.glUniform1i(locCount, rangeCount);
+        if (locTotal >= 0) GLSMPrograms.glUniform1i(locTotal, vertexTotal);
+        InvocationDispatch.dispatch(computeBinder, st, pass, vertexTotal, locInvBase, UNIFORM_1I);
     }
 
     public void endBatch(long pass) {
-        if (pass == 0) return;
         computeBinder.endBatchedComputeDispatch(pass);
     }
-
-    public static int workgroupSize() { return WORKGROUP_SIZE; }
 }

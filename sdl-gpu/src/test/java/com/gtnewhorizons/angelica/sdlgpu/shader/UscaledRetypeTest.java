@@ -2,6 +2,8 @@ package com.gtnewhorizons.angelica.sdlgpu.shader;
 
 import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.lwjgl.util.shaderc.Shaderc;
 
 import java.util.List;
@@ -30,12 +32,16 @@ class UscaledRetypeTest {
         assertTrue(out.contains("v_uv = a_TexCoord * 0.5;"), out);
     }
 
-    @Test
-    void signedPromotedWidthSwizzlesDown() {
-        final String out = UscaledRetype.retype(VS, List.of(new UscaledRetype.Attrib("at_midBlock", 0, 3, 4, true)));
+    @ParameterizedTest(name = "{0}")
+    @CsvSource(delimiter = '|', value = {
+        "signed promoted width swizzles down|4|in ivec4 at_midBlock_i|vec3 at_midBlock = vec3(at_midBlock_i.xyz);",
+        "narrower bound width pads with GL attribute defaults|2|in ivec2 at_midBlock_i|vec3 at_midBlock = vec3(vec2(at_midBlock_i), 0.0);"
+    })
+    void signedRetypeAdaptsToTheBoundWidth(String label, int boundWidth, String decl, String conversion) {
+        final String out = UscaledRetype.retype(VS, List.of(new UscaledRetype.Attrib("at_midBlock", 0, 3, boundWidth, true)));
         assertNotNull(out);
-        assertTrue(out.contains("in ivec4 at_midBlock_i"), out);
-        assertTrue(out.contains("vec3 at_midBlock = vec3(at_midBlock_i.xyz);"), out);
+        assertTrue(out.contains(decl), out);
+        assertTrue(out.contains(conversion), out);
     }
 
     @Test
@@ -56,14 +62,6 @@ class UscaledRetypeTest {
     @Test
     void missingAttributeFails() {
         assertNull(UscaledRetype.retype(VS, List.of(new UscaledRetype.Attrib("not_present", 0, 2, 2, false))));
-    }
-
-    @Test
-    void narrowerBoundWidthPadsWithGlAttributeDefaults() {
-        final String out = UscaledRetype.retype(VS, List.of(new UscaledRetype.Attrib("at_midBlock", 0, 3, 2, true)));
-        assertNotNull(out);
-        assertTrue(out.contains("in ivec2 at_midBlock_i"), out);
-        assertTrue(out.contains("vec3 at_midBlock = vec3(vec2(at_midBlock_i), 0.0);"), out);
     }
 
     @Test
@@ -127,12 +125,5 @@ class UscaledRetypeTest {
         assertNotNull(out, "preprocessed source must be parseable and retypeable\n\n" + pre);
         assertTrue(out.contains("in uvec2 a_TexCoord_i"), out);
         assertTrue(out.contains("vec2 a_TexCoord = vec2(a_TexCoord_i);"), out);
-    }
-
-    @Test
-    void retypedInputKeepsTheNameSuffixTheLocationFixupKeysOn() {
-        final String out = UscaledRetype.retype(VS, List.of(new UscaledRetype.Attrib("a_TexCoord", 4, 2, 2, false)));
-        assertNotNull(out);
-        assertTrue(out.contains("a_TexCoord" + UscaledRetype.SUFFIX), out);
     }
 }

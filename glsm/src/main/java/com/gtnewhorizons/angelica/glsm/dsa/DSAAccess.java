@@ -40,9 +40,4 @@ public interface DSAAccess {
 
     int createFramebuffer();
     int createTexture(int target);
-
-    // Texture storage methods for custom images
-    void textureStorage1D(int texture, int target, int levels, int internalFormat, int width);
-    void textureStorage2D(int texture, int target, int levels, int internalFormat, int width, int height);
-    void textureStorage3D(int texture, int target, int levels, int internalFormat, int width, int height, int depth);
 }

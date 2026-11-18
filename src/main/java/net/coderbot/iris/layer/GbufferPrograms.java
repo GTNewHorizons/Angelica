@@ -1,12 +1,15 @@
 package net.coderbot.iris.layer;
 
 import lombok.Getter;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.DisplayListManager;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
-import com.gtnewhorizons.angelica.glsm.states.AlphaState;
-import com.gtnewhorizons.angelica.glsm.states.BlendState;
+import com.gtnewhorizons.angelica.iris.IrisDisplayListState;
 import net.coderbot.iris.gl.shader.ProgramCreator;
 import net.coderbot.iris.gl.state.StateUpdateNotifiers;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
@@ -147,102 +150,23 @@ public class GbufferPrograms {
 	}
 
 	public static void setCutoutDefaults() {
-		GLStateManager.enableAlphaTest();
-		GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.1F);
+		GLSMDepthStencilAlpha.enableAlphaTest();
+		GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, 0.1F);
 
-		final int previousUnit = GLStateManager.getActiveTextureUnitForServerState();
-		GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-		GLStateManager.enableTexture();
-		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + previousUnit);
-	}
-
-	public static long pushCutoutDefaults() {
-		final long saved = packCutoutState();
-		setCutoutDefaults();
-		return saved;
-	}
-
-	public static void popCutoutDefaults(long saved) {
-		if ((saved & ALPHA_ENABLED_BIT) != 0) {
-			GLStateManager.enableAlphaTest();
-		} else {
-			GLStateManager.disableAlphaTest();
+		if (DisplayListManager.getRecordMode() == DisplayListManager.RecordMode.NONE) {
+			GLSMTextures.getTextures().getTextureUnitStates(1).enable();
+			return;
 		}
-		GLStateManager.glAlphaFunc((int) ((saved >>> 32) & 0xFFFF), Float.intBitsToFloat((int) saved));
-
-		if ((saved & LIGHTMAP_ENABLED_BIT) == 0) {
-			final int previousUnit = GLStateManager.getActiveTextureUnitForServerState();
-			GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-			GLStateManager.disableTexture();
-			GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + previousUnit);
-		}
-	}
-
-	public static int pushBlendState() {
-		if (blendDepth == blendSaves.length) {
-			blendSaves = Arrays.copyOf(blendSaves, blendDepth * 2);
-			blendEnabledSaves = Arrays.copyOf(blendEnabledSaves, blendDepth * 2);
-		}
-
-		BlendState saved = blendSaves[blendDepth];
-		if (saved == null) {
-			saved = new BlendState();
-			blendSaves[blendDepth] = saved;
-		}
-
-		GLStateManager.getEffectiveBlendState(saved);
-		blendEnabledSaves[blendDepth] = GLStateManager.isEffectiveBlendEnabled();
-
-		return blendDepth++;
-	}
-	public static void popBlendState(int depth) {
-		blendDepth = depth;
-
-		final boolean enabled = blendEnabledSaves[depth];
-		if (enabled != GLStateManager.isEffectiveBlendEnabled()) {
-			if (enabled) {
-				GLStateManager.enableBlend();
-			} else {
-				GLStateManager.disableBlend();
-			}
-		}
-
-		final BlendState saved = blendSaves[depth];
-		GLStateManager.getEffectiveBlendState(blendScratch);
-		if (blendScratch.getSrcRgb() != saved.getSrcRgb() || blendScratch.getDstRgb() != saved.getDstRgb()
-			|| blendScratch.getSrcAlpha() != saved.getSrcAlpha() || blendScratch.getDstAlpha() != saved.getDstAlpha()) {
-			GLStateManager.tryBlendFuncSeparate(saved.getSrcRgb(), saved.getDstRgb(), saved.getSrcAlpha(), saved.getDstAlpha());
-		}
-	}
-
-	public static void popBlendStateTop() {
-		if (blendDepth > 0) {
-			popBlendState(blendDepth - 1);
-		}
-	}
-
-	private static BlendState[] blendSaves = new BlendState[4];
-	private static boolean[] blendEnabledSaves = new boolean[4];
-	private static int blendDepth;
-	private static final BlendState blendScratch = new BlendState();
-
-	private static final long ALPHA_ENABLED_BIT = 1L << 48;
-	private static final long LIGHTMAP_ENABLED_BIT = 1L << 49;
-	private static final AlphaState alphaScratch = new AlphaState();
-
-	private static long packCutoutState() {
-		GLStateManager.getEffectiveAlphaState(alphaScratch);
-
-		return (Float.floatToRawIntBits(alphaScratch.getReference()) & 0xFFFFFFFFL)
-			| ((long) (alphaScratch.getFunction() & 0xFFFF) << 32)
-			| (GLStateManager.isEffectiveAlphaTestEnabled() ? ALPHA_ENABLED_BIT : 0L)
-			| (GLStateManager.getTextures().getTextureUnitStates(1).isEnabled() ? LIGHTMAP_ENABLED_BIT : 0L);
+		final int previousUnit = GLSMTextures.getActiveTextureUnitForServerState();
+		GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
+		GLSMTextures.enableTexture();
+		GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0 + previousUnit);
 	}
 
 	public static void setBlockEntityDefaults() {
-		GLStateManager.glVertexAttrib2s(ProgramCreator.MC_ENTITY, (short)-1, (short)-1);
+		GLSMCurrentAttribs.glVertexAttrib2s(ProgramCreator.MC_ENTITY, (short)-1, (short)-1);
 		FfpExtendedAttribs.setNeutralCurrentValues();
-		GLStateManager.glVertexAttrib4f(ProgramCreator.AT_MIDBLOCK, 0.0f, 0.0f, 0.0f, 0.0f);
+		GLSMCurrentAttribs.glVertexAttrib4f(ProgramCreator.AT_MIDBLOCK, 0.0f, 0.0f, 0.0f, 0.0f);
 	}
 
 	public static WorldRenderingPhase getCurrentPhase() {
@@ -264,20 +188,48 @@ public class GbufferPrograms {
 	}
 
 	public static boolean beginNestedEntityPhase() {
+		IrisDisplayListState.recordNestedEntityScope(true);
 		if (getCurrentPhase() != WorldRenderingPhase.BLOCK_ENTITIES) {
 			return false;
 		}
-		setOverridePhase(WorldRenderingPhase.ENTITIES);
+		applyPushOverridePhase(WorldRenderingPhase.ENTITIES);
 		return true;
 	}
 
 	public static void endNestedEntityPhase(boolean pushed) {
+		IrisDisplayListState.recordNestedEntityScope(false);
 		if (pushed) {
-			setOverridePhase(null);
+			applyPopOverridePhase();
 		}
 	}
 
 	public static void setOverridePhase(WorldRenderingPhase phase) {
+		IrisDisplayListState.recordOverridePhase(phase);
+		applyOverridePhase(phase);
+	}
+
+	private static final ObjectArrayList<WorldRenderingPhase> phaseStack = new ObjectArrayList<>();
+
+	public static void pushOverridePhase(WorldRenderingPhase phase) {
+		IrisDisplayListState.recordPhaseScope(phase, true);
+		applyPushOverridePhase(phase);
+	}
+
+	private static void applyPushOverridePhase(WorldRenderingPhase phase) {
+		phaseStack.add(overridePhase);
+		applyOverridePhase(phase);
+	}
+
+	public static void popOverridePhase() {
+		IrisDisplayListState.recordPhaseScope(null, false);
+		applyPopOverridePhase();
+	}
+
+	private static void applyPopOverridePhase() {
+		applyOverridePhase(phaseStack.pop());
+	}
+
+	private static void applyOverridePhase(WorldRenderingPhase phase) {
 		overridePhase = phase;
 
 		final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
@@ -291,6 +243,7 @@ public class GbufferPrograms {
     private static WorldRenderingPhase overridePhase;
 
     public static Boolean beginTranslucencyDeclaration(Boolean translucent) {
+		IrisDisplayListState.recordTranslucencyScope(translucent, true);
 		final Boolean previous = declaredTranslucent;
 		declaredTranslucent = translucent;
 		applyTranslucencyDeclaration();
@@ -298,11 +251,13 @@ public class GbufferPrograms {
 	}
 
 	public static void endTranslucencyDeclaration(Boolean previous) {
+		IrisDisplayListState.recordTranslucencyScope(null, false);
 		declaredTranslucent = previous;
 		applyTranslucencyDeclaration();
 	}
 
 	public static void setTranslucencyDeclaration(Boolean translucent) {
+		IrisDisplayListState.recordTranslucency(translucent);
 		declaredTranslucent = translucent;
 		applyTranslucencyDeclaration();
 	}
@@ -318,6 +273,7 @@ public class GbufferPrograms {
 	}
 
 	private static SpecialCondition currentSpecial;
+	private static final ObjectArrayList<SpecialCondition> specialStack = new ObjectArrayList<>();
 
 	public static SpecialCondition getSpecialCondition() {
 		return currentSpecial;
@@ -328,6 +284,12 @@ public class GbufferPrograms {
 	}
 
 	public static void setupSpecialRenderCondition(SpecialCondition override) {
+		IrisDisplayListState.recordSpecialCondition(override, true);
+		specialStack.add(currentSpecial);
+		applySpecialCondition(override);
+	}
+
+	private static void applySpecialCondition(SpecialCondition override) {
 		currentSpecial = override;
 		final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
 
@@ -337,12 +299,8 @@ public class GbufferPrograms {
 	}
 
 	public static void teardownSpecialRenderCondition() {
-		currentSpecial = null;
-		final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
-
-		if (pipeline != null) {
-			pipeline.setSpecialCondition(null);
-		}
+		IrisDisplayListState.recordSpecialCondition(null, false);
+		applySpecialCondition(specialStack.pop());
 	}
 
 	public static void runPhaseChangeNotifier() {

@@ -1,7 +1,11 @@
 package net.coderbot.iris.compat.dh;
 
 import com.google.common.primitives.Ints;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.mixins.interfaces.EntityRendererAccessor;
 import org.lwjgl.BufferUtils;
 import com.seibel.distanthorizons.api.interfaces.override.rendering.IDhApiGenericObjectShaderProgram;
@@ -67,49 +71,49 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
 
     // This will bind  AbstractVertexAttribute
     private IrisGenericRenderProgram(String name, boolean isShadowPass, boolean translucent, BlendModeOverride override, BufferBlendOverride[] bufferBlendOverrides, String vertex, String tessControl, String tessEval, String geometry, String fragment, CustomUniforms customUniforms, DeferredWorldRenderingPipeline pipeline) {
-        id = GLStateManager.glCreateProgram();
+        id = GLSMPrograms.glCreateProgram();
 
-        GLStateManager.glBindAttribLocation(this.id, 0, "vPosition");
-        GLStateManager.glBindAttribLocation(this.id, 1, "iris_color");
-        GLStateManager.glBindAttribLocation(this.id, 2, "aScale");
-        GLStateManager.glBindAttribLocation(this.id, 3, "aTranslateChunk");
-        GLStateManager.glBindAttribLocation(this.id, 4, "aTranslateSubChunk");
-        GLStateManager.glBindAttribLocation(this.id, 5, "aMaterial");
+        GLSMPrograms.glBindAttribLocation(this.id, 0, "vPosition");
+        GLSMPrograms.glBindAttribLocation(this.id, 1, "iris_color");
+        GLSMPrograms.glBindAttribLocation(this.id, 2, "aScale");
+        GLSMPrograms.glBindAttribLocation(this.id, 3, "aTranslateChunk");
+        GLSMPrograms.glBindAttribLocation(this.id, 4, "aTranslateSubChunk");
+        GLSMPrograms.glBindAttribLocation(this.id, 5, "aMaterial");
 
         this.bufferBlendOverrides = bufferBlendOverrides;
 
         GlShader vert = new GlShader(ShaderType.VERTEX, name + ".vsh", vertex);
-        GLStateManager.glAttachShader(id, vert.getHandle());
+        GLSMPrograms.glAttachShader(id, vert.getHandle());
 
         GlShader tessCont = null;
         if (tessControl != null) {
             tessCont = new GlShader(ShaderType.TESSELATION_CONTROL, name + ".tcs", tessControl);
-            GLStateManager.glAttachShader(id, tessCont.getHandle());
+            GLSMPrograms.glAttachShader(id, tessCont.getHandle());
         }
 
         GlShader tessE = null;
         if (tessEval != null) {
             tessE = new GlShader(ShaderType.TESSELATION_EVAL, name + ".tes", tessEval);
-            GLStateManager.glAttachShader(id, tessE.getHandle());
+            GLSMPrograms.glAttachShader(id, tessE.getHandle());
         }
 
         GlShader geom = null;
         if (geometry != null) {
             geom = new GlShader(ShaderType.GEOMETRY, name + ".gsh", geometry);
-            GLStateManager.glAttachShader(id, geom.getHandle());
+            GLSMPrograms.glAttachShader(id, geom.getHandle());
         }
 
         GlShader frag = new GlShader(ShaderType.FRAGMENT, name + ".fsh", fragment);
-        GLStateManager.glAttachShader(id, frag.getHandle());
+        GLSMPrograms.glAttachShader(id, frag.getHandle());
 
-        GLStateManager.glLinkProgram(this.id);
-        int status = GLStateManager.glGetProgrami(this.id, GL20.GL_LINK_STATUS);
+        GLSMPrograms.glLinkProgram(this.id);
+        int status = GLSMPrograms.glGetProgrami(this.id, GL20.GL_LINK_STATUS);
         if (status != 1) {
-            String message = "Shader link error in Iris DH program! Details: " + GLStateManager.glGetProgramInfoLog(this.id, 9999);
+            String message = "Shader link error in Iris DH program! Details: " + GLSMPrograms.glGetProgramInfoLog(this.id, 9999);
             this.free();
             throw new RuntimeException(message);
         } else {
-            GLStateManager.glUseProgram(this.id);
+            GLSMPrograms.glUseProgram(this.id);
         }
 
         vert.destroy();
@@ -135,9 +139,9 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
         samplers = samplerBuilder.build();
         images = builder.build();
 
-        this.va = GLStateManager.glGenVertexArrays();
-        GLStateManager.glBindVertexArray(va);
-        GLStateManager.glEnableVertexAttribArray(0);
+        this.va = GLSMVertexInput.glGenVertexArrays();
+        GLSMVertexInput.glBindVertexArray(va);
+        GLSMVertexInput.glEnableVertexAttribArray(0);
 
         this.instancedShaderOffsetChunkUniform = this.tryGetUniformLocation2("uOffsetChunk");
         this.instancedShaderOffsetSubChunkUniform = this.tryGetUniformLocation2("uOffsetSubChunk");
@@ -188,7 +192,7 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
     }
 
     public int tryGetUniformLocation2(CharSequence name) {
-        return GLStateManager.glGetUniformLocation(this.id, name);
+        return GLSMPrograms.glGetUniformLocation(this.id, name);
     }
 
     private final FloatBuffer matrixScratch = BufferUtils.createFloatBuffer(16);
@@ -196,13 +200,13 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
     public void setUniform(int index, Matrix4f matrix) {
         if (index == -1 || matrix == null) return;
         matrix.get(matrixScratch);
-        GLStateManager.glUniformMatrix4(index, false, matrixScratch);
+        GLSMPrograms.glUniformMatrix4(index, false, matrixScratch);
     }
 
     // Override ShaderProgram.bind()
     public void bind(DhApiRenderParam renderParam) {
-        GLStateManager.glBindVertexArray(va);
-        GLStateManager.glUseProgram(id);
+        GLSMVertexInput.glBindVertexArray(va);
+        GLSMPrograms.glUseProgram(id);
         if (blend != null) blend.apply();
 
         for (BufferBlendOverride override : bufferBlendOverrides) {
@@ -214,9 +218,9 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
 
         this.setUniform(this.instancedShaderProjectionModelViewMatrixUniform, tempMat4.set(tempProj).mul(tempModel));
         LodRendererEvents.pushDhMatrices(tempProj, tempModel);
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + IrisSamplers.LIGHTMAP_TEXTURE_UNIT);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0 + IrisSamplers.LIGHTMAP_TEXTURE_UNIT);
         DynamicTexture lightmapTexture = ((EntityRendererAccessor) Minecraft.getMinecraft().entityRenderer).getLightmapTexture();
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, lightmapTexture.getGlTextureId());
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, lightmapTexture.getGlTextureId());
 
         samplers.update();
         uniforms.update();
@@ -228,8 +232,8 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
 
     public void unbind() {
         LodRendererEvents.popDhMatrices();
-        GLStateManager.glBindVertexArray(0);
-        GLStateManager.glUseProgram(0);
+        GLSMVertexInput.glBindVertexArray(0);
+        GLSMPrograms.glUseProgram(0);
         ProgramUniforms.clearActiveUniforms();
         ProgramSamplers.clearActiveSamplers();
         BlendModeOverride.restore();
@@ -237,8 +241,8 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
 
     @Override
     public void bindVertexBuffer(int i) {
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, i);
-        GLStateManager.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 12, 0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, i);
+        GLSMVertexInput.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 12, 0);
     }
 
     @Override
@@ -252,13 +256,13 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
     }
 
     public void free() {
-        GLStateManager.glDeleteProgram(id);
+        GLSMPrograms.glDeleteProgram(id);
     }
 
     public void fillIndirectUniformData(DhApiRenderParam dhApiRenderParam, DhApiRenderableBoxGroupShading dhApiRenderableBoxGroupShading, IDhApiRenderableBoxGroup boxGroup, DhApiVec3d camPos) {
         bind(dhApiRenderParam);
-        GLStateManager.enableDepthTest();
-        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
+        GLSMDepthStencilAlpha.enableDepthTest();
+        GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_LEQUAL);
         this.setUniform(this.instancedShaderOffsetChunkUniform,
             getChunkPosFromDouble(boxGroup.getOriginBlockPos().x),
             getChunkPosFromDouble(boxGroup.getOriginBlockPos().y),
@@ -302,19 +306,19 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
     }
 
     private void setUniform(int index, int value) {
-        GLStateManager.glUniform1i(index, value);
+        GLSMPrograms.glUniform1i(index, value);
     }
 
     private void setUniform(int index, float value) {
-        GLStateManager.glUniform1f(index, value);
+        GLSMPrograms.glUniform1f(index, value);
     }
 
     private void setUniform(int index, float x, float y, float z) {
-        GLStateManager.glUniform3f(index, x, y, z);
+        GLSMPrograms.glUniform3f(index, x, y, z);
     }
 
     private void setUniform(int index, int x, int y, int z) {
-        GLStateManager.glUniform3i(index, x, y, z);
+        GLSMPrograms.glUniform3i(index, x, y, z);
     }
 
 }

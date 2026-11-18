@@ -1,17 +1,20 @@
 package com.gtnewhorizons.angelica.client.font;
 
 import com.google.common.collect.HashMultiset;
+import com.gtnewhorizon.gtnhlib.util.font.GlyphReplacements;
 import com.gtnewhorizons.angelica.config.FontConfig;
-import com.gtnewhorizons.angelica.mixins.interfaces.ResourceAccessor;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import cpw.mods.fml.client.SplashProgress;
 import cpw.mods.fml.common.versioning.DefaultArtifactVersion;
 import lombok.Getter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.resources.DefaultResourcePack;
-import net.minecraft.client.resources.SimpleReloadableResourceManager;
+import net.minecraft.util.ResourceLocation;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.lwjgl.opengl.GL11;
 
 import java.awt.Font;
 import java.awt.FontFormatException;
@@ -22,15 +25,20 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class FontStrategist {
 
     @Getter
     private static final Font[] availableFonts;
+    private static final Map<Font,String> fontNameMap;
     public static final Logger LOGGER = LogManager.getLogger("Angelica");
     private static final boolean isSafeToUseAwtEnvironmentData = checkIsSafeToUseAwtEnvironmentData();
 
@@ -74,20 +82,13 @@ public class FontStrategist {
 
         loadBundledFonts(fontSet);
 
-        availableFonts = fontSet.values().stream().sorted(Comparator.comparing(Font::getFontName)).toArray(Font[]::new);
+        fontNameMap = fontSet.entrySet().stream().collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
+        availableFonts = fontSet.values().stream().sorted(Comparator.comparing(fontNameMap::get)).toArray(Font[]::new);
+    }
 
-        // create and add the resource pack that provides fonts
-        HashMap<String, File> packMap = new HashMap<>();
-        for (int i = 0; i < FontProviderCustom.ATLAS_COUNT; i++) {
-            packMap.put(FontProviderCustom.getPrimary().getAtlasResourceName(i), new File(FontProviderCustom.getPrimary().getAtlasFullPath(i)));
-            packMap.put(FontProviderCustom.getFallback().getAtlasResourceName(i), new File(FontProviderCustom.getFallback().getAtlasFullPath(i)));
-        }
-
-        Minecraft mc = Minecraft.getMinecraft();
-        DefaultResourcePack fontResourcePack = new DefaultResourcePack(packMap);
-
-        ((ResourceAccessor) mc).angelica$getDefaultResourcePacks().add(fontResourcePack);
-        ((SimpleReloadableResourceManager) mc.getResourceManager()).reloadResourcePack(fontResourcePack);
+    // reduces allocations
+    public static String getFontName(Font font) {
+        return fontNameMap.get(font);
     }
 
     private static boolean checkIsSafeToUseAwtEnvironmentData() {
@@ -161,14 +162,26 @@ public class FontStrategist {
         if (me.bookMode) {
             return FontProviderUnicode.get();
         }
+        if (!me.isSplash && GLStateManager.isMainThread()) {
+            final FontProvider cached = FontProviderCache.lookup(chr, customFontEnabled, forceUnicode);
+            if (cached != null) { return cached; }
+        }
+        return searchFontProvider(me, chr, customFontEnabled, forceUnicode);
+    }
+
+    static FontProvider searchFontProvider(BatchingFontRenderer me, char chr, boolean customFontEnabled, boolean forceUnicode) {
         if (customFontEnabled && !me.isSplash) {
             FontProvider fp;
             fp = FontProviderCustom.getPrimary();
             if (fp.isGlyphAvailable(chr)) { return fp; }
             fp = FontProviderCustom.getFallback();
             if (fp.isGlyphAvailable(chr)) { return fp; }
+            fp = findModernGlyph(me, chr, forceUnicode);
+            if (fp != null) { return fp; }
             return FontProviderUnicode.get();
         } else {
+            final FontProvider modern = findModernGlyph(me, chr, forceUnicode);
+            if (modern != null) { return modern; }
             if (!forceUnicode && FontProviderMC.get(false).isGlyphAvailable(chr)) {
                 return FontProviderMC.get(false);
             } else {
@@ -177,14 +190,32 @@ public class FontStrategist {
         }
     }
 
+    public static char replaceCustomGlyph(BatchingFontRenderer me, char chr, boolean forceUnicode) {
+        if (!FontConfig.enableGlyphReplacements || !(FontConfig.enableCustomFont || FontConfig.enableModernFont)) { return chr; }
+        final char original = GlyphReplacements.getReplacementGlyph(chr);
+        if (original == 0) { return chr; }
+        if (FontConfig.enableCustomFont
+            && (FontProviderCustom.getPrimary().isGlyphAvailable(original) || FontProviderCustom.getFallback().isGlyphAvailable(original))) {
+            return original;
+        }
+        return findModernGlyph(me, original, forceUnicode) != null ? original : chr;
+    }
+
+    // The splash font renderer can only bind its own ascii texture.
+    private static FontProvider findModernGlyph(BatchingFontRenderer me, char chr, boolean forceUnicode) {
+        if (!FontConfig.enableModernFont || forceUnicode || me.isSplash || !GLStateManager.isMainThread()) { return null; }
+        return FontProviderBitmap.find(chr);
+    }
+
     public static void reloadCustomFontProviders() {
         FontProviderCustom.getPrimary().setFont(null);
         FontProviderCustom.getFallback().setFont(null);
         for (int i = 0; i < availableFonts.length; i++) {
-            if (Objects.equals(FontConfig.customFontNamePrimary, availableFonts[i].getFontName())) {
+            String fontName = getFontName(availableFonts[i]);
+            if (Objects.equals(FontConfig.customFontNamePrimary, fontName)) {
                 FontProviderCustom.getPrimary().reloadFont(i);
             }
-            if (Objects.equals(FontConfig.customFontNameFallback, availableFonts[i].getFontName())) {
+            if (Objects.equals(FontConfig.customFontNameFallback, fontName)) {
                 FontProviderCustom.getFallback().reloadFont(i);
             }
         }
@@ -201,5 +232,42 @@ public class FontStrategist {
         }
 
         return active;
+    }
+
+    /*
+     * We want to refer to either a texture or a resource location using a single integer. Int space allocation:
+     * Integer.MIN_VALUE - reserved invalid texture
+     * (Integer.MIN_VALUE, -1] - ResourceLocations, values -1, -2, -3 map to indices 0, 1, 2 etc. in the below structures
+     * 0 - untextured (underline, strikethrough...)
+     * [1, Integer.MAX_VALUE] - regular OpenGL texture IDs
+     */
+    static final int INVALID_TEXTURE = Integer.MIN_VALUE;
+    private static int remap(int n) { return -1 - n; } // involution
+
+    private static final Object RESOURCE_LOCK = new Object();
+    private static final List<ResourceLocation> intToResourceLocation = new ArrayList<>();
+    private static final Map<ResourceLocation, Integer> resourceLocationToInt = new HashMap<>();
+
+    static int getIntFromResourceLocation(ResourceLocation rl) {
+        synchronized (RESOURCE_LOCK) {
+            Integer i = resourceLocationToInt.get(rl);
+            if (i != null) { return i; }
+            int idx = remap(intToResourceLocation.size());
+            resourceLocationToInt.put(rl, idx);
+            intToResourceLocation.add(rl);
+            return idx;
+        }
+    }
+
+    static void bindIntTexture(BatchingFontRenderer owner, int texture) {
+        if (texture > 0) {
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        } else if (texture < 0) {
+            final ResourceLocation location;
+            synchronized (RESOURCE_LOCK) {
+                location = intToResourceLocation.get(remap(texture));
+            }
+            ((FontRendererAccessor) owner.underlying).angelica$bindTexture(location);
+        }
     }
 }

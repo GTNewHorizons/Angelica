@@ -1,7 +1,14 @@
 package com.gtnewhorizons.angelica.rendering.particles;
 
+import com.gtnewhorizons.angelica.rendering.RenderFailures;
 import com.gtnewhorizons.angelica.client.rendering.DeferredDrawBatcher;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
+import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
 import com.gtnewhorizons.angelica.glsm.ffp.ParticleInstancedAttribs;
@@ -13,12 +20,10 @@ import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.profiling.BailClassCounts;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
-import com.gtnewhorizons.angelica.rendering.OperationArgs;
 import com.gtnewhorizons.angelica.rendering.ParticleRunSplitter;
 import com.gtnewhorizons.angelica.rendering.tesr.InstanceRing;
 import com.gtnewhorizons.angelica.rendering.tesr.MeshBuffer;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.layer.GbufferPrograms;
@@ -43,9 +48,8 @@ public final class ParticleInstancer {
     private static final ParticleCaptureTessellator CAPTURE = new ParticleCaptureTessellator();
     private static final ParticleParams SCRATCH = new ParticleParams();
     private static final ParticleRenderState STATE = new ParticleRenderState();
-    private static final ParticleRenderState RESTORE = new ParticleRenderState();
+    private static int restoreDepth = -1;
     private static final Matrix4f LAYER_MV = new Matrix4f();
-    private static final Object[] ORIGINAL_ARGS = new Object[8];
 
     private static final ObjectArrayList<Group> GROUP_POOL = new ObjectArrayList<>();
     private static int groupCount;
@@ -106,23 +110,21 @@ public final class ParticleInstancer {
         if (available()) {
             layerActive = true;
             groupCount = 0;
-            LAYER_MV.set(GLStateManager.getModelViewMatrix());
+            LAYER_MV.set(GLSMMatrices.getModelViewMatrix());
         } else {
             deferred = null;
             DeferredDrawBatcher.enter();
         }
     }
 
-    public static void renderParticle(EntityFX fx, Tessellator runTessellator, float partialTicks, float rotationX, float rotationXZ, float rotationZ, float rotationYZ, float rotationXY, Operation<Void> original) {
+    public static boolean renderParticle(EntityFX fx, Tessellator runTessellator, float partialTicks, float rotationX, float rotationXZ, float rotationZ, float rotationYZ, float rotationXY) {
         if (!layerStarted) beginLayer();
-        if (!layerActive) {
-            call(fx, runTessellator, partialTicks, rotationX, rotationXZ, rotationZ, rotationYZ, rotationXY, original);
-            return;
-        }
-        renderActive(fx, runTessellator, partialTicks, rotationX, rotationXZ, rotationZ, rotationYZ, rotationXY, original);
+        if (!layerActive) return false;
+        renderActive(fx, runTessellator, partialTicks, rotationX, rotationXZ, rotationZ, rotationYZ, rotationXY);
+        return true;
     }
 
-    private static void renderActive(EntityFX fx, Tessellator runTessellator, float partialTicks, float rotationX, float rotationXZ, float rotationZ, float rotationYZ, float rotationXY, Operation<Void> original) {
+    private static void renderActive(EntityFX fx, Tessellator runTessellator, float partialTicks, float rotationX, float rotationXZ, float rotationZ, float rotationYZ, float rotationXY) {
 
         run = runTessellator;
         rotX = rotationX;
@@ -145,7 +147,7 @@ public final class ParticleInstancer {
         }
 
         CAPTURE.begin(runTessellator.brightness, runTessellator, LAYER_MV);
-        call(fx, CAPTURE, partialTicks, rotationX, rotationXZ, rotationZ, rotationYZ, rotationXY, original);
+        fx.renderParticle(CAPTURE, partialTicks, rotationX, rotationXZ, rotationZ, rotationYZ, rotationXY);
         CAPTURE.propagateColor();
 
         if (CAPTURE.spilled()) {
@@ -175,33 +177,54 @@ public final class ParticleInstancer {
     }
 
     public static void endLayer() {
-        layerStarted = false;
         if (!layerActive) {
+            layerStarted = false;
             if (DeferredDrawBatcher.isActive()) DeferredDrawBatcher.exitAndFlush();
             return;
         }
         layerActive = false;
-
-        if (groupCount > 0) {
-            RESTORE.sample();
-            for (int i = 0; i < groupCount; i++) {
-                final Group group = GROUP_POOL.get(i);
-                if (!group.translucent) flush(group);
+        Throwable failure = null;
+        try {
+            if (groupCount > 0) {
+                restoreDepth = GLSMAttribStack.pushState(StateSet.BATCH);
+                for (int i = 0; i < groupCount; i++) {
+                    final Group group = GROUP_POOL.get(i);
+                    if (!group.translucent) flush(group);
+                }
+                for (int i = 0; i < groupCount; i++) {
+                    final Group group = GROUP_POOL.get(i);
+                    if (group.translucent) flush(group);
+                }
+            }
+        } catch (Throwable t) {
+            failure = t;
+        } finally {
+            if (restoreDepth >= 0) {
+                try {
+                    GLSMAttribStack.popStateTo(restoreDepth);
+                } catch (Throwable t) {
+                    failure = RenderFailures.suppress(failure, t);
+                } finally {
+                    restoreDepth = -1;
+                }
+                if (deferred != null) {
+                    try {
+                        GbufferPrograms.setTranslucencyDeclaration(ParticleRunSplitter.currentRunTranslucent());
+                    } catch (Throwable t) {
+                        failure = RenderFailures.suppress(failure, t);
+                    }
+                }
             }
             for (int i = 0; i < groupCount; i++) {
-                final Group group = GROUP_POOL.get(i);
-                if (group.translucent) flush(group);
+                final ByteBuffer list = GROUP_POOL.get(i).list;
+                if (list != null) list.clear();
             }
-            RESTORE.apply();
-            if (deferred != null) {
-                GbufferPrograms.setTranslucencyDeclaration(ParticleRunSplitter.currentRunTranslucent());
-            }
-            ring().postDraw();
             groupCount = 0;
+            deferred = null;
+            run = null;
+            layerStarted = false;
         }
-
-        deferred = null;
-        run = null;
+        RenderFailures.rethrowWrapped(failure);
     }
 
     private static Group groupFor(ParticleRenderState state, boolean translucent) {
@@ -232,24 +255,6 @@ public final class ParticleInstancer {
         CAPTURE.release();
         ParticleQuadMesh.delete();
         ParticleDescriptorRegistry.clearCache();
-    }
-
-    private static void call(EntityFX fx, Tessellator target, float partialTicks, float rotationX, float rotationXZ, float rotationZ, float rotationYZ, float rotationXY, Operation<Void> original) {
-        final Object[] args = ORIGINAL_ARGS;
-        args[0] = fx;
-        args[1] = target;
-        args[2] = OperationArgs.boxed(args[2], partialTicks);
-        args[3] = OperationArgs.boxed(args[3], rotationX);
-        args[4] = OperationArgs.boxed(args[4], rotationXZ);
-        args[5] = OperationArgs.boxed(args[5], rotationZ);
-        args[6] = OperationArgs.boxed(args[6], rotationYZ);
-        args[7] = OperationArgs.boxed(args[7], rotationXY);
-        try {
-            original.call(args);
-        } finally {
-            args[0] = null;
-            args[1] = null;
-        }
     }
 
     private static boolean available() {
@@ -304,24 +309,28 @@ public final class ParticleInstancer {
         if (extHandler != null && extHandler.wantsExtended()) {
             FfpExtendedAttribs.setNeutralCurrentValues();
         }
-        GLStateManager.glBindVertexArray(ParticleQuadMesh.vao());
+        GLSMVertexInput.glBindVertexArray(ParticleQuadMesh.vao());
         VAOManager.setCurrentVertexFlags(ParticleQuadMesh.VERTEX_FLAGS);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, ring().bufferId());
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, ring().bufferId());
         ParticleInstancedAttribs.pointInstanceAttribs(base);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-        if (ffp) GLStateManager.ffpInstancing = Instancing.PARTICLE;
-        GLStateManager.glDrawArraysInstanced(GL11.GL_QUADS, 0, ParticleQuadMesh.VERTEX_COUNT, count);
-        GLStateManager.ffpInstancing = Instancing.NONE;
-        GLStateManager.glBindVertexArray(0);
-        draws++;
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        try {
+            if (ffp) GLSMPrograms.setFfpInstancing(Instancing.PARTICLE);
+            GLSMDraws.glDrawArraysInstanced(GL11.GL_QUADS, 0, ParticleQuadMesh.VERTEX_COUNT, count);
+            draws++;
+        } finally {
+            GLSMPrograms.setFfpInstancing(Instancing.NONE);
+            GLSMVertexInput.glBindVertexArray(0);
+        }
     }
 
     private static void drawInstancesCpu(ParticleRenderState state, ByteBuffer list, int count, boolean listTranslucent) {
         final Tessellator t = run;
-        RESTORE.apply();
+        GLSMAttribStack.popStateTo(restoreDepth);
         GbufferPrograms.setTranslucencyDeclaration(ParticleRunSplitter.currentRunTranslucent());
         t.draw();
         t.startDrawingQuads();
+        restoreDepth = GLSMAttribStack.pushState(StateSet.BATCH);
         GbufferPrograms.setTranslucencyDeclaration(listTranslucent);
         state.apply();
         for (int i = 0; i < count; i++) {

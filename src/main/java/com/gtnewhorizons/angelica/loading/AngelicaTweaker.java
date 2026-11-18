@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.loading;
 
 import com.gtnewhorizon.gtnhmixins.IEarlyMixinLoader;
+import com.gtnewhorizons.angelica.experimental.surround.SurroundBootstrap;
 import cpw.mods.fml.relauncher.FMLLaunchHandler;
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 import org.apache.logging.log4j.LogManager;
@@ -20,12 +21,14 @@ import java.util.Set;
 // obfuscated mappings and not SRG mappings when running outside of dev env.
 // ===============================================
 @IFMLLoadingPlugin.MCVersion("1.7.10")
+@IFMLLoadingPlugin.TransformerExclusions("com.gtnewhorizons.angelica.experimental.surround.")
 public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
     private final IFMLLoadingPlugin loadingPlugin;
     private final IEarlyMixinLoader mixinLoader;
 
     public AngelicaTweaker() {
+        SurroundBootstrap.init();
         if (FMLLaunchHandler.side().isClient()) {
             final AngelicaClientTweaker clientTweaker = new AngelicaClientTweaker();
             loadingPlugin = clientTweaker;

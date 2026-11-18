@@ -1,9 +1,12 @@
 package com.gtnewhorizons.angelica.mixins.early.rendering;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.api.ExtCeleritasRenderBlocks;
 import com.gtnewhorizons.angelica.common.BlockError;
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
+import com.gtnewhorizons.angelica.rendering.IsbrhDispatch;
 import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.RenderPassHelper;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
@@ -11,9 +14,7 @@ import com.llamalad7.mixinextras.sugar.Local;
 import com.prupe.mcpatcher.ctm.CTMUtils;
 import com.prupe.mcpatcher.ctm.TileOverrideImpl;
 import com.prupe.mcpatcher.ctm.RenderBlockState;
-import cpw.mods.fml.client.registry.RenderingRegistry;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.minecraft.block.Block;
@@ -34,13 +35,16 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
 @Mixin(RenderBlocks.class)
 public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
     @Shadow
     public abstract boolean renderStandardBlockWithColorMultiplier(Block p_147736_1_, int p_147736_2_, int p_147736_3_, int p_147736_4_, float p_147736_5_, float p_147736_6_, float p_147736_7_);
 
     @Unique
-    private static final ObjectOpenHashSet<String> isbrhExceptionCache = new ObjectOpenHashSet<>();
+    private static final Set<String> isbrhExceptionCache = ConcurrentHashMap.newKeySet();
 
     @Unique
     private static final Object2IntOpenHashMap<Class<? extends Exception>> exceptionErrorBlockMap = new Object2IntOpenHashMap<>();
@@ -55,74 +59,130 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
 
     private boolean applyingCeleritasAO = false;
 
-    @Inject(method = "renderBlockByRenderType", at = @At("HEAD"))
-    private void renderingByTypeEnable(CallbackInfoReturnable<Boolean> ci) {
+    @Unique
+    private int lastBrightnessX, lastBrightnessY, lastBrightnessZ;
+
+    @Unique
+    private boolean discardedBrightness;
+
+    @Unique
+    private boolean renderingPlainCube;
+
+    @Surround(method = "renderBlockByRenderType", id = "plainCube",
+        at = {
+            @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderBlocks;renderStandardBlock(Lnet/minecraft/block/Block;III)Z"),
+            // LOTR's coremod swaps the call for its natural-blocks wrapper, which ends in renderStandardBlock
+            @At(value = "INVOKE", target = "Llotr/common/coremod/LOTRReplacedMethods$BlockRendering;renderStandardBlock(Lnet/minecraft/client/renderer/RenderBlocks;Lnet/minecraft/block/Block;III)Z", remap = false) },
+        require = 1)
+    private void angelica$enterPlainCube() {
+        @Surround.Carry final boolean wasPlainCube = this.renderingPlainCube;
+        this.renderingPlainCube = true;
+    }
+
+    @Surround.Finally("plainCube")
+    private void angelica$exitPlainCube(@Surround.Carry boolean wasPlainCube) {
+        this.renderingPlainCube = wasPlainCube;
+    }
+
+    @Surround(method = "renderBlockByRenderType", id = "byType")
+    private void angelica$enterByType() {
+        @Surround.Carry final boolean wasByType = this.isRenderingByType;
         CTMUtils.clearCurrentCompact();
         this.isRenderingByType = true;
     }
 
-    @Inject(method = "renderBlockByRenderType", at = @At("TAIL"))
-    private void renderingByTypeDisable(CallbackInfoReturnable<Boolean> ci) {
+    @Surround.Finally("byType")
+    private void angelica$exitByType(@Surround.Carry boolean wasByType) {
         CTMUtils.clearCurrentCompact();
-        this.isRenderingByType = false;
+        this.isRenderingByType = wasByType;
     }
 
     /**
-     * This mixin and the one below(wrapRenderWorldBlockDeobfuscated) achieve the same goal. The goal is to wrap ISBRH rendering in a try/catch
-     * to ignore NPE, as mods commonly like to not null-guard the tile entity casting, and Sodium introduces a race condition where when a block
-     * is broken, the TE can be removed from the world before the render thread gets to it, but the block data is deep copied to the thread, so
-     * it still tries to render the block.
-
-     * The reason there's two mixins to the same thing for this, is because FMLRenderAccessLibrary is an old Forge remnant of Optifine compat
-     * whereby they provided this class for Optifine to be able to access Forge's rendering methods. For some reason, in a deobfuscated environment,
-     * that class lives in net.minecraft.src.FMLRenderAccessLibrary. However in an obfuscated prod environment, it gets moved into the root unnamed
-     * package. So basically, only one of these two redirects will actually end up getting applied, and the other will fail, based on what environment
-     * you're running in.
+     * Wraps ISBRH rendering in a try/catch to ignore NPE, as mods commonly like to not null-guard the tile entity casting, and Sodium introduces
+     * a race condition where when a block is broken, the TE can be removed from the world before the render thread gets to it, but the block data
+     * is deep copied to the thread, so it still tries to render the block.
+     *
+     * FMLRenderAccessLibrary is an old Forge remnant of Optifine compat. In a deobfuscated environment it lives in net.minecraft.src, in an
+     * obfuscated prod environment it is moved into the root unnamed package. Both are targeted; only the one present matches.
      */
-    @Redirect(
+    @Surround(
         method = "renderBlockByRenderType",
-        at = @At(
-            value = "INVOKE",
-            target = "LFMLRenderAccessLibrary;renderWorldBlock(Lnet/minecraft/client/renderer/RenderBlocks;Lnet/minecraft/world/IBlockAccess;IIILnet/minecraft/block/Block;I)Z",
-            remap = false
-        ),
-        expect = 0
+        id = "isbrhCatch",
+        at = {
+            @At(
+                value = "INVOKE",
+                target = "LFMLRenderAccessLibrary;renderWorldBlock(Lnet/minecraft/client/renderer/RenderBlocks;Lnet/minecraft/world/IBlockAccess;IIILnet/minecraft/block/Block;I)Z",
+                remap = false
+            ),
+            @At(
+                value = "INVOKE",
+                target = "Lnet/minecraft/src/FMLRenderAccessLibrary;renderWorldBlock(Lnet/minecraft/client/renderer/RenderBlocks;Lnet/minecraft/world/IBlockAccess;IIILnet/minecraft/block/Block;I)Z",
+                remap = false
+            )
+        },
+        require = 1
     )
-    private boolean wrapRenderWorldBlockObfuscated(RenderBlocks rb, IBlockAccess world, int x, int y, int z, Block block, int modelId) {
-        return handleISBRHException(rb, world, x, y, z, block, modelId);
+    private void angelica$isbrhCatchEnter() {
     }
 
-    @Redirect(
-        method = "renderBlockByRenderType",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/src/FMLRenderAccessLibrary;renderWorldBlock(Lnet/minecraft/client/renderer/RenderBlocks;Lnet/minecraft/world/IBlockAccess;IIILnet/minecraft/block/Block;I)Z",
-            remap = false
-        ),
-        expect = 0
-    )
-    private boolean wrapRenderWorldBlockDeobfuscated(RenderBlocks rb, IBlockAccess world, int x, int y, int z, Block block, int modelId) {
-        return handleISBRHException(rb, world, x, y, z, block, modelId);
-    }
+    @Surround.Catch(value = "isbrhCatch", handle = true)
+    private boolean angelica$isbrhCatchHandler(Exception e, RenderBlocks rb, IBlockAccess world, int x, int y, int z, Block block, int modelId) {
+        CTMUtils.clearCurrentCompact();
+        int meta = exceptionErrorBlockMap.getOrDefault(e.getClass(), 0);
+        rb.overrideBlockTexture = BlockError.icons[meta];
+        rb.renderStandardBlock(ClientProxy.blockError, x, y, z);
+        rb.overrideBlockTexture = null;
 
-    /**
-     * @author embeddedt
-     * @reason When vanilla would render with AO, hijack the rendering logic and render using flat lighting instead.
-     */
-    @Inject(method = { "renderStandardBlockWithAmbientOcclusion", "renderStandardBlockWithAmbientOcclusionPartial" }, at = @At("HEAD"), cancellable = true)
-    private void handleCeleritasAo(Block block, int x, int y, int z, float r, float g, float b, CallbackInfoReturnable<Boolean> cir) {
-        if (angelica$shouldApplyCeleritasAO()) {
-            this.applyingCeleritasAO = true;
-            try {
-                cir.setReturnValue(this.renderStandardBlockWithColorMultiplier(block, x, y, z, r, g, b));
-            } finally {
-                this.applyingCeleritasAO = false;
-            }
+        String key = block.getUnlocalizedName() + ":" + meta;
+        if (isbrhExceptionCache.add(key)) {
+            AngelicaClientTweaker.LOGGER.warn("Caught an exception during ISBRH rendering for {} at position {}, {}, {} with renderer ID {}", block.getUnlocalizedName(), x, y, z, modelId, e);
         }
+        return false;
+    }
+
+    @Surround(method = { "renderStandardBlockWithAmbientOcclusion(Lnet/minecraft/block/Block;IIIFFF)Z",
+                         "renderStandardBlockWithAmbientOcclusionPartial(Lnet/minecraft/block/Block;IIIFFF)Z" }, id = "celeritasAo", require = 2)
+    private void angelica$celeritasAoEnter() {
+        @Surround.Skip boolean skip = angelica$shouldApplyCeleritasAO();
+    }
+
+    @Surround.Skipped("celeritasAo")
+    private boolean angelica$celeritasAoSkipped(Block block, int x, int y, int z, float r, float g, float b) {
+        this.applyingCeleritasAO = true;
+        this.discardedBrightness = false;
+        final boolean rendered;
+        try {
+            rendered = this.renderStandardBlockWithColorMultiplier(block, x, y, z, r, g, b);
+        } finally {
+            this.applyingCeleritasAO = false;
+        }
+        // Multi-part render types that emit their own vertices after renderStandardBlock inherit its Tessellator
+        // brightness. Only a discarded lookup left it wrong; lastBrightness* is stale otherwise.
+        if (rendered && this.discardedBrightness && !this.renderingPlainCube) {
+            TessellatorManager.get().setBrightness(block.getMixedBrightnessForBlock(this.blockAccess, this.lastBrightnessX, this.lastBrightnessY, this.lastBrightnessZ));
+        }
+        return rendered;
+    }
+
+    @Redirect(method = "renderStandardBlockWithColorMultiplier",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/block/Block;getMixedBrightnessForBlock(Lnet/minecraft/world/IBlockAccess;III)I"),
+        require = 1)
+    private int angelica$skipDiscardedBrightness(Block block, IBlockAccess world, int x, int y, int z, @Local(ordinal = 0) Tessellator tessellator) {
+        final boolean discard = this.applyingCeleritasAO && this.isRenderingByType
+            && ((Object) this).getClass() == RenderBlocks.class
+            && !IsbrhDispatch.isRenderingWorldBlock()
+            && ((StateAwareTessellator) tessellator).angelica$isCeleritasMeshing();
+        if (!discard) return block.getMixedBrightnessForBlock(world, x, y, z);
+        this.discardedBrightness = true;
+        this.lastBrightnessX = x;
+        this.lastBrightnessY = y;
+        this.lastBrightnessZ = z;
+        return 0;
     }
 
     @Override
     public boolean angelica$shouldApplyCeleritasAO() {
+        if (!((StateAwareTessellator) TessellatorManager.get()).angelica$isCeleritasMeshing()) return false;
         return (this.isRenderingByType && Minecraft.isAmbientOcclusionEnabled() && ClientProxy.options().quality.useCeleritasSmoothLighting) ||
             (Iris.enabled && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo());
     }
@@ -160,27 +220,6 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
         return this.applyingCeleritasAO ? 1.0f : original;
     }
 
-    @SuppressWarnings("deprecation")
-    private boolean handleISBRHException(RenderBlocks rb, IBlockAccess world, int x, int y, int z, Block block, int modelId) {
-        try {
-            return RenderingRegistry.instance().renderWorldBlock(rb, world, x, y, z, block, modelId);
-        } catch (Exception e) {
-            CTMUtils.clearCurrentCompact();
-            // Render Error Block
-            int meta = exceptionErrorBlockMap.getOrDefault(e.getClass(), 0);
-            rb.overrideBlockTexture = BlockError.icons[exceptionErrorBlockMap.getOrDefault(e.getClass(), 0)];
-            rb.renderStandardBlock(ClientProxy.blockError, x, y, z);
-            rb.overrideBlockTexture = null;
-
-            // Check if we've already caught the exception for this block and log it if we haven't
-            String key = block.getUnlocalizedName() + ":" + meta;
-            if (isbrhExceptionCache.add(key)) {
-                AngelicaClientTweaker.LOGGER.warn("Caught an exception during ISBRH rendering for {} at position {}, {}, {} with renderer ID {}", block.getUnlocalizedName(), x, y, z, modelId, e);
-            }
-        }
-        return false;
-    }
-
     @ModifyExpressionValue(method = { "renderStandardBlockWithColorMultiplier" },
         at = @At(value = "FIELD", opcode = Opcodes.GETFIELD, target = "Lnet/minecraft/client/renderer/RenderBlocks;renderAllFaces:Z"))
     private boolean applyAOBrightness(boolean original, @Local(ordinal = 0) Tessellator tessellator) {
@@ -198,17 +237,17 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
     public IBlockAccess blockAccess;
 
     @Unique
-    private void angelica$handleCompactCtmFace(IIcon icon, ForgeDirection direction, CallbackInfo ci) {
+    private boolean angelica$handleCompactCtmFace(IIcon icon, ForgeDirection direction) {
         CTMUtils.CTMCompactContext ctx = CTMUtils.getCurrentCompact();
 
         if (ctx == null) {
-            return;
+            return false;
         }
         TileOverrideImpl.CTMCompact[] compacts = ctx.compacts();
         RenderBlockState renderBlockState = ctx.renderBlockState();
         CTMUtils.clearCurrentCompact();
         if (this.blockAccess == null || renderBlockState.getBlockAccess() == null) {
-            return;
+            return false;
         }
         RenderBlocks rb = (RenderBlocks) (Object) this;
         int face = direction.ordinal();
@@ -281,34 +320,34 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
         );
     }
 
-    @Inject(method = "renderFaceYNeg", at = @At("HEAD"), cancellable = true)
-    private void compactCtm_onRenderFaceYNeg(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
-        angelica$handleCompactCtmFace(icon, ForgeDirection.DOWN, ci);
+    @Surround(method = "renderFaceYNeg", id = "ctmYNeg")
+    private void angelica$ctmYNeg(Block block, double x, double y, double z, IIcon icon) {
+        @Surround.Skip final boolean handled = angelica$handleCompactCtmFace(icon, ForgeDirection.DOWN);
     }
 
-    @Inject(method = "renderFaceYPos", at = @At("HEAD"), cancellable = true)
-    private void compactCtm_onRenderFaceYPos(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
-        angelica$handleCompactCtmFace(icon, ForgeDirection.UP, ci);
+    @Surround(method = "renderFaceYPos", id = "ctmYPos")
+    private void angelica$ctmYPos(Block block, double x, double y, double z, IIcon icon) {
+        @Surround.Skip final boolean handled = angelica$handleCompactCtmFace(icon, ForgeDirection.UP);
     }
 
-    @Inject(method = "renderFaceZNeg", at = @At("HEAD"), cancellable = true)
-    private void compactCtm_onRenderFaceZNeg(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
-        angelica$handleCompactCtmFace(icon, ForgeDirection.NORTH, ci);
+    @Surround(method = "renderFaceZNeg", id = "ctmZNeg")
+    private void angelica$ctmZNeg(Block block, double x, double y, double z, IIcon icon) {
+        @Surround.Skip final boolean handled = angelica$handleCompactCtmFace(icon, ForgeDirection.NORTH);
     }
 
-    @Inject(method = "renderFaceZPos", at = @At("HEAD"), cancellable = true)
-    private void compactCtm_onRenderFaceZPos(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
-        angelica$handleCompactCtmFace(icon, ForgeDirection.SOUTH, ci);
+    @Surround(method = "renderFaceZPos", id = "ctmZPos")
+    private void angelica$ctmZPos(Block block, double x, double y, double z, IIcon icon) {
+        @Surround.Skip final boolean handled = angelica$handleCompactCtmFace(icon, ForgeDirection.SOUTH);
     }
 
-    @Inject(method = "renderFaceXNeg", at = @At("HEAD"), cancellable = true)
-    private void compactCtm_onRenderFaceXNeg(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
-        angelica$handleCompactCtmFace(icon, ForgeDirection.WEST, ci);
+    @Surround(method = "renderFaceXNeg", id = "ctmXNeg")
+    private void angelica$ctmXNeg(Block block, double x, double y, double z, IIcon icon) {
+        @Surround.Skip final boolean handled = angelica$handleCompactCtmFace(icon, ForgeDirection.WEST);
     }
 
-    @Inject(method = "renderFaceXPos", at = @At("HEAD"), cancellable = true)
-    private void compactCtm_onRenderFaceXPos(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
-        angelica$handleCompactCtmFace(icon, ForgeDirection.EAST, ci);
+    @Surround(method = "renderFaceXPos", id = "ctmXPos")
+    private void angelica$ctmXPos(Block block, double x, double y, double z, IIcon icon) {
+        @Surround.Skip final boolean handled = angelica$handleCompactCtmFace(icon, ForgeDirection.EAST);
     }
 
 

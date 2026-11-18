@@ -1,6 +1,9 @@
 package com.gtnewhorizons.angelica.mixins.early.notfine.clouds;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import jss.notfine.core.Settings;
 import jss.notfine.gui.options.named.GraphicsQualityOff;
 import net.minecraft.client.Minecraft;
@@ -51,8 +54,8 @@ public abstract class MixinRenderGlobal {
     @Overwrite
     public void renderCloudsFancy(float partialTicks) {
         Tessellator tessellator = Tessellator.instance;
-        GLStateManager.glDisable(GL11.GL_CULL_FACE);
-        GLStateManager.glEnable(GL11.GL_BLEND);
+        GLSMEnable.glDisable(GL11.GL_CULL_FACE);
+        GLSMEnable.glEnable(GL11.GL_BLEND);
         OpenGlHelper.glBlendFunc(770, 771, 1, 0);
         renderEngine.bindTexture(locationCloudsPng);
 
@@ -90,19 +93,19 @@ public abstract class MixinRenderGlobal {
         float cloudWidth = 8f;
         int renderRadius = (int)((int)Settings.RENDER_DISTANCE_CLOUDS.option.getStore() / (cloudScale * 2f));
         float edgeOverlap = 0.0001f;//0.001F;
-        GLStateManager.glScalef(cloudInteriorWidth, 1.0F, cloudInteriorWidth);
+        GLSMMatrices.glScalef(cloudInteriorWidth, 1.0F, cloudInteriorWidth);
 
         for (int loop = 0; loop < 2; ++loop) {
             if (loop == 0) {
-                GLStateManager.glColorMask(false, false, false, false);
+                GLSMBlend.glColorMask(false, false, false, false);
             } else if (mc.gameSettings.anaglyph) {
                 if (EntityRenderer.anaglyphField == 0) {
-                    GLStateManager.glColorMask(false, true, true, true);
+                    GLSMBlend.glColorMask(false, true, true, true);
                 } else {
-                    GLStateManager.glColorMask(true, false, false, true);
+                    GLSMBlend.glColorMask(true, false, false, true);
                 }
             } else {
-                GLStateManager.glColorMask(true, true, true, true);
+                GLSMBlend.glColorMask(true, true, true, true);
             }
 
             for(int chunkX = -renderRadius + 1; chunkX <= renderRadius; ++chunkX) {
@@ -185,15 +188,15 @@ public abstract class MixinRenderGlobal {
             }
         }
 
-        GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
-        GLStateManager.glDisable(GL11.GL_BLEND);
-        GLStateManager.glEnable(GL11.GL_CULL_FACE);
+        GLSMCurrentAttribs.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        GLSMEnable.glDisable(GL11.GL_BLEND);
+        GLSMEnable.glEnable(GL11.GL_CULL_FACE);
     }
 
     public void renderCloudsFast(float partialTicks) {
         Tessellator tessellator = Tessellator.instance;
-        GLStateManager.glDisable(GL11.GL_CULL_FACE);
-        GLStateManager.glEnable(GL11.GL_BLEND);
+        GLSMEnable.glDisable(GL11.GL_CULL_FACE);
+        GLSMEnable.glEnable(GL11.GL_BLEND);
         OpenGlHelper.glBlendFunc(770, 771, 1, 0);
         renderEngine.bindTexture(locationCloudsPng);
 
@@ -239,9 +242,9 @@ public abstract class MixinRenderGlobal {
         tessellator.addVertexWithUV(neg, cameraRelativeY, neg, startXUv, startZUv);
         tessellator.draw();
 
-        GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
-        GLStateManager.glDisable(GL11.GL_BLEND);
-        GLStateManager.glEnable(GL11.GL_CULL_FACE);
+        GLSMCurrentAttribs.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        GLSMEnable.glDisable(GL11.GL_BLEND);
+        GLSMEnable.glEnable(GL11.GL_CULL_FACE);
     }
 
     @Shadow @Final

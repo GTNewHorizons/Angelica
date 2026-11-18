@@ -1,5 +1,6 @@
 package net.irisshaders.iris.api.v0.item;
 
+import com.gtnewhorizons.angelica.helpers.ItemBlockLight;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
@@ -11,8 +12,7 @@ public interface IrisItemLightProvider {
 
 	default int getLightEmission(EntityPlayer player, ItemStack stack) {
 		if (stack.getItem() instanceof ItemBlock item) {
-
-			return item.field_150939_a.getLightValue();
+			return ItemBlockLight.getLightValue(item, stack);
 		}
 
 		return 0;

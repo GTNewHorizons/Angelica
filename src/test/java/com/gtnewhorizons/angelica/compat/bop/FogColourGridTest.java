@@ -1,0 +1,105 @@
+package com.gtnewhorizons.angelica.compat.bop;
+
+import net.minecraft.world.World;
+import net.minecraft.world.biome.BiomeGenBase;
+import net.minecraft.world.chunk.IChunkProvider;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+
+import java.util.function.IntBinaryOperator;
+import java.util.stream.Stream;
+
+import com.gtnewhorizons.angelica.compat.bop.BopFogTestSupport.BopFog;
+
+import static com.gtnewhorizons.angelica.compat.bop.BopFogTestSupport.stub;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.when;
+
+class FogColourGridTest {
+
+    @BeforeEach
+    void reset() {
+        FogColourGrid.invalidate();
+        FogBiomeCache.invalidate();
+    }
+
+    private static World mockWorld(boolean chunksLoaded) {
+        final World world = stub(World.class);
+        final IChunkProvider provider = stub(IChunkProvider.class);
+        when(world.getChunkProvider()).thenReturn(provider);
+        when(provider.chunkExists(anyInt(), anyInt())).thenReturn(chunksLoaded);
+        return world;
+    }
+
+    private static BiomeGenBase fixedFogBiome(World world, int color) {
+        final BiomeGenBase biome = BopFog.mockBiome();
+        when(world.getBiomeGenForCoords(anyInt(), anyInt())).thenReturn(biome);
+        when(BopFog.stubCall(biome)).thenReturn(color);
+        return biome;
+    }
+
+    private static BiomeGenBase dynamicFogBiome(World world, IntBinaryOperator colorForXZ) {
+        final BiomeGenBase biome = BopFog.mockBiome();
+        when(world.getBiomeGenForCoords(anyInt(), anyInt())).thenReturn(biome);
+        when(BopFog.stubCall(biome)).thenAnswer(inv -> colorForXZ.applyAsInt(inv.getArgument(0), inv.getArgument(2)));
+        return biome;
+    }
+
+    @Test
+    void noAliasingAcrossA69WideWindowIncludingNegativeCoords() {
+        final World world = mockWorld(true);
+        dynamicFogBiome(world, (x, z) -> ((x & 0xFFF) << 12 | (z & 0xFFF)) & 0xFFFFFF);
+
+        final int centerX = -40;
+        final int centerZ = -40;
+        final int distance = 34;
+
+        for (int x = centerX - distance; x <= centerX + distance; x++) {
+            for (int z = centerZ - distance; z <= centerZ + distance; z++) {
+                final int expected = ((x & 0xFFF) << 12 | (z & 0xFFF)) & 0xFFFFFF;
+                final int actual = FogColourGrid.colour(world, x, 64, z);
+                assertEquals(expected, actual, "x=" + x + " z=" + z);
+            }
+        }
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("requeryCounts")
+    void fogColourCallsPerCoordinateList(String label, boolean chunksLoaded, int[][] xyz, int expectedFogColourCalls) {
+        final World world = mockWorld(chunksLoaded);
+        final BiomeGenBase biome = fixedFogBiome(world, 0x123456);
+
+        for (int[] c : xyz) {
+            FogColourGrid.colour(world, c[0], c[1], c[2]);
+        }
+        BopFog.verifyCall(biome, times(expectedFogColourCalls));
+    }
+
+    private static Stream<Arguments> requeryCounts() {
+        return Stream.of(
+            Arguments.of("non-cacheable cell is requeried", false, new int[][] {{5, 64, 9}, {5, 64, 9}}, 2),
+            Arguments.of("loaded repeat hits the cache", true, new int[][] {{100, 64, 200}, {100, 64, 200}}, 1),
+            Arguments.of("one block shift is a cold fill", true, new int[][] {{100, 64, 200}, {100, 64, 200}, {101, 64, 200}}, 2));
+    }
+
+    @Test
+    void worldSwapRequeries() {
+        final World worldA = mockWorld(true);
+        fixedFogBiome(worldA, 0x111111);
+        final int a = FogColourGrid.colour(worldA, 7, 64, 3);
+        assertEquals(0x111111, a);
+
+        FogColourGrid.invalidate();
+
+        final World worldB = mockWorld(true);
+        final BiomeGenBase biomeB = fixedFogBiome(worldB, 0x222222);
+        final int b = FogColourGrid.colour(worldB, 7, 64, 3);
+        assertEquals(0x222222, b);
+        BopFog.verifyCall(biomeB, times(1));
+    }
+}

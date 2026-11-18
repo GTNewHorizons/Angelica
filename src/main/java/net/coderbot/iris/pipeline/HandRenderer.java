@@ -5,7 +5,11 @@ import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
 import com.gtnewhorizons.angelica.compat.mojang.InteractionHand;
 import com.gtnewhorizons.angelica.event.RenderHandEvent;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.mixins.interfaces.ItemRendererAccessor;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.gtnewhorizons.angelica.rendering.celeritas.BlockRenderLayer;
@@ -36,30 +40,30 @@ public class HandRenderer {
     private void setupGlState(RenderGlobal gameRenderer, Camera camera, float tickDelta) {
         final Minecraft mc = Minecraft.getMinecraft();
 
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glLoadIdentity();
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glLoadIdentity();
         // We need to scale the matrix by 0.125 so the hand doesn't clip through blocks.
-        GLStateManager.glScalef(1.0F, 1.0F, DEPTH);
+        GLSMMatrices.glScalef(1.0F, 1.0F, DEPTH);
 
         // TODO: Anaglyph
         /*if (this.mc.gameSettings.anaglyph) {
-            GLStateManager.glTranslatef((float) (-(anaglyphChannel * 2 - 1)) * 0.07F, 0.0F, 0.0F);
+            GLSMMatrices.glTranslatef((float) (-(anaglyphChannel * 2 - 1)) * 0.07F, 0.0F, 0.0F);
         }*/
 
         if (mc.entityRenderer.cameraZoom != 1.0D) {
-            GLStateManager.glTranslatef((float) mc.entityRenderer.cameraYaw, (float) (-mc.entityRenderer.cameraPitch), 0.0F);
-            GLStateManager.glScaled(mc.entityRenderer.cameraZoom, mc.entityRenderer.cameraZoom, 1.0D);
+            GLSMMatrices.glTranslatef((float) mc.entityRenderer.cameraYaw, (float) (-mc.entityRenderer.cameraPitch), 0.0F);
+            GLSMMatrices.glScaled(mc.entityRenderer.cameraZoom, mc.entityRenderer.cameraZoom, 1.0D);
         }
 
         Project.gluPerspective(mc.entityRenderer.getFOVModifier(tickDelta, false), (float) mc.displayWidth / (float) mc.displayHeight, 0.05F, mc.entityRenderer.farPlaneDistance * 2.0F);
 
 
         if (mc.playerController.enableEverythingIsScrewedUpMode()) {
-            GLStateManager.glScalef(1.0F, 2 / 3f, 1.0F);
+            GLSMMatrices.glScalef(1.0F, 2 / 3f, 1.0F);
         }
 
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GLStateManager.glLoadIdentity();
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glLoadIdentity();
 
         // TODO: Anaglyph
         /*if (mc.gameSettings.anaglyph) {
@@ -128,40 +132,47 @@ public class HandRenderer {
 
         ACTIVE = true;
 
-        final int blendSave = GbufferPrograms.pushBlendState();
-        final long cutoutSave = GbufferPrograms.pushCutoutDefaults();
-        final boolean depthMaskBefore = GLStateManager.isEffectiveDepthMaskEnabled();
-
-        GLStateManager.disableBlend();
-        GLStateManager.defaultBlendFunc();
-
-        pipeline.setPhase(WorldRenderingPhase.HAND_SOLID);
-
-        GLStateManager.glPushMatrix();
-        GLStateManager.glDepthMask(true); // actually write to the depth buffer, it's normally disabled at this point
-
-        mc.mcProfiler.startSection("iris_hand");
+        final int stateDepth = GLSMAttribStack.pushState(StateSet.HAND);
         try {
-            setupGlState(gameRenderer, camera, tickDelta);
+            GbufferPrograms.setCutoutDefaults();
 
-            GbufferPrograms.setBlockEntityDefaults();
+            GLSMBlend.disableBlend();
+            GLSMBlend.defaultBlendFunc();
 
-            renderingSolid = true;
+            pipeline.setPhase(WorldRenderingPhase.HAND_SOLID);
 
-            mc.entityRenderer.enableLightmap(tickDelta);
-            mc.entityRenderer.itemRenderer.renderItemInFirstPerson(tickDelta);
-            mc.entityRenderer.disableLightmap(tickDelta);
+            boolean matrixPushed = false;
+            boolean profilerSectionStarted = false;
+            try {
+                GLSMMatrices.glPushMatrix();
+                matrixPushed = true;
+                GLSMDepthStencilAlpha.glDepthMask(true); // actually write to the depth buffer, it's normally disabled at this point
+
+                mc.mcProfiler.startSection("iris_hand");
+                profilerSectionStarted = true;
+                try {
+                    setupGlState(gameRenderer, camera, tickDelta);
+
+                    GbufferPrograms.setBlockEntityDefaults();
+
+                    renderingSolid = true;
+
+                    mc.entityRenderer.enableLightmap(tickDelta);
+                    mc.entityRenderer.itemRenderer.renderItemInFirstPerson(tickDelta);
+                    mc.entityRenderer.disableLightmap(tickDelta);
+                } finally {
+                    renderingSolid = false;
+
+                    if (profilerSectionStarted) mc.mcProfiler.endSection();
+                }
+            } finally {
+                if (matrixPushed) {
+                    GLSMMatrices.glPopMatrix();
+                    resetProjectionMatrix();
+                }
+            }
         } finally {
-            renderingSolid = false;
-
-            mc.mcProfiler.endSection();
-
-            GLStateManager.glPopMatrix();
-            resetProjectionMatrix();
-
-            GLStateManager.glDepthMask(depthMaskBefore);
-            GbufferPrograms.popCutoutDefaults(cutoutSave);
-            GbufferPrograms.popBlendState(blendSave);
+            GLSMAttribStack.popStateTo(stateDepth);
 
             pipeline.setPhase(WorldRenderingPhase.NONE);
 
@@ -177,36 +188,43 @@ public class HandRenderer {
 
         ACTIVE = true;
 
-        final int blendSave = GbufferPrograms.pushBlendState();
-        final long cutoutSave = GbufferPrograms.pushCutoutDefaults();
-        final boolean depthMaskBefore = GLStateManager.isEffectiveDepthMaskEnabled();
-
-        GLStateManager.enableBlend();
-        GLStateManager.defaultBlendFunc();
-
-        pipeline.setPhase(WorldRenderingPhase.HAND_TRANSLUCENT);
-
-        GLStateManager.glPushMatrix();
-        GLStateManager.glDepthMask(false);
-
-        mc.mcProfiler.startSection("iris_hand_translucent");
+        final int stateDepth = GLSMAttribStack.pushState(StateSet.HAND);
         try {
-            setupGlState(gameRenderer, camera, tickDelta);
+            GbufferPrograms.setCutoutDefaults();
 
-            GbufferPrograms.setBlockEntityDefaults();
+            GLSMBlend.enableBlend();
+            GLSMBlend.defaultBlendFunc();
 
-            mc.entityRenderer.enableLightmap(tickDelta);
-            mc.entityRenderer.itemRenderer.renderItemInFirstPerson(tickDelta);
-            mc.entityRenderer.disableLightmap(tickDelta);
+            pipeline.setPhase(WorldRenderingPhase.HAND_TRANSLUCENT);
+
+            boolean matrixPushed = false;
+            boolean profilerSectionStarted = false;
+            try {
+                GLSMMatrices.glPushMatrix();
+                matrixPushed = true;
+                GLSMDepthStencilAlpha.glDepthMask(false);
+
+                mc.mcProfiler.startSection("iris_hand_translucent");
+                profilerSectionStarted = true;
+                try {
+                    setupGlState(gameRenderer, camera, tickDelta);
+
+                    GbufferPrograms.setBlockEntityDefaults();
+
+                    mc.entityRenderer.enableLightmap(tickDelta);
+                    mc.entityRenderer.itemRenderer.renderItemInFirstPerson(tickDelta);
+                    mc.entityRenderer.disableLightmap(tickDelta);
+                } finally {
+                    if (profilerSectionStarted) mc.mcProfiler.endSection();
+                }
+            } finally {
+                if (matrixPushed) {
+                    GLSMMatrices.glPopMatrix();
+                    resetProjectionMatrix();
+                }
+            }
         } finally {
-            mc.mcProfiler.endSection();
-
-            GLStateManager.glPopMatrix();
-            resetProjectionMatrix();
-
-            GLStateManager.glDepthMask(depthMaskBefore);
-            GbufferPrograms.popCutoutDefaults(cutoutSave);
-            GbufferPrograms.popBlendState(blendSave);
+            GLSMAttribStack.popStateTo(stateDepth);
 
             pipeline.setPhase(WorldRenderingPhase.NONE);
 
@@ -215,10 +233,10 @@ public class HandRenderer {
     }
 
     private void resetProjectionMatrix() {
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glMultMatrix(RenderingState.INSTANCE.getProjectionBuffer());
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glMultMatrix(RenderingState.INSTANCE.getProjectionBuffer());
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
     }
 
     public boolean isActive() {

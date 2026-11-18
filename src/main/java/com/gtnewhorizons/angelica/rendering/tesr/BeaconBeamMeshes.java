@@ -3,7 +3,9 @@ package com.gtnewhorizons.angelica.rendering.tesr;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
 import com.gtnewhorizons.angelica.api.tesr.TesrMeshBuilder;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.tileentity.TileEntityBeacon;
@@ -66,7 +68,7 @@ public final class BeaconBeamMeshes {
 
     public static boolean render(TileEntityBeacon beacon, double x, double y, double z, float partialTicks) {
         final float f1 = beacon.func_146002_i();
-        GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.1f);
+        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, 0.1f);
         if (f1 <= 0.0f) {
             return true;
         }
@@ -75,33 +77,33 @@ public final class BeaconBeamMeshes {
         }
 
         Minecraft.getMinecraft().getTextureManager().bindTexture(BEACON_TEXTURE);
-        GLStateManager.glTexParameterf(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
-        GLStateManager.glTexParameterf(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
+        GLSMTextures.glTexParameterf(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
+        GLSMTextures.glTexParameterf(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
 
         final float f2 = (float) beacon.getWorldObj().getTotalWorldTime() + partialTicks;
         final float f3 = -f2 * 0.2f - MathHelper.floor_float(-f2 * 0.1f);
         final double d3 = f2 * 0.025 * -1.5;
 
-        GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
-        GLStateManager.glPushMatrix();
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glTranslatef(0f, f3 - 1f, 0f);
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glMatrixMode(GL11.GL_TEXTURE);
+        GLSMMatrices.glPushMatrix();
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glTranslatef(0f, f3 - 1f, 0f);
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
         try {
-            GLStateManager.glPushMatrix();
-            GLStateManager.glTranslated(x + 0.5, y, z + 0.5);
-            GLStateManager.glRotatef((float) -Math.toDegrees(d3), 0f, 1f, 0f);
+            GLSMMatrices.glPushMatrix();
+            GLSMMatrices.glTranslated(x + 0.5, y, z + 0.5);
+            GLSMMatrices.glRotatef((float) -Math.toDegrees(d3), 0f, 1f, 0f);
             AngelicaTesrMeshCache.INSTANCE.renderCached(INNER_KEY, INNER_BUILDER);
-            GLStateManager.glPopMatrix();
+            GLSMMatrices.glPopMatrix();
 
-            GLStateManager.glPushMatrix();
-            GLStateManager.glTranslated(x + 0.5, y, z + 0.5);
+            GLSMMatrices.glPushMatrix();
+            GLSMMatrices.glTranslated(x + 0.5, y, z + 0.5);
             AngelicaTesrMeshCache.INSTANCE.renderCached(OUTER_KEY, OUTER_BUILDER);
-            GLStateManager.glPopMatrix();
+            GLSMMatrices.glPopMatrix();
         } finally {
-            GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
-            GLStateManager.glPopMatrix();
-            GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+            GLSMMatrices.glMatrixMode(GL11.GL_TEXTURE);
+            GLSMMatrices.glPopMatrix();
+            GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
         }
         return true;
     }

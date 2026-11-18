@@ -2,7 +2,7 @@ package net.coderbot.iris.gl.blending;
 
 import com.gtnewhorizons.angelica.glsm.states.AlphaTestFunction;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
 import com.gtnewhorizons.angelica.glsm.hooks.VanillaBooleanLayer;
 import com.gtnewhorizons.angelica.glsm.hooks.VanillaStateLayer;
 import com.gtnewhorizons.angelica.glsm.states.AlphaState;
@@ -17,14 +17,15 @@ public class AlphaTestStorage {
     @Getter
     private static boolean alphaTestLocked;
 
+    @Getter
     private static boolean overrideHeld;
 
     public static void overrideAlphaTest(AlphaTest override) {
         if (!overrideHeld) {
-            final AlphaState alphaState = GLStateManager.getAlphaState();
+            final AlphaState alphaState = GLSMDepthStencilAlpha.getAlphaState();
 
             // Only save the previous state if the alpha test wasn't already overridden
-            vanillaEnabled = GLStateManager.getAlphaTest().isEnabled();
+            vanillaEnabled = GLSMDepthStencilAlpha.getAlphaTest().isEnabled();
             vanillaFunction = alphaState.getFunction();
             vanillaReference = alphaState.getReference();
         }
@@ -42,23 +43,27 @@ public class AlphaTestStorage {
         alphaTestLocked = false;
         try {
             if (enabled) {
-                GLStateManager.enableAlphaTest();
-                GLStateManager.glAlphaFunc(function, reference);
+                GLSMDepthStencilAlpha.enableAlphaTest();
+                GLSMDepthStencilAlpha.glAlphaFunc(function, reference);
             } else {
-                GLStateManager.disableAlphaTest();
+                GLSMDepthStencilAlpha.disableAlphaTest();
             }
         } finally {
             alphaTestLocked = true;
         }
     }
 
-    public static void deferAlphaTestToggle(boolean enabled) {
+    public static boolean deferAlphaTestToggle(boolean enabled) {
+        if (enabled == vanillaEnabled) return false;
         vanillaEnabled = enabled;
+        return true;
     }
 
-    public static void deferAlphaFunc(int function, float reference) {
+    public static boolean deferAlphaFunc(int function, float reference) {
+        if (function == vanillaFunction && Float.compare(reference, vanillaReference) == 0) return false;
         vanillaFunction = function;
         vanillaReference = reference;
+        return true;
     }
 
     public static void restoreAlphaTest() {
@@ -69,12 +74,12 @@ public class AlphaTestStorage {
         alphaTestLocked = false;
 
         if (vanillaEnabled) {
-            GLStateManager.enableAlphaTest();
+            GLSMDepthStencilAlpha.enableAlphaTest();
         } else {
-            GLStateManager.disableAlphaTest();
+            GLSMDepthStencilAlpha.disableAlphaTest();
         }
 
-        GLStateManager.glAlphaFunc(vanillaFunction, vanillaReference);
+        GLSMDepthStencilAlpha.glAlphaFunc(vanillaFunction, vanillaReference);
         overrideHeld = false;
     }
 

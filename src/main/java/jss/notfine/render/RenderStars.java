@@ -1,7 +1,7 @@
 package jss.notfine.render;
 
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
 import jss.notfine.core.Settings;
 import jss.util.RandomXoshiro256StarStar;
 import net.minecraft.client.renderer.RenderGlobal;
@@ -13,9 +13,9 @@ public class RenderStars {
     //private static final ResourceLocation locationStarsPng = new ResourceLocation("textures/colormap/stars.png");
 
     public static void reloadStarRenderList(RenderGlobal render) {
-        GLStateManager.glNewList(render.starGLCallList, GL11.GL_COMPILE);
+        GLSMDraws.glNewList(render.starGLCallList, GL11.GL_COMPILE);
         renderStars();
-        GLStateManager.glEndList();
+        GLSMDraws.glEndList();
     }
 
     public static void renderStars() {

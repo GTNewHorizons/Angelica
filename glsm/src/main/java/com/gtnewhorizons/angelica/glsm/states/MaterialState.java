@@ -9,7 +9,7 @@ import org.joml.Vector4i;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.i2f;
+import static com.gtnewhorizons.angelica.glsm.GLSMLighting.i2f;
 
 public class MaterialState implements ISettableState<MaterialState> {
 

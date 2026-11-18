@@ -5,7 +5,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
-import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
@@ -18,6 +17,7 @@ import org.lwjgl.util.spvc.SpvcReflectedResource;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 
+import static com.gtnewhorizons.angelica.sdlgpu.shader.SpirvTestShaders.compileOrFail;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -52,7 +52,7 @@ class ComputeSpirvRemapTest {
 
     @Test
     void mixedRoRwLayout_setsAndBindings() {
-        final ByteBuffer spirv = compile(COMPUTE_MIXED, Shaderc.shaderc_compute_shader);
+        final ByteBuffer spirv = compileOrFail(COMPUTE_MIXED, Shaderc.shaderc_compute_shader);
         try {
             final ShaderManager.ComputeBindingMap map = ShaderManager.remapSpirvForComputeSDLGPU(spirv);
 
@@ -207,7 +207,7 @@ class ComputeSpirvRemapTest {
 
     @Test
     void looseUniforms_flaggedAsDefaultBlock() {
-        final ByteBuffer spirv = compile(COMPUTE_LOOSE_UNIFORMS, Shaderc.shaderc_compute_shader);
+        final ByteBuffer spirv = compileOrFail(COMPUTE_LOOSE_UNIFORMS, Shaderc.shaderc_compute_shader);
         try {
             final ShaderManager.ComputeBindingMap map = ShaderManager.remapSpirvForComputeSDLGPU(spirv);
             assertEquals(1, map.uboGlSlots().length, "one synthetic UBO");
@@ -226,7 +226,7 @@ class ComputeSpirvRemapTest {
 
     @Test
     void noResources_emptyBindingMap() {
-        final ByteBuffer spirv = compile(COMPUTE_NO_RESOURCES, Shaderc.shaderc_compute_shader);
+        final ByteBuffer spirv = compileOrFail(COMPUTE_NO_RESOURCES, Shaderc.shaderc_compute_shader);
         try {
             final ShaderManager.ComputeBindingMap map = ShaderManager.remapSpirvForComputeSDLGPU(spirv);
             assertEquals(0, map.roSsboGlSlots().length);
@@ -242,7 +242,7 @@ class ComputeSpirvRemapTest {
 
     @Test
     void mixedRoRw_reflectionSplitCounts() {
-        final ByteBuffer spirv = compile(COMPUTE_MIXED, Shaderc.shaderc_compute_shader);
+        final ByteBuffer spirv = compileOrFail(COMPUTE_MIXED, Shaderc.shaderc_compute_shader);
         try {
             final ShaderManager.StageReflection refl = ShaderManager.reflectStage(spirv, false);
             assertEquals(2, refl.numReadonlyStorageBuffers());
@@ -257,13 +257,5 @@ class ComputeSpirvRemapTest {
     private static void assertContains(int[] arr, int value) {
         for (int v : arr) if (v == value) return;
         fail("expected " + value + " in " + Arrays.toString(arr));
-    }
-
-    private static ByteBuffer compile(String source, int shaderKind) {
-        final SpirvCompiler.Result r = SpirvCompiler.compile(source, shaderKind, "compute_test", SpirvCompiler.Options.vulkanForced460Core());
-        if (r.spirv() == null) {
-            fail("compute compile failed: " + r.error());
-        }
-        return r.spirv();
     }
 }

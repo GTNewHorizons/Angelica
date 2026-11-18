@@ -8,7 +8,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityHanging;
 import net.minecraft.entity.EntityLiving;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
@@ -73,9 +73,9 @@ public abstract class MixinRenderLiving extends RendererLivingEntity {
             double d18 = (float) (d11 - d15);
             // patch start (only change is if-wrapper)
             if (!LineRenderer.renderLine(1, x, y, z, d16, d17, d18)) {
-                GLStateManager.glDisable(GL11.GL_TEXTURE_2D);
-                GLStateManager.glDisable(GL11.GL_LIGHTING);
-                GLStateManager.glDisable(GL11.GL_CULL_FACE);
+                GLSMEnable.glDisable(GL11.GL_TEXTURE_2D);
+                GLSMEnable.glDisable(GL11.GL_LIGHTING);
+                GLSMEnable.glDisable(GL11.GL_CULL_FACE);
                 tessellator.startDrawing(5);
                 int i;
                 float f2;
@@ -124,11 +124,11 @@ public abstract class MixinRenderLiving extends RendererLivingEntity {
                 }
 
                 tessellator.draw();
-                GLStateManager.glEnable(GL11.GL_LIGHTING);
-                GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+                GLSMEnable.glEnable(GL11.GL_LIGHTING);
+                GLSMEnable.glEnable(GL11.GL_TEXTURE_2D);
             }
             // patch end
-            GLStateManager.glEnable(GL11.GL_CULL_FACE);
+            GLSMEnable.glEnable(GL11.GL_CULL_FACE);
         }
     }
 }

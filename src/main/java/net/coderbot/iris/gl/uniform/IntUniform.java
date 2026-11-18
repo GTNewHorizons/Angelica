@@ -6,7 +6,7 @@ import net.coderbot.iris.gl.state.ValueUpdateNotifier;
 import java.util.function.IntSupplier;
 
 public class IntUniform extends Uniform {
-	private final Runnable updateListener = this::updateValue;
+	private final Runnable updateListener = uploadWhileBound(this::updateValue);
 	private int cachedValue;
 	private final IntSupplier value;
 
@@ -33,8 +33,9 @@ public class IntUniform extends Uniform {
 	private void updateValue() {
 		int newValue = value.getAsInt();
 
-		if (cachedValue != newValue) {
+		if (dirty || cachedValue != newValue) {
 			cachedValue = newValue;
+			dirty = false;
 			RenderSystem.uniform1i(location, newValue);
 		}
 	}

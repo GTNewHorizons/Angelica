@@ -8,6 +8,7 @@ import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.IrisExtendedChunkVertexType;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import net.coderbot.iris.Iris;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderDiskCache;
 import com.gtnewhorizons.angelica.glsm.shader.ShaderType;
 import net.coderbot.iris.pipeline.transform.parameter.AttributeParameters;
 import net.coderbot.iris.pipeline.transform.parameter.Parameters;
@@ -22,13 +23,20 @@ import org.taumc.glsl.Transformer;
 import org.taumc.glsl.grammar.GLSLLexer;
 import org.taumc.glsl.grammar.GLSLParser;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.EnumMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -226,6 +234,58 @@ public class ShaderTransformer {
 
     record StageArtifact(GLSLParser.Translation_unitContext tree, int headerLen) {}
 
+    static ShaderDiskCache.Key diskKey(Patch patch, EnumMap<PatchShaderType, String> inputs, Parameters parameters) {
+        final ShaderDiskCache.Key k = ShaderDiskCache.key("iris-transform").str(patch.name());
+        parameters.appendDiskKey(k);
+        k.i(RenderSystem.getMaxGlslVersion()).b(RenderSystem.supportsSSBO()).b(RenderSystem.supportsImageLoadStore())
+            .b(RenderSystem.isGLES()).b(RenderSystem.isClipDistanceEmulated()).b(BackendManager.RENDER_BACKEND.isSDLGPU()).b(BackendManager.RENDER_BACKEND.supportsComputeImageAtomics()).str(RwImageStoreExtractor.atomicCustomImagesKey())
+            .i(maxSupportedHoistVersion);
+        if (enabledRequirements == null) {
+            k.i(-1);
+        } else {
+            k.i(enabledRequirements.length);
+            for (VersionRequirement r : enabledRequirements) k.str(r.keyword());
+        }
+        appendSorted(k, SamplerToStorageImageRewriter.activeCandidates(), Object::toString);
+        appendSorted(k, RwImageStoreExtractor.activeCustomImages().entrySet(), e -> e.getKey() + "=" + e.getValue());
+        if (patch == Patch.CELERITAS_TERRAIN) k.str(CeleritasHeader.VALUE);
+        for (PatchShaderType t : PatchShaderType.VALUES) k.str(inputs.get(t));
+        return k;
+    }
+
+    private static <T> void appendSorted(ShaderDiskCache.Key k, Collection<T> items, Function<T, String> render) {
+        final List<String> rendered = new ArrayList<>(items.size());
+        for (T item : items) rendered.add(render.apply(item));
+        k.sortedStrs(rendered);
+    }
+
+    private static Map<PatchShaderType, String> diskOrCompute(Patch patchType, EnumMap<PatchShaderType, String> inputs, Parameters parameters, Supplier<Map<PatchShaderType, String>> compute) {
+        final ShaderDiskCache.Key diskKey = ShaderDiskCache.isEnabled() ? diskKey(patchType, inputs, parameters) : null;
+        final Map<PatchShaderType, String> fromDisk = diskKey != null ? readDisk(diskKey) : null;
+        if (fromDisk != null) return fromDisk;
+        final Map<PatchShaderType, String> result = compute.get();
+        if (diskKey != null) writeDisk(diskKey, result);
+        return result;
+    }
+
+    private static Map<PatchShaderType, String> readDisk(ShaderDiskCache.Key key) {
+        final Map<String, String> stored = ShaderDiskCache.getStrings(key);
+        if (stored == null) return null;
+        try {
+            final EnumMap<PatchShaderType, String> out = new EnumMap<>(PatchShaderType.class);
+            for (Map.Entry<String, String> e : stored.entrySet()) out.put(PatchShaderType.valueOf(e.getKey()), e.getValue());
+            return out;
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    private static void writeDisk(ShaderDiskCache.Key key, Map<PatchShaderType, String> result) {
+        final Map<String, String> out = new LinkedHashMap<>();
+        for (Map.Entry<PatchShaderType, String> e : result.entrySet()) out.put(e.getKey().name(), e.getValue());
+        ShaderDiskCache.putStrings(key, out);
+    }
+
     public static <P extends Parameters> Map<PatchShaderType, String> transform(String vertex, String geometry, String tessControl, String tessEval, String fragment, P parameters) {
         return transform(vertex, geometry, tessControl, tessEval, fragment, parameters, null);
     }
@@ -251,7 +311,7 @@ public class ShaderTransformer {
                 result = shaderTransformationCache.getAndMoveToLast(key);
             }
             if(result == null || !useCache) {
-                result = transformInternal(inputs, patchType, parameters, artifactsOut);
+                result = diskOrCompute(patchType, inputs, parameters, () -> transformInternal(inputs, patchType, parameters, artifactsOut));
                 // Clear this, we don't want whatever random type was last transformed being considered for the key
                 parameters.type = null;
                 synchronized (shaderTransformationCache) {
@@ -293,7 +353,7 @@ public class ShaderTransformer {
                 result = shaderTransformationCache.getAndMoveToLast(key);
             }
             if (result == null || !useCache) {
-                result = transformComputeInternal(compute, patchType, parameters, artifactsOut);
+                result = diskOrCompute(patchType, inputs, parameters, () -> transformComputeInternal(compute, patchType, parameters, artifactsOut));
                 // Clear this, we don't want whatever random type was last transformed being considered for the key
                 parameters.type = null;
                 synchronized (shaderTransformationCache) {
@@ -481,7 +541,7 @@ public class ShaderTransformer {
             String headerTail = stageHeader.extensions();
             // For Celeritas terrain vertex shaders, inject chunk_vertex.glsl header
             if (patchType == Patch.CELERITAS_TERRAIN && shaderType == PatchShaderType.VERTEX) {
-                headerTail += computeCeleritasHeader();
+                headerTail += CeleritasHeader.VALUE;
             }
 
             final StringBuilder formattedShaderBuilder = new StringBuilder();
@@ -501,33 +561,71 @@ public class ShaderTransformer {
                 artifactsOut.put(shaderType, new StageArtifact(treeHolder[0], formattedShader.length() - printedBody.length()));
             }
         }
-        maybeExtractRwImageStores(result, patchType);
+        if (BackendManager.RENDER_BACKEND.isSDLGPU()) extractRwImageStores(result, patchType, artifactsOut, RwImageStoreExtractor::supportsAtomics);
         watch.stop();
         Iris.logger.info("[Load #{}] Transformed shader for {} in {}", Iris.getShaderPackLoadId(), patchType.name(), watch);
         return result;
     }
 
-    private static void maybeExtractRwImageStores(EnumMap<PatchShaderType, String> result, Patch patchType) {
-        if (!BackendManager.RENDER_BACKEND.isSDLGPU()) return;
+    static void extractRwImageStores(EnumMap<PatchShaderType, String> result, Patch patchType, EnumMap<PatchShaderType, StageArtifact> artifactsOut, Predicate<String> imageAtomics) {
         if (result.containsKey(PatchShaderType.COMPUTE)) return;
+        if (patchType == Patch.ATTRIBUTES) {
+            extractVertexReplay(result, artifactsOut, imageAtomics);
+            return;
+        }
 
         final String vsh = result.get(PatchShaderType.VERTEX);
         final String fsh = result.get(PatchShaderType.FRAGMENT);
-        final RwImageStoreExtractor.Result vshResult = (vsh != null) ? RwImageStoreExtractor.tryExtract(vsh, PatchShaderType.VERTEX, patchType.name()) : null;
+        final RwImageStoreExtractor.RwExtractMode vertexMode = patchType == Patch.COMPOSITE ? RwImageStoreExtractor.RwExtractMode.COMPOSITE_VSH : null;
+        final RwImageStoreExtractor.Result vshResult = (vsh != null) ? RwImageStoreExtractor.tryExtract(vsh, PatchShaderType.VERTEX, patchType.name(), vertexMode) : null;
         final RwImageStoreExtractor.Result fshResult = (fsh != null) ? RwImageStoreExtractor.tryExtract(fsh, PatchShaderType.FRAGMENT, patchType.name()) : null;
 
         if (vshResult != null && fshResult != null) {
             throw new RuntimeException("Program " + patchType.name() + " writes images from both VSH and FSH; only one stage may write per program under SDL_GPU");
         }
-        if (vshResult != null) {
-            result.put(PatchShaderType.VERTEX, vshResult.strippedSource());
-            result.put(PatchShaderType.COMPUTE, vshResult.computeSource());
-            Iris.logger.info("[RwImageStoreExtractor] Extracted compute pre-pass for {} (mode={}, written={})", patchType.name(), vshResult.mode(), vshResult.writtenImages());
-        } else if (fshResult != null) {
-            result.put(PatchShaderType.FRAGMENT, fshResult.strippedSource());
-            result.put(PatchShaderType.COMPUTE, fshResult.computeSource());
-            Iris.logger.info("[RwImageStoreExtractor] Extracted compute pre-pass for {} (mode={}, written={})", patchType.name(), fshResult.mode(), fshResult.writtenImages());
+        final RwImageStoreExtractor.Result extracted = vshResult != null ? vshResult : fshResult;
+        if (extracted == null) return;
+        final PatchShaderType stage = vshResult != null ? PatchShaderType.VERTEX : PatchShaderType.FRAGMENT;
+        result.put(stage, extracted.strippedSource());
+        if (artifactsOut != null) artifactsOut.remove(stage);
+        if (patchType != Patch.COMPOSITE && patchType != Patch.CELERITAS_TERRAIN) {
+            Iris.logger.info("[RwImageStoreExtractor] Dropped image writes from {} (written={})", patchType.name(), extracted.writtenImages());
+        } else if (needsUnsupportedAtomics(extracted, imageAtomics)) {
+            Iris.logger.info("[RwImageStoreExtractor] Dropped image writes from {}, they need image atomics this backend cannot run (written={})", patchType.name(), extracted.writtenImages());
+        } else {
+            result.put(PatchShaderType.COMPUTE, extracted.computeSource());
+            Iris.logger.info("[RwImageStoreExtractor] Extracted compute pre-pass for {} (mode={}, written={})", patchType.name(), extracted.mode(), extracted.writtenImages());
         }
+    }
+
+    private static boolean needsUnsupportedAtomics(RwImageStoreExtractor.Result extracted, Predicate<String> imageAtomics) {
+        return !extracted.atomicImages().stream().allMatch(imageAtomics);
+    }
+
+    private static void extractVertexReplay(EnumMap<PatchShaderType, String> result, EnumMap<PatchShaderType, StageArtifact> artifactsOut, Predicate<String> imageAtomics) {
+        final String fsh = result.get(PatchShaderType.FRAGMENT);
+        final RwImageStoreExtractor.Result fshResult = (fsh != null) ? RwImageStoreExtractor.tryExtract(fsh, PatchShaderType.FRAGMENT, Patch.ATTRIBUTES.name()) : null;
+        if (fshResult != null) {
+            result.put(PatchShaderType.FRAGMENT, fshResult.strippedSource());
+            if (artifactsOut != null) artifactsOut.remove(PatchShaderType.FRAGMENT);
+            Iris.logger.info("[RwImageStoreExtractor] Dropped fragment image writes from ATTRIBUTES (written={})", fshResult.writtenImages());
+        }
+
+        final String vsh = result.get(PatchShaderType.VERTEX);
+        final RwImageStoreExtractor.Result vshResult = (vsh != null) ? RwImageStoreExtractor.tryExtractVertexReplay(vsh) : null;
+        if (vshResult == null) return;
+        result.put(PatchShaderType.VERTEX, vshResult.strippedSource());
+        if (artifactsOut != null) artifactsOut.remove(PatchShaderType.VERTEX);
+        if (vshResult.computeSource() == null) {
+            Iris.logger.info("[RwImageStoreExtractor] Dropped vertex image writes from ATTRIBUTES, an input cannot be replayed (written={})", vshResult.writtenImages());
+            return;
+        }
+        if (needsUnsupportedAtomics(vshResult, imageAtomics)) {
+            Iris.logger.info("[RwImageStoreExtractor] Dropped vertex image writes from ATTRIBUTES, they need image atomics this backend cannot run (written={})", vshResult.writtenImages());
+            return;
+        }
+        result.put(PatchShaderType.COMPUTE, vshResult.computeSource());
+        Iris.logger.info("[RwImageStoreExtractor] Extracted vertex replay for ATTRIBUTES (written={})", vshResult.writtenImages());
     }
 
     private static void doTransform(Transformer transformer, Patch patchType, Parameters parameters, int versionInt) {
@@ -658,10 +756,8 @@ public class ShaderTransformer {
         }
     }
 
-    public static void addIfNotExistsType(Transformer transformer, String name, String type) {
-        if (!transformer.hasVariable(name)) {
-            transformer.injectVariable(type + " " + name + ";");
-        }
+    private static final class CeleritasHeader {
+        static final String VALUE = computeCeleritasHeader();
     }
 
     private static String computeCeleritasHeader() {

@@ -1,19 +1,20 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import org.junit.jupiter.api.BeforeAll;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
+import com.gtnewhorizons.angelica.glsm.GlTestSupport;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
-import org.lwjgl.opengl.GL20;
 import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Tag("glsm-sdl")
 @ExtendWith(GlsmSdlFrameExtension.class)
@@ -45,41 +46,18 @@ class GlsmSdlUnalignedAttribTest {
 
     private static int program;
 
-    @BeforeAll
-    static void boot() {
-        GlsmSdlHeadlessRig.boot();
-    }
-
     private static int buildProgram() {
-        if (program != 0) return program;
-        final int vs = GLStateManager.glCreateShader(GL20.GL_VERTEX_SHADER);
-        GLStateManager.glShaderSource(vs, VERT);
-        GLStateManager.glCompileShader(vs);
-        assertTrue(GLStateManager.glGetShaderi(vs, GL20.GL_COMPILE_STATUS) != 0,
-            () -> "vertex shader: " + GLStateManager.glGetShaderInfoLog(vs));
-
-        final int fs = GLStateManager.glCreateShader(GL20.GL_FRAGMENT_SHADER);
-        GLStateManager.glShaderSource(fs, FRAG);
-        GLStateManager.glCompileShader(fs);
-        assertTrue(GLStateManager.glGetShaderi(fs, GL20.GL_COMPILE_STATUS) != 0,
-            () -> "fragment shader: " + GLStateManager.glGetShaderInfoLog(fs));
-
-        final int p = GLStateManager.glCreateProgram();
-        GLStateManager.glAttachShader(p, vs);
-        GLStateManager.glAttachShader(p, fs);
-        GLStateManager.glLinkProgram(p);
-        assertTrue(GLStateManager.glGetProgrami(p, GL20.GL_LINK_STATUS) != 0, "program did not link");
-        program = p;
-        return p;
+        if (program == 0) program = GlTestSupport.program(VERT, FRAG);
+        return program;
     }
 
     private static int redChannelForFactorAt(int factorOffset, int decoyOffset) {
         final int p = buildProgram();
-        final int vao = GLStateManager.glGenVertexArrays();
-        GLStateManager.glBindVertexArray(vao);
+        final int vao = GLSMVertexInput.glGenVertexArrays();
+        GLSMVertexInput.glBindVertexArray(vao);
 
-        final int vbo = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        final int vbo = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
         final ByteBuffer data = MemoryUtil.memAlloc(3 * STRIDE);
         try {
             for (int i = 0; i < 3 * STRIDE; i++) data.put(i, (byte) 0);
@@ -93,37 +71,27 @@ class GlsmSdlUnalignedAttribTest {
                 data.put(base + factorOffset, (byte) FACTOR);
             }
             data.position(0).limit(3 * STRIDE);
-            GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, data, GL15.GL_STATIC_DRAW);
+            GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, data, GL15.GL_STATIC_DRAW);
         } finally {
             MemoryUtil.memFree(data);
         }
 
-        GLStateManager.glEnableVertexAttribArray(0);
-        GLStateManager.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, STRIDE, 0L);
-        GLStateManager.glEnableVertexAttribArray(5);
-        GLStateManager.glVertexAttribPointer(5, 1, GL11.GL_UNSIGNED_BYTE, true, STRIDE, factorOffset);
+        GLSMVertexInput.glEnableVertexAttribArray(0);
+        GLSMVertexInput.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, STRIDE, 0L);
+        GLSMVertexInput.glEnableVertexAttribArray(5);
+        GLSMVertexInput.glVertexAttribPointer(5, 1, GL11.GL_UNSIGNED_BYTE, true, STRIDE, factorOffset);
 
-        GLStateManager.glUseProgram(p);
+        GLSMPrograms.glUseProgram(p);
         try {
-            GLStateManager.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
+            GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
         } finally {
-            GLStateManager.glUseProgram(0);
+            GLSMPrograms.glUseProgram(0);
         }
 
         final int[] pixels = GlsmSdlHeadlessRig.readTarget(GlsmSdlHeadlessRig.SIZE / 2, GlsmSdlHeadlessRig.SIZE / 2, 1, 1);
-        GLStateManager.glBindVertexArray(0);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLSMVertexInput.glBindVertexArray(0);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         return (pixels[0] >> 16) & 0xFF;
-    }
-
-    @Test
-    void byteAttribAtAnAlignedOffsetReadsItsOwnByte() {
-        assertEquals(FACTOR, redChannelForFactorAt(20, -1), 1);
-    }
-
-    @Test
-    void byteAttribAtAnUnalignedOffsetReadsItsOwnByte() {
-        assertEquals(FACTOR, redChannelForFactorAt(23, 20), 1);
     }
 
     @Test

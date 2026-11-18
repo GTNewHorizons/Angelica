@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import net.coderbot.iris.rendertarget.IRenderTargetExt;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.shader.Framebuffer;
@@ -54,7 +54,7 @@ public class MixinFramebuffer implements IRenderTargetExt {
     @Inject(method="deleteFramebuffer()V", at=@At(value="FIELD", target="Lnet/minecraft/client/shader/Framebuffer;depthBuffer:I", shift = At.Shift.BEFORE, ordinal = 0), require = 1)
     private void iris$deleteDepthBuffer(CallbackInfo ci) {
         if(this.iris$depthTextureId > -1 ) {
-            GLStateManager.glDeleteTextures(this.iris$depthTextureId);
+            GLSMTextures.glDeleteTextures(this.iris$depthTextureId);
             this.iris$depthTextureId = -1;
         }
     }
@@ -69,19 +69,19 @@ public class MixinFramebuffer implements IRenderTargetExt {
     @Inject(method = "createFramebuffer", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/shader/Framebuffer;framebufferClear()V", shift = At.Shift.BEFORE, ordinal = 1), require = 1)
     private void iris$createDepthTexture(int width, int height, CallbackInfo ci) {
         if(this.useDepth) {
-            this.iris$depthTextureId = GLStateManager.glGenTextures();
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, this.iris$depthTextureId);
+            this.iris$depthTextureId = GLSMTextures.glGenTextures();
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, this.iris$depthTextureId);
 
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_CLAMP);
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_CLAMP);
-            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_COMPARE_MODE, 0);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_CLAMP);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_CLAMP);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_COMPARE_MODE, 0);
             final boolean stencil = MinecraftForgeClient.getStencilBits() != 0;
             if (stencil) {
-                GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL30.GL_DEPTH24_STENCIL8, width, height, 0, GL30.GL_DEPTH_STENCIL, GL30.GL_UNSIGNED_INT_24_8, (IntBuffer) null);
+                GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL30.GL_DEPTH24_STENCIL8, width, height, 0, GL30.GL_DEPTH_STENCIL, GL30.GL_UNSIGNED_INT_24_8, (IntBuffer) null);
             } else {
-                GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_DEPTH_COMPONENT, width, height, 0, GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, (IntBuffer) null);
+                GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_DEPTH_COMPONENT, width, height, 0, GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, (IntBuffer) null);
             }
             OpenGlHelper.func_153188_a(GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_ATTACHMENT, GL11.GL_TEXTURE_2D, this.iris$depthTextureId, 0);
             if (stencil) {

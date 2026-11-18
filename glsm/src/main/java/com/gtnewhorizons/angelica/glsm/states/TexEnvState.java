@@ -1,14 +1,17 @@
 package com.gtnewhorizons.angelica.glsm.states;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.stacks.CowDepths;
+import com.gtnewhorizons.angelica.glsm.stacks.CowStateStack;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
+
+import java.util.Arrays;
 
 /**
  * Per-texture-unit GL_TEXTURE_ENV state for FFP emulation. Tracks the simple texenv mode and all GL_COMBINE sub-parameters.
  */
-public class TexEnvState implements IStateStack<TexEnvState> {
+public final class TexEnvState implements CowStateStack<TexEnvState> {
 
     public int mode;
 
@@ -30,22 +33,25 @@ public class TexEnvState implements IStateStack<TexEnvState> {
     public float envColorA;
 
     private final TexEnvState[] stack;
-    private int pointer;
+    private final CowDepths cow;
     private final boolean isStackEntry;
 
-    public TexEnvState() {
+    public TexEnvState(int id) {
         this(false);
+        cow.id = id;
     }
 
     private TexEnvState(boolean isStackEntry) {
         this.isStackEntry = isStackEntry;
         if (isStackEntry) {
             stack = null;
+            cow = null;
         } else {
-            stack = new TexEnvState[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
-            for (int i = 0; i < GLStateManager.MAX_ATTRIB_STACK_DEPTH; i++) {
+            stack = new TexEnvState[GLStateManager.STATE_SLOTS];
+            for (int i = 0; i < GLStateManager.STATE_SLOTS; i++) {
                 stack[i] = new TexEnvState(true);
             }
+            cow = new CowDepths();
         }
         reset();
     }
@@ -66,6 +72,14 @@ public class TexEnvState implements IStateStack<TexEnvState> {
         this.envColorA = other.envColorA;
     }
 
+    private boolean sameAs(TexEnvState other) {
+        return mode == other.mode && combineRgb == other.combineRgb && combineAlpha == other.combineAlpha
+            && Arrays.equals(sourceRgb, other.sourceRgb) && Arrays.equals(sourceAlpha, other.sourceAlpha)
+            && Arrays.equals(operandRgb, other.operandRgb) && Arrays.equals(operandAlpha, other.operandAlpha)
+            && scaleRgb == other.scaleRgb && scaleAlpha == other.scaleAlpha
+            && envColorR == other.envColorR && envColorG == other.envColorG && envColorB == other.envColorB && envColorA == other.envColorA;
+    }
+
     public void reset() {
         mode = GL11.GL_MODULATE;
         combineRgb = GL11.GL_MODULATE;
@@ -80,31 +94,32 @@ public class TexEnvState implements IStateStack<TexEnvState> {
     }
 
     @Override
-    public TexEnvState push() {
-        if (stack == null) throw new IllegalStateException("Cannot push stack entry");
-        if (pointer >= stack.length) {
-            throw new IllegalStateException("Stack overflow size " + (pointer + 1) + " reached");
-        }
-        stack[pointer++].copyFrom(this);
-        return this;
+    public CowDepths cowDepths() {
+        if (cow == null) throw new IllegalStateException("Cannot push/pop a stack entry");
+        return cow;
     }
 
     @Override
-    public TexEnvState pop() {
-        if (stack == null) throw new IllegalStateException("Cannot pop stack entry");
-        if (pointer == 0) {
-            throw new IllegalStateException("Stack underflow");
-        }
-        copyFrom(stack[--pointer]);
-        return this;
+    public boolean slotChanged(int slot) {
+        return !sameAs(stack[slot]);
     }
 
     @Override
-    public boolean isEmpty() {
-        return pointer == 0;
+    public void captureSlot(int s) {
+        stack[s].copyFrom(this);
+    }
+
+    @Override
+    public void restoreSlot(int s) {
+        copyFrom(stack[s]);
     }
 
     public boolean isCombineMode() {
         return mode == GL13.GL_COMBINE;
+    }
+
+    @Override
+    public int stackId() {
+        return cow == null ? -1 : cow.id;
     }
 }

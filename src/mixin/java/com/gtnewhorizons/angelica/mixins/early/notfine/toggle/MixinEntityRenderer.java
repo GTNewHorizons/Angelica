@@ -1,12 +1,10 @@
 package com.gtnewhorizons.angelica.mixins.early.notfine.toggle;
 
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import jss.notfine.core.Settings;
 import jss.notfine.core.SettingsManager;
 import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.client.settings.GameSettings;
-import net.minecraft.world.WorldProvider;
 import org.spongepowered.asm.lib.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -34,15 +32,15 @@ abstract public class MixinEntityRenderer {
      * @author Caedis
      * @reason Void fog toggle
      */
-    @WrapOperation(
+    @ModifyExpressionValue(
         method = "setupFog",
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/world/WorldProvider;getWorldHasVoidParticles()Z"
         )
     )
-    private boolean notFine$toggleVoidFog(WorldProvider provider, Operation<Boolean> original){
-        return ((boolean)Settings.VOID_FOG.option.getStore()) ? original.call(provider) : false;
+    private boolean notFine$toggleVoidFog(boolean original) {
+        return original && ((boolean) Settings.VOID_FOG.option.getStore());
     }
 
     @ModifyArg(

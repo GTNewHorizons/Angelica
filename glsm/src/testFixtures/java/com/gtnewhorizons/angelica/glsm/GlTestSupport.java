@@ -1,0 +1,112 @@
+package com.gtnewhorizons.angelica.glsm;
+
+import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
+import org.lwjgl.BufferUtils;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL13;
+import org.lwjgl.opengl.GL20;
+
+import java.nio.FloatBuffer;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.fail;
+
+public final class GlTestSupport {
+
+    public static final String TRIVIAL_VS = "#version 330 core\nvoid main() { gl_Position = vec4(0.0); }\n";
+    public static final String TRIVIAL_FS = "#version 330 core\nout vec4 color;\nvoid main() { color = vec4(1.0); }\n";
+
+    private GlTestSupport() {}
+
+    public static void drainErrors() {
+        while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
+    }
+
+    public static void fillQuadrants(int width, int height) {
+        GLSMRasterizer.glViewport(0, 0, width, height);
+        GLSMEnable.glEnable(GL11.GL_SCISSOR_TEST);
+        clearRect(0, 0, width / 2, height / 2, 1f, 0f, 0f);
+        clearRect(width / 2, 0, width / 2, height / 2, 0f, 1f, 0f);
+        clearRect(0, height / 2, width / 2, height / 2, 0f, 0f, 1f);
+        clearRect(width / 2, height / 2, width / 2, height / 2, 1f, 1f, 1f);
+        GLSMEnable.glDisable(GL11.GL_SCISSOR_TEST);
+    }
+
+    public static void assertQuadrantsBottomUp(long rgba, int width, int height) {
+        assertRgba(rgba, width, width / 4, height / 4, 0xFF0000FF, "bottom-left");
+        assertRgba(rgba, width, width * 3 / 4, height / 4, 0x00FF00FF, "bottom-right");
+        assertRgba(rgba, width, width / 4, height * 3 / 4, 0x0000FFFF, "top-left");
+        assertRgba(rgba, width, width * 3 / 4, height * 3 / 4, 0xFFFFFFFF, "top-right");
+    }
+
+    private static void clearRect(int x, int y, int width, int height, float r, float g, float b) {
+        GLSMRasterizer.glScissor(x, y, width, height);
+        GLSMBlend.glClearColor(r, g, b, 1f);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
+    }
+
+    private static void assertRgba(long rgba, int width, int x, int y, int expected, String where) {
+        final long at = rgba + ((long) y * width + x) * 4;
+        final int actual = (MemoryUtilities.memGetByte(at) & 0xFF) << 24 | (MemoryUtilities.memGetByte(at + 1) & 0xFF) << 16 | (MemoryUtilities.memGetByte(at + 2) & 0xFF) << 8 | (MemoryUtilities.memGetByte(at + 3) & 0xFF);
+        assertEquals(Integer.toHexString(expected), Integer.toHexString(actual), where + " quadrant at row " + y + " (rows bottom-up)");
+    }
+
+    public static int compile(int type, String source) {
+        final int shader = GLSMPrograms.glCreateShader(type);
+        GLSMPrograms.glShaderSource(shader, source);
+        GLSMPrograms.glCompileShader(shader);
+        if (GLSMPrograms.glGetShaderi(shader, GL20.GL_COMPILE_STATUS) == 0) {
+            fail("test shader failed to compile:\n" + GLSMPrograms.glGetShaderInfoLog(shader, 4096) + "\n\n" + source);
+        }
+        return shader;
+    }
+
+    /** Links and deletes the two shaders. */
+    public static int link(int vs, int fs) {
+        final int p = GLSMPrograms.glCreateProgram();
+        GLSMPrograms.glAttachShader(p, vs);
+        GLSMPrograms.glAttachShader(p, fs);
+        GLSMPrograms.glLinkProgram(p);
+        assertNotEquals(0, GLSMPrograms.glGetProgrami(p, GL20.GL_LINK_STATUS), () -> "test program must link: " + GLSMPrograms.glGetProgramInfoLog(p, 4096));
+        GLSMPrograms.glDeleteShader(vs);
+        GLSMPrograms.glDeleteShader(fs);
+        return p;
+    }
+
+    public static int program(String vertexSource, String fragmentSource) {
+        return link(compile(GL20.GL_VERTEX_SHADER, vertexSource), compile(GL20.GL_FRAGMENT_SHADER, fragmentSource));
+    }
+
+    /** Raw driver GL_TEXTURE_BINDING_2D of a unit, bypassing the GLSM cache. */
+    public static int driverTextureBinding(int unit) {
+        final int saved = GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
+        GL13.glActiveTexture(GL13.GL_TEXTURE0 + unit);
+        final int binding = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+        GL13.glActiveTexture(saved);
+        return binding;
+    }
+
+    public static FloatBuffer floats(float... values) {
+        final FloatBuffer buf = BufferUtils.createFloatBuffer(values.length);
+        buf.put(values).flip();
+        return buf;
+    }
+
+    /** GLSM's answer for a 16-float matrix pname. */
+    public static FloatBuffer matrix(int pname) {
+        final FloatBuffer buf = BufferUtils.createFloatBuffer(16);
+        GLSMQueries.glGetFloat(pname, buf);
+        return buf;
+    }
+
+    public static FloatBuffer modelview() {
+        return matrix(GL11.GL_MODELVIEW_MATRIX);
+    }
+
+    public static void assertMatrixEquals(FloatBuffer expected, FloatBuffer actual, String message) {
+        for (int i = 0; i < 16; i++) {
+            assertEquals(expected.get(i), actual.get(i), 0.001f, message + " (element " + i + ")");
+        }
+    }
+}

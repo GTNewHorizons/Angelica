@@ -36,7 +36,7 @@ class AttribLocationPatchTest {
             inputs[i] = new ShaderManager.VsInput(names[i], i, i, i < VEC_SIZES.length ? VEC_SIZES[i] : 4, i < BASE_TYPES.length ? BASE_TYPES[i] : Spvc.SPVC_BASETYPE_FP32);
         }
         final ShaderManager.StageReflection e = ShaderManager.StageReflection.EMPTY;
-        return new ShaderManager.StageReflection(e.counts(), e.samplerNames(), e.extraUniformNames(),
+        return new ShaderManager.StageReflection(e.counts(), e.samplerNames(), e.unusedSamplerNames(), e.extraUniformNames(),
             e.storageImageNames(), e.uboSize(), e.uboMembers(), List.of(inputs), e.vsOutputs(), e.fsInputs(),
             e.maxOutputLocation(), e.numReadonlyStorageBuffers(), e.numReadwriteStorageBuffers(),
             e.numReadonlyStorageTextures(), e.numReadwriteStorageTextures(), e.blocks());
@@ -59,19 +59,6 @@ class AttribLocationPatchTest {
             assertEquals(DESIRED[i], prog.resolvedAttribLocations.getInt(NAMES[i]), () -> "resolved location for " + NAMES[idx]);
         }
         assertEquals(0x3f, prog.vertexInputMask, "six inputs at 0..5");
-    }
-
-    @Test
-    void metadataFollowsTheRemappedLocation() {
-        final ShaderManager.ProgramObject prog = new ShaderManager.ProgramObject();
-        prog.vertexSpirv = ByteBuffer.allocateDirect(NAMES.length * Integer.BYTES).order(ByteOrder.nativeOrder());
-        final ShaderManager.StageReflection vs = reflectionWithInputs(prog.vertexSpirv);
-        for (int i = 0; i < NAMES.length; i++) {
-            prog.attribLocationBindings.put(NAMES[i], DESIRED[i]);
-        }
-
-        ShaderManager.applyAttribLocationsAndInputMask(prog, vs);
-
         assertEquals(4, prog.vertexInputVecSize[1]);
         assertEquals(Spvc.SPVC_BASETYPE_FP32, prog.vertexInputBaseType[1]);
         assertEquals(1, prog.vertexInputVecSize[5]);

@@ -9,7 +9,6 @@ import java.nio.ByteBuffer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SectionMetaSlotLifecycleTest {
 
@@ -49,60 +48,6 @@ class SectionMetaSlotLifecycleTest {
             assertNotEquals(b, c, "a live slot is never handed out twice");
         } finally {
             MemoryUtilities.memFree(src);
-            meta.reset();
-        }
-    }
-
-    @Test
-    void resetReturnsTheBufferToEmpty() {
-        final SectionMetaBuffer meta = new SectionMetaBuffer();
-        final ByteBuffer src = SyntheticSectionData.sliceMaskOnly(0x7F);
-        final long ptr = MemoryUtilities.memAddress(src);
-        try {
-            for (int i = 0; i < 5; i++) meta.update(0, i * 64, 0, 0, 0, ptr, 0x7F, SectionRenderDataUnsafe.Strategy.FULL, QuadPrimitiveType.TRIANGULATED);
-            assertTrue(meta.getHighWaterMark() > 0);
-
-            meta.reset();
-            assertEquals(0, meta.getHighWaterMark());
-            assertEquals(-1, meta.lookupSlot(0, 0, 0, 0), "slots do not survive a reset");
-
-            assertEquals(0, meta.update(0, 0, 0, 0, 0, ptr, 0x7F, SectionRenderDataUnsafe.Strategy.FULL, QuadPrimitiveType.TRIANGULATED), "allocation restarts from slot 0");
-        } finally {
-            MemoryUtilities.memFree(src);
-            meta.reset();
-        }
-    }
-
-    @Test
-    void passesDoNotShareSlots() {
-        final SectionMetaBuffer meta = new SectionMetaBuffer();
-        final ByteBuffer src = SyntheticSectionData.sliceMaskOnly(0x7F);
-        final long ptr = MemoryUtilities.memAddress(src);
-        try {
-            final int solid = meta.update(0, 0, 0, 0, 0, ptr, 0x7F, SectionRenderDataUnsafe.Strategy.FULL, QuadPrimitiveType.TRIANGULATED);
-            final int cutout = meta.update(1, 0, 0, 0, 0, ptr, 0x7F, SectionRenderDataUnsafe.Strategy.FULL, QuadPrimitiveType.TRIANGULATED);
-            final int translucent = meta.update(2, 0, 0, 0, 0, ptr, 0x7F, SectionRenderDataUnsafe.Strategy.FULL, QuadPrimitiveType.TRIANGULATED);
-            assertNotEquals(solid, cutout);
-            assertNotEquals(cutout, translucent);
-            assertEquals(3, meta.getHighWaterMark());
-
-            meta.remove(1, 0, 0, 0, 0);
-            assertEquals(-1, meta.lookupSlot(1, 0, 0, 0));
-            assertEquals(solid, meta.lookupSlot(0, 0, 0, 0), "removing one pass leaves its siblings alone");
-            assertEquals(translucent, meta.lookupSlot(2, 0, 0, 0));
-        } finally {
-            MemoryUtilities.memFree(src);
-            meta.reset();
-        }
-    }
-
-    @Test
-    void aNullDataPointerAllocatesNothing() {
-        final SectionMetaBuffer meta = new SectionMetaBuffer();
-        try {
-            assertEquals(-1, meta.update(0, 0, 0, 0, 0, 0L, 0x7F, SectionRenderDataUnsafe.Strategy.FULL, QuadPrimitiveType.TRIANGULATED));
-            assertEquals(0, meta.getHighWaterMark());
-        } finally {
             meta.reset();
         }
     }

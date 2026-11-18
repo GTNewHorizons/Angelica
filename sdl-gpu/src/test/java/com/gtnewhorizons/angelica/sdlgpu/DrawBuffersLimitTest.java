@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.sdlgpu;
 
-import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import com.gtnewhorizons.angelica.sdlgpu.resource.FboState;
 import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
@@ -31,7 +30,7 @@ class DrawBuffersLimitTest {
     @BeforeAll
     static void createBackend() {
         backend = new SDLGPURenderBackend();
-        resourceManager = Reflect.get(backend, "resourceManager");
+        resourceManager = SdlTestRig.resourceManagerOf(backend);
     }
 
     @BeforeEach

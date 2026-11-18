@@ -3,7 +3,8 @@ package net.coderbot.iris.gl.framebuffer;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack.*;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMQueries;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import it.unimi.dsi.fastutil.ints.Int2IntArrayMap;
@@ -25,8 +26,8 @@ public class GlFramebuffer extends GlResource {
 		super(RenderSystem.createFramebuffer());
 
 		this.attachments = new Int2IntArrayMap();
-		this.maxDrawBuffers = GLStateManager.glGetInteger(GL20.GL_MAX_DRAW_BUFFERS);
-		this.maxColorAttachments = GLStateManager.glGetInteger(GL30.GL_MAX_COLOR_ATTACHMENTS);
+		this.maxDrawBuffers = GLSMQueries.glGetInteger(GL20.GL_MAX_DRAW_BUFFERS);
+		this.maxColorAttachments = GLSMQueries.glGetInteger(GL30.GL_MAX_COLOR_ATTACHMENTS);
 		this.hasDepthAttachment = false;
 	}
 
@@ -100,25 +101,25 @@ public class GlFramebuffer extends GlResource {
 	}
 
 	public void bind() {
-		GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, getGlId());
+		GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, getGlId());
 	}
 
 	public void bindAsReadBuffer() {
-		GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, getGlId());
+		GLSMFramebuffer.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, getGlId());
 	}
 
 	public void bindAsDrawBuffer() {
-		GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, getGlId());
+		GLSMFramebuffer.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, getGlId());
 	}
 
 	@Override
     protected void destroyInternal() {
-		GLStateManager.glDeleteFramebuffers(getGlId());
+		GLSMFramebuffer.glDeleteFramebuffers(getGlId());
 	}
 
 	public int getStatus() {
 		bind();
-		return GLStateManager.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER);
+		return GLSMFramebuffer.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER);
 	}
 
 	public boolean isComplete() {

@@ -1,7 +1,14 @@
 package net.coderbot.batchedentityrendering.impl;
 
+import com.gtnewhorizons.angelica.rendering.RenderFailures;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.rendering.tesr.BatchDrawDefaults;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.GLSMLighting;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
+import com.gtnewhorizons.angelica.glsm.LightingSnapshot;
+import com.gtnewhorizons.angelica.glsm.StateSet;
 import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -12,7 +19,6 @@ import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import org.joml.Vector4fc;
-import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 
 import java.util.ArrayList;
@@ -22,8 +28,6 @@ import java.util.Map;
 
 /** Collects geometry into per-RenderLayer buffers during a pass and draws it all at endBatch, one state bracket per layer. Based on Iris's FullyBufferedMultiBufferSource */
 public class AngelicaBufferSource implements Groupable {
-    public static final int SAVED_STATE_BITS = GL11.GL_ENABLE_BIT | GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_CURRENT_BIT | GL11.GL_LIGHTING_BIT | GL11.GL_TEXTURE_BIT;
-
     private static final int NUM_BUFFERS = 32;
 
     public enum GroupIdKind { BLOCK_ENTITY, ENTITY }
@@ -43,15 +47,22 @@ public class AngelicaBufferSource implements Groupable {
 
     private boolean prepared;
     private final List<RenderLayer> order = new ArrayList<>();
-    private boolean stateSaved;
-    private boolean anyIdSet;
+    private int drawStateDepth = -1;
+    private boolean irisStateSaved;
     private GroupIdKind idKind = GroupIdKind.BLOCK_ENTITY;
+    private LightingSnapshot passLighting;
+    private final BatchDrawDefaults drawDefaults = new BatchDrawDefaults();
 
     public AngelicaBufferSource() {
         for (int i = 0; i < builders.length; i++) {
             builders[i] = new SegmentedBufferBuilder();
         }
         affinities.defaultReturnValue(-1);
+    }
+
+    public void capturePassLighting() {
+        if (passLighting == null) passLighting = new LightingSnapshot();
+        GLSMLighting.captureLighting(passLighting);
     }
 
     public SegmentedBufferBuilder getBuffer(RenderLayer type, int blockEntityId) {
@@ -66,12 +77,16 @@ public class AngelicaBufferSource implements Groupable {
             affinities.put(type, affinity);
         }
         final SegmentedBufferBuilder builder = builders[affinity];
-        builder.begin(type, blockEntityId);
+        builder.begin(type, blockEntityId, effectiveIdKind() == GroupIdKind.ENTITY);
         return builder;
     }
 
     public void declareUse(RenderLayer type) {
         renderOrderManager.begin(type);
+    }
+
+    public boolean hasPendingLayers() {
+        return prepared ? !order.isEmpty() : !renderOrderManager.getRenderOrder().isEmpty();
     }
 
     public boolean isEmpty() {
@@ -113,8 +128,6 @@ public class AngelicaBufferSource implements Groupable {
             }
         }
         affinities.clear();
-        stateSaved = false;
-        anyIdSet = false;
     }
 
     List<RenderLayer> prepare() {
@@ -129,13 +142,18 @@ public class AngelicaBufferSource implements Groupable {
     public void endBatchWithType(TransparencyType type, LayerDrawHook hook) {
         ensurePrepared();
         int keep = 0;
-        for (int i = 0, n = order.size(); i < n; i++) {
-            final RenderLayer layer = order.get(i);
-            if (getTransparencyType(layer) != type) {
-                order.set(keep++, layer);
-                continue;
+        try {
+            for (int i = 0, n = order.size(); i < n; i++) {
+                final RenderLayer layer = order.get(i);
+                if (getTransparencyType(layer) != type) {
+                    order.set(keep++, layer);
+                    continue;
+                }
+                drawLayer(layer, hook);
             }
-            drawLayer(layer, hook);
+        } catch (Throwable t) {
+            discardAfterFailure(t);
+            throw t;
         }
         for (int i = order.size() - 1; i >= keep; i--) {
             order.remove(i);
@@ -144,16 +162,35 @@ public class AngelicaBufferSource implements Groupable {
 
     public void endBatch(LayerDrawHook hook) {
         ensurePrepared();
-        for (int i = 0, n = order.size(); i < n; i++) {
-            drawLayer(order.get(i), hook);
+        try {
+            int lastGlint = -1;
+            for (int i = 0, n = order.size(); i < n; i++) {
+                if (getTransparencyType(order.get(i)) == TransparencyType.DECAL) lastGlint = i;
+            }
+            for (int i = 0, n = order.size(); i < n; i++) {
+                final RenderLayer layer = order.get(i);
+                if (getTransparencyType(layer) != TransparencyType.AFTER_GLINT) drawLayer(layer, hook);
+                if (i == lastGlint) drawAfterGlintLayers(hook);
+            }
+            if (lastGlint < 0) drawAfterGlintLayers(hook);
+        } catch (Throwable t) {
+            discardAfterFailure(t);
+            throw t;
         }
         order.clear();
         finish();
     }
 
+    private void drawAfterGlintLayers(LayerDrawHook hook) {
+        for (int i = 0, n = order.size(); i < n; i++) {
+            final RenderLayer layer = order.get(i);
+            if (getTransparencyType(layer) == TransparencyType.AFTER_GLINT) drawLayer(layer, hook);
+        }
+    }
+
     public void pauseBatch() {
-        releaseAttribState();
-        clearCurrentId();
+        restoreDrawState();
+        restoreIrisState();
     }
 
     public void discard() {
@@ -161,20 +198,24 @@ public class AngelicaBufferSource implements Groupable {
         finish();
     }
 
-    private void releaseAttribState() {
-        if (stateSaved) {
-            GLStateManager.glPopAttrib();
-            stateSaved = false;
+    private void restoreDrawState() {
+        if (drawStateDepth >= 0) {
+            drawDefaults.restore();
+            GLSMAttribStack.popStateTo(drawStateDepth);
+            drawStateDepth = -1;
         }
     }
 
-    private void clearCurrentId() {
-        if (!anyIdSet) return;
-        // A pass can set either kind: nested entities inside a TESR write the entity id during a block entity pass
-        CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(-1, 0);
-        CapturedRenderingState.INSTANCE.setCurrentEntityColor(0f, 0f, 0f, 0f);
-        CapturedRenderingState.INSTANCE.setCurrentBlockEntity(0);
-        anyIdSet = false;
+    private void restoreIrisState() {
+        if (!irisStateSaved) return;
+        CapturedRenderingState.INSTANCE.popEntityState();
+        irisStateSaved = false;
+    }
+
+    private void saveIrisState() {
+        if (irisStateSaved) return;
+        CapturedRenderingState.INSTANCE.pushEntityState();
+        irisStateSaved = true;
     }
 
     public GroupIdKind effectiveIdKind() {
@@ -186,49 +227,95 @@ public class AngelicaBufferSource implements Groupable {
         final boolean hasDynamic = segments != null && !segments.isEmpty();
         final boolean hasRetained = hook != null && hook.hasDraws(layer);
         if (!hasDynamic && !hasRetained) return;
-        if (!stateSaved) {
-            stateSaved = true;
-            GLStateManager.glPushAttrib(SAVED_STATE_BITS);
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        if (drawStateDepth < 0) {
+            drawStateDepth = GLSMAttribStack.pushState(StateSet.BATCH);
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+            if (passLighting != null) GLSMLighting.applyLighting(passLighting);
+            drawDefaults.apply();
         }
+        saveIrisState();
         layer.startDrawing();
-        if (hasDynamic) {
-            anyIdSet = true;
-            GLStateManager.glPushMatrix();
-            GLStateManager.glLoadIdentity();
-            SegmentedBufferBuilder.LayerBuffer bound = null;
-            final boolean entityKind = effectiveIdKind() == GroupIdKind.ENTITY;
-            int currentId = Integer.MIN_VALUE;
+        Throwable failure = null;
+        try {
+            if (hasDynamic) {
+                drawDynamic(segments);
+            }
+            if (hasRetained) {
+                hook.drawLayer(layer);
+            }
+        } catch (Throwable t) {
+            failure = t;
+        } finally {
+            try {
+                layer.endDrawing();
+            } catch (Throwable cleanup) {
+                failure = RenderFailures.suppress(failure, cleanup);
+            }
+        }
+        if (failure != null) RenderFailures.rethrow(failure);
+    }
+
+    private void drawDynamic(List<BufferSegment> segments) {
+        boolean matrixPushed = false;
+        SegmentedBufferBuilder.LayerBuffer bound = null;
+        boolean boundSetup = false;
+        Throwable failure = null;
+        try {
+            GLSMMatrices.glPushMatrix();
+            matrixPushed = true;
+            GLSMMatrices.glLoadIdentity();
+            int currentEntity = Integer.MIN_VALUE;
+            int currentBlock = Integer.MIN_VALUE;
+            int currentItem = Integer.MIN_VALUE;
             int currentColor = 0;
             boolean colorSet = false;
             for (int i = 0, n = segments.size(); i < n; i++) {
                 final BufferSegment segment = segments.get(i);
-                if (entityKind && (!colorSet || segment.getEntityColor() != currentColor)) {
+                if (!colorSet || segment.getEntityColor() != currentColor) {
                     colorSet = true;
                     currentColor = segment.getEntityColor();
                     setEntityColor(currentColor);
                 }
-                if (segment.getBlockEntityId() != currentId) {
-                    currentId = segment.getBlockEntityId();
-                    applyIdAndRebind(currentId);
+                if (segment.getEntityId() != currentEntity || segment.getRenderedBlockEntityId() != currentBlock
+                    || segment.getItemId() != currentItem) {
+                    currentEntity = segment.getEntityId();
+                    currentBlock = segment.getRenderedBlockEntityId();
+                    currentItem = segment.getItemId();
+                    applyIdsAndRebind(currentEntity, currentBlock, currentItem);
                 }
                 final SegmentedBufferBuilder.LayerBuffer owner = segment.getOwner();
                 if (owner != bound) {
-                    if (bound != null) bound.finishDraw();
+                    if (boundSetup) {
+                        bound.finishDraw();
+                        boundSetup = false;
+                    }
+                    bound = null;
+                    owner.uploadForDraw();
+                    owner.setupDraw();
                     bound = owner;
-                    bound.uploadForDraw();
-                    bound.setupDraw();
+                    boundSetup = true;
                 }
                 bound.draw(segment.getFirstVertex(), segment.getVertexCount());
             }
-            if (bound != null) bound.finishDraw();
-            GLStateManager.glPopMatrix();
+        } catch (Throwable t) {
+            failure = t;
+        } finally {
+            if (boundSetup) {
+                try {
+                    bound.finishDraw();
+                } catch (Throwable cleanup) {
+                    failure = RenderFailures.suppress(failure, cleanup);
+                }
+            }
+            if (matrixPushed) {
+                try {
+                    GLSMMatrices.glPopMatrix();
+                } catch (Throwable cleanup) {
+                    failure = RenderFailures.suppress(failure, cleanup);
+                }
+            }
         }
-        if (hasRetained) {
-            anyIdSet = true;
-            hook.drawLayer(layer);
-        }
-        layer.endDrawing();
+        if (failure != null) RenderFailures.rethrow(failure);
     }
 
     private void clearSegmentLists() {
@@ -238,18 +325,49 @@ public class AngelicaBufferSource implements Groupable {
     }
 
     private void finish() {
-        releaseAttribState();
-        clearCurrentId();
-        clearSegmentLists();
+        final Throwable failure = cleanupAfterBatch(null);
+        if (failure != null) RenderFailures.rethrow(failure);
+    }
+
+    private Throwable cleanupAfterBatch(Throwable failure) {
+        try {
+            restoreDrawState();
+        } catch (Throwable t) {
+            failure = RenderFailures.suppress(failure, t);
+        }
+        try {
+            restoreIrisState();
+        } catch (Throwable t) {
+            failure = RenderFailures.suppress(failure, t);
+        }
+        try {
+            clearSegmentLists();
+        } catch (Throwable t) {
+            failure = RenderFailures.suppress(failure, t);
+        }
         final long now = System.currentTimeMillis();
         final long maxIdle = getTargetClearTime();
-        for (SegmentedBufferBuilder builder : builders) {
-            builder.resetAndReclaim(now, maxIdle);
+        for (int i = 0; i < builders.length; i++) {
+            try {
+                builders[i].resetAndReclaim(now, maxIdle);
+            } catch (Throwable t) {
+                failure = RenderFailures.suppress(failure, t);
+            }
         }
+        affinities.clear();
+        renderOrderManager.reset();
         prepared = false;
+        return failure;
+    }
+
+    private void discardAfterFailure(Throwable failure) {
+        order.clear();
+        cleanupAfterBatch(failure);
     }
 
     public void freeBuffers() {
+        restoreDrawState();
+        restoreIrisState();
         for (SegmentedBufferBuilder builder : builders) {
             builder.freeAll();
         }
@@ -283,14 +401,11 @@ public class AngelicaBufferSource implements Groupable {
         this.idKind = kind;
     }
 
-    public void applyIdAndRebind(int id) {
-        anyIdSet = true;
-        if (effectiveIdKind() == GroupIdKind.ENTITY) {
-            CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(id, 0);
-            rebindPass();
-        } else {
-            setBlockEntityAndRebind(id);
-        }
+    public void applyIdsAndRebind(int entityId, int blockEntityId, int itemId) {
+        saveIrisState();
+        CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(entityId, itemId);
+        CapturedRenderingState.INSTANCE.setCurrentBlockEntity(blockEntityId);
+        rebindPass();
     }
 
     public static int packEntityColor(Vector4fc c) {
@@ -309,11 +424,6 @@ public class AngelicaBufferSource implements Groupable {
         CapturedRenderingState.INSTANCE.setCurrentEntityColor((abgr & 0xFF) / 255f, ((abgr >>> 8) & 0xFF) / 255f, ((abgr >>> 16) & 0xFF) / 255f, (abgr >>> 24) / 255f);
     }
 
-    public static void setBlockEntityAndRebind(int blockEntityId) {
-        CapturedRenderingState.INSTANCE.setCurrentBlockEntity(blockEntityId);
-        rebindPass();
-    }
-
     public static void rebindPass() {
         if (Iris.enabled) {
             final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
@@ -324,13 +434,7 @@ public class AngelicaBufferSource implements Groupable {
     }
 
     static TransparencyType getTransparencyType(RenderLayer type) {
-        while (type instanceof WrappableRenderType wrappable) {
-            type = wrappable.unwrap();
-        }
-        if (type instanceof BlendingStateHolder holder) {
-            return holder.getTransparencyType();
-        }
-        return TransparencyType.GENERAL_TRANSPARENT;
+        return type.getTransparencyType();
     }
 
     @Override

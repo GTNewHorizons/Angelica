@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.rendering.particles;
 
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import com.gtnewhorizons.angelica.glsm.ffp.ParticleParityFixture.Rotation;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 
@@ -264,7 +264,7 @@ class ParticleInstancingGLTest {
     private static ParticleRenderState checkFrame(ParticleDescriptor descriptor, EntityFX reference, EntityFX candidate, float partialTicks, Rotation r, int startBrightness) {
         final NoOpTessellator run = new NoOpTessellator();
         final ParticleCaptureTessellator capture = new ParticleCaptureTessellator();
-        capture.begin(startBrightness, run, GLStateManager.getModelViewMatrix());
+        capture.begin(startBrightness, run, GLSMMatrices.getModelViewMatrix());
         reference.renderParticle(capture, partialTicks, r.x(), r.xz(), r.z(), r.yz(), r.xy());
 
         assertFalse(capture.spilled());
@@ -518,7 +518,7 @@ class ParticleInstancingGLTest {
             final EntityFireworkSparkFX reference = twinklingSpark(age);
             final EntityFireworkSparkFX candidate = twinklingSpark(age);
             final ParticleCaptureTessellator capture = new ParticleCaptureTessellator();
-            capture.begin(100, new NoOpTessellator(), GLStateManager.getModelViewMatrix());
+            capture.begin(100, new NoOpTessellator(), GLSMMatrices.getModelViewMatrix());
             reference.renderParticle(capture, 0.4f, r.x(), r.xz(), r.z(), r.yz(), r.xy());
             assertFalse(capture.spilled());
             if (capture.captured() == 0) {
@@ -605,14 +605,18 @@ class ParticleInstancingGLTest {
         capture.addVertexWithUV(1.0, 0.0, 0.0, 1.0, 1.0);
     }
 
+    private static ParticleCaptureTessellator capturedQuad(RecordingTessellator run) {
+        final ParticleCaptureTessellator capture = new ParticleCaptureTessellator();
+        capture.begin(100, run, GLSMMatrices.getModelViewMatrix());
+        capture.setColorRGBA(5, 6, 7, 8);
+        feedQuad(capture);
+        return capture;
+    }
+
     @Test
     void aSecondQuadAfterASelfDrawSpillsIntoItsOwnBatchWhenTheRunIsNotDrawing() {
         final RecordingTessellator run = new RecordingTessellator();
-        final ParticleCaptureTessellator capture = new ParticleCaptureTessellator();
-
-        capture.begin(100, run, GLStateManager.getModelViewMatrix());
-        capture.setColorRGBA(5, 6, 7, 8);
-        feedQuad(capture);
+        final ParticleCaptureTessellator capture = capturedQuad(run);
         capture.draw();
         run.log.clear();
 
@@ -630,11 +634,7 @@ class ParticleInstancingGLTest {
     @Test
     void aClosedSpillReplaysInTheSameOrder() {
         final RecordingTessellator run = new RecordingTessellator();
-        final ParticleCaptureTessellator capture = new ParticleCaptureTessellator();
-
-        capture.begin(100, run, GLStateManager.getModelViewMatrix());
-        capture.setColorRGBA(5, 6, 7, 8);
-        feedQuad(capture);
+        final ParticleCaptureTessellator capture = capturedQuad(run);
         capture.draw();
         run.isDrawing = true;
         run.log.clear();
@@ -658,11 +658,7 @@ class ParticleInstancingGLTest {
     @Test
     void aFifthVertexSpillsAndForwardsRemainingCallsToRun() {
         final RecordingTessellator run = new RecordingTessellator();
-        final ParticleCaptureTessellator capture = new ParticleCaptureTessellator();
-
-        capture.begin(100, run, GLStateManager.getModelViewMatrix());
-        capture.setColorRGBA(5, 6, 7, 8);
-        feedQuad(capture);
+        final ParticleCaptureTessellator capture = capturedQuad(run);
         assertFalse(capture.spilled());
 
         capture.addVertexWithUV(2.0, 2.0, 0.0, 0.5, 0.5);
@@ -684,7 +680,7 @@ class ParticleInstancingGLTest {
         final RecordingTessellator run = new RecordingTessellator();
         final ParticleCaptureTessellator capture = new ParticleCaptureTessellator();
 
-        capture.begin(0, run, GLStateManager.getModelViewMatrix());
+        capture.begin(0, run, GLSMMatrices.getModelViewMatrix());
         capture.setColorRGBA(1, 1, 1, 1);
         capture.addVertexWithUV(0.0, 0.0, 0.0, 0.0, 0.0);
         capture.addVertexWithUV(0.0, 1.0, 0.0, 0.0, 1.0);
@@ -704,7 +700,7 @@ class ParticleInstancingGLTest {
         final RecordingTessellator run = new RecordingTessellator();
         final ParticleCaptureTessellator capture = new ParticleCaptureTessellator();
 
-        capture.begin(0, run, GLStateManager.getModelViewMatrix());
+        capture.begin(0, run, GLSMMatrices.getModelViewMatrix());
         capture.addVertex(3.0, 4.0, 5.0);
 
         assertTrue(capture.spilled());

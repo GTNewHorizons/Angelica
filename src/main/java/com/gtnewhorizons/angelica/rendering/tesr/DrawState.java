@@ -1,0 +1,226 @@
+package com.gtnewhorizons.angelica.rendering.tesr;
+
+import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMLighting;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
+import com.gtnewhorizons.angelica.glsm.states.PolygonState;
+import it.unimi.dsi.fastutil.Hash;
+import it.unimi.dsi.fastutil.objects.ObjectOpenCustomHashSet;
+import lombok.Getter;
+import org.lwjgl.opengl.GL11;
+
+import javax.annotation.Nullable;
+
+public final class DrawState {
+
+    public static final int DISABLED = 0;
+    public static final int CULL_BACK = 1;
+    public static final int CULL_FRONT = 2;
+    public static final int CULL_BOTH = 3;
+    public static final int FRONT_FACE_CLOCKWISE = 4;
+    private static final int CULL_FACE_MASK = 3;
+
+    public static final int OPAQUE = 0;
+    public static final int TRANSLUCENT = 1;
+    public static final int ADDITIVE = 2;
+    public static final int ADDITIVE_ALPHA = 3;
+    public static final int GLINT = 4;
+
+    static final int LIGHTMAP_UNIT = 1;
+
+    private static final ObjectOpenCustomHashSet<DrawState> CACHE = new ObjectOpenCustomHashSet<>(HashStrategy.INSTANCE);
+
+    static void clearInterning() {
+        CACHE.clear();
+    }
+
+    @Getter private final int cull;
+    @Getter private final int blend;
+    @Getter private final boolean depthEqual;
+    @Getter private final boolean depthWrite;
+    @Getter private final boolean colorWrite;
+    @Getter private final float alphaCutoff;
+    @Getter private final boolean lit;
+    @Getter private final boolean lightmap;
+    @Getter private final float offsetFactor;
+    @Getter private final float offsetUnits;
+    private final int hash;
+
+    private DrawState(int cull, int blend, boolean depthEqual, boolean depthWrite, boolean colorWrite, float alphaCutoff, boolean lit, boolean lightmap, float offsetFactor, float offsetUnits) {
+        this.cull = cull;
+        this.blend = blend;
+        this.depthEqual = depthEqual;
+        this.depthWrite = depthWrite;
+        this.colorWrite = colorWrite;
+        this.alphaCutoff = alphaCutoff;
+        this.lit = lit;
+        this.lightmap = lightmap;
+        this.offsetFactor = offsetFactor;
+        this.offsetUnits = offsetUnits;
+        int h = cull;
+        h = h * 31 + blend;
+        h = h * 31 + (depthEqual ? 1 : 0);
+        h = h * 31 + (depthWrite ? 1 : 0);
+        h = h * 31 + (colorWrite ? 1 : 0);
+        h = h * 31 + Float.floatToIntBits(alphaCutoff);
+        h = h * 31 + (lit ? 1 : 0);
+        h = h * 31 + (lightmap ? 1 : 0);
+        h = h * 31 + Float.floatToIntBits(offsetFactor);
+        h = h * 31 + Float.floatToIntBits(offsetUnits);
+        this.hash = h;
+    }
+
+    public static DrawState of(int cull, int blend, boolean depthEqual, boolean depthWrite, boolean colorWrite, float alphaCutoff, boolean lit, boolean lightmap, float offsetFactor, float offsetUnits) {
+        return CACHE.addOrGet(new DrawState(cull, blend, depthEqual, depthWrite, colorWrite, alphaCutoff, lit, lightmap, offsetFactor, offsetUnits));
+    }
+
+    public static DrawState forMaterial(TesrMaterial material, int cull, boolean lit, boolean lightmap, float offsetFactor, float offsetUnits) {
+        return of(material.isNoCull() ? DISABLED : cull,
+            blendFor(material.transparency()),
+            material.isDepthEqual(),
+            !material.isNoDepthWrite(),
+            !material.isDepthOnly(),
+            material.cutoutAlpha(),
+            lit && !material.isUnlit(),
+            lightmap,
+            offsetFactor, offsetUnits);
+    }
+
+    public static int blendFor(TesrMaterial.Transparency transparency) {
+        return switch (transparency) {
+            case TRANSLUCENT -> TRANSLUCENT;
+            case ADDITIVE -> ADDITIVE;
+            case ADDITIVE_ALPHA -> ADDITIVE_ALPHA;
+            case GLINT -> GLINT;
+            case OPAQUE -> OPAQUE;
+        };
+    }
+
+    public static int packCull(boolean enabled, int faceMode) {
+        if (!enabled) return DISABLED;
+        return switch (faceMode) {
+            case GL11.GL_FRONT -> CULL_FRONT;
+            case GL11.GL_FRONT_AND_BACK -> CULL_BOTH;
+            default -> CULL_BACK;
+        };
+    }
+
+    public static int liveCull() {
+        final PolygonState polygon = GLSMRasterizer.getPolygonState();
+        final int cull = packCull(GLSMRasterizer.getCullState().isEnabled(), polygon.getCullFaceMode());
+        return cull != DISABLED && polygon.getFrontFace() == GL11.GL_CW ? cull | FRONT_FACE_CLOCKWISE : cull;
+    }
+
+    public static int liveCull(TesrMaterial material) {
+        return material.isNoCull() ? DISABLED : liveCull();
+    }
+
+    public static boolean liveLit(TesrMaterial material) {
+        return GLSMLighting.getLightingState().isEnabled() && !material.isUnlit();
+    }
+
+    public static boolean liveLightmap() {
+        return GLSMTextures.getTextures().getTextureUnitStates(LIGHTMAP_UNIT).isEnabled();
+    }
+
+    public void apply() {
+        switch (blend) {
+            case TRANSLUCENT -> {
+                GLSMBlend.enableBlend();
+                GLSMBlend.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            }
+            case ADDITIVE -> {
+                GLSMBlend.enableBlend();
+                GLSMBlend.glBlendFunc(GL11.GL_ONE, GL11.GL_ONE);
+            }
+            case ADDITIVE_ALPHA -> {
+                GLSMBlend.enableBlend();
+                GLSMBlend.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
+            }
+            case GLINT -> {
+                GLSMBlend.enableBlend();
+                GLSMBlend.tryBlendFuncSeparate(GL11.GL_SRC_COLOR, GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE);
+            }
+            default -> GLSMBlend.disableBlend();
+        }
+
+        GLSMDepthStencilAlpha.enableDepthTest();
+        GLSMDepthStencilAlpha.glDepthFunc(depthEqual ? GL11.GL_EQUAL : GL11.GL_LEQUAL);
+        GLSMDepthStencilAlpha.glDepthMask(depthWrite);
+        GLSMBlend.glColorMask(colorWrite, colorWrite, colorWrite, colorWrite);
+
+        if (alphaCutoff > 0.0f) {
+            GLSMDepthStencilAlpha.enableAlphaTest();
+            GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, alphaCutoff);
+        } else {
+            GLSMDepthStencilAlpha.disableAlphaTest();
+        }
+
+        if (lit) {
+            GLSMLighting.enableLighting();
+        } else {
+            GLSMLighting.disableLighting();
+        }
+        GLSMTextures.getTextures().getTextureUnitStates(LIGHTMAP_UNIT).setEnabled(lightmap);
+
+        switch (cull & CULL_FACE_MASK) {
+            case CULL_BACK -> {
+                GLSMRasterizer.enableCull();
+                GLSMRasterizer.glCullFace(GL11.GL_BACK);
+            }
+            case CULL_FRONT -> {
+                GLSMRasterizer.enableCull();
+                GLSMRasterizer.glCullFace(GL11.GL_FRONT);
+            }
+            case CULL_BOTH -> {
+                GLSMRasterizer.enableCull();
+                GLSMRasterizer.glCullFace(GL11.GL_FRONT_AND_BACK);
+            }
+            default -> GLSMRasterizer.disableCull();
+        }
+        GLSMRasterizer.glFrontFace((cull & FRONT_FACE_CLOCKWISE) != 0 ? GL11.GL_CW : GL11.GL_CCW);
+
+        if (offsetFactor != 0.0f || offsetUnits != 0.0f) {
+            GLSMEnable.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
+            GLSMRasterizer.glPolygonOffset(offsetFactor, offsetUnits);
+        } else {
+            GLSMEnable.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
+            GLSMRasterizer.glPolygonOffset(0.0f, 0.0f);
+        }
+    }
+
+    @Override
+    public boolean equals(@Nullable Object o) {
+        return this == o;
+    }
+
+    @Override
+    public int hashCode() {
+        return hash;
+    }
+
+    @Override
+    public String toString() {
+        return "DrawState[cull=" + cull + ", blend=" + blend + ", depthEqual=" + depthEqual + ", depthWrite=" + depthWrite + ", colorWrite=" + colorWrite + ", alphaCutoff=" + alphaCutoff + ", lit=" + lit + ", lightmap=" + lightmap + ", offset=" + offsetFactor + '/' + offsetUnits + ']';
+    }
+
+    private enum HashStrategy implements Hash.Strategy<DrawState> {
+        INSTANCE;
+
+        @Override
+        public int hashCode(@Nullable DrawState state) {
+            return state == null ? 0 : state.hash;
+        }
+
+        @Override
+        public boolean equals(@Nullable DrawState a, @Nullable DrawState b) {
+            if (a == b) return true;
+            if (a == null || b == null) return false;
+            return a.cull == b.cull && a.blend == b.blend && a.depthEqual == b.depthEqual && a.depthWrite == b.depthWrite && a.colorWrite == b.colorWrite && Float.floatToIntBits(a.alphaCutoff) == Float.floatToIntBits(b.alphaCutoff) && a.lit == b.lit && a.lightmap == b.lightmap && Float.floatToIntBits(a.offsetFactor) == Float.floatToIntBits(b.offsetFactor) && Float.floatToIntBits(a.offsetUnits) == Float.floatToIntBits(b.offsetUnits);
+        }
+    }
+}

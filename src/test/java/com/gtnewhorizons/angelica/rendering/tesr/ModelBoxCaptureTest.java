@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.rendering.tesr;
 
 import com.gtnewhorizons.angelica.glsm.ffp.CubeParams;
 import com.gtnewhorizons.angelica.glsm.ffp.UnitCubeMesh;
+import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import net.coderbot.iris.vertices.IrisQuadView;
 import net.coderbot.iris.vertices.NormalHelper;
 import net.minecraft.client.model.ModelBase;
@@ -14,7 +15,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,13 +53,7 @@ class ModelBoxCaptureTest {
     }
 
     private static TexturedQuad[] quadsOf(ModelBox box) {
-        try {
-            final Field field = ModelBox.class.getDeclaredField("quadList");
-            field.setAccessible(true);
-            return (TexturedQuad[]) field.get(box);
-        } catch (ReflectiveOperationException e) {
-            throw new AssertionError(e);
-        }
+        return Reflect.get(box, "quadList");
     }
 
     private static CubeParams capture(ModelRenderer part, int texU, int texV, float x, float y, float z, int sizeX, int sizeY, int sizeZ, float inflate) {
@@ -133,6 +127,21 @@ class ModelBoxCaptureTest {
             }
         }
         return false;
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "false, 0.0",
+        "true, 0.0",
+        "false, 0.5",
+        "true, 0.5",
+    })
+    void constructedBoxCapturesFromItsStoredCorner(boolean mirror, float inflate) {
+        final ModelRenderer part = part(64, 32, mirror);
+        final ModelBox box = new ModelBox(part, 40, 16, -3, -2, -2, 4, 12, 4, inflate);
+        final CubeParams fromBox = ModelBoxCapture.capture(box, quadsOf(box), part, 40, 16, 4, 12, 4, inflate);
+        assertEquals(ModelBoxCapture.capture(quadsOf(box), 64, 32, mirror, 40, 16, -3, -2, -2, 4, 12, 4, inflate), fromBox);
+        assertNotNull(fromBox, "mirrored and inflated boxes must verify");
     }
 
     @Test

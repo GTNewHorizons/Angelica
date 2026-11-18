@@ -1,26 +1,33 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
+import com.gtnewhorizons.angelica.glsm.GlTestSupport;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL15;
-import org.lwjgl.opengl.GL20;
 
 import java.nio.ByteBuffer;
 import java.util.function.IntFunction;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress0;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 public final class FfpFixture {
 
     private FfpFixture() {}
 
-    public static final class IntegerInstances {
+    public static final class EntityIdInstances {
 
         private static final int INSTANCES = 3;
 
@@ -30,16 +37,18 @@ public final class FfpFixture {
             layout(location = 5) in vec4 a_InstRow0;
             layout(location = 6) in vec4 a_InstRow1;
             layout(location = 7) in vec4 a_InstRow2;
-            layout(location = 11) in ivec4 iris_Entity;
+            layout(location = 11) in vec4 iris_InstEntity;
             flat out vec3 v_Color;
             void main() {
             """;
 
         private static final String VS_TAIL = """
               gl_Position = instMV * vec4(a_Position, 1.0);
-              if (iris_Entity.x == -1) { v_Color = vec3(1.0, 0.0, 0.0); }
-              else if (iris_Entity.x == 7) { v_Color = vec3(0.0, 1.0, 0.0); }
-              else { v_Color = vec3(0.0, 0.0, 1.0); }
+              int entity = int(round(iris_InstEntity.x * 65535.0));
+              if (entity == 65535) { v_Color = vec3(1.0, 0.0, 0.0); }
+              else if (entity == 7) { v_Color = vec3(0.0, 1.0, 0.0); }
+              else if (entity == 50020) { v_Color = vec3(0.0, 0.0, 1.0); }
+              else { v_Color = vec3(1.0, 0.0, 1.0); }
             }
             """;
 
@@ -57,33 +66,33 @@ public final class FfpFixture {
         private static int templateVbo;
         private static int instanceVbo;
 
-        private IntegerInstances() {}
+        private EntityIdInstances() {}
 
         public static void build(float spacing) {
             program = buildProgram();
-            GLStateManager.glUseProgram(program);
+            GLSMPrograms.glUseProgram(program);
 
             buildTemplate();
-            buildInstances(new float[] { -spacing, 0.0f, spacing }, new int[] { -1, 7, 42 });
+            buildInstances(new float[] { -spacing, 0.0f, spacing }, new int[] { -1, 7, 50020 });
         }
 
         public static void draw() {
-            GLStateManager.glDrawArraysInstanced(GL11.GL_QUADS, 0, 4, INSTANCES);
+            GLSMDraws.glDrawArraysInstanced(GL11.GL_QUADS, 0, 4, INSTANCES);
         }
 
         public static void delete() {
-            GLStateManager.glUseProgram(0);
-            if (program != 0) { GLStateManager.glDeleteProgram(program); program = 0; }
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-            if (templateVbo != 0) { GLStateManager.glDeleteBuffers(templateVbo); templateVbo = 0; }
-            if (instanceVbo != 0) { GLStateManager.glDeleteBuffers(instanceVbo); instanceVbo = 0; }
-            GLStateManager.glBindVertexArray(0);
-            if (vao != 0) { GLStateManager.glDeleteVertexArrays(vao); vao = 0; }
+            GLSMPrograms.glUseProgram(0);
+            if (program != 0) { GLSMPrograms.glDeleteProgram(program); program = 0; }
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            if (templateVbo != 0) { GLSMBuffers.glDeleteBuffers(templateVbo); templateVbo = 0; }
+            if (instanceVbo != 0) { GLSMBuffers.glDeleteBuffers(instanceVbo); instanceVbo = 0; }
+            GLSMVertexInput.glBindVertexArray(0);
+            if (vao != 0) { GLSMVertexInput.glDeleteVertexArrays(vao); vao = 0; }
         }
 
         private static void buildTemplate() {
-            vao = GLStateManager.glGenVertexArrays();
-            GLStateManager.glBindVertexArray(vao);
+            vao = GLSMVertexInput.glGenVertexArrays();
+            GLSMVertexInput.glBindVertexArray(vao);
 
             final ByteBuffer quad = BufferUtils.createByteBuffer(4 * 12);
             putVertex(quad, -0.15f, -0.8f);
@@ -92,12 +101,12 @@ public final class FfpFixture {
             putVertex(quad, -0.15f, 0.8f);
             quad.flip();
 
-            templateVbo = GLStateManager.glGenBuffers();
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, templateVbo);
-            GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, quad, GL15.GL_STATIC_DRAW);
-            GLStateManager.glEnableVertexAttribArray(0);
-            GLStateManager.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 12, 0L);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            templateVbo = GLSMBuffers.glGenBuffers();
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, templateVbo);
+            GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, quad, GL15.GL_STATIC_DRAW);
+            GLSMVertexInput.glEnableVertexAttribArray(0);
+            GLSMVertexInput.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 12, 0L);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         }
 
         private static void putVertex(ByteBuffer buf, float x, float y) {
@@ -115,51 +124,32 @@ public final class FfpFixture {
             }
             instances.position(0).limit(entities.length * InstancedAttribs.STRIDE);
 
-            instanceVbo = GLStateManager.glGenBuffers();
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, instanceVbo);
-            GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, instances, GL15.GL_STATIC_DRAW);
+            instanceVbo = GLSMBuffers.glGenBuffers();
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, instanceVbo);
+            GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, instances, GL15.GL_STATIC_DRAW);
             InstancedAttribs.enableHeadArrays();
             InstancedAttribs.pointTemplate(0L);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         }
 
         private static int buildProgram() {
-            final int vs = compile(GL20.GL_VERTEX_SHADER, VS);
-            final int fs = compile(GL20.GL_FRAGMENT_SHADER, FS);
-            final int p = GLStateManager.glCreateProgram();
-            GLStateManager.glAttachShader(p, vs);
-            GLStateManager.glAttachShader(p, fs);
-            GLStateManager.glLinkProgram(p);
-            assertNotEquals(0, GLStateManager.glGetProgrami(p, GL20.GL_LINK_STATUS), () -> "test program must link: " + GLStateManager.glGetProgramInfoLog(p, 4096));
-            GLStateManager.glDeleteShader(vs);
-            GLStateManager.glDeleteShader(fs);
-            return p;
-        }
-
-        private static int compile(int type, String source) {
-            final int shader = GLStateManager.glCreateShader(type);
-            GLStateManager.glShaderSource(shader, source);
-            GLStateManager.glCompileShader(shader);
-            if (GLStateManager.glGetShaderi(shader, GL20.GL_COMPILE_STATUS) == 0) {
-                fail("test shader failed to compile:\n" + GLStateManager.glGetShaderInfoLog(shader, 4096) + "\n\n" + source);
-            }
-            return shader;
+            return GlTestSupport.program(VS, FS);
         }
     }
 
     public static void attrib(int loc, int size, int type, boolean normalized, int stride, int offset) {
-        GLStateManager.glEnableVertexAttribArray(loc);
-        GLStateManager.glVertexAttribPointer(loc, size, type, normalized, stride, offset);
+        GLSMVertexInput.glEnableVertexAttribArray(loc);
+        GLSMVertexInput.glVertexAttribPointer(loc, size, type, normalized, stride, offset);
     }
 
     public static void clear() {
-        GLStateManager.glClearColor(0f, 0f, 0f, 0f);
-        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
+        GLSMBlend.glClearColor(0f, 0f, 0f, 1f);
+        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
     }
 
     public static int[] readRegion(int size) {
         final ByteBuffer pixels = BufferUtils.createByteBuffer(size * size * 4);
-        GLStateManager.glReadPixels(0, 0, size, size, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
+        GLSMFramebuffer.glReadPixels(0, 0, size, size, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
         final int[] out = new int[size * size];
         for (int i = 0; i < out.length; i++) {
             out[i] = pixels.getInt(i * 4);
@@ -169,22 +159,22 @@ public final class FfpFixture {
 
     public static int[] readPixel(int x, int y) {
         final ByteBuffer pixel = BufferUtils.createByteBuffer(4);
-        GLStateManager.glReadPixels(x, y, 1, 1, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixel);
+        GLSMFramebuffer.glReadPixels(x, y, 1, 1, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixel);
         return new int[] { pixel.get(0) & 0xFF, pixel.get(1) & 0xFF, pixel.get(2) & 0xFF, pixel.get(3) & 0xFF };
     }
 
     public static int solidTexture(int r, int g, int b, int a) {
-        final int id = GLStateManager.glGenTextures();
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, id);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        final int id = GLSMTextures.glGenTextures();
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, id);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
         final ByteBuffer texels = BufferUtils.createByteBuffer(2 * 2 * 4);
         for (int i = 0; i < 4; i++) {
             texels.put((byte) r).put((byte) g).put((byte) b).put((byte) a);
         }
         texels.flip();
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, 2, 2, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels);
+        GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, 2, 2, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels);
         return id;
     }
 
@@ -198,6 +188,10 @@ public final class FfpFixture {
     }
 
     public static void assertPixelParity(String subject, int[] reference, int[] candidate, int size, int background, int minCoverageDivisor, int channelTolerance, IntFunction<String> describe) {
+        assertPixelParity(subject, reference, candidate, size, background, minCoverageDivisor, channelTolerance, 0, describe);
+    }
+
+    public static void assertPixelParity(String subject, int[] reference, int[] candidate, int size, int background, int minCoverageDivisor, int channelTolerance, int allowedMismatches, IntFunction<String> describe) {
         int covered = 0;
         for (int pixel : reference) {
             if (pixel != background) covered++;
@@ -215,7 +209,7 @@ public final class FfpFixture {
         }
         final int index = firstMismatch;
         final int differing = mismatches;
-        assertEquals(0, mismatches, () -> subject + " differ from baked quads in " + differing + " of " + reference.length + " pixels, first at (" + (index % size) + "," + (index / size) + "): reference " + describe.apply(reference[index]) + " instanced " + describe.apply(candidate[index]));
+        assertTrue(mismatches <= allowedMismatches, () -> subject + " differ from baked quads in " + differing + " of " + reference.length + " pixels, first at (" + (index % size) + "," + (index / size) + "): reference " + describe.apply(reference[index]) + " instanced " + describe.apply(candidate[index]));
     }
 
     private static boolean withinTolerance(int a, int b, int tolerance) {
@@ -243,30 +237,34 @@ public final class FfpFixture {
         assertTrue(coveredPixels > base.length / 8, "base draw covered only " + coveredPixels + " of " + base.length + " pixels");
     }
 
+    public static void activateFfp() {
+        ShaderManager.enable();
+        ShaderManager.getInstance().activate();
+    }
+
     public static void resetFfpState() {
-        GLStateManager.ffpInstancing = Instancing.NONE;
+        GLSMPrograms.setFfpInstancing(Instancing.NONE);
         final ShaderManager sm = ShaderManager.getInstance();
         if (sm.isActive()) sm.deactivate();
-        sm.disable();
-        GLStateManager.glBindVertexArray(0);
+        GLSMVertexInput.glBindVertexArray(0);
 
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-        GLStateManager.glDisable(GL11.GL_TEXTURE_2D);
-        GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-        GLStateManager.glDisable(GL11.GL_TEXTURE_2D);
-        GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE1);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        GLSMEnable.glDisable(GL11.GL_TEXTURE_2D);
+        GLSMMatrices.glMatrixMode(GL11.GL_TEXTURE);
+        GLSMMatrices.glLoadIdentity();
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        GLSMEnable.glDisable(GL11.GL_TEXTURE_2D);
+        GLSMMatrices.glMatrixMode(GL11.GL_TEXTURE);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
 
-        GLStateManager.glDisable(GL11.GL_BLEND);
-        GLStateManager.glDepthMask(true);
-        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
-        GLStateManager.glDisable(GL11.GL_DEPTH_TEST);
-        GLStateManager.glDisable(GL11.GL_CULL_FACE);
-        GLStateManager.glDisable(GL11.GL_ALPHA_TEST);
+        GLSMEnable.glDisable(GL11.GL_BLEND);
+        GLSMDepthStencilAlpha.glDepthMask(true);
+        GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_LEQUAL);
+        GLSMEnable.glDisable(GL11.GL_DEPTH_TEST);
+        GLSMEnable.glDisable(GL11.GL_CULL_FACE);
+        GLSMEnable.glDisable(GL11.GL_ALPHA_TEST);
     }
 }

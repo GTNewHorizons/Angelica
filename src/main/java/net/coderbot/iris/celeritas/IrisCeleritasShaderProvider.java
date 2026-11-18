@@ -40,7 +40,7 @@ public class IrisCeleritasShaderProvider implements IrisShaderProvider {
 
     @Override
     @Nullable
-    public GlProgram<? extends ChunkShaderInterface> getShaderOverride(TerrainRenderPass pass) {
+    public GlProgram<ChunkShaderInterface> getShaderOverride(TerrainRenderPass pass) {
         if (!isShadersEnabled() || renderPassConfiguration == null) {
             return null;
         }
@@ -66,14 +66,19 @@ public class IrisCeleritasShaderProvider implements IrisShaderProvider {
         return BlockRenderingSettings.INSTANCE.getBlockTypeIds();
     }
 
-    @Override
-    public void preSubmitShadowGraph(int frame) {
-        final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
-        if (pipeline != null) pipeline.preSubmitShadowGraph(frame);
-    }
-
     public void deleteShaders() {
         overrides.deleteShaders();
+    }
+
+    // A separate overrides instance, so the terrain programs in use are left alone
+    public void compileTerrainPrograms(CeleritasTerrainPipeline pipeline) {
+        if (pipeline == null) return;
+        final IrisCeleritasChunkProgramOverrides scratch = new IrisCeleritasChunkProgramOverrides();
+        try {
+            scratch.createShaders(pipeline, EXTENDED_VERTEX_TYPE);
+        } finally {
+            scratch.deleteShaders();
+        }
     }
 
     public IrisCeleritasChunkProgramOverrides getOverrides() {

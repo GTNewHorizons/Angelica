@@ -52,6 +52,7 @@ public final class PipelineCache {
     private boolean outputDirty = true;
     private boolean shaderDirty = true;
     private boolean inputDirty  = true;
+    private boolean usesBlendConstants;
 
     private long cachedOutputHash;
     private long cachedShaderHash;
@@ -60,6 +61,7 @@ public final class PipelineCache {
     public int primitiveType = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
 
     public final boolean[] blendEnabledPerDrawBuffer = new boolean[ContextState.MAX_COLOR_ATTACHMENTS];
+    public boolean logicOpEnabled;
     public final int[] srcColorFactors = new int[ContextState.MAX_COLOR_ATTACHMENTS];
     public final int[] dstColorFactors = new int[ContextState.MAX_COLOR_ATTACHMENTS];
     public final int[] srcAlphaFactors = new int[ContextState.MAX_COLOR_ATTACHMENTS];
@@ -106,9 +108,15 @@ public final class PipelineCache {
         return cullEnabled ? cullFaceMode : SDL_GPU_CULLMODE_NONE;
     }
     public int fillMode = SDL_GPU_FILLMODE_FILL;
+    public boolean polygonOffsetFillEnabled;
     public float depthBiasConstant;
     public float depthBiasSlopeFactor;
     public float depthBiasClamp;
+
+    public boolean effectiveDepthBiasEnabled() {
+        return polygonOffsetFillEnabled && fillMode == SDL_GPU_FILLMODE_FILL
+            && (primitiveType == SDL_GPU_PRIMITIVETYPE_TRIANGLELIST || primitiveType == SDL_GPU_PRIMITIVETYPE_TRIANGLESTRIP);
+    }
 
     public int colorWriteMask = SDL_GPU_COLORCOMPONENT_R | SDL_GPU_COLORCOMPONENT_G | SDL_GPU_COLORCOMPONENT_B | SDL_GPU_COLORCOMPONENT_A;
 
@@ -161,7 +169,7 @@ public final class PipelineCache {
     }
 
     private boolean blendEnabledForSlot(int slot) {
-        return slot >= 0 && slot < ContextState.MAX_COLOR_ATTACHMENTS && blendEnabledPerDrawBuffer[slot];
+        return !logicOpEnabled && slot >= 0 && slot < ContextState.MAX_COLOR_ATTACHMENTS && blendEnabledPerDrawBuffer[slot];
     }
 
     public boolean setBlendFactors(int sc, int dc, int sa, int da) {
@@ -191,7 +199,10 @@ public final class PipelineCache {
         return true;
     }
 
-    public int maxAttribs;
+    private int maxAttribs;
+    private int shaderInputSetId;
+    public int inputHashLoopRuns;
+    public int inputHashHits;
 
     private static final int[] EMPTY_INT = new int[0];
     private static final String[] EMPTY_STR = new String[0];
@@ -213,6 +224,14 @@ public final class PipelineCache {
         return lastKey;
     }
 
+    public int maxAttribs() { return maxAttribs; }
+
+    public void setMaxAttribs(int n) {
+        if (maxAttribs == n) return;
+        maxAttribs = n;
+        markInputDirty();
+    }
+
     public void markInputDirty()  { inputDirty  = true; lastKey = 0L; }
 
     public boolean markInputDirtyIfLivenessChanged(PipelineStore store, int oldBuffer, int newBuffer) {
@@ -223,18 +242,42 @@ public final class PipelineCache {
         return true;
     }
 
-    public void setVertexInputs(int mask, int[] vecSize, int[] baseType, String[] names) {
-        if (shaderInputMask != mask || !Arrays.equals(shaderInputVecSize, vecSize) || !Arrays.equals(shaderInputBaseType, baseType)) {
+    public void setVertexInputs(int mask, int[] vecSize, int[] baseType, String[] names, int vertexInputSetId) {
+        if (shaderInputSetId != vertexInputSetId) {
             markInputDirty();
         }
+        shaderInputSetId = vertexInputSetId;
         shaderInputMask = mask;
         shaderInputVecSize = vecSize;
         shaderInputBaseType = baseType;
         shaderInputName = names;
     }
 
-    public void markOutputDirty() { outputDirty = true; lastKey = 0L; }
+    public void markOutputDirty() {
+        outputDirty = true;
+        lastKey = 0L;
+        usesBlendConstants = computeUsesBlendConstants();
+    }
     public void markShaderDirty() { shaderDirty = true; lastKey = 0L; }
+
+    public boolean usesBlendConstants() {
+        return usesBlendConstants;
+    }
+
+    private boolean computeUsesBlendConstants() {
+        for (int i = 0; i < ContextState.MAX_COLOR_ATTACHMENTS; i++) {
+            if (!blendEnabledForSlot(i)) continue;
+            if (isBlendConstantFactor(srcColorFactors[i]) || isBlendConstantFactor(dstColorFactors[i])
+                || isBlendConstantFactor(srcAlphaFactors[i]) || isBlendConstantFactor(dstAlphaFactors[i])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isBlendConstantFactor(int factor) {
+        return factor == SDL_GPU_BLENDFACTOR_CONSTANT_COLOR || factor == SDL_GPU_BLENDFACTOR_ONE_MINUS_CONSTANT_COLOR;
+    }
 
     public void invalidateShaderHandles() {
         vertexShader = 0;
@@ -327,6 +370,7 @@ public final class PipelineCache {
             | ((depthWriteOn        ? 1L : 0L) <<  2)
             | ((stencilOn           ? 1L : 0L) <<  3)
             | ((hasDepthTarget      ? 1L : 0L) <<  4)
+            | ((effectiveDepthBiasEnabled() ? 1L : 0L) << 5)
             | (((long) blendBits & 0xFFFFFFFFL) << 32);
         long h = OUTPUT_SEED;
         h = Hashing.fmix64(h, bits);
@@ -343,8 +387,10 @@ public final class PipelineCache {
         h = Hashing.fmix64(h, Hashing.packHiLo(stencilCompareMask, stencilWriteMask));
         h = Hashing.fmix64(h, Hashing.packHiLo(getEffectiveCullMode(), effectiveFrontFace()));
         h = Hashing.fmix64(h, Hashing.packHiLo(fillMode, colorWriteMask));
-        h = Hashing.fmix64(h, Hashing.packHiLo(Float.floatToRawIntBits(depthBiasConstant), Float.floatToRawIntBits(depthBiasSlopeFactor)));
-        h = Hashing.fmix64(h, Float.floatToRawIntBits(depthBiasClamp));
+        if (effectiveDepthBiasEnabled()) {
+            h = Hashing.fmix64(h, Hashing.packHiLo(Float.floatToRawIntBits(depthBiasConstant), Float.floatToRawIntBits(depthBiasSlopeFactor)));
+            h = Hashing.fmix64(h, Float.floatToRawIntBits(depthBiasClamp));
+        }
         h = Hashing.fmix64(h, Hashing.packHiLo(ctfLen, hasDepthTarget ? depthTargetFormat : 0));
         for (int i = 0; i < ctfLen; i++) {
             h = Hashing.fmix64(h, colorTargetFormats()[i]);
@@ -361,10 +407,27 @@ public final class PipelineCache {
     }
 
     private long computeInputHash(PipelineStore store, ContextState cs) {
+        if (cs == null) {
+            return Hashing.fmix64(INPUT_SEED, Hashing.packHiLo(shaderInputMask, maxAttribs));
+        }
+        final ContextState.VAOState vao = cs.currentVao;
+        final int livenessGen = store.livenessGen();
+        if (vao.slotsLivenessGen != livenessGen) {
+            Arrays.fill(vao.slotInputSetId, 0);
+            vao.slotsLivenessGen = livenessGen;
+        }
+        final int enabledMask = vao.attribEnabledMask;
+        for (int s = 0; s < ContextState.VAOState.INPUT_HASH_SLOTS; s++) {
+            final int id = vao.slotInputSetId[s];
+            if (id == 0) continue;
+            if (id == shaderInputSetId && vao.slotEnabledMask[s] == enabledMask && vao.slotMaxAttribs[s] == maxAttribs) {
+                if (Tracy.ENABLED) inputHashHits++;
+                return vao.slotHash[s];
+            }
+        }
+        inputHashLoopRuns++;
         long h = INPUT_SEED;
         h = Hashing.fmix64(h, Hashing.packHiLo(shaderInputMask, maxAttribs));
-        if (cs == null) return h;
-        final ContextState.VAOState vao = cs.currentVao;
         final int sibtLen = shaderInputBaseType.length;
         final int sivsLen = shaderInputVecSize.length;
 
@@ -392,6 +455,12 @@ public final class PipelineCache {
                 h = Hashing.fmix64(h, Hashing.packHiLo(i, shaderInputVecSize[i]));
             }
         }
+        final int slot = vao.slotCursor;
+        vao.slotInputSetId[slot] = shaderInputSetId;
+        vao.slotEnabledMask[slot] = enabledMask;
+        vao.slotMaxAttribs[slot] = maxAttribs;
+        vao.slotHash[slot] = h;
+        vao.slotCursor = (slot + 1) % ContextState.VAOState.INPUT_HASH_SLOTS;
         return h;
     }
 
@@ -463,6 +532,7 @@ public final class PipelineCache {
                 .cull_mode(getEffectiveCullMode())
                 .front_face(effectiveFrontFace())
                 .fill_mode(fillMode)
+                .enable_depth_bias(effectiveDepthBiasEnabled())
                 .depth_bias_constant_factor(depthBiasConstant)
                 .depth_bias_slope_factor(depthBiasSlopeFactor)
                 .depth_bias_clamp(depthBiasClamp);
@@ -549,6 +619,7 @@ public final class PipelineCache {
         sb.append("  Rasterizer: cull=").append(getEffectiveCullMode())
           .append(" front=").append(effectiveFrontFace())
           .append(" fill=").append(fillMode)
+          .append(" biasEnabled=").append(effectiveDepthBiasEnabled())
           .append(" biasConst=").append(depthBiasConstant)
           .append(" biasSlope=").append(depthBiasSlopeFactor)
           .append(" biasClamp=").append(depthBiasClamp).append('\n');
@@ -831,11 +902,12 @@ public final class PipelineCache {
         final int numAttributes = numBuffers;
         final SDL_GPUVertexAttribute.Buffer attrs = SDL_GPUVertexAttribute.calloc(numAttributes, stack);
         final SDL_GPUVertexBufferDescription.Buffer bindings = SDL_GPUVertexBufferDescription.calloc(numBuffers, stack);
+        final int constantPitch = store.device().isMetal() ? 16 : 0;
 
         for (int i = 0; i < numBuffers; i++) {
             if ((inputMask & (1 << i)) == 0) {
                 bindings.get(i)
-                    .slot(i).pitch(16)
+                    .slot(i).pitch(constantPitch)
                     .input_rate(SDL_GPU_VERTEXINPUTRATE_INSTANCE).instance_step_rate(0);
                 attrs.get(i)
                     .location(i).buffer_slot(i)
@@ -895,7 +967,7 @@ public final class PipelineCache {
             } else {
                 final int vecSize = i < shaderInputVecSize.length ? shaderInputVecSize[i] : 4;
                 bindings.get(i)
-                    .slot(i).pitch(16) // sizeof(vec4), one element
+                    .slot(i).pitch(constantPitch)
                     .input_rate(SDL_GPU_VERTEXINPUTRATE_INSTANCE).instance_step_rate(0);
                 attrs.get(i)
                     .location(i).buffer_slot(i)

@@ -6,6 +6,11 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement;
 import com.gtnewhorizons.angelica.config.SystemProperties;
+import com.gtnewhorizons.angelica.glsm.GLContextState;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.QuadConverter;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
@@ -14,6 +19,7 @@ import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
+import com.gtnewhorizons.angelica.glsm.hooks.LineDrawHandler;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import net.minecraft.client.renderer.Tessellator;
 import org.apache.logging.log4j.LogManager;
@@ -47,11 +53,6 @@ public class TessellatorStreamingDrawer {
     private static PersistentStreamingBuffer persistentBuffer;
     private static final OrphanStreamingBuffer[] orphanBuffers = new OrphanStreamingBuffer[FORMAT_COUNT];
 
-    private static final int[] persistentVAOs = new int[FORMAT_COUNT];
-    private static final int[] orphanVAOs = new int[FORMAT_COUNT];
-
-    private static final int[] extendedPersistentVAOs = new int[FORMAT_COUNT];
-    private static final int[] extendedOrphanVAOs = new int[FORMAT_COUNT];
     private static ByteBuffer extScratch;
     private static long extScratchAddress;
     private static int extScratchCapacity;
@@ -59,6 +60,10 @@ public class TessellatorStreamingDrawer {
     private static ByteBuffer repackBuffer;
     private static long repackAddress;
     private static int repackCapacity;
+
+    private static ByteBuffer lineQuadBuffer;
+    private static long lineQuadAddress;
+    private static int lineQuadCapacity;
 
     private static boolean initialized = false;
 
@@ -108,47 +113,7 @@ public class TessellatorStreamingDrawer {
         if (GLSMConfig.expandVertexFormats) {
             effectiveFlags = VertexFlags.COLOR_BIT | VertexFlags.TEXTURE_BIT | VertexFlags.NORMAL_BIT | VertexFlags.BRIGHTNESS_BIT;
             if (effectiveFlags != flags) {
-                final int[] rawBuffer = tess.rawBuffer;
-                final int defaultColor;
-                if (!tess.hasColor) {
-                    final var c = GLStateManager.getColor();
-                    defaultColor = ((int)(clamp(0f, 1f, c.getAlpha()) * 255) << 24) | ((int)(clamp(0f, 1f, c.getBlue()) * 255) << 16)
-                        | ((int)(clamp(0f, 1f, c.getGreen()) * 255) << 8) | (int)(clamp(0f, 1f, c.getRed()) * 255);
-                } else {
-                    defaultColor = 0;
-                }
-
-                final int defaultBrightness;
-                if (!tess.hasBrightness) {
-                    defaultBrightness = GLSMConfig.packedLastBrightness();
-                } else {
-                    defaultBrightness = 0;
-                }
-
-                final int defaultNormal;
-                if (!tess.hasNormals) {
-                    final var n = ShaderManager.getCurrentNormal();
-                    defaultNormal = ((int)(clamp(-1f, 1f, n.z) * 127) << 16) | (((int)(clamp(-1f, 1f, n.y) * 127) & 0xFF) << 8) | ((int)(clamp(-1f, 1f, n.x) * 127) & 0xFF);
-                } else {
-                    defaultNormal = 0;
-                }
-
-                final int defaultTexU, defaultTexV;
-                if (!tess.hasTexture) {
-                    final var tc = ShaderManager.getCurrentTexCoord();
-                    defaultTexU = Float.floatToRawIntBits(tc.x);
-                    defaultTexV = Float.floatToRawIntBits(tc.y);
-                } else {
-                    defaultTexU = 0; defaultTexV = 0;
-                }
-
-                for (int i = 0; i < vertexCount; i++) {
-                    final int base = i * 8;
-                    if (!tess.hasTexture)    { rawBuffer[base + 3] = defaultTexU; rawBuffer[base + 4] = defaultTexV; }
-                    if (!tess.hasColor)      { rawBuffer[base + 5] = defaultColor; }
-                    if (!tess.hasNormals)    { rawBuffer[base + 6] = defaultNormal; }
-                    if (!tess.hasBrightness) { rawBuffer[base + 7] = defaultBrightness; }
-                }
+                fillMissingAttributes(tess);
             }
         } else {
             effectiveFlags = flags;
@@ -169,27 +134,41 @@ public class TessellatorStreamingDrawer {
             final int extPrim = extHandler == null ? 0 : ImmediateExtendedAttribHandler.extPrimVerts(tess.drawMode, vertexCount);
             final boolean wantsExt = extHandler != null && extHandler.wantsExtended();
             final boolean doExt = extPrim != 0 && tess.hasTexture && wantsExt;
-            if (doExt) {
-                final int combinedStride = vertexSize + ImmediateExtendedAttribHandler.EXT_STRIDE;
-                final int combinedBytes = vertexCount * combinedStride;
-                ensureExtScratch(combinedBytes);
-                interleaveBase(repackAddress, extScratchAddress, vertexCount, vertexSize, combinedStride);
-                // format expansion backfills a normal into rawBuffer, so trust effectiveFlags rather than tess.hasNormals
-                final int normalIndex = (effectiveFlags & VertexFlags.NORMAL_BIT) != 0 ? ImmediateExtendedAttribHandler.RAW_NORMAL_INDEX : -1;
-                extHandler.build(tess.rawBuffer, vertexCount, extPrim, normalIndex, extScratchAddress + vertexSize, combinedStride);
-                extScratch.position(0);
-                extScratch.limit(combinedBytes);
-                uploadAndDrawExtended(extScratch, effectiveFlags, format, combinedStride, tess.drawMode, vertexCount);
-                shrinkExtScratchIfOversized(combinedBytes);
-            } else {
-                uploadAndDraw(repackBuffer, effectiveFlags, format, vertexSize, tess.drawMode, vertexCount);
+            final int idRuns = TessellatorEntityIds.runsFor(tess, vertexCount);
+            final boolean doIds = idRuns > 1 && extHandler != null && extHandler.wantsEntityIds() && !LineQuads.isLineMode(tess.drawMode);
+            final GLContextState swappedCtx = idRuns >= 1 && !doIds ? GLStateManager.ctx() : null;
+            final long restoreIds = swappedCtx != null ? swapEntityIds(swappedCtx, TessellatorEntityIds.firstRunIds()) : 0L;
+            try {
+                if (doExt || doIds) {
+                    final int layout = (doExt ? StreamingVaos.MID_TEX_AND_TANGENT : 0) | (doIds ? StreamingVaos.ENTITY_IDS : 0);
+                    final int combinedStride = combinedStride(format, layout);
+                    final int combinedBytes = vertexCount * combinedStride;
+                    ensureExtScratch(combinedBytes);
+                    interleaveBase(repackAddress, extScratchAddress, vertexCount, vertexSize, combinedStride);
+                    long extAddress = extScratchAddress + vertexSize;
+                    if (doExt) {
+                        // format expansion backfills a normal into rawBuffer, so trust effectiveFlags rather than tess.hasNormals
+                        final int normalIndex = (effectiveFlags & VertexFlags.NORMAL_BIT) != 0 ? ImmediateExtendedAttribHandler.RAW_NORMAL_INDEX : -1;
+                        extHandler.build(tess.rawBuffer, vertexCount, extPrim, normalIndex, extAddress, combinedStride);
+                        extAddress += ImmediateExtendedAttribHandler.EXT_STRIDE;
+                    }
+                    if (doIds) TessellatorEntityIds.write(extAddress, combinedStride, vertexCount, idRuns);
+                    extScratch.position(0);
+                    extScratch.limit(combinedBytes);
+                    uploadAndDrawExtended(extScratch, effectiveFlags, format, layout, combinedStride, tess.drawMode, vertexCount);
+                    shrinkExtScratchIfOversized(combinedBytes);
+                } else {
+                    uploadAndDraw(repackBuffer, effectiveFlags, format, vertexSize, tess.drawMode, vertexCount);
+                }
+            } finally {
+                if (swappedCtx != null) swapEntityIds(swappedCtx, restoreIds);
             }
         } finally {
             if (locked) GLStateManager.releaseDrawLock();
         }
 
         // Shrink rawBuffer if oversized
-        if (tess.rawBufferSize > 0x20000 && tess.rawBufferIndex < (tess.rawBufferSize << 3)) {
+        if (tess.rawBufferSize > 0x20000 && tess.rawBufferIndex < (tess.rawBufferSize >> 3)) {
             tess.rawBufferSize = 0x10000;
             tess.rawBuffer = new int[tess.rawBufferSize];
         }
@@ -197,6 +176,58 @@ public class TessellatorStreamingDrawer {
         final int result = tess.rawBufferIndex * 4;
         tess.reset();
         return result;
+    }
+
+    public static void fillMissingAttributes(Tessellator tess) {
+        final int vertexCount = tess.vertexCount;
+        final int[] rawBuffer = tess.rawBuffer;
+        final int defaultColor;
+        if (!tess.hasColor) {
+            final var c = GLSMCurrentAttribs.getColor();
+            defaultColor = ((int)(clamp(0f, 1f, c.getAlpha()) * 255) << 24) | ((int)(clamp(0f, 1f, c.getBlue()) * 255) << 16)
+                | ((int)(clamp(0f, 1f, c.getGreen()) * 255) << 8) | (int)(clamp(0f, 1f, c.getRed()) * 255);
+        } else {
+            defaultColor = 0;
+        }
+
+        final int defaultBrightness;
+        if (!tess.hasBrightness) {
+            defaultBrightness = GLSMConfig.packedLastBrightness();
+        } else {
+            defaultBrightness = 0;
+        }
+
+        final ImmediateExtendedAttribHandler normalHandler = GLSMHooks.immediateExtendedHandler;
+        final boolean faceNormals = !tess.hasNormals && normalHandler != null
+            && ImmediateExtendedAttribHandler.extPrimVerts(tess.drawMode, vertexCount) == 4 && normalHandler.wantsFaceNormals();
+        final boolean fillNormal = !tess.hasNormals && !faceNormals;
+        GLStateManager.requireExitVertexDefaults(fillNormal, !tess.hasTexture, !tess.hasColor, !tess.hasBrightness);
+
+        final int defaultNormal;
+        if (fillNormal) {
+            final var n = ShaderManager.getCurrentNormal();
+            defaultNormal = ((int)(clamp(-1f, 1f, n.z) * 127) << 16) | (((int)(clamp(-1f, 1f, n.y) * 127) & 0xFF) << 8) | ((int)(clamp(-1f, 1f, n.x) * 127) & 0xFF);
+        } else {
+            defaultNormal = 0;
+        }
+
+        final int defaultTexU, defaultTexV;
+        if (!tess.hasTexture) {
+            final var tc = ShaderManager.getCurrentTexCoord();
+            defaultTexU = Float.floatToRawIntBits(tc.x);
+            defaultTexV = Float.floatToRawIntBits(tc.y);
+        } else {
+            defaultTexU = 0; defaultTexV = 0;
+        }
+
+        for (int i = 0; i < vertexCount; i++) {
+            final int base = i * 8;
+            if (!tess.hasTexture)    { rawBuffer[base + 3] = defaultTexU; rawBuffer[base + 4] = defaultTexV; }
+            if (!tess.hasColor)      { rawBuffer[base + 5] = defaultColor; }
+            if (fillNormal)          { rawBuffer[base + 6] = defaultNormal; }
+            if (!tess.hasBrightness) { rawBuffer[base + 7] = defaultBrightness; }
+        }
+        if (faceNormals) normalHandler.writeFaceNormals(rawBuffer, vertexCount);
     }
 
     /**
@@ -241,15 +272,20 @@ public class TessellatorStreamingDrawer {
         final long srcBase = memAddress0(packed) + packed.position();
         final int texOffset = ImmediateExtendedAttribHandler.texOffset(format);
         final int normalOffset = ImmediateExtendedAttribHandler.normalOffset(format);
-        final int combinedStride = vertexSize + ImmediateExtendedAttribHandler.EXT_STRIDE;
+        final int combinedStride = combinedStride(format, StreamingVaos.MID_TEX_AND_TANGENT);
         final int combinedBytes = vertexCount * combinedStride;
-        ensureExtScratch(combinedBytes);
-        interleaveBase(srcBase, extScratchAddress, vertexCount, vertexSize, combinedStride);
-        extHandler.buildPacked(srcBase, vertexSize, 0, texOffset, normalOffset, vertexCount, extPrim, extScratchAddress + vertexSize, combinedStride);
-        extScratch.position(0);
-        extScratch.limit(combinedBytes);
-        uploadAndDrawExtended(extScratch, flags, format, combinedStride, drawMode, vertexCount);
-        shrinkExtScratchIfOversized(combinedBytes);
+        final boolean locked = GLStateManager.acquireDrawLock();
+        try {
+            ensureExtScratch(combinedBytes);
+            interleaveBase(srcBase, extScratchAddress, vertexCount, vertexSize, combinedStride);
+            extHandler.buildPacked(srcBase, vertexSize, 0, texOffset, normalOffset, vertexCount, extPrim, extScratchAddress + vertexSize, combinedStride);
+            extScratch.position(0);
+            extScratch.limit(combinedBytes);
+            uploadAndDrawExtended(extScratch, flags, format, StreamingVaos.MID_TEX_AND_TANGENT, combinedStride, drawMode, vertexCount);
+            shrinkExtScratchIfOversized(combinedBytes);
+        } finally {
+            if (locked) GLStateManager.releaseDrawLock();
+        }
         return true;
     }
 
@@ -299,7 +335,7 @@ public class TessellatorStreamingDrawer {
 
     public static void endFrame() {
         if (persistentBuffer != null) {
-            persistentBuffer.postDraw();
+            persistentBuffer.endFrame();
         }
     }
 
@@ -308,10 +344,18 @@ public class TessellatorStreamingDrawer {
      * Tries the persistent ring buffer first, falls back to orphan buffer on overflow.
      */
     private static void uploadAndDraw(ByteBuffer packed, int flags, VertexFormat format, int vertexSize, int drawMode, int vertexCount) {
+        if (LineQuads.isLineMode(drawMode) && drawLinesAsQuads(packed, format, drawMode, vertexCount)) {
+            return;
+        }
         Tracy.beginZone(Z_SDL_STREAM_DRAW);
         final boolean locked = GLStateManager.acquireDrawLock();
         try {
-            ensureVAO(flags, format);
+            final GLContextState glCtx = GLStateManager.ctx();
+            final StreamingVaos vaos = glCtx.streamingVaos;
+            final boolean lineQuads = LineQuads.isQuadFormat(format);
+            final int[] persistentVAOs = lineQuads ? vaos.lineQuadPersistentVAOs : vaos.persistentVAOs;
+            final int[] orphanVAOs = lineQuads ? vaos.lineQuadOrphanVAOs : vaos.orphanVAOs;
+            ensureVAO(persistentVAOs, orphanVAOs, flags, format);
 
             if (Tracy.ENABLED) {
                 streamedBytes += packed.remaining();
@@ -321,15 +365,16 @@ public class TessellatorStreamingDrawer {
             int firstVertex = -1;
 
             if (persistentBuffer != null) {
-                firstVertex = persistentBuffer.upload(packed, vertexSize, drawMode == GL11.GL_QUADS ? 4 : 1);
+                final int alignment = drawMode == GL11.GL_QUADS ? 4 : lineQuads ? LineQuads.VERTICES_PER_SEGMENT : 1;
+                firstVertex = persistentBuffer.upload(packed, vertexSize, alignment);
             }
 
             final boolean fromRing = firstVertex >= 0;
             if (fromRing) {
-                GLStateManager.glBindVertexArray(persistentVAOs[flags]);
+                GLSMVertexInput.glBindVertexArray(persistentVAOs[flags]);
             } else {
                 if (Tracy.ENABLED && persistentBuffer != null) orphanFallbacks++;
-                GLStateManager.glBindVertexArray(orphanVAOs[flags]);
+                GLSMVertexInput.glBindVertexArray(orphanVAOs[flags]);
                 orphanBuffers[flags].upload(packed);
                 firstVertex = 0;
             }
@@ -340,81 +385,174 @@ public class TessellatorStreamingDrawer {
                 lastStreamDrawMode = drawMode;
             }
 
-            drawWithQuadConversion(drawMode, firstVertex, vertexCount);
-            GLStateManager.glBindVertexArray(0);
+            drawWithQuadConversion(glCtx, drawMode, firstVertex, vertexCount);
+            GLSMVertexInput.glBindVertexArray(0);
         } finally {
             if (locked) GLStateManager.releaseDrawLock();
             Tracy.endZone();
         }
     }
 
+    private static boolean drawLinesAsQuads(ByteBuffer packed, VertexFormat format, int drawMode, int vertexCount) {
+        final int segments = LineQuads.segmentCount(drawMode, vertexCount);
+        if (segments == 0) {
+            return false;
+        }
+        final LineDrawHandler handler = GLSMHooks.lineDrawHandler;
+        if (handler != null && handler.bindLineProgram()) {
+            try {
+                drawLineQuads(packed, format, drawMode, vertexCount, segments, false);
+            } finally {
+                handler.restoreProgram();
+            }
+            return true;
+        }
+        if (GLSMDraws.ffpWidensLineQuads()) {
+            final GLContextState glCtx = GLStateManager.ctx();
+            glCtx.lineQuadsActive = true;
+            try {
+                drawLineQuads(packed, format, drawMode, vertexCount, segments, true);
+            } finally {
+                glCtx.lineQuadsActive = false;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private static void drawLineQuads(ByteBuffer packed, VertexFormat format, int drawMode, int vertexCount, int segments, boolean otherEnd) {
+        final VertexFormat quadFormat = LineQuads.quadFormat(format);
+        final int quadVertices = segments * LineQuads.VERTICES_PER_SEGMENT;
+        final int quadBytes = quadVertices * quadFormat.getVertexSize();
+        ensureLineQuadCapacity(quadBytes);
+        final long src = memAddress0(packed) + packed.position();
+        if (otherEnd) {
+            LineQuads.expandWithOtherEnd(src, format, drawMode, vertexCount, lineQuadAddress);
+        } else {
+            LineQuads.expandWithDirection(src, format, drawMode, vertexCount, lineQuadAddress);
+        }
+        lineQuadBuffer.position(0);
+        lineQuadBuffer.limit(quadBytes);
+        final boolean culled = LineQuads.disableCulling();
+        try {
+            uploadAndDraw(lineQuadBuffer, quadFormat.getVertexFlags(), quadFormat, quadFormat.getVertexSize(), GL11.GL_TRIANGLES, quadVertices);
+        } finally {
+            LineQuads.restoreCulling(culled);
+        }
+        if (lineQuadCapacity > 0x20000 && quadBytes < (lineQuadCapacity >> 3)) {
+            memFree(lineQuadBuffer);
+            lineQuadBuffer = null;
+            lineQuadCapacity = 0;
+        }
+    }
+
+    private static void ensureLineQuadCapacity(int requiredBytes) {
+        if (lineQuadBuffer != null && requiredBytes <= lineQuadCapacity) return;
+
+        int newCapacity = Math.max(0x4000, lineQuadCapacity);
+        while (newCapacity < requiredBytes) {
+            newCapacity *= 2;
+        }
+        if (lineQuadBuffer != null) memFree(lineQuadBuffer);
+        lineQuadBuffer = memAlloc(newCapacity);
+        lineQuadAddress = memAddress0(lineQuadBuffer);
+        lineQuadCapacity = newCapacity;
+    }
+
     public static long ringWraps() {
         return persistentBuffer == null ? 0L : persistentBuffer.getWraps();
     }
 
-    private static void drawWithQuadConversion(int drawMode, int firstVertex, int vertexCount) {
+    private static void drawWithQuadConversion(GLContextState glCtx, int drawMode, int firstVertex, int vertexCount) {
         FfpExtendedAttribs.beginInternalDraw();
         try {
             if (drawMode == GL11.GL_QUADS) {
-                QuadConverter.drawQuadsAsTriangles(firstVertex, vertexCount);
+                GLSMDraws.drawCalls++;
+                QuadConverter.drawQuadsAsTriangles(glCtx, firstVertex, vertexCount);
             } else {
-                GLStateManager.glDrawArrays(drawMode, firstVertex, vertexCount);
+                GLSMDraws.glDrawArrays(drawMode, firstVertex, vertexCount);
             }
         } finally {
             FfpExtendedAttribs.endInternalDraw();
         }
     }
 
-    private static void uploadAndDrawExtended(ByteBuffer combined, int flags, VertexFormat format, int combinedStride, int drawMode, int vertexCount) {
-        ensureVAO(flags, format);
-        ensureExtendedVAOs(flags, format);
+    private static void uploadAndDrawExtended(ByteBuffer combined, int flags, VertexFormat format, int layout, int combinedStride, int drawMode, int vertexCount) {
+        final GLContextState glCtx = GLStateManager.ctx();
+        final StreamingVaos vaos = glCtx.streamingVaos;
+        ensureVAO(vaos.persistentVAOs, vaos.orphanVAOs, flags, format);
+        ensureExtendedVAOs(vaos, flags, format, layout);
 
         int firstVertex = -1;
 
         if (persistentBuffer != null) {
-            firstVertex = persistentBuffer.upload(combined, combinedStride);
+            firstVertex = persistentBuffer.upload(combined, combinedStride, drawMode == GL11.GL_QUADS ? 4 : 1);
         }
 
         if (firstVertex >= 0) {
-            GLStateManager.glBindVertexArray(extendedPersistentVAOs[flags]);
+            GLSMVertexInput.glBindVertexArray(vaos.extendedPersistent(layout)[flags]);
         } else {
-            GLStateManager.glBindVertexArray(extendedOrphanVAOs[flags]);
+            GLSMVertexInput.glBindVertexArray(vaos.extendedOrphan(layout)[flags]);
             orphanBuffers[flags].upload(combined);
             firstVertex = 0;
         }
 
-        drawWithQuadConversion(drawMode, firstVertex, vertexCount);
-        GLStateManager.glBindVertexArray(0);
+        drawWithQuadConversion(glCtx, drawMode, firstVertex, vertexCount);
+        GLSMVertexInput.glBindVertexArray(0);
     }
 
-    private static void ensureExtendedVAOs(int flags, VertexFormat format) {
+    private static void ensureExtendedVAOs(StreamingVaos vaos, int flags, VertexFormat format, int layout) {
+        final int[] extendedOrphanVAOs = vaos.extendedOrphan(layout);
+        final int[] extendedPersistentVAOs = vaos.extendedPersistent(layout);
         if (extendedOrphanVAOs[flags] == 0) {
-            extendedOrphanVAOs[flags] = GLStateManager.glGenVertexArrays();
-            GLStateManager.glBindVertexArray(extendedOrphanVAOs[flags]);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, orphanBuffers[flags].getBufferId());
-            setupExtendedBufferState(format);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-            GLStateManager.glBindVertexArray(0);
+            extendedOrphanVAOs[flags] = GLSMVertexInput.glGenVertexArrays();
+            GLSMVertexInput.glBindVertexArray(extendedOrphanVAOs[flags]);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, orphanBuffers[flags].getBufferId());
+            setupExtendedBufferState(format, layout);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            GLSMVertexInput.glBindVertexArray(0);
         }
 
         if (persistentBuffer != null && extendedPersistentVAOs[flags] == 0) {
-            extendedPersistentVAOs[flags] = GLStateManager.glGenVertexArrays();
-            GLStateManager.glBindVertexArray(extendedPersistentVAOs[flags]);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, persistentBuffer.getBufferId());
-            setupExtendedBufferState(format);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-            GLStateManager.glBindVertexArray(0);
+            extendedPersistentVAOs[flags] = GLSMVertexInput.glGenVertexArrays();
+            GLSMVertexInput.glBindVertexArray(extendedPersistentVAOs[flags]);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, persistentBuffer.getBufferId());
+            setupExtendedBufferState(format, layout);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            GLSMVertexInput.glBindVertexArray(0);
         }
     }
 
-    private static void setupExtendedBufferState(VertexFormat format) {
-        final int combinedStride = format.getVertexSize() + ImmediateExtendedAttribHandler.EXT_STRIDE;
+    private static long swapEntityIds(GLContextState glCtx, long ids) {
+        final long previous = glCtx.entityIds;
+        if (previous != ids) {
+            glCtx.entityIds = ids;
+            glCtx.dirtyEntityIdsAttrib = true;
+        }
+        return previous;
+    }
+
+    private static int combinedStride(VertexFormat format, int layout) {
+        int stride = format.getVertexSize();
+        if ((layout & StreamingVaos.MID_TEX_AND_TANGENT) != 0) stride += ImmediateExtendedAttribHandler.EXT_STRIDE;
+        if ((layout & StreamingVaos.ENTITY_IDS) != 0) stride += ImmediateExtendedAttribHandler.ENTITY_IDS_STRIDE;
+        return stride;
+    }
+
+    private static void setupExtendedBufferState(VertexFormat format, int layout) {
+        final int combinedStride = combinedStride(format, layout);
         long offset = 0;
         for (final VertexFormatElement element : format.elementsArray) {
             element.setupBufferState(offset, combinedStride);
             offset += element.getByteSize();
         }
-        ImmediateExtendedAttribHandler.setupExtAttribPointers(offset, combinedStride);
+        if ((layout & StreamingVaos.MID_TEX_AND_TANGENT) != 0) {
+            ImmediateExtendedAttribHandler.setupExtAttribPointers(offset, combinedStride);
+            offset += ImmediateExtendedAttribHandler.EXT_STRIDE;
+        }
+        if ((layout & StreamingVaos.ENTITY_IDS) != 0) {
+            ImmediateExtendedAttribHandler.setupEntityIdsPointer(offset, combinedStride);
+        }
     }
 
     private static void ensureExtScratch(int requiredBytes) {
@@ -467,55 +605,25 @@ public class TessellatorStreamingDrawer {
         return repackBuffer;
     }
 
-    private static void ensureVAO(int flags, VertexFormat format) {
+    private static void ensureVAO(int[] persistentVAOs, int[] orphanVAOs, int flags, VertexFormat format) {
         init();
+        if (orphanBuffers[flags] == null) orphanBuffers[flags] = new OrphanStreamingBuffer();
 
         if (orphanVAOs[flags] == 0) {
-            orphanBuffers[flags] = new OrphanStreamingBuffer();
-
-            orphanVAOs[flags] = GLStateManager.glGenVertexArrays();
-            GLStateManager.glBindVertexArray(orphanVAOs[flags]);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, orphanBuffers[flags].getBufferId());
+            orphanVAOs[flags] = GLSMVertexInput.glGenVertexArrays();
+            GLSMVertexInput.glBindVertexArray(orphanVAOs[flags]);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, orphanBuffers[flags].getBufferId());
             format.setupBufferState(0L);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         }
 
         if (persistentBuffer != null && persistentVAOs[flags] == 0) {
-            persistentVAOs[flags] = GLStateManager.glGenVertexArrays();
-            GLStateManager.glBindVertexArray(persistentVAOs[flags]);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, persistentBuffer.getBufferId());
+            persistentVAOs[flags] = GLSMVertexInput.glGenVertexArrays();
+            GLSMVertexInput.glBindVertexArray(persistentVAOs[flags]);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, persistentBuffer.getBufferId());
             format.setupBufferState(0L);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         }
     }
 
-    /**
-     * Clean up all VAOs, streaming buffers, and the repack buffer.
-     */
-    public static void destroy() {
-        for (int i = 0; i < FORMAT_COUNT; i++) {
-            if (persistentVAOs[i] != 0) { GLStateManager.glDeleteVertexArrays(persistentVAOs[i]); persistentVAOs[i] = 0; }
-            if (orphanVAOs[i] != 0) { GLStateManager.glDeleteVertexArrays(orphanVAOs[i]); orphanVAOs[i] = 0; }
-            if (extendedPersistentVAOs[i] != 0) { GLStateManager.glDeleteVertexArrays(extendedPersistentVAOs[i]); extendedPersistentVAOs[i] = 0; }
-            if (extendedOrphanVAOs[i] != 0) { GLStateManager.glDeleteVertexArrays(extendedOrphanVAOs[i]); extendedOrphanVAOs[i] = 0; }
-            if (orphanBuffers[i] != null) { orphanBuffers[i].destroy(); orphanBuffers[i] = null; }
-        }
-        if (extScratch != null) {
-            memFree(extScratch);
-            extScratch = null;
-            extScratchAddress = 0;
-            extScratchCapacity = 0;
-        }
-        if (persistentBuffer != null) {
-            persistentBuffer.destroy();
-            persistentBuffer = null;
-        }
-        if (repackBuffer != null) {
-            memFree(repackBuffer);
-            repackBuffer = null;
-            repackAddress = 0;
-            repackCapacity = 0;
-        }
-        initialized = false;
-    }
 }

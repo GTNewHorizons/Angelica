@@ -98,6 +98,8 @@ public class CTMUtils {
         private final TileOverrideIterator.IJK ijkIterator = CTMUtils.newIJKIterator();
         private final TileOverrideIterator.Metadata metadataIterator = CTMUtils.newMetadataIterator();
         private final BlockOrientation renderBlockState = new BlockOrientation();
+        private IIcon originalIcon;
+        private IIcon replacementIcon;
         private final int texturePackChangeCounter;
 
         public StateAndIterator() {
@@ -240,28 +242,41 @@ public class CTMUtils {
         return local;
     }
 
+    private static boolean hasCandidates(Block block, IIcon icon) {
+        return (!overrides.block.isEmpty() && overrides.block.get(block) != null)
+            || (!overrides.tile.isEmpty() && overrides.tile.get(icon.getIconName()) != null);
+    }
+
     private static IIcon getBlockIconWithoutLock(IIcon icon, Block block, IBlockAccess blockAccess,
                                                  int x, int y, int z, int face) {
-        StateAndIterator local = getStateAndIterator();
         if (blockAccess != null && checkFace(face)) {
-            local.renderBlockState.setBlock(block, blockAccess, x, y, z);
-            local.renderBlockState.setFace(face);
-            TileOverride lastOverride = local.ijkIterator.go(local.renderBlockState, icon);
-            local.renderBlockState.blockAccess = null;
-            if (lastOverride != null) {
-                return skipDefaultRendering(block) ? RenderBlocksUtils.blankIcon : local.ijkIterator.getIcon();
+            if (!hasCandidates(block, icon)) {
+                clearCurrentCompact();
+            } else {
+                final StateAndIterator local = getStateAndIterator();
+                local.renderBlockState.setBlock(block, blockAccess, x, y, z);
+                local.renderBlockState.setFace(face);
+                TileOverride lastOverride = local.ijkIterator.go(local.renderBlockState, icon);
+                local.renderBlockState.blockAccess = null;
+                if (lastOverride != null) {
+                    return skipDefaultRendering(block) ? RenderBlocksUtils.blankIcon : local.ijkIterator.getIcon();
+                }
             }
         }
         return skipDefaultRendering(block) ? RenderBlocksUtils.blankIcon : icon;
     }
 
     private static IIcon getBlockIconWithoutLock(IIcon icon, Block block, int face, int metadata) {
-        StateAndIterator local = getStateAndIterator();
         if (checkFace(face) && checkRenderType(block)) {
-            local.renderBlockState.setBlockMetadata(block, metadata, face);
-            TileOverride lastOverride = local.metadataIterator.go(local.renderBlockState, icon);
-            if (lastOverride != null) {
-                return local.metadataIterator.getIcon();
+            if (!hasCandidates(block, icon)) {
+                clearCurrentCompact();
+            } else {
+                final StateAndIterator local = getStateAndIterator();
+                local.renderBlockState.setBlockMetadata(block, metadata, face);
+                TileOverride lastOverride = local.metadataIterator.go(local.renderBlockState, icon);
+                if (lastOverride != null) {
+                    return local.metadataIterator.getIcon();
+                }
             }
         }
         return icon;
@@ -279,6 +294,7 @@ public class CTMUtils {
                 lock.unlockRead(stamp);
             }
         }
+        rememberOriginalIcon(icon, value);
         return value;
     }
 
@@ -293,7 +309,20 @@ public class CTMUtils {
                 lock.unlockRead(stamp);
             }
         }
+        rememberOriginalIcon(icon, value);
         return value;
+    }
+
+    private static void rememberOriginalIcon(IIcon original, IIcon replacement) {
+        final StateAndIterator state = stateAndIterator.get();
+        state.originalIcon = original;
+        state.replacementIcon = replacement;
+    }
+
+    /** Retains grass overlay tint semantics when CTM substitutes another texture. */
+    public static IIcon getOriginalIcon(IIcon icon) {
+        final StateAndIterator state = stateAndIterator.get();
+        return state.replacementIcon == icon ? state.originalIcon : icon;
     }
 
     public static IIcon getBlockIcon(IIcon icon, Block block, int face) {
@@ -389,6 +418,7 @@ public class CTMUtils {
     }
 
     private static void setBlankResourceWithoutLock() {
+        if (tileLoader == null) return;
         RenderBlocksUtils.blankIcon = tileLoader.getIcon(RenderPassAPI.instance.getBlankResource());
     }
 

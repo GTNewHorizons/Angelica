@@ -1,6 +1,6 @@
 package net.coderbot.iris.rendertarget;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import net.coderbot.iris.gl.GlResource;
 import net.coderbot.iris.gl.texture.TextureUploadHelper;
@@ -36,6 +36,6 @@ public class SingleColorTexture extends GlResource {
 
 	@Override
 	protected void destroyInternal() {
-		GLStateManager.glDeleteTextures(getGlId());
+		GLSMTextures.glDeleteTextures(getGlId());
 	}
 }

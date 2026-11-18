@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import java.lang.reflect.Type;
 
 /**
- * Reads the modern {@code "mipmap_strategy"} key out of a sprite's {@code texture} mcmeta section.
+ * Reads modern mipmap settings from a sprite's {@code texture} mcmeta section.
  */
 @Mixin(TextureMetadataSectionSerializer.class)
 public class MixinTextureMetadataSectionSerializer {
@@ -23,13 +23,21 @@ public class MixinTextureMetadataSectionSerializer {
     @Inject(
         method = "deserialize(Lcom/google/gson/JsonElement;Ljava/lang/reflect/Type;Lcom/google/gson/JsonDeserializationContext;)Lnet/minecraft/client/resources/data/TextureMetadataSection;",
         at = @At("RETURN"))
-    private void angelica$readMipmapStrategy(JsonElement json, Type type, JsonDeserializationContext context,
+    private void angelica$readMipmapSettings(JsonElement json, Type type, JsonDeserializationContext context,
                                              CallbackInfoReturnable<TextureMetadataSection> cir) {
         final TextureMetadataSection section = cir.getReturnValue();
         if (section == null || !json.isJsonObject()) {
             return;
         }
         final JsonObject object = json.getAsJsonObject();
+        final TextureMetadataExtension extension = (TextureMetadataExtension) section;
+        final JsonElement biasValue = object.get("alpha_cutoff_bias");
+        if (biasValue != null && biasValue.isJsonPrimitive() && biasValue.getAsJsonPrimitive().isNumber()) {
+            final float parsed = biasValue.getAsFloat();
+            if (Float.isFinite(parsed)) {
+                extension.angelica$setAlphaCutoffBias(parsed);
+            }
+        }
         if (!object.has("mipmap_strategy")) {
             return;
         }
@@ -37,6 +45,6 @@ public class MixinTextureMetadataSectionSerializer {
         if (!value.isJsonPrimitive()) {
             return;
         }
-        ((TextureMetadataExtension) section).angelica$setMipmapStrategy(MipmapStrategy.byName(value.getAsString()));
+        extension.angelica$setMipmapStrategy(MipmapStrategy.byName(value.getAsString()));
     }
 }

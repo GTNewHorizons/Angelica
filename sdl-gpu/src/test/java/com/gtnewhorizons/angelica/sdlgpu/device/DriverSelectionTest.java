@@ -1,32 +1,36 @@
 package com.gtnewhorizons.angelica.sdlgpu.device;
 
 import org.junit.jupiter.api.Test;
+import org.lwjgl.system.Platform;
 
+import static com.gtnewhorizons.angelica.sdlgpu.device.Device.driverCandidates;
 import static com.gtnewhorizons.angelica.sdlgpu.device.Device.metalNeedsNewerSdl;
-import static com.gtnewhorizons.angelica.sdlgpu.device.Device.resolveDriverName;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.lwjgl.sdl.SDLVersion.SDL_VERSIONNUM;
 
 class DriverSelectionTest {
 
     @Test
-    void windowsWithoutUserHintForcesVulkan() {
-        assertEquals("vulkan", resolveDriverName("", true));
+    void autoUsesThePlatformOrder() {
+        assertArrayEquals(new String[] { "metal", "vulkan" }, driverCandidates("", Platform.MACOSX));
+        assertArrayEquals(new String[] { "vulkan", "direct3d12" }, driverCandidates("", Platform.WINDOWS));
+        assertArrayEquals(new String[] { "vulkan" }, driverCandidates("", Platform.LINUX));
     }
 
     @Test
-    void userHintWinsOnWindows() {
-        assertNull(resolveDriverName("direct3d12", true));
-        assertNull(resolveDriverName("vulkan", true));
+    void requestedDriverGoesFirstWithoutDuplicates() {
+        assertArrayEquals(new String[] { "vulkan", "metal" }, driverCandidates("vulkan", Platform.MACOSX));
+        assertArrayEquals(new String[] { "direct3d12", "vulkan" }, driverCandidates("direct3d12", Platform.WINDOWS));
+        assertArrayEquals(new String[] { "vulkan" }, driverCandidates("vulkan", Platform.LINUX));
+        assertArrayEquals(new String[] { "Vulkan", "direct3d12" }, driverCandidates("Vulkan", Platform.WINDOWS));
     }
 
     @Test
-    void nonWindowsIsUntouched() {
-        assertNull(resolveDriverName("", false));
-        assertNull(resolveDriverName("direct3d12", false));
+    void unsupportedDriverStillFallsBack() {
+        assertArrayEquals(new String[] { "metal", "vulkan", "direct3d12" }, driverCandidates("metal", Platform.WINDOWS));
+        assertArrayEquals(new String[] { "bogus", "vulkan" }, driverCandidates("bogus", Platform.LINUX));
     }
 
     @Test

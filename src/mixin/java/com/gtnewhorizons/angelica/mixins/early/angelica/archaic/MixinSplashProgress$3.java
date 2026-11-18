@@ -18,12 +18,12 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glDisable;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glEnable;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glPopMatrix;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glPushMatrix;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glScalef;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glTranslatef;
+import static com.gtnewhorizons.angelica.glsm.GLSMEnable.glDisable;
+import static com.gtnewhorizons.angelica.glsm.GLSMEnable.glEnable;
+import static com.gtnewhorizons.angelica.glsm.GLSMMatrices.glPopMatrix;
+import static com.gtnewhorizons.angelica.glsm.GLSMMatrices.glPushMatrix;
+import static com.gtnewhorizons.angelica.glsm.GLSMMatrices.glScalef;
+import static com.gtnewhorizons.angelica.glsm.GLSMMatrices.glTranslatef;
 import static org.lwjgl.opengl.GL11.GL_TEXTURE_2D;
 
 @SuppressWarnings("deprecation")

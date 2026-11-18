@@ -1,6 +1,9 @@
 package net.coderbot.iris.uniforms;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMFog;
+import com.gtnewhorizons.angelica.glsm.ffp.WeatherParams;
 import net.coderbot.iris.gl.state.FogMode;
 import net.coderbot.iris.gl.state.StateUpdateNotifiers;
 import net.coderbot.iris.gl.uniform.DynamicUniformHolder;
@@ -19,35 +22,51 @@ public class IrisInternalUniforms {
 
     private static Vector4f getColorModulator() {
         return COLOR_MODULATOR.set(
-            GLStateManager.getShaderColorR(),
-            GLStateManager.getShaderColorG(),
-            GLStateManager.getShaderColorB(),
-            GLStateManager.getShaderColorA());
+            GLSMCurrentAttribs.getShaderColorR(),
+            GLSMCurrentAttribs.getShaderColorG(),
+            GLSMCurrentAttribs.getShaderColorB(),
+            GLSMCurrentAttribs.getShaderColorA());
     }
 
     private static float getEffectiveAlphaRef() {
-        if (!GLStateManager.getAlphaTest().isEnabled() || GLStateManager.getAlphaState().getFunction() == GL11.GL_ALWAYS) {
+        if (!GLSMDepthStencilAlpha.getAlphaTest().isEnabled() || GLSMDepthStencilAlpha.getAlphaState().getFunction() == GL11.GL_ALWAYS) {
             return -1.0f;
         }
-        return GLStateManager.getAlphaState().getReference();
+        return GLSMDepthStencilAlpha.getAlphaState().getReference();
     }
 
     private static int getEffectiveAlphaFunc() {
-        if (!GLStateManager.getAlphaTest().isEnabled()) return 7;
-        final int func = GLStateManager.getAlphaState().getFunction();
+        if (!GLSMDepthStencilAlpha.getAlphaTest().isEnabled()) return 7;
+        final int func = GLSMDepthStencilAlpha.getAlphaState().getFunction();
         return func & 0x7;
+    }
+
+    private static final Vector4f WEATHER_0 = new Vector4f();
+    private static final Vector4f WEATHER_1 = new Vector4f();
+    private static final Vector4f WEATHER_2 = new Vector4f();
+    private static final Vector4f WEATHER_3 = new Vector4f();
+
+    public static void addWeatherUniforms(DynamicUniformHolder uniforms) {
+        uniforms.uniform4f(PER_FRAME, "iris_WeatherParams0", () -> WEATHER_0.set(
+            WeatherParams.translateX, WeatherParams.translateY, WeatherParams.translateZ, WeatherParams.invRadius));
+        uniforms.uniform4f(PER_FRAME, "iris_WeatherParams1", () -> WEATHER_1.set(
+            WeatherParams.cameraFracX, WeatherParams.cameraFracZ, WeatherParams.partialTicks, WeatherParams.age));
+        uniforms.uniform4f(PER_FRAME, "iris_WeatherParams2", () -> WEATHER_2.set(
+            WeatherParams.vanillaTick, WeatherParams.providerTick, WeatherParams.rainStrength, WeatherParams.providerAge));
+        uniforms.uniform4f(PER_FRAME, "iris_WeatherParams3", () -> WEATHER_3.set(
+            WeatherParams.providerInvRadius, 0.0f, 0.0f, 0.0f));
     }
 
     public static void addFogUniforms(DynamicUniformHolder uniforms, FogMode fogMode) {
         uniforms.uniform4f(PER_FRAME, "iris_FogColor", () -> {
-            final Vector3d color = GLStateManager.getFogState().getFogColor();
-            return FOG_COLOR.set((float) color.x, (float) color.y, (float) color.z, GLStateManager.getFogState().getFogAlpha());
+            final Vector3d color = GLSMFog.getFogState().getFogColor();
+            return FOG_COLOR.set((float) color.x, (float) color.y, (float) color.z, GLSMFog.getFogState().getFogAlpha());
         });
 
         uniforms
-            .uniform1f(PER_FRAME, "iris_FogStart", () -> GLStateManager.getFogState().getStart())
-            .uniform1f(PER_FRAME, "iris_FogEnd", () -> GLStateManager.getFogState().getEnd())
-            .uniform1f(PER_FRAME, "iris_FogDensity", () -> Math.max(0.0F, GLStateManager.getFogState().getDensity()));
+            .uniform1f(PER_FRAME, "iris_FogStart", () -> GLSMFog.getFogState().getStart())
+            .uniform1f(PER_FRAME, "iris_FogEnd", () -> GLSMFog.getFogState().getEnd())
+            .uniform1f(PER_FRAME, "iris_FogDensity", () -> Math.max(0.0F, GLSMFog.getFogState().getDensity()));
 
         uniforms
             .uniform1f("iris_currentAlphaTest", IrisInternalUniforms::getEffectiveAlphaRef, StateUpdateNotifiers.alphaTestNotifier)

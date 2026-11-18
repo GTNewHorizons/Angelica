@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.stacks;
 
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
@@ -9,7 +10,7 @@ import org.lwjgl.opengl.GL13;
  * BooleanStateStack for per-texture-unit state.
  * Switches to correct unit (raw GL) before enable/disable calls.
  */
-public class TextureUnitBooleanStateStack extends BooleanStateStack {
+public final class TextureUnitBooleanStateStack extends BooleanStateStack {
     private final int unitIndex;
 
     public TextureUnitBooleanStateStack(int glCap, int unitIndex) {
@@ -24,17 +25,17 @@ public class TextureUnitBooleanStateStack extends BooleanStateStack {
 
     @Override
     public void setEnabled(boolean enabled) {
-        beforeModify();
+        GLStateManager.recordExitCapability(cowDepths().owner, glCap, unitIndex);
+        if (!GLStateManager.isCachingEnabled() || enabled != this.enabled) {
+            GLStateManager.beforeUncapturedTextureUnitChange(glCap, unitIndex);
+            beforeModify();
+        }
         setEnabledWithUnitSwitch(enabled);
     }
 
     @Override
-    public TextureUnitBooleanStateStack popDepth() {
-        if (savedDepth > 0) {
-            final boolean oldValue = stack[--savedDepth];
-            setEnabledWithUnitSwitch(oldValue);
-        }
-        return this;
+    public void restoreSlot(int slot) {
+        setEnabledWithUnitSwitch(stack[slot]);
     }
 
     private void setEnabledWithUnitSwitch(boolean enabled) {
@@ -50,7 +51,7 @@ public class TextureUnitBooleanStateStack extends BooleanStateStack {
             }
 
             if (!ffpStateOnly) {
-                final int currentUnit = GLStateManager.getActiveTextureUnit();
+                final int currentUnit = GLSMTextures.getActiveTextureUnit();
                 final boolean needsSwitch = currentUnit != unitIndex;
 
                 if (needsSwitch) BackendManager.RENDER_BACKEND.activeTexture(GL13.GL_TEXTURE0 + unitIndex);

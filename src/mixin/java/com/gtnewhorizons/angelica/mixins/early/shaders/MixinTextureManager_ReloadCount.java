@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.texture.format.TextureFormatLoader;
+import net.coderbot.iris.texture.pbr.PBRResourceIndex;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.minecraft.client.renderer.texture.TextureManager;
@@ -25,6 +26,7 @@ public class MixinTextureManager_ReloadCount {
             Iris.logger.error("Failed to reload the shader pipeline for a texture format change", e);
         }
         PBRTextureManager.INSTANCE.clear();
+        PBRResourceIndex.start(resourceManager);
         CapturedRenderingState.INSTANCE.incrementTextureReloadCount();
     }
 }

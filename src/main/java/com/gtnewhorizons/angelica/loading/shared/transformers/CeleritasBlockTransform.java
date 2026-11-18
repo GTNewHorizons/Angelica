@@ -43,6 +43,7 @@ public final class CeleritasBlockTransform implements Opcodes {
     // Block subclass owners we shouldn't redirect because they shadow some fields we want to redirect
     private final Set<String> blockSubclassExclusions = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final ClassConstantPoolParser cstPoolParser;
+    private final String[] constantPoolSearchStrings;
 
     public CeleritasBlockTransform(boolean isObf) {
         final List<Pair<String, String>> mappings = ImmutableList.of(
@@ -58,7 +59,12 @@ public final class CeleritasBlockTransform implements Opcodes {
             this.fieldNameToRedirect.put(name, pair.getLeft());
         }
 
-        this.cstPoolParser = new ClassConstantPoolParser(this.fieldNameToRedirect.keySet().toArray(new String[0]));
+        this.constantPoolSearchStrings = this.fieldNameToRedirect.keySet().toArray(new String[0]);
+        this.cstPoolParser = new ClassConstantPoolParser(this.constantPoolSearchStrings);
+    }
+
+    public String[] getConstantPoolSearchStrings() {
+        return constantPoolSearchStrings.clone();
     }
 
     private boolean isVanillaBlockSubclass(String className) {
@@ -74,7 +80,7 @@ public final class CeleritasBlockTransform implements Opcodes {
     }
 
     private boolean isBlockSubclass(String className) {
-        return isVanillaBlockSubclass(className) || moddedBlockSubclasses.contains(className);
+        return className != null && (isVanillaBlockSubclass(className) || moddedBlockSubclasses.contains(className));
     }
 
     // This method needs to be called for every class, including the ones we don't want to transform.

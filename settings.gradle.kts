@@ -20,8 +20,10 @@ plugins {
 }
 
 apply(from = file("gradle/lwjgl-natives.settings.gradle.kts"))
+apply(from = file("experimental-surround/surround.settings.gradle.kts"))
 
 include("glsm")
 include("lwjgl3-backend")
 include("tracy-client")
+include("moltenvk")
 include("sdl-gpu")

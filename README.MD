@@ -2,31 +2,59 @@
 
 <sup>**[CurseForge](https://www.curseforge.com/minecraft/mc-mods/angelica) | [Modrinth](https://modrinth.com/mod/angelica)**</sup>
 
-🌐 **Languages:** [English](README.MD) | [Українська](README_uk.MD)
-
 * The little Angle [sic] that supports shaders while saving your fps from a certain death -boubou
 * Is it obtuse, or accute? -Caedis
 * It's a cute angle -mitchej123
 * It's the angel that pulls you out of OptiFine's hell -Roadhog360
 
-## **Beta Quality - Here there be Dragons**
-* Shaders - Beta
+## What's in it
+* Shaders - Iris backport & enhancements
+* Terrain - Celeritas 2.5.12 with threaded chunk building and translucency sorting
+* GL 3.3 core profile with Java based fixed function pipeline emulation
+* Renderer selection - OpenGL, or SDL GPU for Vulkan/Metal/Direct3D 12
+* Batching and instancing for entities, tile entities, items, particles and weather
+* Dynamic lights
+* HUD caching
+* Custom fonts and text effects
+* MCPatcher - connected textures, custom item textures, custom colors, random mobs, better skies
+* Bundled NotFine, zoom, FPS reducer
+
+## Status
+* OpenGL + Celeritas terrain - Default
+* Shaders - Generally Available
    * Complementary + Euphoria Patches is the primary compatibility target
    * Sildurs, Seus, and any other shaders might work
+* SDL GPU renderer - Experimental
+* MCPatcher features - Alpha
+* HUD caching - Semi-stable
+
+## SDL GPU renderer
+Optional, OpenGL is the default
+* Vulkan, Metal (macOS) and Direct3D 12 (Windows) through SDL3
+* Needs [LWJGL3ify](https://github.com/GTNewHorizons/lwjgl3ify/releases/) 3.0.25+
+* Falls back to OpenGL when no device can be created
+* Vulkan on macOS via MoltenVK from the optional `angelica-moltenvk` jar
 
 ## Core Profile
 Targets GL 3.3+ core profile
 * FFP emulation via generated GLSL shaders
 * Display list emulation
 * Software matrix stacks and state management through GLSM
-* GL_QUADS → GL_TRIANGLES conversion
+* GL_QUADS -> GL_TRIANGLES conversion
 * Automatic transformation of mod shaders that use compat-only GLSL builtins (`gl_ModelViewMatrix`, `texture2D`, etc.)
 
 
 # Required Dependencies
 * [UniMixins](https://github.com/LegacyModdingMC/UniMixins/releases) >= 0.1.23
 * [GTNHLib](https://github.com/GTNewHorizons/GTNHLib/releases) >= 0.11.19
-* NOTE: Some mods are not required, but a specific version is required if present - see: `Permanent Incompatibilities` below.
+* NOTE: Some mods are not required, but a specific version is required if present - see: `Minimum versions` below.
+
+# Minimum versions (if present)
+* [LWJGL3ify](https://github.com/GTNewHorizons/lwjgl3ify/releases/) 1.5.3+ (3.0.25+ for the SDL GPU renderer)
+* [Hodgepodge](https://github.com/GTNewHorizons/Hodgepodge/releases) 2.4.4+
+* [ArchaicFix](https://www.curseforge.com/minecraft/mc-mods/archaicfix/files/all?page=1&pageSize=20) 0.7.0+
+* [CodeChickenCore](https://github.com/GTNewHorizons/CodeChickenCore/releases) 1.2.0+ - Threading issues below that
+* [Amazing Trophies](https://github.com/GTNewHorizons/Amazing-Trophies/releases) 1.2.2+
 
 # Known (temporary) Incompatibilities
 * Forge Relocation - Currently non Thread Safe; safe if not in use
@@ -45,14 +73,14 @@ Targets GL 3.3+ core profile
 * FastCraft [Disabled, won't fix]
 * BetterFPS [Disabled, won't fix]
 * OptimizationsAndTweaks [Disabled, won't fix]
-* [Amazing Trophies 1.2.1 and below](https://github.com/GTNewHorizons/Amazing-Trophies/releases) - Use 1.2.2+
-* [LWJGL3ify 1.5.4 and below](https://github.com/GTNewHorizons/lwjgl3ify/releases/) - Use the latest version available, 1.5.7+
-* [ArchaicFix 0.6.2 and below](https://www.curseforge.com/minecraft/mc-mods/archaicfix/files/all?page=1&pageSize=20) - Use 0.7.0 or above
-* [Hodgepodge 2.4.3 and below](https://github.com/GTNewHorizons/Hodgepodge/releases) - Use 2.4.5 or above
-* CodeChicken[Core](https://github.com/GTNewHorizons/CodeChickenCore/releases)/[Lib](https://github.com/GTNewHorizons/CodeChickenLib/releases) <1.2.0 - Threading issues, use 1.3.0+
 * Neodymium - Untested, but unlikely to be compatible. (Chunk Meshing is definitely incompatible, other features might work depending on config)
 * SmoothFont - Equivalent functionality added
 * ClientFixer - Use a resource pack like [GTNH-FTI-Standard-Font](https://github.com/Eldrinn-Elantey/GTNH-FTI-Standard-Font)
+
+# Building
+* `./gradlew build`, `./gradlew test`
+* Subprojects: `glsm` (state manager, FFP emulation, backends), `lwjgl3-backend`, `sdl-gpu`, `tracy-client`, `moltenvk`
+* Read the [AI policy](AI_POLICY.md) before opening a PR
 
 # Credits
 * ShadersMod
@@ -96,7 +124,7 @@ Targets GL 3.3+ core profile
   * FalsePattern for [FalseTweaks](https://github.com/falsepattern/falsetweaks) - Item Rendering Optimizations taken from FalseTweaks under the LGPL 3.0 license
 * Beddium
   * Venn and Falsepattern for [Beddium](https://github.com/vfx-dev/Beddium) - MinimapRenderer, SafeChunkTracker, and some debug commands adapted under the LGPL 3.0 License
-* [Mesa](https://gitlab.freedesktop.org/mesa/mesa) — Code ported and/or inspired from Mesa - under the MIT licensed
+* [Mesa](https://gitlab.freedesktop.org/mesa/mesa) - Code ported and/or inspired from Mesa - under the MIT license
   * Display list ID allocator ported from [util_idalloc](https://gitlab.freedesktop.org/mesa/mesa/-/blob/main/src/util/u_idalloc.c) (Copyright 2017 Valve Corporation)
   * FFP vertex shader generation inspired by ffvertex_prog.c (Copyright 2007 VMware, Inc.)
   * FFP fragment shader generation inspired by ff_fragment_shader.c (Copyright 2007, 2009 VMware, Inc. / 2010-2011 Intel Corporation)

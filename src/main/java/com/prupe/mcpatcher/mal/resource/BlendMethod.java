@@ -7,7 +7,9 @@ import net.minecraft.util.ResourceLocation;
 
 import org.lwjgl.opengl.GL11;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
 import com.prupe.mcpatcher.MCPatcherUtils;
 
 public class BlendMethod {
@@ -156,38 +158,38 @@ public class BlendMethod {
 
     public void applyFade(float fade) {
         if (fadeRGB && fadeAlpha) {
-            GLStateManager.glColor4f(fade, fade, fade, fade);
+            GLSMCurrentAttribs.glColor4f(fade, fade, fade, fade);
         } else if (fadeRGB) {
-            GLStateManager.glColor4f(fade, fade, fade, 1.0f);
+            GLSMCurrentAttribs.glColor4f(fade, fade, fade, 1.0f);
         } else if (fadeAlpha) {
-            GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, fade);
+            GLSMCurrentAttribs.glColor4f(1.0f, 1.0f, 1.0f, fade);
         }
     }
 
     public void applyAlphaTest() {
         if (blend) {
-            GLStateManager.glDisable(GL11.GL_ALPHA_TEST);
+            GLSMEnable.glDisable(GL11.GL_ALPHA_TEST);
         } else {
-            GLStateManager.glEnable(GL11.GL_ALPHA_TEST);
-            GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.01f);
+            GLSMEnable.glEnable(GL11.GL_ALPHA_TEST);
+            GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, 0.01f);
         }
     }
 
     public void applyDepthFunc() {
         if (blend) {
-            GLStateManager.glDepthFunc(GL11.GL_EQUAL);
+            GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_EQUAL);
         } else {
-            GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
-            GLStateManager.glDepthMask(true);
+            GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_LEQUAL);
+            GLSMDepthStencilAlpha.glDepthMask(true);
         }
     }
 
     public void applyBlending() {
         if (blend) {
-            GLStateManager.glEnable(GL11.GL_BLEND);
+            GLSMEnable.glEnable(GL11.GL_BLEND);
             GLAPI.glBlendFuncSeparate(srcBlend, dstBlend, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
         } else {
-            GLStateManager.glDisable(GL11.GL_BLEND);
+            GLSMEnable.glDisable(GL11.GL_BLEND);
         }
     }
 

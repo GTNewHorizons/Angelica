@@ -6,11 +6,20 @@ import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLDebug;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.profiling.RenderClassTimings;
+import com.gtnewhorizons.angelica.rendering.tesr.EntityShadowReplay;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
+import com.gtnewhorizons.angelica.rendering.tesr.PendingTesrDraws;
+import com.gtnewhorizons.angelica.rendering.tesr.SectionBuiltBlockEntity;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
+import com.gtnewhorizons.angelica.rendering.tesr.TileEntityLight;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.rendering.PlayerReflectionCapture;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
@@ -53,6 +62,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.profiler.Profiler;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.world.World;
 import org.embeddedt.embeddium.impl.render.viewport.Viewport;
 import org.embeddedt.embeddium.impl.render.viewport.ViewportProvider;
 import org.joml.Matrix4f;
@@ -81,6 +91,7 @@ public class ShadowRenderer {
 	private static final Tracy.ZoneId Z_SHADOW_FRUSTUM = Tracy.zoneId("shadowFrustum", Tracy.COLOR_IRIS);
 	private static final Tracy.ZoneId Z_SHADOW_VIEWPORT = Tracy.zoneId("shadowViewport", Tracy.COLOR_IRIS);
 	private static final Tracy.ZoneId Z_SHADOW_MODEL_PARTS = Tracy.zoneId("shadowModelParts", Tracy.COLOR_IRIS);
+	private static final Tracy.ZoneId Z_SHADOW_GRAPH_JOIN = Tracy.zoneId("shadowGraphJoin", Tracy.COLOR_IRIS);
 
 	public static final Matrix4f MODELVIEW = new Matrix4f();
     public static final FloatBuffer MODELVIEW_BUFFER = BufferUtils.createFloatBuffer(16);
@@ -114,6 +125,7 @@ public class ShadowRenderer {
 	private final boolean shouldRenderEntities;
 	private final boolean shouldRenderPlayer;
 	private final boolean shouldRenderBlockEntities;
+	private final boolean shouldRenderLightBlockEntities;
 	private final float sunPathRotation;
 	private final List<MipmapPass> mipmapPasses = new ArrayList<>();
 	private final String debugStringOverall;
@@ -171,10 +183,9 @@ public class ShadowRenderer {
 	private final FrustumCaches entityFrustumCaches = new FrustumCaches();
 	private float lastGraphShadowAngle = Float.NaN;
 	private float relayShadowAngle = Float.NaN;
-	private FrustumHolder preSubmitFrustumHolder = new FrustumHolder("preSubmit");
-	private final FrustumCaches preSubmitFrustumCaches = new FrustumCaches();
-	private boolean preSubmitActive;
-	private float preSubmittedShadowAngle = Float.NaN;
+	/** A shadow search was submitted by the last shadow pass; with async occlusion its lists are published by this pass's join. */
+	private boolean shadowSearchPending;
+	private float searchedShadowAngle = Float.NaN;
 
 	private float shadowAngleDelta() {
 		final Vector4f light = celestialUniforms.getShadowLightPositionInWorldSpace();
@@ -185,25 +196,6 @@ public class ShadowRenderer {
 			AngelicaConfig.shadowGraphHorizonScale);
 	}
 
-	public void preSubmitGraphUpdate(int frame) {
-		final AngelicaRenderSectionManager rsm = CeleritasWorldRenderer.getInstance().getRenderSectionManager();
-		final float currentShadowAngle = getShadowAngle();
-		if (ShadowGraphGate.shouldMarkDirty(lastGraphShadowAngle, currentShadowAngle, shadowAngleDelta())) {
-			rsm.markShadowGraphDirty();
-			lastGraphShadowAngle = currentShadowAngle;
-		}
-		if (!rsm.canSubmitShadowGraphSearch()) return;
-
-		preSubmitFrustumHolder = createShadowFrustum(renderDistanceMultiplier, preSubmitFrustumHolder, preSubmitFrustumCaches);
-		if (!(preSubmitFrustumHolder.getFrustum() instanceof ViewportProvider provider)) return;
-		final Vector3d entityPos = Camera.INSTANCE.getEntityPos();
-		preSubmitFrustumHolder.getFrustum().setPosition(entityPos.x, entityPos.y, entityPos.z);
-
-		if (rsm.submitShadowGraphSearch(provider.sodium$createViewport(), frame)) {
-			preSubmittedShadowAngle = lastGraphShadowAngle;
-			preSubmitActive = true;
-		}
-	}
 	private long lastRelayNanos;
 	private final Vector3f shadowLightVectorCache = new Vector3f();
 	private final MemoizedBoxCuller tileEntityCuller = new MemoizedBoxCuller();
@@ -232,6 +224,7 @@ public class ShadowRenderer {
 		this.shouldRenderEntities = shadowDirectives.shouldRenderEntities();
 		this.shouldRenderPlayer = shadowDirectives.shouldRenderPlayer();
 		this.shouldRenderBlockEntities = shadowDirectives.shouldRenderBlockEntities();
+		this.shouldRenderLightBlockEntities = shadowDirectives.shouldRenderLightBlockEntities();
 		this.shouldRenderDH = shadowDirectives.isDhShadowEnabled().orElse(false);
 		this.packUsesShadowtex1 = packUsesShadowtex1;
 
@@ -341,7 +334,7 @@ public class ShadowRenderer {
 		final ImmutableList<PackShadowDirectives.SamplingSettings> colorSamplingSettings =
 			shadowDirectives.getColorSamplingSettings();
 
-		GLStateManager.glActiveTexture(GL13.GL_TEXTURE4);
+		GLSMTextures.glActiveTexture(GL13.GL_TEXTURE4);
 
 		configureDepthSampler(targets.getDepthTexture().getTextureId(), depthSamplingSettings.get(0));
 
@@ -354,7 +347,7 @@ public class ShadowRenderer {
 			configureSampler(glTextureId, colorSamplingSettings.get(i));
 		}
 
-		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+		GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
 	}
 
     private final IntBuffer swizzleBuf = BufferUtils.createIntBuffer(4);
@@ -391,13 +384,13 @@ public class ShadowRenderer {
 	}
 
 	private void generateMipmaps() {
-		GLStateManager.glActiveTexture(GL13.GL_TEXTURE4);
+		GLSMTextures.glActiveTexture(GL13.GL_TEXTURE4);
 
 		for (MipmapPass mipmapPass : mipmapPasses) {
 			setupMipmappingForTexture(mipmapPass.getTexture(), mipmapPass.getTargetFilteringMode());
 		}
 
-		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+		GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
 	}
 
 	private void setupMipmappingForTexture(int texture, int filteringMode) {
@@ -532,7 +525,7 @@ public class ShadowRenderer {
 	}
 
 	private void setupGlState(Matrix4f projMatrix) {
-		GLStateManager.glViewport(0, 0, resolution, resolution);
+		GLSMRasterizer.glViewport(0, 0, resolution, resolution);
 
 		// Set up our projection matrix and load it into the legacy matrix stack
 		RenderSystem.setupProjectionMatrix(projMatrix);
@@ -544,23 +537,23 @@ public class ShadowRenderer {
 		// However, it only partially resolves issues of light leaking into caves.
 		//
 		// TODO: Better way of preventing light from leaking into places where it shouldn't
-		GLStateManager.disableCull();
+		GLSMRasterizer.disableCull();
 	}
 
 	private void restoreGlState() {
 		// Restore backface culling
-        GLStateManager.enableCull();
+        GLSMRasterizer.enableCull();
 
 		// Make sure to unload the projection matrix
 		RenderSystem.restoreProjectionMatrix();
 
-		GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
-		GLStateManager.glClearDepth(1.0);
+		GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_LEQUAL);
+		GLSMDepthStencilAlpha.glClearDepth(1.0);
 
 		// Restore main framebuffer and viewport
 		Minecraft mc = Minecraft.getMinecraft();
 		mc.getFramebuffer().bindFramebuffer(false);
-		GLStateManager.glViewport(0, 0, mc.displayWidth, mc.displayHeight);
+		GLSMRasterizer.glViewport(0, 0, mc.displayWidth, mc.displayHeight);
 	}
 
 	private void copyPreTranslucentDepth() {
@@ -603,9 +596,12 @@ public class ShadowRenderer {
 			}
 			for (Entity entity : renderedEntitiesList) {
 				final long start = Tracy.ENABLED ? System.nanoTime() : 0L;
+				final boolean recording = AngelicaConfig.entityShadowReplayEnabled() && EntityShadowReplay.beginEntity(entity, tickDelta);
+				boolean completed = false;
 				try {
-					RenderManager.instance.renderEntitySimple(entity, tickDelta);
+					completed = RenderManager.instance.renderEntitySimple(entity, tickDelta);
 				} finally {
+					if (recording) EntityShadowReplay.endEntity(completed);
 					if (Tracy.ENABLED) RenderClassTimings.SHADOW_ENTITY.add(entity.getClass(), System.nanoTime() - start);
 				}
 			}
@@ -672,7 +668,7 @@ public class ShadowRenderer {
 		}
 
 		// Reset viewport in case terrain rendering changed it
-		GLStateManager.glViewport(0, 0, resolution, resolution);
+		GLSMRasterizer.glViewport(0, 0, resolution, resolution);
 	}
 
 	// Saved RenderManager position for shadow pass
@@ -681,16 +677,10 @@ public class ShadowRenderer {
     /** Flushes deferred shadow-pass geometry while GL_POLYGON_OFFSET_FILL is still enabled. */
     private static void flushShadowModelParts() {
         if (Tracy.ENABLED) Tracy.beginZone(Z_SHADOW_MODEL_PARTS);
-        final boolean alphaEnabled = GLStateManager.getAlphaTest().isEnabled();
-        final int alphaFunc = GLStateManager.getAlphaState().getFunction();
-        final float alphaRef = GLStateManager.getAlphaState().getReference();
         try {
             ModelPartBatcher.INSTANCE.flush();
             PlayerReflectionCapture.flush();
         } finally {
-            if (alphaEnabled) GLStateManager.enableAlphaTest();
-            else GLStateManager.disableAlphaTest();
-            GLStateManager.glAlphaFunc(alphaFunc, alphaRef);
             if (Tracy.ENABLED) Tracy.endZone();
         }
     }
@@ -704,20 +694,20 @@ public class ShadowRenderer {
         RenderManager.renderPosY = cameraY;
         RenderManager.renderPosZ = cameraZ;
 
-        GLStateManager.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
-        GLStateManager.glPolygonOffset(1.0f, 1.0f);
+        GLSMEnable.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
+        GLSMRasterizer.glPolygonOffset(1.0f, 1.0f);
 
-        GLStateManager.glPushMatrix();
+        GLSMMatrices.glPushMatrix();
         MODELVIEW_BUFFER.clear().rewind();
         modelView.peek().getModel().get(MODELVIEW_BUFFER);
-        GLStateManager.glLoadMatrix(MODELVIEW_BUFFER);
+        GLSMMatrices.glLoadMatrix(MODELVIEW_BUFFER);
     }
 
     private void teardownEntityShadowState() {
-        GLStateManager.glPopMatrix();
+        GLSMMatrices.glPopMatrix();
 
-        GLStateManager.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
-        GLStateManager.glPolygonOffset(0.0f, 0.0f);
+        GLSMEnable.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
+        GLSMRasterizer.glPolygonOffset(0.0f, 0.0f);
 
         RenderManager.renderPosX = savedRenderPosX;
         RenderManager.renderPosY = savedRenderPosY;
@@ -792,9 +782,15 @@ public class ShadowRenderer {
                 }
             }
         }
-        int brightness = tile.getWorldObj().getLightBrightnessForSkyBlocks(tile.xCoord, tile.yCoord, tile.zCoord, 0);
-        GLStateManager.setLightmapTextureCoords(GL13.GL_TEXTURE1, (float) brightness % 65536, (float) brightness / 65536);
-        GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        if (tile instanceof SectionBuiltBlockEntity built && built.angelica$drawBuilt(
+            (double) tile.xCoord - cameraX, (double) tile.yCoord - cameraY, (double) tile.zCoord - cameraZ)) {
+            return;
+        }
+        final World world = tile.getWorldObj();
+        int brightness = TileEntityLight.packedLight(world, tile.xCoord, tile.yCoord, tile.zCoord, world.getLightBrightnessForSkyBlocks(tile.xCoord, tile.yCoord, tile.zCoord, 0));
+        PendingTesrDraws.beforeTileEntity(tile);
+        GLSMCurrentAttribs.setLightmapTextureCoords(GL13.GL_TEXTURE1, (float) brightness % 65536, (float) brightness / 65536);
+        GLSMCurrentAttribs.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
         TileEntityRendererDispatcher.instance.renderTileEntityAt(tile,
             (double)tile.xCoord - cameraX,
             (double)tile.yCoord - cameraY,
@@ -803,7 +799,11 @@ public class ShadowRenderer {
         );
     }
 
-	private void renderTileEntities(Object bufferSource, MatrixStack modelView, double cameraX, double cameraY, double cameraZ, float partialTicks, boolean hasEntityFrustum) {
+	private static boolean emitsLight(TileEntity tile) {
+		return tile.getBlockType().getLightValue(tile.getWorldObj(), tile.xCoord, tile.yCoord, tile.zCoord) > 0;
+	}
+
+	private void renderTileEntities(Object bufferSource, MatrixStack modelView, double cameraX, double cameraY, double cameraZ, float partialTicks, boolean hasEntityFrustum, boolean lightsOnly) {
 		profiler.startSection("iris_shadow_build_blockentities");
 
 		int shadowTileEntities = 0;
@@ -814,22 +814,26 @@ public class ShadowRenderer {
 			culler.setPosition(cameraX, cameraY, cameraZ);
 		}
 
-        GLStateManager.glPushMatrix();
+        GLSMMatrices.glPushMatrix();
         MODELVIEW_BUFFER.clear().rewind();
         modelView.peek().getModel().get(MODELVIEW_BUFFER);
-        GLStateManager.glLoadMatrix(MODELVIEW_BUFFER);
+        GLSMMatrices.glLoadMatrix(MODELVIEW_BUFFER);
 
         TesrBatchRenderer.INSTANCE.beginPass(TesrBatchRenderer.PASS_SHADOW, modelView.peek().getModel(), cameraX, cameraY, cameraZ);
 
         GbufferPrograms.beginBlockEntities();
         GbufferPrograms.setBlockEntityDefaults();
         ModelPartBatcher.INSTANCE.begin(ModelPartBatcher.Mode.BLOCK_ENTITIES, true);
+        PendingTesrDraws.beginPass();
 
 		for (int b = 0, bn = visibleTileEntities.size(); b < bn; b++) {
 			final List<TileEntity> bucket = visibleTileEntities.get(b);
 			for (int i = 0, n = bucket.size(); i < n; i++) {
 				final TileEntity tileEntity = bucket.get(i);
 				if (hasEntityFrustum && (culler.isCulled(tileEntity.xCoord - 1, tileEntity.yCoord - 1, tileEntity.zCoord - 1, tileEntity.xCoord + 1, tileEntity.yCoord + 1, tileEntity.zCoord + 1))) {
+					continue;
+				}
+				if (lightsOnly && !emitsLight(tileEntity)) {
 					continue;
 				}
 				renderTileEntity(tileEntity, cameraX, cameraY, cameraZ, partialTicks);
@@ -844,17 +848,21 @@ public class ShadowRenderer {
 				if (hasEntityFrustum && (culler.isCulled(tileEntity.xCoord - 1, tileEntity.yCoord - 1, tileEntity.zCoord - 1, tileEntity.xCoord + 1, tileEntity.yCoord + 1, tileEntity.zCoord + 1))) {
 					continue;
 				}
+				if (lightsOnly && !emitsLight(tileEntity)) {
+					continue;
+				}
 				renderTileEntity(tileEntity, cameraX, cameraY, cameraZ, partialTicks);
 
 				shadowTileEntities++;
 			}
 		}
 
+        PendingTesrDraws.endPass();
         flushShadowModelParts();
         TesrBatchRenderer.INSTANCE.flush();
 
         GbufferPrograms.endBlockEntities();
-        GLStateManager.glPopMatrix();
+        GLSMMatrices.glPopMatrix();
 
 		renderedShadowTileEntities = shadowTileEntities;
 
@@ -870,8 +878,20 @@ public class ShadowRenderer {
 		this.profiler = Minecraft.getMinecraft().mcProfiler;
 
 		profiler.endStartSection("iris_shadows");
+
+		final AngelicaRenderSectionManager rsm = CeleritasWorldRenderer.getInstance().getRenderSectionManager();
+		// The in-flight shadow search reads terrainFrustumHolder's frustum, which createShadowFrustum re-inits below.
+		if (Tracy.ENABLED) Tracy.beginZone(Z_SHADOW_GRAPH_JOIN);
+		try {
+			rsm.finishAllGraphUpdates();
+		} finally {
+			if (Tracy.ENABLED) Tracy.endZone();
+		}
+
 		ACTIVE = true;
 		CURRENT_TARGETS = this.targets;
+		// ACTIVE routes clipRenderersByFrustum into the shadow path; a leak would send every main pass there.
+		try {
 
 		// NB: We store the previous player buffers in order to be able to allow mods rendering entities in the shadow pass (Flywheel) to use the shadow buffers instead.
         // TODO: Render
@@ -881,25 +901,27 @@ public class ShadowRenderer {
 		visibleTileEntities.clear();
 		globalTileEntities.clear();
 
+		final boolean newShadowLists = shadowSearchPending;
+		shadowSearchPending = false;
+
 		final float currentShadowAngle = getShadowAngle();
 		if (ShadowGraphGate.shouldMarkDirty(lastGraphShadowAngle, currentShadowAngle, shadowAngleDelta())) {
-			CeleritasWorldRenderer.getInstance().getRenderSectionManager().markShadowGraphDirty();
+			rsm.markShadowGraphDirty();
 			lastGraphShadowAngle = currentShadowAngle;
 		}
 
 		final boolean deferActive = shouldRenderTerrain;
 		final long frameNanos = System.nanoTime();
-		final boolean consumePreSubmit = preSubmitActive;
-		preSubmitActive = false;
+		final boolean shadowGraphDirty = rsm.isShadowGraphDirty();
 
 		final boolean relayTerrain = shadowTerrainAlwaysRelays()
 			|| !targets.isTerrainSnapshotValid()
-			|| consumePreSubmit
-			|| CeleritasWorldRenderer.getInstance().getRenderSectionManager().isShadowGraphDirty()
+			|| newShadowLists
+			|| shadowGraphDirty
 			|| frameNanos - lastRelayNanos >= SHADOW_RELAY_MAX_AGE_NANOS;
 		if (relayTerrain) {
-
-			relayShadowAngle = consumePreSubmit && !CeleritasWorldRenderer.getInstance().getRenderSectionManager().isShadowGraphDirty() ? preSubmittedShadowAngle : currentShadowAngle;
+			// New lists draw at the angle they were searched at, unless the gate already wants a newer search.
+			relayShadowAngle = newShadowLists && !shadowGraphDirty ? searchedShadowAngle : currentShadowAngle;
 		}
 		activeShadowAngle = relayShadowAngle;
 		SHADOW_TERRAIN_RELAID = relayTerrain;
@@ -940,11 +962,9 @@ public class ShadowRenderer {
 
 		profiler.endSection();
 
-		// Save the main camera viewport before shadow pass overwrites it.
-		// clipRenderersByFrustum -> setupTerrain sets currentViewport to the shadow frustum.
-		// If the shadow pass throws or the main setupTerrain doesn't run after us, the shadow
-		// viewport would persist and corrupt entity culling in the main pass.
-		final Viewport savedViewport = CeleritasWorldRenderer.getInstance().getCurrentViewport();
+		// clipRenderersByFrustum -> setupShadowTerrain sets currentViewport to the shadow frustum; restore the last
+		// terrain viewport so entity culling never sees the shadow one if the main setupTerrain doesn't run.
+		final Viewport savedViewport = CeleritasWorldRenderer.getInstance().getLastViewport();
 
 		// Pair setupGlState / restoreGlState with try-finally so any throw between them
 		// (translucent terrain, entity rendering, mipmaps, etc.) still unwinds the
@@ -953,7 +973,13 @@ public class ShadowRenderer {
 		boolean setupGlStateRan = false;
 		try {
 		// Execute the vanilla terrain setup / culling routines using our shadow frustum.
+		final int shadowSearchesBefore = rsm.getShadowSearchSubmissions();
         mc.renderGlobal.clipRenderersByFrustum(terrainFrustumHolder.getFrustum(), playerCamera.getPartialTicks());
+		if (rsm.getShadowSearchSubmissions() != shadowSearchesBefore) {
+			shadowSearchPending = true;
+			// createShadowFrustum built the search's light vector from the current light
+			searchedShadowAngle = currentShadowAngle;
+		}
 
 		// Don't forget to increment the frame counter! This variable is arbitrary and only used in terrain setup,
 		// and if it's not incremented, the vanilla culling code will get confused and think that it's already seen
@@ -983,15 +1009,21 @@ public class ShadowRenderer {
 		}
 
 		profiler.endStartSection("iris_shadow_entities");
+		TileEntityRendererDispatcher.instance.cacheActiveRenderInfo(mc.theWorld, mc.getTextureManager(), mc.fontRenderer, mc.renderViewEntity, tickDelta);
+		RenderManager.instance.cacheActiveRenderInfo(mc.theWorld, mc.getTextureManager(), mc.fontRenderer, mc.renderViewEntity, mc.pointedEntity, mc.gameSettings, tickDelta);
+		final Entity viewer = mc.renderViewEntity;
+		TileEntityRendererDispatcher.staticPlayerX = viewer.lastTickPosX + (viewer.posX - viewer.lastTickPosX) * tickDelta;
+		TileEntityRendererDispatcher.staticPlayerY = viewer.lastTickPosY + (viewer.posY - viewer.lastTickPosY) * tickDelta;
+		TileEntityRendererDispatcher.staticPlayerZ = viewer.lastTickPosZ + (viewer.posZ - viewer.lastTickPosZ) * tickDelta;
 		final Frustrum entityShadowFrustum = createEntityShadowFrustum(entityX, entityY, entityZ);
 		applyEntityShadowViewport(entityShadowFrustum);
 		try (GLDebug.Scope s = GLDebug.scope("shadow:entities")) {
 			renderShadowEntitiesAndPlayer(levelRenderer, entityShadowFrustum, modelView, entityX, entityY, entityZ, tickDelta);
 		}
 
-		if (shouldRenderBlockEntities) {
+		if (shouldRenderBlockEntities || shouldRenderLightBlockEntities) {
 			try (GLDebug.Scope s = GLDebug.scope("shadow:block_entities")) {
-				renderTileEntities(null, modelView, entityX, entityY, entityZ, tickDelta, entityFrustumConstrained);
+				renderTileEntities(null, modelView, entityX, entityY, entityZ, tickDelta, entityFrustumConstrained, !shouldRenderBlockEntities);
 			}
 		}
 
@@ -1042,9 +1074,10 @@ public class ShadowRenderer {
 		profiler.endStartSection("iris_shadowcomp");
 
 		if (compositeRenderer != null) compositeRenderer.renderAll();
-
-		ACTIVE = false;
-		CURRENT_TARGETS = null;
+		} finally {
+			ACTIVE = false;
+			CURRENT_TARGETS = null;
+		}
 		profiler.endSection();
 		profiler.endStartSection("culling");
 	}
@@ -1068,7 +1101,7 @@ public class ShadowRenderer {
 	}
 
 	private String getTileEntitiesDebugString() {
-		return shouldRenderBlockEntities ? (renderedShadowTileEntities + "/" + Minecraft.getMinecraft().theWorld.loadedTileEntityList.size()) : "disabled by pack";
+		return (shouldRenderBlockEntities || shouldRenderLightBlockEntities) ? (renderedShadowTileEntities + "/" + Minecraft.getMinecraft().theWorld.loadedTileEntityList.size()) : "disabled by pack";
 	}
 
 	private static class MipmapPass {

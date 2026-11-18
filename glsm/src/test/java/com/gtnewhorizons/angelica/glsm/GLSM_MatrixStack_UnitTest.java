@@ -18,7 +18,7 @@ public class GLSM_MatrixStack_UnitTest {
     Matrix4f getMatrix(int matrix, boolean cached) {
         buffer.clear();
         if(cached) {
-            GLStateManager.glGetFloat(matrix, buffer);
+            GLSMQueries.glGetFloat(matrix, buffer);
         } else {
             GL11.glGetFloat(matrix, buffer);
         }
@@ -60,28 +60,28 @@ public class GLSM_MatrixStack_UnitTest {
     @ParameterizedTest
     @EnumSource(MatrixMode.class)
     void validateMatrixOperations(MatrixMode matrix) {
-        GLStateManager.glMatrixMode(matrix.mode);
-        GLStateManager.glLoadIdentity();
+        GLSMMatrices.glMatrixMode(matrix.mode);
+        GLSMMatrices.glLoadIdentity();
 
-        GLStateManager.glPushMatrix();
+        GLSMMatrices.glPushMatrix();
 
         Matrix4fStack testMatrix = new Matrix4fStack(2);
 
         validateMatrix(testMatrix, matrix.getEnum, "Identity " + matrix.name + " Matrix");
 
-        GLStateManager.glScalef(2.0f, 2.0f, 2.0f);
+        GLSMMatrices.glScalef(2.0f, 2.0f, 2.0f);
         testMatrix.scale(2.0f);
         validateMatrix(testMatrix, matrix.getEnum, "Scaled " + matrix.name + " Matrix");
 
-        GLStateManager.glTranslatef(2.0f, 2.0f, 2.0f);
+        GLSMMatrices.glTranslatef(2.0f, 2.0f, 2.0f);
         testMatrix.translate(2.0f, 2.0f, 2.0f);
         validateMatrix(testMatrix, matrix.getEnum, "Translated " + matrix.name + " Matrix");
 
-        GLStateManager.glRotatef(180.0f, 0.0f, 0.0f, 1.0f);
+        GLSMMatrices.glRotatef(180.0f, 0.0f, 0.0f, 1.0f);
         testMatrix.rotate((float) Math.toRadians(180.0f), 0.0f, 0.0f, 1.0f);
         validateMatrix(testMatrix, matrix.getEnum, "Rotated " + matrix.name + " Matrix");
 
-        GLStateManager.glOrtho(0, 800, 0, 600, -1, 1);
+        GLSMMatrices.glOrtho(0, 800, 0, 600, -1, 1);
         testMatrix.ortho(0, 800, 0, 600, -1, 1);
         validateMatrix(testMatrix, matrix.getEnum, "Ortho " + matrix.name + " Matrix");
 
@@ -90,13 +90,13 @@ public class GLSM_MatrixStack_UnitTest {
         testLoad.m12(12f);
         testLoad.get(buffer);
 
-        GLStateManager.glLoadMatrix(buffer);
+        GLSMMatrices.glLoadMatrix(buffer);
         validateMatrix(testLoad, matrix.getEnum, "Loaded " + matrix.name + " Matrix");
 
-        GLStateManager.glPopMatrix();
+        GLSMMatrices.glPopMatrix();
         testMatrix.identity();
         validateMatrix(testMatrix, matrix.getEnum, "Popped " + matrix.name + " Matrix");
 
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
     }
 }

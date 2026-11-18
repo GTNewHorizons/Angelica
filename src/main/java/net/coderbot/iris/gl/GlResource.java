@@ -10,6 +10,7 @@ public abstract class GlResource {
 	}
 
 	public final void destroy() {
+		if (!isValid) return;
 		destroyInternal();
 		isValid = false;
 	}

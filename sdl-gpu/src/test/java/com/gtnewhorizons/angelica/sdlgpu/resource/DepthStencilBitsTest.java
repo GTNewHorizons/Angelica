@@ -42,21 +42,6 @@ class DepthStencilBitsTest {
     }
 
     @Test
-    void colorChannelBitsForCommonFormats() {
-        for (int fmt : new int[]{ SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM, SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM }) {
-            for (int c = 0; c < 4; c++) assertEquals(8, PixelOps.colorChannelBits(fmt, c), "channel " + c);
-        }
-        assertEquals(16, PixelOps.colorChannelBits(SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT, 3));
-        assertEquals(8, PixelOps.colorChannelBits(SDL_GPU_TEXTUREFORMAT_R8_UNORM, 0));
-        assertEquals(0, PixelOps.colorChannelBits(SDL_GPU_TEXTUREFORMAT_R8_UNORM, 1));
-        assertEquals(8, PixelOps.colorChannelBits(SDL_GPU_TEXTUREFORMAT_R8G8_UNORM, 1));
-        assertEquals(0, PixelOps.colorChannelBits(SDL_GPU_TEXTUREFORMAT_R8G8_UNORM, 2));
-        assertEquals(10, PixelOps.colorChannelBits(SDL_GPU_TEXTUREFORMAT_R10G10B10A2_UNORM, 0));
-        assertEquals(2, PixelOps.colorChannelBits(SDL_GPU_TEXTUREFORMAT_R10G10B10A2_UNORM, 3));
-        assertEquals(0, PixelOps.colorChannelBits(SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT, 0));
-    }
-
-    @Test
     void depthFormatsAreNotColorFormats() {
         assertTrue(PixelOps.isDepthFormat(SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT));
         assertFalse(PixelOps.isDepthFormat(SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM));

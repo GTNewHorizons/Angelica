@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.rendering.particles;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.ITextureObject;
@@ -55,10 +55,10 @@ public final class BopParticleDescriptors {
         final TextureManager manager = Minecraft.getMinecraft().getTextureManager();
         ITextureObject texture = manager.getTexture(PIXIE_TRAIL_TEXTURE);
         if (texture == null) {
-            final int previous = GLStateManager.getBoundTextureForServerState();
+            final int previous = GLSMTextures.getBoundTextureForServerState();
             manager.bindTexture(PIXIE_TRAIL_TEXTURE);
             texture = manager.getTexture(PIXIE_TRAIL_TEXTURE);
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, previous);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, previous);
         }
         id = texture == null ? 0 : texture.getGlTextureId();
         if (id == 0) LOG.warn("Pixie trail texture {} is unavailable; those particles will not draw", PIXIE_TRAIL_TEXTURE);

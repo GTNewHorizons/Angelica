@@ -4,6 +4,13 @@ import com.gtnewhorizons.angelica.config.SystemProperties.FlybyPacing;
 import com.gtnewhorizons.angelica.rendering.ReducerStateMachine.State;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
+
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -83,32 +90,24 @@ class ReducerStateMachineTest {
         assertEquals(State.FOCUSED, machine.state());
     }
 
-    @Test
-    void toggleForcedCountsAsInput() {
-        time += 10_000_000_000L;
-        machine.evaluate(true, true, true, 1_000_000_000L);
-        assertEquals(State.IDLE, machine.state());
-
-        machine.toggleForced();
-        machine.evaluate(true, true, true, 1_000_000_000L);
-        assertEquals(State.FORCED, machine.state());
-
-        machine.toggleForced();
-        machine.evaluate(true, true, true, 1_000_000_000L);
-        assertEquals(State.FOCUSED, machine.state());
+    static Stream<Arguments> inputToggles() {
+        return Stream.of(
+            Arguments.of("forced toggle", (Consumer<ReducerStateMachine>) ReducerStateMachine::toggleForced, State.FORCED),
+            Arguments.of("keybind-disabled toggle", (Consumer<ReducerStateMachine>) ReducerStateMachine::toggleKeybindDisabled, State.DISABLED));
     }
 
-    @Test
-    void toggleKeybindDisabledCountsAsInput() {
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("inputToggles")
+    void toggleCountsAsInput(String label, Consumer<ReducerStateMachine> toggle, State expected) {
         time += 10_000_000_000L;
         machine.evaluate(true, true, true, 1_000_000_000L);
         assertEquals(State.IDLE, machine.state());
 
-        machine.toggleKeybindDisabled();
+        toggle.accept(machine);
         machine.evaluate(true, true, true, 1_000_000_000L);
-        assertEquals(State.DISABLED, machine.state());
+        assertEquals(expected, machine.state());
 
-        machine.toggleKeybindDisabled();
+        toggle.accept(machine);
         machine.evaluate(true, true, true, 1_000_000_000L);
         assertEquals(State.FOCUSED, machine.state());
     }
@@ -122,42 +121,35 @@ class ReducerStateMachineTest {
     }
 
 
-    @Test
-    void unlimitedUserAndNoStateCapIsUncapped() {
-        assertEquals(0, ReducerStateMachine.mergeCap(0, 0, false, true));
-        assertEquals(0, ReducerStateMachine.mergeCap(260, 0, false, true));
+    @ParameterizedTest(name = "{0}: mergeCap({1}, {2}, {3}, {4}) -> {5}")
+    @CsvSource({
+        "unlimited user and no state cap is uncapped, 0, 0, false, true, 0",
+        "unlimited user and no state cap is uncapped, 260, 0, false, true, 0",
+        "the lower of the user and state cap wins, 120, 10, false, true, 10",
+        "the lower of the user and state cap wins, 30, 60, false, true, 30",
+        "menu cap applies only when the option is on, 0, 0, true, true, 30",
+        "menu cap applies only when the option is on, 0, 0, true, false, 0",
+        "menu cap never raises the user cap, 20, 0, true, true, 20",
+        "menu cap never raises the user cap, 260, 0, true, true, 30",
+        "menu cap never raises the user cap, 260, 10, true, true, 10",
+    })
+    void mergeCap(String name, int userCap, int stateCap, boolean inMenu, boolean menuCapOption, int expected) {
+        assertEquals(expected, ReducerStateMachine.mergeCap(userCap, stateCap, inMenu, menuCapOption));
     }
 
-    @Test
-    void benchmarkCapIsZeroWhenUncapped() {
-        assertEquals(0, ReducerStateMachine.benchmarkCap(FlybyPacing.UNCAPPED, 60));
-        assertEquals(0, ReducerStateMachine.benchmarkCap(FlybyPacing.UNCAPPED, 0));
+    static Stream<Arguments> benchmarkCaps() {
+        return Stream.of(
+            Arguments.of("uncapped ignores the configured cap", FlybyPacing.UNCAPPED, 60, 0),
+            Arguments.of("uncapped ignores the configured cap", FlybyPacing.UNCAPPED, 0, 0),
+            Arguments.of("configured cap is used as is", FlybyPacing.CONFIGURED, 60, 60),
+            Arguments.of("configured zero is uncapped", FlybyPacing.CONFIGURED, 0, 0),
+            Arguments.of("configured max setting is uncapped", FlybyPacing.CONFIGURED, ReducerStateMachine.MAX_FPS_SETTING, 0));
     }
 
-    @Test
-    void configuredBenchmarkCapIgnoresReducerAndMenu() {
-        assertEquals(60, ReducerStateMachine.benchmarkCap(FlybyPacing.CONFIGURED, 60));
-        assertEquals(0, ReducerStateMachine.benchmarkCap(FlybyPacing.CONFIGURED, 0));
-        assertEquals(0, ReducerStateMachine.benchmarkCap(FlybyPacing.CONFIGURED, ReducerStateMachine.MAX_FPS_SETTING));
-    }
-
-    @Test
-    void theLowerOfTheUserAndStateCapWins() {
-        assertEquals(10, ReducerStateMachine.mergeCap(120, 10, false, true));
-        assertEquals(30, ReducerStateMachine.mergeCap(30, 60, false, true));
-    }
-
-    @Test
-    void menuCapAppliesOnlyWhenOptionOn() {
-        assertEquals(30, ReducerStateMachine.mergeCap(0, 0, true, true));
-        assertEquals(0, ReducerStateMachine.mergeCap(0, 0, true, false));
-    }
-
-    @Test
-    void menuCapNeverRaisesUserCap() {
-        assertEquals(20, ReducerStateMachine.mergeCap(20, 0, true, true));
-        assertEquals(30, ReducerStateMachine.mergeCap(260, 0, true, true));
-        assertEquals(10, ReducerStateMachine.mergeCap(260, 10, true, true));
+    @ParameterizedTest(name = "{0}: benchmarkCap({1}, {2}) -> {3}")
+    @MethodSource("benchmarkCaps")
+    void benchmarkCap(String name, FlybyPacing pacing, int configured, int expected) {
+        assertEquals(expected, ReducerStateMachine.benchmarkCap(pacing, configured));
     }
 
     @Test
@@ -181,13 +173,15 @@ class ReducerStateMachineTest {
         assertEquals(0.01f, ReducerStateMachine.masterVolume(1.0f, 0), DELTA);
     }
 
-    @Test
-    void stateVolumeSelectsProfile() {
-        assertEquals(10, ReducerStateMachine.stateVolume(State.FORCED, 10, 20, 30));
-        assertEquals(10, ReducerStateMachine.stateVolume(State.UNFOCUSED, 10, 20, 30));
-        assertEquals(20, ReducerStateMachine.stateVolume(State.MINIMIZED, 10, 20, 30));
-        assertEquals(30, ReducerStateMachine.stateVolume(State.IDLE, 10, 20, 30));
-        assertEquals(100, ReducerStateMachine.stateVolume(State.FOCUSED, 10, 20, 30));
-        assertEquals(100, ReducerStateMachine.stateVolume(State.DISABLED, 10, 20, 30));
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({
+        "FORCED, 10",
+        "UNFOCUSED, 10",
+        "MINIMIZED, 20",
+        "IDLE, 30",
+        "FOCUSED, 100",
+        "DISABLED, 100"})
+    void stateVolumeSelectsProfile(State state, int expected) {
+        assertEquals(expected, ReducerStateMachine.stateVolume(state, 10, 20, 30));
     }
 }

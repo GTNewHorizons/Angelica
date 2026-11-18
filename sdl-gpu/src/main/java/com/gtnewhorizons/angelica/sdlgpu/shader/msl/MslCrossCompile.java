@@ -1,8 +1,9 @@
 package com.gtnewhorizons.angelica.sdlgpu.shader.msl;
 
 import com.gtnewhorizons.angelica.config.SystemProperties;
+import com.gtnewhorizons.angelica.sdlgpu.shader.cross.CrossCompileCache;
+import com.gtnewhorizons.angelica.sdlgpu.shader.cross.CrossCompileCache.Output;
 import com.gtnewhorizons.angelica.sdlgpu.shader.cross.CrossCompileUtil;
-import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.PointerBuffer;
@@ -16,10 +17,8 @@ import org.lwjgl.util.spvc.SpvcReflectedResource;
 
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
-import java.util.Arrays;
 
 import static org.lwjgl.system.MemoryStack.stackPush;
-import static org.lwjgl.system.MemoryUtil.memAlloc;
 import static org.lwjgl.system.MemoryUtil.memUTF8;
 
 public final class MslCrossCompile {
@@ -27,32 +26,11 @@ public final class MslCrossCompile {
     private static final Logger LOG = LogManager.getLogger("Angelica-SDLGPU");
     private static final String BACKEND = "MSL";
 
-    public record Output(ByteBuffer code, String entrypoint) {}
+    private static final int SPVC_MSL_2_2 = mslVersion(2, 2, 0);
+    public static final int SPVC_MSL_3_1 = mslVersion(3, 1, 0);
 
-    private static final int CACHE_MAX = 256;
-    private static final Object2ObjectLinkedOpenHashMap<CacheKey, CacheValue> CACHE = new Object2ObjectLinkedOpenHashMap<>();
-
-    private static final class CacheKey {
-        public final byte[] spirvBytes;
-        public final int glShaderType;
-        public final int hash;
-        public CacheKey(byte[] b, int t) {
-            this.spirvBytes = b;
-            this.glShaderType = t;
-            this.hash = Arrays.hashCode(b) * 31 + t;
-        }
-        @Override public int hashCode() { return hash; }
-        @Override public boolean equals(Object o) {
-            if (!(o instanceof CacheKey k)) return false;
-            return k.glShaderType == glShaderType && k.hash == hash && Arrays.equals(k.spirvBytes, spirvBytes);
-        }
-    }
-
-    private record CacheValue(byte[] codeBytes, String entrypoint) {}
-
-    public static void clearCache() {
-        synchronized (CACHE) { CACHE.clear(); }
-    }
+    private static final CrossCompileCache CACHE = new CrossCompileCache("msl", CrossCompileUtil::spvcId, (spirv, glShaderType) -> compileAtVersion(spirv, glShaderType, SPVC_MSL_2_2));
+    private static final CrossCompileCache CACHE_3_1 = new CrossCompileCache("msl31", CrossCompileUtil::spvcId, (spirv, glShaderType) -> compileAtVersion(spirv, glShaderType, SPVC_MSL_3_1));
 
     @FunctionalInterface
     private interface BufferSlotFn { public int slot(int set, int binding); }
@@ -62,31 +40,20 @@ public final class MslCrossCompile {
 
     private MslCrossCompile() {}
 
-    public static Output compile(ByteBuffer spirv, int glShaderType) {
-        final int executionModel;
-        if (glShaderType == GL20.GL_VERTEX_SHADER) {
-            executionModel = Spv.SpvExecutionModelVertex;
-        } else if (glShaderType == GL20.GL_FRAGMENT_SHADER) {
-            executionModel = Spv.SpvExecutionModelFragment;
-        } else if (glShaderType == GL43.GL_COMPUTE_SHADER) {
-            executionModel = Spv.SpvExecutionModelGLCompute;
-        } else {
-            throw new UnsupportedOperationException("Unsupported shader type for MSL cross-compile: 0x" + Integer.toHexString(glShaderType));
-        }
+    public static Output compile(ByteBuffer spirv, int glShaderType, boolean textureAtomics) {
+        final boolean atomics = textureAtomics && glShaderType == GL43.GL_COMPUTE_SHADER && CrossCompileUtil.usesImageAtomics(spirv);
+        return (atomics ? CACHE_3_1 : CACHE).compile(spirv, glShaderType);
+    }
 
-        final byte[] spirvHeap = new byte[spirv.remaining()];
-        spirv.duplicate().get(spirvHeap);
-        final CacheKey key = new CacheKey(spirvHeap, glShaderType);
-        final CacheValue cached;
-        synchronized (CACHE) {
-            cached = CACHE.getAndMoveToFirst(key);
-        }
-        if (cached != null) {
-            final ByteBuffer copy = memAlloc(cached.codeBytes.length);
-            copy.put(cached.codeBytes).flip();
-            return new Output(copy, cached.entrypoint);
-        }
+    private static int executionModelFor(int glShaderType) {
+        if (glShaderType == GL20.GL_VERTEX_SHADER) return Spv.SpvExecutionModelVertex;
+        if (glShaderType == GL20.GL_FRAGMENT_SHADER) return Spv.SpvExecutionModelFragment;
+        if (glShaderType == GL43.GL_COMPUTE_SHADER) return Spv.SpvExecutionModelGLCompute;
+        throw new UnsupportedOperationException("Unsupported shader type for MSL cross-compile: 0x" + Integer.toHexString(glShaderType));
+    }
 
+    public static Output compileAtVersion(ByteBuffer spirv, int glShaderType, int version) {
+        final int executionModel = executionModelFor(glShaderType);
         final int dumpId = SystemProperties.dumpShaders() ? CrossCompileUtil.SHADER_DUMP_COUNTER.getAndIncrement() : -1;
         if (dumpId >= 0) CrossCompileUtil.dumpSpirv(spirv, dumpId, glShaderType);
 
@@ -115,7 +82,7 @@ public final class MslCrossCompile {
                     throw CrossCompileUtil.spvcError(ctx, BACKEND, "create_compiler_options");
                 }
                 final long opts = pOpts.get(0);
-                Spvc.spvc_compiler_options_set_uint(opts, Spvc.SPVC_COMPILER_OPTION_MSL_VERSION, mslVersion(2, 2, 0));
+                Spvc.spvc_compiler_options_set_uint(opts, Spvc.SPVC_COMPILER_OPTION_MSL_VERSION, version);
                 Spvc.spvc_compiler_options_set_uint(opts, Spvc.SPVC_COMPILER_OPTION_MSL_PLATFORM, Spvc.SPVC_MSL_PLATFORM_MACOS);
                 if (Spvc.spvc_compiler_install_compiler_options(compiler, opts) != Spvc.SPVC_SUCCESS) {
                     throw CrossCompileUtil.spvcError(ctx, BACKEND, "install_compiler_options");
@@ -142,12 +109,6 @@ public final class MslCrossCompile {
                 final ByteBuffer code = memUTF8(mslSrc, true);
                 final String rawEntry = Spvc.spvc_compiler_get_cleansed_entry_point_name(compiler, "main", executionModel);
                 final String entry = rawEntry != null ? rawEntry : "main0";
-                final byte[] codeHeap = new byte[code.remaining()];
-                code.duplicate().get(codeHeap);
-                synchronized (CACHE) {
-                    CACHE.putAndMoveToFirst(key, new CacheValue(codeHeap, entry));
-                    while (CACHE.size() > CACHE_MAX) CACHE.removeLast();
-                }
                 return new Output(code, entry);
             } finally {
                 Spvc.spvc_context_destroy(ctx);

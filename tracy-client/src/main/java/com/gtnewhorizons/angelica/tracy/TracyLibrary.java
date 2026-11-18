@@ -21,6 +21,7 @@ final class TracyLibrary {
     final long zoneText;
     final long zoneValue;
     final long frameMark;
+    final long frameImage;
     final long plot;
     final long plotInt;
     final long plotConfig;
@@ -36,6 +37,7 @@ final class TracyLibrary {
     final long gpuTimeSync;
     final long gpuNewContext;
     final long gpuContextName;
+    final long setEnv;
 
     static TracyLibrary resolve(SharedLibrary lib) {
         try {
@@ -57,6 +59,7 @@ final class TracyLibrary {
         zoneText = req(lib, "ang_zone_text");
         zoneValue = req(lib, "ang_zone_value");
         frameMark = req(lib, "___tracy_emit_frame_mark");
+        frameImage = req(lib, "___tracy_emit_frame_image");
         plot = req(lib, "ang_plot");
         plotInt = req(lib, "___tracy_emit_plot_int");
         plotConfig = req(lib, "___tracy_emit_plot_config");
@@ -72,6 +75,7 @@ final class TracyLibrary {
         gpuTimeSync = req(lib, "___tracy_emit_gpu_time_sync");
         gpuNewContext = req(lib, "___tracy_emit_gpu_new_context");
         gpuContextName = req(lib, "___tracy_emit_gpu_context_name");
+        setEnv = req(lib, "ang_set_env");
     }
 
     private static long req(SharedLibrary lib, String name) {

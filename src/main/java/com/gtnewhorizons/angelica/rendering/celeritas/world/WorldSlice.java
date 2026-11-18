@@ -32,6 +32,7 @@ import com.gtnewhorizons.angelica.rendering.celeritas.SmoothBiomeColorCache;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.cloned.ChunkRenderContext;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.cloned.ClonedChunkSection;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.cloned.ClonedChunkSectionCache;
+import com.gtnewhorizons.liquidlogged.api.LiquidLoggedBlockAccess;
 import cpw.mods.fml.common.Optional;
 import mega.fluidlogged.api.FLBlockAccess;
 
@@ -45,8 +46,11 @@ import mega.fluidlogged.api.FLBlockAccess;
  *
  * Object pooling should be used to avoid huge allocations as this class contains many large arrays.
  */
-@Optional.Interface(iface = "mega.fluidlogged.api.FLBlockAccess", modid = "fluidlogged")
-public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
+@Optional.InterfaceList({
+    @Optional.Interface(iface = "mega.fluidlogged.api.FLBlockAccess", modid = "fluidlogged"),
+    @Optional.Interface(iface = "com.gtnewhorizons.liquidlogged.api.LiquidLoggedBlockAccess", modid = "liquidlogged")
+})
+public class WorldSlice implements IBlockAccessExtended, FLBlockAccess, LiquidLoggedBlockAccess {
 
     private static final EnumSkyBlock[] LIGHT_TYPES = EnumSkyBlock.values();
 
@@ -92,6 +96,8 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
     // Local section copies
     private ClonedChunkSection[] sections;
 
+    private ChunkRenderContext context;
+
     // Biome data for each chunk section
     private final BiomeGenBase[][] biomeData;
 
@@ -106,7 +112,7 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
     private StructureBoundingBox volume;
     private Block renderingBlock;
 
-    private final SmoothBiomeColorCache biomeColorCache;
+    private SmoothBiomeColorCache biomeColorCache;
 
     private List<IDynamicLightSource> chunkLightSources;
     private DynamicLights dynamicLightsInstance;
@@ -146,13 +152,18 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
 
         final ClonedChunkSection[] sections = new ClonedChunkSection[SECTION_TABLE_ARRAY_SIZE];
 
-        for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
-            for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
-                for (int chunkY = minChunkY; chunkY <= maxChunkY; chunkY++) {
-                    sections[getLocalSectionIndex(chunkX - minChunkX, chunkY - minChunkY, chunkZ - minChunkZ)] =
-                        sectionCache.acquire(chunkX, chunkY, chunkZ);
+        try {
+            for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
+                for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
+                    for (int chunkY = minChunkY; chunkY <= maxChunkY; chunkY++) {
+                        sections[getLocalSectionIndex(chunkX - minChunkX, chunkY - minChunkY, chunkZ - minChunkZ)] =
+                            sectionCache.acquire(chunkX, chunkY, chunkZ);
+                    }
                 }
             }
+        } catch (RuntimeException e) {
+            sectionCache.release(sections);
+            throw e;
         }
 
         return new ChunkRenderContext(origin, sections, volume);
@@ -172,7 +183,7 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
         this.lightArrays = new NibbleArray[SECTION_TABLE_ARRAY_SIZE][LIGHT_TYPES.length];
         this.sectionLightData = new SectionLightData[SECTION_TABLE_ARRAY_SIZE];
 
-        if (ModStatus.isFluidLoggedLoaded) {
+        if (ModStatus.isFluidLoggedLoaded || ModStatus.isLiquidLoggedLoaded) {
             this.fluidArrays = new Fluid[SECTION_TABLE_ARRAY_SIZE][];
         } else {
             this.fluidArrays = null;
@@ -186,7 +197,7 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
                     Arrays.fill(this.blockArrays[i], Blocks.air);
                     this.metadataArrays[i] = new int[SECTION_BLOCK_COUNT];
 
-                    if (ModStatus.isFluidLoggedLoaded && this.fluidArrays != null) {
+                    if (this.fluidArrays != null) {
                         this.fluidArrays[i] = new Fluid[SECTION_BLOCK_COUNT];
                     }
                 }
@@ -197,10 +208,17 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
     }
 
     public void copyData(ChunkRenderContext context) {
+        if (this.context != context) {
+            releaseContext();
+        }
+        this.context = context;
         this.origin = context.getOrigin();
         this.sections = context.getSections();
         this.volume = context.getVolume();
 
+        if (!this.biomeColorCache.matchesConfiguredRadius()) {
+            this.biomeColorCache = new SmoothBiomeColorCache(this);
+        }
         this.biomeColorCache.update(new SectionPos(origin.x, origin.y, origin.z));
 
         this.baseX = (this.origin.x - NEIGHBOR_CHUNK_RADIUS) << 4;
@@ -225,7 +243,7 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
 
                     this.unpackBlockData(this.blockArrays[idx], this.metadataArrays[idx], section, context.getVolume());
 
-                    if (ModStatus.isFluidLoggedLoaded && this.fluidArrays != null) {
+                    if (this.fluidArrays != null) {
                         this.unpackFluidLoggedData(this.fluidArrays[idx], section, context.getVolume());
                     }
 
@@ -236,6 +254,14 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
                     this.sectionLightData[idx] = section.getSectionLightData();
                 }
             }
+        }
+    }
+
+    public void releaseContext() {
+        final ChunkRenderContext c = this.context;
+        if (c != null) {
+            this.context = null;
+            c.release();
         }
     }
 
@@ -262,15 +288,6 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
 
         if (blockBrightness < min) {
             blockBrightness = min;
-        }
-
-        if (chunkLightSources != null && !chunkLightSources.isEmpty() && !getBlock(x, y, z).isOpaqueCube()) {
-            final int lightmap = skyBrightness << 20 | blockBrightness << 4;
-            final double dynamicLevel = dynamicLightsInstance.getDynamicLightLevelFromSources(x + 0.5, y + 0.5, z + 0.5, chunkLightSources);
-            if (dynamicLevel > 0) {
-                return dynamicLightsInstance.getLightmapWithDynamicLight(dynamicLevel, lightmap);
-            }
-            return lightmap;
         }
 
         return skyBrightness << 20 | blockBrightness << 4;
@@ -442,6 +459,12 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
         final int relY = y - this.baseY;
         final int relZ = z - this.baseZ;
         return this.fluidArrays[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)][getLocalBlockIndex(relX & 15, relY & 15, relZ & 15)];
+    }
+
+    // LiquidLogged API support
+
+    public @Nullable Fluid liquidlogged$getFluid(int x, int y, int z) {
+        return fl$getFluid(x, y, z);
     }
 
     public void fl$setFluid(int x, int y, int z, @Nullable Fluid fluid) {

@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.render;
 
+import org.joml.Matrix4fc;
+
 /**
  * The shape of the drawn disc, how it splits into wedges, and how far out each kind of geometry should
  * really be worth building.
@@ -11,7 +13,6 @@ final class CloudDisc {
     static final int WEDGE_COUNT = 32;
     static final double WEDGES_PER_RADIAN = WEDGE_COUNT / (2.0 * Math.PI);
     static final int ALWAYS_DRAWN_CELLS = Math.max(CELLS_PER_CHUNK, 4 * MARGIN_CELLS);
-    static final float SCROLL_SPEED = 1.0f / 256.0f;
     private static final double WALL_CUT_PIXELS = 0.625;
     private static final double PLATE_LOD_PIXELS = 0.35;
     private static final double TAN_11_25_DEG = 0.19891236737965800; // √(4+2√2)−√2−1
@@ -28,9 +29,49 @@ final class CloudDisc {
     private CloudDisc() {
     }
 
+    static double cellCoordinate(double worldPosition, float cellWidthBlocks, double offset) {
+        return worldPosition / cellWidthBlocks + offset;
+    }
+
+    static float textureOffset(int anchor, int textureSize) {
+        return Math.floorMod(anchor, textureSize) * (1.0f / textureSize);
+    }
+
+    static boolean withinMargin(int driftX, int driftZ) {
+        // Reject distant anchors before squaring
+        return driftX >= -MARGIN_CELLS && driftX <= MARGIN_CELLS && driftZ >= -MARGIN_CELLS && driftZ <= MARGIN_CELLS && driftX * driftX + driftZ * driftZ <= MARGIN_CELLS * MARGIN_CELLS;
+    }
+
+    static boolean withinDisc(long driftX, long driftZ, int radiusCells) {
+        return driftX >= -radiusCells && driftX <= radiusCells && driftZ >= -radiusCells && driftZ <= radiusCells && driftX * driftX + driftZ * driftZ <= (long) radiusCells * radiusCells;
+    }
+
     static double pixelsPerRadian(int displayHeight, float fovDegrees) {
         if (!(fovDegrees > 0.0f) || fovDegrees >= 180.0f) return 0.0;
         return (displayHeight * 0.5) / Math.tan(Math.toRadians(fovDegrees) * 0.5);
+    }
+
+    static double pixelsPerRadian(int displayWidth, int displayHeight, Matrix4fc projection) {
+        if (displayWidth <= 0 || displayHeight <= 0 || projection == null) return 0.0;
+        final float perspectiveW = projection.m23();
+        if (!Float.isFinite(perspectiveW) || perspectiveW >= 0.0f || projection.m33() != 0.0f) return 0.0;
+
+        final double scale = -0.5 / perspectiveW;
+        final double a = displayWidth * projection.m00() * scale;
+        final double b = displayWidth * projection.m10() * scale;
+        final double c = displayHeight * projection.m01() * scale;
+        final double d = displayHeight * projection.m11() * scale;
+        if (!Double.isFinite(a) || !Double.isFinite(b) || !Double.isFinite(c) || !Double.isFinite(d)) {
+            return 0.0;
+        }
+        if (b == 0.0 && c == 0.0) return Math.max(Math.abs(a), Math.abs(d));
+        final double column0 = a * a + c * c;
+        final double column1 = b * b + d * d;
+        final double cross = a * b + c * d;
+        final double largest = 0.5 * (column0 + column1
+            + Math.hypot(column0 - column1, 2.0 * cross));
+        final double pixels = Math.sqrt(largest);
+        return Double.isFinite(pixels) ? pixels : 0.0;
     }
 
     static int wallCutCells(double pixelsPerRadian, boolean platesInFront) {

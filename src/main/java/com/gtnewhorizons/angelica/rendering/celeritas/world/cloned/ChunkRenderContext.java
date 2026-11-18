@@ -8,6 +8,7 @@ public class ChunkRenderContext {
     private final ChunkSectionPos origin;
     private final ClonedChunkSection[] sections;
     private final StructureBoundingBox volume;
+    private boolean released;
 
     public ChunkRenderContext(ChunkSectionPos origin, ClonedChunkSection[] sections, StructureBoundingBox volume) {
         this.origin = origin;
@@ -25,5 +26,11 @@ public class ChunkRenderContext {
 
     public StructureBoundingBox getVolume() {
         return this.volume;
+    }
+
+    public void release() {
+        if (this.released) return;
+        this.released = true;
+        this.sections[0].getBackingCache().release(this.sections);
     }
 }

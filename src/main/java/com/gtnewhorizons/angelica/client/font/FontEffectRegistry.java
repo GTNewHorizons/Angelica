@@ -48,10 +48,6 @@ public final class FontEffectRegistry {
         return anyRegistered && lowerCode >= 'a' && lowerCode <= 'z' && EFFECTS[lowerCode - 'a'] != null;
     }
 
-    static long bit(char lowerCode) {
-        return 1L << (lowerCode - 'a');
-    }
-
     static CustomGlyphEffect get(int bitIndex) {
         return EFFECTS[bitIndex];
     }

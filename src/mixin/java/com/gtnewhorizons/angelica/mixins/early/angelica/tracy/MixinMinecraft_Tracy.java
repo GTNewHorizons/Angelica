@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.mixins.early.angelica.tracy;
 
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.profiling.GpuFrameLagMeter;
+import com.gtnewhorizons.angelica.profiling.TracyFrameImages;
 import com.gtnewhorizons.angelica.profiling.TracyFramePlots;
 import com.gtnewhorizons.angelica.profiling.TracyUiSections;
 import net.minecraft.client.Minecraft;
@@ -21,6 +22,7 @@ public class MixinMinecraft_Tracy {
         TracyFramePlots.onFrame((Minecraft) (Object) this);
         GpuFrameLagMeter.onFrame();
         Tracy.frameMark();
+        TracyFrameImages.onFrameMark();
         TracyUiSections.poll(((Minecraft) (Object) this).currentScreen);
         Tracy.gpuCollect();
     }
@@ -43,6 +45,7 @@ public class MixinMinecraft_Tracy {
     @Inject(method = "runGameLoop", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;func_147120_f()V", shift = At.Shift.AFTER))
     private void angelica$tracySwapEnd(CallbackInfo ci) {
         Tracy.endZone();
+        TracyFrameImages.onPostSwap((Minecraft) (Object) this);
     }
 
     // runGameLoop opens a second "root" section after the render phase; renaming it keeps

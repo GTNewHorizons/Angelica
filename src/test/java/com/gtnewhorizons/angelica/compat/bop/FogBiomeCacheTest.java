@@ -4,7 +4,12 @@ import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraft.world.chunk.IChunkProvider;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
+
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -23,24 +28,23 @@ class FogBiomeCacheTest {
         return world;
     }
 
-    @Test
-    void repeatLookupsHitTheCache() {
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("lookupCounts")
+    void worldLookupsPerCoordinateList(String label, boolean chunkLoaded, int[][] xz, int expectedWorldLookups) {
         final BiomeGenBase biome = Mockito.mock(BiomeGenBase.class);
-        final World world = worldWith(biome, true);
+        final World world = worldWith(biome, chunkLoaded);
 
-        assertSame(biome, FogBiomeCache.get(world, 100, -7));
-        assertSame(biome, FogBiomeCache.get(world, 100, -7));
-        verify(world, times(1)).getBiomeGenForCoords(anyInt(), anyInt());
+        for (int[] c : xz) {
+            assertSame(biome, FogBiomeCache.get(world, c[0], c[1]));
+        }
+        verify(world, times(expectedWorldLookups)).getBiomeGenForCoords(anyInt(), anyInt());
     }
 
-    @Test
-    void unloadedChunksAreNotCached() {
-        final BiomeGenBase biome = Mockito.mock(BiomeGenBase.class);
-        final World world = worldWith(biome, false);
-
-        FogBiomeCache.get(world, 5000, 5000);
-        FogBiomeCache.get(world, 5000, 5000);
-        verify(world, times(2)).getBiomeGenForCoords(anyInt(), anyInt());
+    private static Stream<Arguments> lookupCounts() {
+        return Stream.of(
+            Arguments.of("repeat lookups hit the cache", true, new int[][] {{100, -7}, {100, -7}}, 1),
+            Arguments.of("unloaded chunks are not cached", false, new int[][] {{5000, 5000}, {5000, 5000}}, 2),
+            Arguments.of("negative coordinates do not collide", true, new int[][] {{-1, 0}, {0, -1}, {-1, -1}}, 3));
     }
 
     @Test
@@ -53,16 +57,5 @@ class FogBiomeCacheTest {
         assertSame(a, FogBiomeCache.get(worldA, 0, 0));
         assertSame(b, FogBiomeCache.get(worldB, 0, 0), "same coords in a new world must re-resolve");
         assertSame(a, FogBiomeCache.get(worldA, 0, 0), "switching back re-resolves rather than serving worldB state");
-    }
-
-    @Test
-    void negativeCoordinatesDoNotCollide() {
-        final BiomeGenBase biome = Mockito.mock(BiomeGenBase.class);
-        final World world = worldWith(biome, true);
-
-        FogBiomeCache.get(world, -1, 0);
-        FogBiomeCache.get(world, 0, -1);
-        FogBiomeCache.get(world, -1, -1);
-        verify(world, times(3)).getBiomeGenForCoords(anyInt(), anyInt());
     }
 }

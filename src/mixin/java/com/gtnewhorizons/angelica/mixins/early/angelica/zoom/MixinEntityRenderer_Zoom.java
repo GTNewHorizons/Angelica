@@ -35,7 +35,12 @@ public class MixinEntityRenderer_Zoom {
             target = "Lnet/minecraft/client/settings/GameSettings;smoothCamera:Z",
             value = "FIELD"))
     private boolean angelica$checkZoomEnablement(GameSettings settings) {
-        return settings.smoothCamera || Zoom.isZoomedIn();
+        if (Zoom.isCinematicCameraEnabled()){
+            return settings.smoothCamera || Zoom.isZoomedIn();
+        }
+        else{
+            return settings.smoothCamera;
+        }
     }
 
 }

@@ -3,6 +3,8 @@ package com.gtnewhorizons.angelica.glsm;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement.Usage;
 import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderDiskCache;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderIndex;
 import com.gtnewhorizons.angelica.glsm.shader.SpirvShaderTranslator;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
@@ -139,12 +141,20 @@ public class CompatShaderTransformer {
             if (cached != null) {
                 result = cached;
             } else {
-                try {
-                    result = transformInternal(source, isFragment);
+                final ShaderDiskCache.Key dk = ShaderDiskCache.isEnabled() ? diskKey(source, isFragment) : null;
+                final String disk = dk != null ? ShaderDiskCache.getString(dk) : null;
+                if (disk != null) {
+                    result = disk;
                     cache.put(key, result);
-                } catch (Exception e) {
-                    GLStateManager.LOGGER.warn("CompatShaderTransformer: AST transformation failed, falling back to version fixup only", e);
-                    result = fixupVersion(source);
+                } else {
+                    try {
+                        result = transformInternal(source, isFragment);
+                        cache.put(key, result);
+                        if (dk != null) ShaderDiskCache.putString(dk, result);
+                    } catch (Exception e) {
+                        GLStateManager.LOGGER.warn("CompatShaderTransformer: AST transformation failed, falling back to version fixup only", e);
+                        result = fixupVersion(source);
+                    }
                 }
             }
         }
@@ -162,6 +172,14 @@ public class CompatShaderTransformer {
 
         dumpShader(source, result, isFragment, needsTransform);
         return result;
+    }
+
+    private static int minGlslVersion() {
+        return RENDER_BACKEND != null ? RENDER_BACKEND.getMinGLSLVersion() : 330;
+    }
+
+    static ShaderDiskCache.Key diskKey(String source, boolean isFragment) {
+        return ShaderDiskCache.key("compat").str(source).b(isFragment).i(minGlslVersion());
     }
 
     public static boolean isCoreShader(String source) {
@@ -186,7 +204,7 @@ public class CompatShaderTransformer {
             declaredVersion = Integer.parseInt(versionMatcher.group(1));
         }
 
-        final int targetVersion = Math.max(declaredVersion, RENDER_BACKEND != null ? RENDER_BACKEND.getMinGLSLVersion() : 330);
+        final int targetVersion = Math.max(declaredVersion, minGlslVersion());
 
         // Pre-parse reserved word renaming - prevents ANTLR parse failures
         source = GlslTransformUtils.replaceTexture(source);
@@ -439,12 +457,7 @@ public class CompatShaderTransformer {
                 continue;
             }
 
-            final List<GLSLParser.Typeless_declarationContext> declarators = new ArrayList<>();
-            declarators.add(decl.typeless_declaration());
-            if (decl.getParent() instanceof GLSLParser.Init_declarator_listContext list) {
-                declarators.addAll(list.typeless_declaration());
-            }
-            for (GLSLParser.Typeless_declarationContext d : declarators) {
+            for (GLSLParser.Typeless_declarationContext d : ShaderIndex.declarators((GLSLParser.Init_declarator_listContext) decl.getParent())) {
                 if (d.IDENTIFIER() == null) continue;
                 final int slots = baseSlots(baseType) * typeArraySlots * arraySlots(d.array_specifier());
                 final String arraySuffix = typeArray + arraySuffix(d.array_specifier());

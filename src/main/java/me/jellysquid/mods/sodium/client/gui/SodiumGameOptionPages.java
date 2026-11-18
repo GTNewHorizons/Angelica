@@ -14,6 +14,7 @@ import net.minecraft.util.MathHelper;
 
 import com.cardinalstar.cubicchunks.api.compat.CubicChunksVideoSettings;
 import com.google.common.collect.ImmutableList;
+import com.gtnewhorizons.angelica.client.gui.AtlasPackScreen;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.rendering.FpsReducer;
@@ -23,6 +24,7 @@ import com.gtnewhorizons.angelica.config.GpuCullingMode;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import cpw.mods.fml.common.Optional.Method;
 import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
+import jss.notfine.config.NotFineConfig;
 import jss.notfine.core.Settings;
 import jss.notfine.core.SettingsManager;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.ReeseSodiumVideoOptionsScreen;
@@ -31,13 +33,16 @@ import me.jellysquid.mods.sodium.client.gui.options.OptionGroup;
 import me.jellysquid.mods.sodium.client.gui.options.OptionImpact;
 import me.jellysquid.mods.sodium.client.gui.options.OptionImpl;
 import me.jellysquid.mods.sodium.client.gui.options.OptionPage;
+import me.jellysquid.mods.sodium.client.gui.options.SubScreenOption;
 import me.jellysquid.mods.sodium.client.gui.options.control.ControlValueFormatter;
 import me.jellysquid.mods.sodium.client.gui.options.control.CyclingControl;
 import me.jellysquid.mods.sodium.client.gui.options.control.SliderControl;
 import me.jellysquid.mods.sodium.client.gui.options.control.TickBoxControl;
+import me.jellysquid.mods.sodium.client.gui.options.named.BiomeBlendMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsQuality;
 import me.jellysquid.mods.sodium.client.gui.options.named.LightingQuality;
+import me.jellysquid.mods.sodium.client.gui.options.named.MipmapGeneration;
 import me.jellysquid.mods.sodium.client.gui.options.named.MultiDrawMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.ParticleMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.TexelSampling;
@@ -128,9 +133,6 @@ public class SodiumGameOptionPages {
                             if(Minecraft.getMinecraft().currentScreen instanceof ReeseSodiumVideoOptionsScreen oldGui) {
                                 Minecraft.getMinecraft().displayGuiScreen(new ReeseSodiumVideoOptionsScreen(oldGui.prevScreen));
                             }
-                            else if(Minecraft.getMinecraft().currentScreen instanceof SodiumOptionsGUI oldGui) {
-                                Minecraft.getMinecraft().displayGuiScreen(new SodiumOptionsGUI(oldGui.prevScreen));
-                            }
                         }, opts -> opts.guiScale)
                         .build())
                 .add(OptionImpl.createBuilder(boolean.class, vanillaOpts)
@@ -209,6 +211,25 @@ public class SodiumGameOptionPages {
                     : EnumSet.noneOf(OptionFlag.class))
                 .build();
 
+        final OptionImpl<SodiumGameOptions, Integer> biomeBlendRadius = OptionImpl.createBuilder(int.class, sodiumOpts)
+            .setName(I18n.format("options.biomeBlendRadius"))
+            .setTooltip(I18n.format("sodium.options.biome_blend.tooltip"))
+            .setControl(option -> new SliderControl(option, 0, 7, 1, ControlValueFormatter.quantityOrDisabled("sodium.options.biome_blend.value", "sodium.options.none")))
+            .setBinding((opts, value) -> opts.quality.biomeBlendRadius = value, opts -> opts.quality.biomeBlendRadius)
+            .setImpact(OptionImpact.LOW)
+            .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
+            .build();
+
+        final OptionImpl<SodiumGameOptions, BiomeBlendMode> biomeBlendMode = OptionImpl.createBuilder(BiomeBlendMode.class, sodiumOpts)
+            .setName(I18n.format("sodium.options.biome_blend_mode.name"))
+            .setTooltip(I18n.format("sodium.options.biome_blend_mode.tooltip"))
+            .setControl(option -> new CyclingControl<>(option, BiomeBlendMode.class))
+            .setBinding((opts, value) -> opts.quality.biomeBlendMode = value, opts -> opts.quality.biomeBlendMode)
+            .setImpact(OptionImpact.LOW)
+            .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
+            .build();
+        biomeBlendMode.iris$dynamicallyEnable(() -> biomeBlendRadius.getValue() > 0);
+
         groups.add(OptionGroup.createBuilder()
                 .add(OptionImpl.createBuilder(GraphicsMode.class, vanillaOpts)
                         .setName(I18n.format("options.graphics"))
@@ -266,16 +287,19 @@ public class SodiumGameOptionPages {
                 .add(texelSampling)
                 .add(anisotropicFilteringSlider(vanillaOpts, textureFilterMode::getValue),
                     SodiumGameOptions.anisotropySupported())
+                .add(OptionImpl.createBuilder(int.class, sodiumOpts)
+                    .setName(I18n.format("sodium.options.gui_block_supersampling.name"))
+                    .setTooltip(I18n.format("sodium.options.gui_block_supersampling.tooltip"))
+                    .setControl(option -> new SliderControl(option, 0, 4, 1,
+                        value -> value == 0 ? I18n.format("options.off") : (1 << value) + "x"))
+                    .setBinding((opts, value) -> opts.quality.guiBlockSupersampling = 1 << value,
+                        opts -> Integer.numberOfTrailingZeros(opts.quality.guiBlockSupersampling))
+                    .setImpact(OptionImpact.LOW)
+                    .build())
+                .add(biomeBlendRadius)
+                .add(biomeBlendMode)
                 // TODO
                 /*.add(OptionImpl.createBuilder(int.class, vanillaOpts)
-                        .setName(new TranslatableText("options.biomeBlendRadius"))
-                        .setTooltip(new TranslatableText("sodium.options.biome_blend.tooltip"))
-                        .setControl(option -> new SliderControl(option, 0, 7, 1, ControlValueFormatter.quantityOrDisabled("sodium.options.biome_blend.value", "gui.none")))
-                        .setBinding((opts, value) -> opts.biomeBlendRadius = value, opts -> opts.biomeBlendRadius)
-                        .setImpact(OptionImpact.LOW)
-                        .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
-                        .build())
-                .add(OptionImpl.createBuilder(int.class, vanillaOpts)
                         .setName(new TranslatableText("options.entityDistanceScaling"))
                         .setTooltip(new TranslatableText("sodium.options.entity_distance.tooltip"))
                         .setControl(option -> new SliderControl(option, 50, 500, 25, ControlValueFormatter.percentage()))
@@ -290,6 +314,14 @@ public class SodiumGameOptionPages {
 
         groups.add(OptionGroup.createBuilder()
                 .add(mipmapLevels)
+                .add(OptionImpl.createBuilder(MipmapGeneration.class, sodiumOpts)
+                    .setName(I18n.format("sodium.options.mipmap_generation.name"))
+                    .setTooltip(I18n.format("sodium.options.mipmap_generation.tooltip"))
+                    .setControl(option -> new CyclingControl<>(option, MipmapGeneration.class))
+                    .setBinding((opts, value) -> opts.quality.mipmapGeneration = value, opts -> opts.quality.mipmapGeneration)
+                    .setImpact(OptionImpact.LOW)
+                    .setFlags(OptionFlag.REQUIRES_ASSET_RELOAD)
+                    .build())
                 .build());
         groups.add(OptionGroup.createBuilder()
         .add(Settings.MODE_GLINT_INV.option)
@@ -434,7 +466,7 @@ public class SodiumGameOptionPages {
                         .setName(I18n.format("sodium.options.async_occlusion_mode.name"))
                         .setTooltip(I18n.format("sodium.options.async_occlusion_mode.tooltip"))
                         .setControl(o -> new CyclingControl<>(o, AsyncOcclusionMode.class, new String[]{
-                            I18n.format("sodium.options.async_occlusion_mode.none"),
+                            I18n.format("sodium.options.none"),
                             I18n.format("sodium.options.async_occlusion_mode.only_shadow"),
                             I18n.format("sodium.options.async_occlusion_mode.everything") }))
                         .setImpact(OptionImpact.MEDIUM)
@@ -544,6 +576,42 @@ public class SodiumGameOptionPages {
 
                 .build());
 
+        groups.add(OptionGroup.createBuilder()
+                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.parallelAtlasDecode"))
+                        .setTooltip(I18n.format("options.angelica.parallelAtlasDecode.tooltip"))
+                        .setControl(TickBoxControl::new)
+                        .setImpact(OptionImpact.LOW)
+                        .setBinding((opts, value) -> AngelicaConfig.enableParallelAtlasDecode = value, opts -> AngelicaConfig.enableParallelAtlasDecode)
+                        .setFlags(OptionFlag.REQUIRES_ASSET_RELOAD)
+                        .build())
+                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.parallelAtlasMipmaps"))
+                        .setTooltip(I18n.format("options.angelica.parallelAtlasMipmaps.tooltip"))
+                        .setControl(TickBoxControl::new)
+                        .setImpact(OptionImpact.LOW)
+                        .setBinding((opts, value) -> AngelicaConfig.enableParallelAtlasMipmaps = value, opts -> AngelicaConfig.enableParallelAtlasMipmaps)
+                        .setFlags(OptionFlag.REQUIRES_ASSET_RELOAD)
+                        .build())
+                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.batchedAtlasUpload"))
+                        .setTooltip(I18n.format("options.angelica.batchedAtlasUpload.tooltip"))
+                        .setControl(TickBoxControl::new)
+                        .setImpact(OptionImpact.LOW)
+                        .setBinding((opts, value) -> AngelicaConfig.enableBatchedAtlasUpload = value, opts -> AngelicaConfig.enableBatchedAtlasUpload)
+                        .setFlags(OptionFlag.REQUIRES_ASSET_RELOAD)
+                        .build())
+                .add(OptionImpl.createBuilder(int.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.workerThreads"))
+                        .setTooltip(I18n.format("options.angelica.workerThreads.tooltip"))
+                        .setControl(o -> new SliderControl(o, 0, 32, 1, ControlValueFormatter.quantityOrDisabled("sodium.options.threads.value", "sodium.options.default")))
+                        .setImpact(OptionImpact.MEDIUM)
+                        .setBinding((opts, value) -> AngelicaConfig.workerThreadCount = value, opts -> AngelicaConfig.workerThreadCount)
+                        .setFlags(OptionFlag.REQUIRES_GAME_RESTART)
+                        .build())
+                .add(new SubScreenOption(I18n.format("options.angelica.atlasPacks"), I18n.format("options.angelica.atlasPacks.tooltip"), AtlasPackScreen::new))
+                .build());
+
         if (Iris.enabled) {
             final OptionImpl<AngelicaConfig, Integer> shadowGraphAngleDelta =
                 OptionImpl.createBuilder(int.class, angelicaOpts)
@@ -593,7 +661,7 @@ public class SodiumGameOptionPages {
                 .add(OptionImpl.createBuilder(int.class, angelicaOpts)
                         .setName(I18n.format("options.angelica.mobSpawnerRenderDistance"))
                         .setTooltip(I18n.format("options.angelica.mobSpawnerRenderDistance.tooltip"))
-                        .setControl(option -> new SliderControl(option, 16, 64, 1, ControlValueFormatter.number()))
+                        .setControl(option -> new SliderControl(option, 0, 64, 1, ControlValueFormatter.number()))
                         .setBinding((options, value) -> AngelicaConfig.mobSpawnerRenderDistance = value, options -> (int) AngelicaConfig.mobSpawnerRenderDistance)
                         .setImpact(OptionImpact.MEDIUM)
                         .build())
@@ -706,7 +774,6 @@ public class SodiumGameOptionPages {
                 (opts, value) -> opts.anisotropicFiltering = 1 << MathHelper.clamp_int(value, min, max),
                 opts -> MathHelper.clamp_int(Integer.numberOfTrailingZeros(Math.max(opts.anisotropicFiltering, 1)), min, max))
             .setImpact(OptionImpact.MEDIUM)
-            .setFlags(OptionFlag.REQUIRES_ASSET_RELOAD)
             .build();
 
         option.iris$dynamicallyEnable(() -> mode.get().usesAnisotropy() && SodiumGameOptions.hasAnisotropyRange());
@@ -760,11 +827,20 @@ public class SodiumGameOptionPages {
         groups.add(OptionGroup.createBuilder()
                 .add(Settings.MODE_GUI_BACKGROUND.option)
                 .add(Settings.GUI_BACKGROUND.option)
-                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
-                        .setName(I18n.format("options.angelica.disablef3"))
-                        .setTooltip(I18n.format("options.angelica.disablef3.tooltip"))
+                .add(OptionImpl.createBuilder(boolean.class, vanillaOpts)
+                        .setName(I18n.format("options.showCape"))
+                        .setTooltip(I18n.format("sodium.options.show_cape.tooltip"))
                         .setControl(TickBoxControl::new)
-                        .setBinding((opts, value) -> AngelicaConfig.disableF3Additions = value, opts -> AngelicaConfig.disableF3Additions)
+                        .setBinding((opts, value) -> opts.showCape = value, opts -> opts.showCape)
+                        .build())
+                .add(OptionImpl.createBuilder(boolean.class, vanillaOpts)
+                        .setName(I18n.format("options.anaglyph"))
+                        .setTooltip(I18n.format("sodium.options.anaglyph.tooltip"))
+                        .setControl(TickBoxControl::new)
+                        .setBinding((opts, value) -> opts.anaglyph = value, opts -> opts.anaglyph)
+                        .setImpact(OptionImpact.HIGH)
+                        .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
+                        .setEnabled(NotFineConfig.allowToggle3DAnaglyph)
                         .build())
                 .build());
 
@@ -772,6 +848,7 @@ public class SodiumGameOptionPages {
             groups.add(OptionGroup.createBuilder()
                 .add(Settings.ZOOM_SMOOTH.option)
                 .add(Settings.ZOOM_SMOOTH_SPEED.option)
+                .add(Settings.ZOOM_CINEMATIC.option)
                 .build());
         }
 

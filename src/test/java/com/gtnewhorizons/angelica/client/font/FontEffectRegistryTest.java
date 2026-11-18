@@ -37,18 +37,13 @@ class FontEffectRegistryTest {
         assertFalse(FontEffectRegistry.register('s', NO_OP), "duplicate registration accepted");
         assertTrue(FontEffectRegistry.isRegistered('s'));
         assertTrue(FontEffectRegistry.hasAny());
-        assertSame(effect, FontEffectRegistry.get(Long.numberOfTrailingZeros(FontEffectRegistry.bit('s'))));
+        assertSame(effect, FontEffectRegistry.get('s' - 'a'));
     }
 
     @Test
     void uppercaseClaimsTheLowercaseLetter() {
         assertTrue(FontEffectRegistry.register('T', NO_OP));
         assertTrue(FontEffectRegistry.isRegistered('t'));
-    }
-
-    @Test
-    void bitMatchesLetterIndex() {
-        assertEquals(1L << ('w' - 'a'), FontEffectRegistry.bit('w'));
     }
 
     @Test

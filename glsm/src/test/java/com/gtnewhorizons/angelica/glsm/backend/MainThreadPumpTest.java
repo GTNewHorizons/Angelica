@@ -150,4 +150,75 @@ class MainThreadPumpTest {
         caller.join();
         assertEquals(1, stillInterrupted.get());
     }
+
+    @Test
+    void aClientPumpWaitsForAPendingPresentPumpWithoutEnqueueing() throws Exception {
+        final DeferredExecutor executor = new DeferredExecutor();
+        final AtomicInteger pumps = new AtomicInteger();
+        final AtomicInteger polls = new AtomicInteger();
+        final MainThreadPump p = pump(executor, pumps::incrementAndGet, polls::incrementAndGet);
+
+        p.beginPresent();
+        final Thread caller = new Thread(p::pumpMessages, "pump-caller");
+        caller.start();
+        awaitWaiting(caller);
+        assertTrue(executor.tasks.isEmpty(), "no pump may queue behind an in-flight present");
+
+        p.runPresentPump();
+        caller.join();
+        assertEquals(1, pumps.get());
+        assertEquals(1, polls.get());
+        assertTrue(executor.tasks.isEmpty());
+    }
+
+    @Test
+    void aClientPumpDuringAPresentAfterItsPumpReturnsImmediatelyAndStillPolls() {
+        final DeferredExecutor executor = new DeferredExecutor();
+        final AtomicInteger pumps = new AtomicInteger();
+        final AtomicInteger polls = new AtomicInteger();
+        final MainThreadPump p = pump(executor, pumps::incrementAndGet, polls::incrementAndGet);
+
+        p.beginPresent();
+        p.runPresentPump();
+        p.pumpMessages();
+        p.pumpMessages();
+
+        assertTrue(executor.tasks.isEmpty());
+        assertEquals(1, pumps.get());
+        assertEquals(2, polls.get());
+    }
+
+    @Test
+    void afterEndPresentAClientPumpUsesTheMainThreadAgain() {
+        final InlineExecutor executor = new InlineExecutor();
+        final AtomicInteger pumps = new AtomicInteger();
+        final MainThreadPump p = pump(executor, pumps::incrementAndGet, () -> {});
+
+        p.beginPresent();
+        p.runPresentPump();
+        p.endPresent();
+        p.pumpMessages();
+
+        assertEquals(1, executor.submitted.size());
+        assertEquals(2, pumps.get());
+    }
+
+    @Test
+    void aPresentPumpFailureIsThrownToTheNextClientPumpExactlyOnce() {
+        final InlineExecutor executor = new InlineExecutor();
+        final AtomicInteger pumps = new AtomicInteger();
+        final MainThreadPump p = pump(executor, () -> {
+            if (pumps.incrementAndGet() == 1) throw new IllegalStateException("present boom");
+        }, () -> {});
+
+        p.beginPresent();
+        p.runPresentPump();
+        final IllegalStateException thrown = assertThrows(IllegalStateException.class, p::pumpMessages);
+        assertEquals("present boom", thrown.getMessage());
+
+        p.pumpMessages();
+        p.endPresent();
+        p.pumpMessages();
+        assertEquals(2, pumps.get());
+    }
 }

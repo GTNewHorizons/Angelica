@@ -2,23 +2,68 @@ package com.gtnewhorizons.angelica.utils;
 
 import java.util.ArrayDeque;
 
+import com.gtnewhorizons.angelica.glsm.DisplayListManager;
+import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
 import com.gtnewhorizons.angelica.mixins.interfaces.IPatchedTextureAtlasSprite;
 import com.gtnewhorizons.angelica.mixins.interfaces.ITexturesCache;
+import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 
 public class AnimationsRenderUtils {
+
+    private static final ThreadLocal<SpriteCapture> SPRITE_CAPTURE = new ThreadLocal<>();
+
+    /** Collects visibility notifications while baking a mesh, for replay when that mesh is reused. */
+    public static final class SpriteCapture implements AutoCloseable {
+        private final ReferenceOpenHashSet<IPatchedTextureAtlasSprite> sprites = new ReferenceOpenHashSet<>();
+        private SpriteCapture parent;
+
+        private SpriteCapture() {
+            parent = SPRITE_CAPTURE.get();
+            SPRITE_CAPTURE.set(this);
+        }
+
+        public void markUsed() {
+            for (IPatchedTextureAtlasSprite sprite : sprites) sprite.angelica$markNeedsAnimationUpdate();
+        }
+
+        @Override
+        public void close() {
+            SPRITE_CAPTURE.set(parent);
+            if (parent != null) parent.sprites.addAll(sprites);
+            parent = null;
+        }
+    }
+
+    public static SpriteCapture captureSprites() {
+        return new SpriteCapture();
+    }
+
+    public static void recordSpriteUsage(IPatchedTextureAtlasSprite sprite) {
+        final SpriteCapture capture = SPRITE_CAPTURE.get();
+        if (capture != null) capture.sprites.add(sprite);
+        if (DisplayListManager.isRecording()) {
+            DisplayListManager.recordStateCommandOnce(new SpriteUsage(sprite));
+        }
+    }
+
+    private record SpriteUsage(IPatchedTextureAtlasSprite sprite) implements DisplayListCommand {
+        @Override
+        public void execute() {
+            sprite.angelica$markNeedsAnimationUpdate();
+        }
+    }
 
     public static void markBlockTextureForUpdate(IIcon icon) {
         markBlockTextureForUpdate(icon, null);
     }
 
     public static void markBlockTextureForUpdate(IIcon icon, IBlockAccess blockAccess) {
-        final TextureMap textureMap = Minecraft.getMinecraft().getTextureMapBlocks();
-        final TextureAtlasSprite textureAtlasSprite = textureMap.getAtlasSprite(icon.getIconName());
+        final TextureAtlasSprite textureAtlasSprite = icon instanceof TextureAtlasSprite s ? s
+            : Minecraft.getMinecraft().getTextureMapBlocks().getAtlasSprite(icon.getIconName());
 
         if (textureAtlasSprite != null && textureAtlasSprite.hasAnimationMetadata()) {
             // null if called by anything but chunk render cache update (for example to get blocks rendered as items in
@@ -26,7 +71,7 @@ public class AnimationsRenderUtils {
             if (blockAccess instanceof ITexturesCache texturesCache) {
                 texturesCache.getRenderedTextures().add(textureAtlasSprite);
             } else if(textureAtlasSprite instanceof IPatchedTextureAtlasSprite patchedSprite){
-                patchedSprite.markNeedsAnimationUpdate();
+                patchedSprite.angelica$markNeedsAnimationUpdate();
             }
         }
     }
@@ -38,7 +83,7 @@ public class AnimationsRenderUtils {
 
         if (stack == null || stack.isEmpty()) {
             // icon was used outside of chunk building, it's probably an item in an inventory or something
-            sprite.markNeedsAnimationUpdate();
+            sprite.angelica$markNeedsAnimationUpdate();
             return;
         }
 

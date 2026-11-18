@@ -9,10 +9,13 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vbo.IVertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
+import com.gtnewhorizons.angelica.glsm.streaming.LineQuads;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
@@ -78,6 +81,8 @@ public final class DisplayListVBOBuilder {
             final IntArrayList extStarts = wantExt ? new IntArrayList() : null;
             final IntArrayList extCounts = wantExt ? new IntArrayList() : null;
             final IntArrayList extPrims = wantExt ? new IntArrayList() : null;
+            // drawIndex, start, vertexCount, drawMode for each line draw
+            final IntArrayList lineDraws = GLSMRasterizer.wideLineEmulationEnabled ? new IntArrayList() : null;
 
             for (FormatData data : formatData) {
                 int vertexCount;
@@ -123,6 +128,12 @@ public final class DisplayListVBOBuilder {
                     vbos[data.drawIndex] = new DisplayListVBO.SubVBO(vao, GL11.GL_TRIANGLE_FAN, start, vertexCount, flags);
                 } else {
                     vbos[data.drawIndex] = new DisplayListVBO.SubVBO(vao, data.drawMode, start, vertexCount, flags);
+                    if (lineDraws != null && LineQuads.segmentCount(data.drawMode, vertexCount) > 0) {
+                        lineDraws.add(data.drawIndex);
+                        lineDraws.add(start);
+                        lineDraws.add(vertexCount);
+                        lineDraws.add(data.drawMode);
+                    }
                 }
 
 
@@ -130,6 +141,9 @@ public final class DisplayListVBOBuilder {
             }
             ByteBuffer bigBuffer = mergeAndDelete(allBuffers);
             vbo.allocate(bigBuffer, start);
+            if (lineDraws != null && !lineDraws.isEmpty()) {
+                attachLineQuads(vbos, format, bigBuffer, lineDraws);
+            }
 
             if (wantExt && !extDrawIndexes.isEmpty()) {
                 final int extVbo = buildExt(extHandler, format, bigBuffer, extStarts, extCounts, extPrims);
@@ -146,6 +160,34 @@ public final class DisplayListVBOBuilder {
             allBuffers.clear();
         }
         return new DisplayListVBO(vbos, extVbos.toIntArray());
+    }
+
+    // The line width is only known at playback, so lines keep their own draw and also get quads to widen
+    private static void attachLineQuads(DisplayListVBO.SubVBO[] vbos, VertexFormat format, ByteBuffer vertices, IntArrayList lineDraws) {
+        final VertexFormat quadFormat = LineQuads.quadFormat(format);
+        final int quadSize = quadFormat.getVertexSize();
+        int quadVertices = 0;
+        for (int i = 0; i < lineDraws.size(); i += 4) {
+            quadVertices += LineQuads.segmentCount(lineDraws.getInt(i + 3), lineDraws.getInt(i + 2)) * LineQuads.VERTICES_PER_SEGMENT;
+        }
+
+        final ByteBuffer quads = memAlloc(quadVertices * quadSize);
+        final long src = memAddress0(vertices);
+        final long dst = memAddress0(quads);
+        final int stride = format.getVertexSize();
+        final IVertexArrayObject quadVao = VAOManager.createStorageVAO(quadFormat, -1, 0);
+        int quadStart = 0;
+        for (int i = 0; i < lineDraws.size(); i += 4) {
+            final int start = lineDraws.getInt(i + 1);
+            final int count = lineDraws.getInt(i + 2);
+            final int mode = lineDraws.getInt(i + 3);
+            final int corners = LineQuads.segmentCount(mode, count) * LineQuads.VERTICES_PER_SEGMENT;
+            LineQuads.expandWithOtherEnd(src + (long) start * stride, format, mode, count, dst + (long) quadStart * quadSize);
+            vbos[lineDraws.getInt(i)].setLineQuads(quadVao, quadStart, corners, quadFormat.getVertexFlags());
+            quadStart += corners;
+        }
+        quadVao.getVBO().allocate(quads, quadVertices);
+        memFree(quads);
     }
 
     private static int buildExt(ImmediateExtendedAttribHandler handler, VertexFormat format, ByteBuffer bigBuffer,
@@ -172,11 +214,11 @@ public final class DisplayListVBOBuilder {
                 extAddr + (long) rStart * extStride, extStride);
         }
 
-        final int extVbo = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, extVbo);
+        final int extVbo = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, extVbo);
         ext.position(0).limit(extVerts * extStride);
-        GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, ext, GL15.GL_STATIC_DRAW);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, ext, GL15.GL_STATIC_DRAW);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         memFree(ext);
         return extVbo;
     }

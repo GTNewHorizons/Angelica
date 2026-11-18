@@ -12,23 +12,23 @@ public final class GLSMInitConfig {
     @Getter private final boolean lwjglDebug;
     @Getter private final StreamingUploader.UploadStrategy streamingUploadStrategy;
     @Getter private final Consumer<DirectTessellator> directDrawer;
-    @Getter private final Runnable streamingDrawerDestroy;
     @Getter private final int displayWidth;
     @Getter private final int displayHeight;
     @Getter private final Runnable postInitCallback;
     private final boolean dsaEnabled;
     @Getter private final boolean noErrorChecks;
+    @Getter private final String buildLabel;
 
     private GLSMInitConfig(Builder builder) {
         this.lwjglDebug = builder.lwjglDebug;
         this.streamingUploadStrategy = builder.streamingUploadStrategy;
         this.noErrorChecks = builder.noErrorChecks;
         this.directDrawer = builder.directDrawer;
-        this.streamingDrawerDestroy = builder.streamingDrawerDestroy;
         this.displayWidth = builder.displayWidth;
         this.displayHeight = builder.displayHeight;
         this.postInitCallback = builder.postInitCallback;
         this.dsaEnabled = builder.dsaEnabled;
+        this.buildLabel = builder.buildLabel;
     }
 
     public boolean isDSAEnabled() {
@@ -43,12 +43,12 @@ public final class GLSMInitConfig {
         private boolean lwjglDebug = SystemProperties.LWJGL_DEBUG;
         private StreamingUploader.UploadStrategy streamingUploadStrategy = StreamingUploader.UploadStrategy.BUFFER_DATA;
         private Consumer<DirectTessellator> directDrawer = TessellatorStreamingDrawer::drawDirect;
-        private Runnable streamingDrawerDestroy = TessellatorStreamingDrawer::destroy;
         private int displayWidth = 0;
         private int displayHeight = 0;
         private Runnable postInitCallback = null;
         private boolean dsaEnabled = true;
         private boolean noErrorChecks;
+        private String buildLabel = "";
 
         private Builder() {}
 
@@ -72,11 +72,6 @@ public final class GLSMInitConfig {
             return this;
         }
 
-        public Builder streamingDrawerDestroy(Runnable streamingDrawerDestroy) {
-            this.streamingDrawerDestroy = streamingDrawerDestroy;
-            return this;
-        }
-
         public Builder displaySize(int width, int height) {
             this.displayWidth = width;
             this.displayHeight = height;
@@ -90,6 +85,11 @@ public final class GLSMInitConfig {
 
         public Builder enableDSA(boolean enableDSA) {
             this.dsaEnabled = enableDSA;
+            return this;
+        }
+
+        public Builder buildLabel(String buildLabel) {
+            this.buildLabel = buildLabel == null ? "" : buildLabel;
             return this;
         }
 

@@ -1,6 +1,8 @@
 package net.coderbot.iris.compat.dh;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.seibel.distanthorizons.api.DhApi;
 import com.seibel.distanthorizons.api.enums.rendering.EDhApiFogDrawMode;
@@ -53,18 +55,18 @@ public class LodRendererEvents {
 
     static void pushDhMatrices(Matrix4fc projection, Matrix4fc modelView) {
         if (!dhMatricesActive) {
-            savedModelView.set(GLStateManager.getModelViewMatrix());
-            savedProjection.set(GLStateManager.getProjectionMatrix());
+            savedModelView.set(GLSMMatrices.getModelViewMatrix());
+            savedProjection.set(GLSMMatrices.getProjectionMatrix());
             dhMatricesActive = true;
         }
-        GLStateManager.setModelViewMatrix(modelView);
-        GLStateManager.setProjectionMatrix(projection);
+        GLSMMatrices.setModelViewMatrix(modelView);
+        GLSMMatrices.setProjectionMatrix(projection);
     }
 
     static void popDhMatrices() {
         if (dhMatricesActive) {
-            GLStateManager.setModelViewMatrix(savedModelView);
-            GLStateManager.setProjectionMatrix(savedProjection);
+            GLSMMatrices.setModelViewMatrix(savedModelView);
+            GLSMMatrices.setProjectionMatrix(savedProjection);
             dhMatricesActive = false;
         }
     }
@@ -211,7 +213,7 @@ public class LodRendererEvents {
                     } else {
                         getInstance().getSolidShader().unbind();
                         if (atTranslucent) {
-                            GLStateManager.enableCull();
+                            GLSMRasterizer.enableCull();
                         }
                     }
                 }
@@ -229,7 +231,7 @@ public class LodRendererEvents {
                     if (ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
                         event.cancelEvent();
                     } else if (getInstance().shouldOverride) {
-                        GLStateManager.glClear(GL11.GL_DEPTH_BUFFER_BIT);
+                        GLSMFramebuffer.glClear(GL11.GL_DEPTH_BUFFER_BIT);
                         event.cancelEvent();
                     }
                 }
@@ -364,7 +366,7 @@ public class LodRendererEvents {
                         instance.copyTranslucents(textureWidth, textureHeight);
                         instance.getTranslucentShader().bind();
                         Matrix4f projection = RenderingState.INSTANCE.getProjectionMatrix();
-                        GLStateManager.disableCull();
+                        GLSMRasterizer.disableCull();
 
                         instance.getTranslucentShader().fillUniformData(
                             new Matrix4f().setPerspective(projection.perspectiveFov(), projection.m11() / projection.m00(), event.value.nearClipPlane, event.value.farClipPlane),

@@ -12,12 +12,12 @@ import com.gtnewhorizons.angelica.compat.backhand.BackhandReflectionCompat;
 import com.gtnewhorizons.angelica.compat.battlegear2.Battlegear2Compat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.dynamiclights.config.EntityLightConfig;
+import com.gtnewhorizons.angelica.helpers.ItemBlockLight;
 import com.gtnewhorizons.angelica.mixins.interfaces.PrimedEntityAccessor;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import mods.battlegear2.api.core.IBattlePlayer;
 import net.irisshaders.iris.api.v0.IrisApi;
-import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
@@ -30,6 +30,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.MathHelper;
+import net.minecraft.world.IBlockAccess;
 import org.embeddedt.embeddium.impl.render.viewport.Viewport;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -368,6 +369,15 @@ public class DynamicLights {
         return this.getLightmapWithDynamicLight(this.getDynamicLightLevel(x, y, z), lightmap);
     }
 
+    public static int addDynamicLight(IBlockAccess world, int x, int y, int z, int lightmap) {
+        if (!isEnabled()) return lightmap;
+        final DynamicLights dl = get();
+        if (!dl.hasLightSources()) return lightmap;
+        final double dynamicLightLevel = dl.getDynamicLightLevel(x, y, z);
+        if (dynamicLightLevel > 0 && !world.getBlock(x, y, z).isOpaqueCube()) return dl.getLightmapWithDynamicLight(dynamicLightLevel, lightmap);
+        return lightmap;
+    }
+
     public List<IDynamicLightSource> getSourcesForChunk(int chunkMinX, int chunkMinY, int chunkMinZ) {
         // Chunk center
         final double centerX = chunkMinX + 8.0;
@@ -576,10 +586,7 @@ public class DynamicLights {
         if (item instanceof IDynamicLightProducer lightProducer) {
             return lightProducer.getLuminance(stack);
         } else if (item instanceof ItemBlock itemBlock) {
-            final Block block = itemBlock.field_150939_a;
-            if (block != null) {
-                return block.getLightValue();
-            }
+            return ItemBlockLight.getLightValue(itemBlock, stack);
         }
 
         if (item == Items.lava_bucket) return Blocks.lava.getLightValue();

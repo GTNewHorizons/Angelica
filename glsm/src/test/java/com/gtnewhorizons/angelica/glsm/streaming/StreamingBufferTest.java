@@ -54,20 +54,26 @@ class StreamingBufferTest {
     }
 
     @Test
-    void persistent_uploadAlignment() {
+    void persistent_uploadAlignment_nonPow2Stride() {
         Assumptions.assumeTrue(RenderSystem.supportsBufferStorage(), "GL4.4+ required");
 
+        final int stride = 44;
         PersistentStreamingBuffer buf = PersistentStreamingBuffer.createOrNull(4096);
         assertNotNull(buf);
         try {
-            ByteBuffer data = memAlloc(128);
-            fillPattern(data);
-            data.flip();
+            ByteBuffer first = memAlloc(3 * stride);
+            fillPattern(first);
+            first.flip();
+            assertTrue(buf.upload(first, stride) >= 0, "Upload should succeed");
+            memFree(first);
 
-            int firstVertex = buf.upload(data, 32);
+            ByteBuffer second = memAlloc(3 * stride);
+            fillPattern(second);
+            second.flip();
+            int firstVertex = buf.upload(second, stride, 4);
             assertTrue(firstVertex >= 0, "Upload should succeed");
-            assertEquals(0, firstVertex % 4, "firstVertex must be quad-aligned");
-            memFree(data);
+            assertEquals(0, firstVertex % 4, "firstVertex must be quad-aligned even for a non-power-of-2 stride");
+            memFree(second);
         } finally {
             buf.destroy();
         }
@@ -116,7 +122,7 @@ class StreamingBufferTest {
             data1.flip();
             int v1 = buf.upload(data1, stride);
             assertTrue(v1 >= 0);
-            buf.postDraw();
+            buf.endFrame();
             memFree(data1);
 
             // Wait for GPU to finish so fence is signaled
@@ -136,7 +142,7 @@ class StreamingBufferTest {
                 assertEquals((byte) ((i + 100) & 0xFF), mapped.get(offset2 + i), "Mismatch at byte " + i);
             }
 
-            buf.postDraw();
+            buf.endFrame();
             memFree(data2);
         } finally {
             buf.destroy();
@@ -156,14 +162,14 @@ class StreamingBufferTest {
 
             buf.upload(data, 32);
             assertEquals(4096 - 1024, buf.getRemaining(), "upload consumes its bytes");
-            buf.postDraw();
+            buf.endFrame();
 
             data.position(0).limit(512);
             buf.upload(data, 32);
-            buf.postDraw();
+            buf.endFrame();
 
             GL11.glFinish();
-            buf.postDraw();
+            buf.endFrame();
             assertEquals(4096, buf.getRemaining(), "all fenced regions reclaimed after completion");
             memFree(data);
         } finally {
@@ -198,7 +204,25 @@ class StreamingBufferTest {
     }
 
     @Test
-    void persistent_exhaustionReclaimsPendingWithoutPostDraw() {
+    void persistent_thresholdFenceExcludesNewestReservation() {
+        Assumptions.assumeTrue(RenderSystem.supportsBufferStorage(), "GL4.4+ required");
+
+        final GlStreamingRing ring = GlStreamingRing.create(GL15.GL_ARRAY_BUFFER, 1024);
+        assertNotNull(ring);
+        try {
+            assertEquals(0, ring.reserve(256, 16));
+            assertEquals(0, ring.fencesIssued(), "the caller has not drawn the reserved bytes yet");
+            assertEquals(256, ring.reserve(16, 16));
+            assertEquals(1, ring.fencesIssued(), "the next reservation fences earlier draws");
+            ring.endFrame();
+            assertEquals(2, ring.fencesIssued(), "the newest reservation still needs a fence after its draw");
+        } finally {
+            ring.destroy();
+        }
+    }
+
+    @Test
+    void persistent_exhaustionReclaimsPendingWithoutEndFrame() {
         Assumptions.assumeTrue(RenderSystem.supportsBufferStorage(), "GL4.4+ required");
 
         PersistentStreamingBuffer buf = PersistentStreamingBuffer.createOrNull(1024);
@@ -212,7 +236,7 @@ class StreamingBufferTest {
             data.position(0).limit(512);
             assertTrue(buf.upload(data, 32) >= 0);
             data.position(0).limit(512);
-            assertTrue(buf.upload(data, 32) >= 0, "ring must self-fence and reclaim without postDraw");
+            assertTrue(buf.upload(data, 32) >= 0, "ring must self-fence and reclaim without endFrame");
             memFree(data);
         } finally {
             buf.destroy();

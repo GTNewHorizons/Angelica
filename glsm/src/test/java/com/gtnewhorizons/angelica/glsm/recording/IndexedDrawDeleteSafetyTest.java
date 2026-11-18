@@ -1,63 +1,53 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
+import com.gtnewhorizons.angelica.glsm.GlTestSupport;
 import com.gtnewhorizons.angelica.glsm.recording.commands.IndexedDrawBatch;
 import com.gtnewhorizons.angelica.glsm.recording.support.DisplayListTestFixture;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
-import org.lwjgl.opengl.GL20;
 
+import static com.gtnewhorizons.angelica.glsm.GlTestSupport.drainErrors;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class IndexedDrawDeleteSafetyTest extends DisplayListTestFixture {
 
-    @Test
-    void vaoEboMapSweep_clearsStaleEntryOnForeignVao() {
+    @ParameterizedTest(name = "replayed before delete={0}")
+    @ValueSource(booleans = {false, true})
+    void listDelete_clearsSharedEboFromForeignVao(boolean replayFirst) {
         final int vbo = defaultQuadVbo();
         final int ebo = uploadEbo(GL11.GL_UNSIGNED_SHORT, 0, 1, 2, 3);
         final int vao = setupPosColorVao(vbo);
         final int list = recordSingleIndexedDraw(vao, ebo, GL11.GL_QUADS, 4, GL11.GL_UNSIGNED_SHORT);
+
+        if (replayFirst) compiledOf(list).render();
 
         final IndexedDrawBatch batch = firstBatch(list);
         final int sharedEbo = batch.getSharedEBO();
 
         final int foreignVao = newVao();
-        GLStateManager.glBindVertexArray(foreignVao);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, sharedEbo);
-        GLStateManager.glBindVertexArray(0);
+        GLSMVertexInput.glBindVertexArray(foreignVao);
+        GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, sharedEbo);
+        GLSMVertexInput.glBindVertexArray(0);
 
-        GLStateManager.glDeleteLists(list, 1);
+        GLSMDraws.glDeleteLists(list, 1);
         untrackList(list);
 
-        GLStateManager.glBindVertexArray(foreignVao);
-        assertEquals(0, GLStateManager.getBoundEBO(), "vaoEboMap still references the freed sharedEBO — non-gen crash imminent");
-        GLStateManager.glBindVertexArray(0);
-    }
+        GLSMVertexInput.glBindVertexArray(foreignVao);
+        assertEquals(0, GLSMVertexInput.getBoundEBO(), "vaoEboMap still references the freed sharedEBO - non-gen crash imminent");
 
-    @Test
-    void bindBufferCycle_afterListDelete_isGlNoError() {
-        final int vbo = defaultQuadVbo();
-        final int ebo = uploadEbo(GL11.GL_UNSIGNED_SHORT, 0, 1, 2, 3);
-        final int vao = setupPosColorVao(vbo);
-        final int list = recordSingleIndexedDraw(vao, ebo, GL11.GL_QUADS, 4, GL11.GL_UNSIGNED_SHORT);
-
-        final int sharedEbo = firstBatch(list).getSharedEBO();
-        final int foreignVao = newVao();
-        GLStateManager.glBindVertexArray(foreignVao);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, sharedEbo);
-        GLStateManager.glBindVertexArray(0);
-
-        GLStateManager.glDeleteLists(list, 1);
-        untrackList(list);
-
-        GLStateManager.glBindVertexArray(foreignVao);
-        while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
-        final int prevEbo = GLStateManager.getBoundEBO();
+        drainErrors();
+        final int prevEbo = GLSMVertexInput.getBoundEBO();
         GL15.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, prevEbo);
         final int err = GL11.glGetError();
-        assertEquals(GL11.GL_NO_ERROR, err, () -> "bindBuffer(prevEbo=" + prevEbo + ") hit GL 0x" + Integer.toHexString(err) + " — cache carried a freed id through a VAO rebind");
-        GLStateManager.glBindVertexArray(0);
+        assertEquals(GL11.GL_NO_ERROR, err, () -> "bindBuffer(prevEbo=" + prevEbo + ") hit GL 0x" + Integer.toHexString(err) + " - cache carried a freed id through a VAO rebind");
+        GLSMVertexInput.glBindVertexArray(0);
     }
 
     @Test
@@ -68,84 +58,52 @@ class IndexedDrawDeleteSafetyTest extends DisplayListTestFixture {
         final int vaoA = newVao();
         final int vaoB = newVao();
 
-        GLStateManager.glBindVertexArray(vaoA);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
-        GLStateManager.glBindVertexArray(vaoB);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
-        GLStateManager.glBindVertexArray(0);
+        GLSMVertexInput.glBindVertexArray(vaoA);
+        GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
+        GLSMVertexInput.glBindVertexArray(vaoB);
+        GLSMBuffers.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
+        GLSMVertexInput.glBindVertexArray(0);
 
-        GLStateManager.glDeleteBuffers(ebo);
+        GLSMBuffers.glDeleteBuffers(ebo);
 
-        GLStateManager.glBindVertexArray(vaoA);
-        assertEquals(0, GLStateManager.getBoundEBO(), "vaoA still references freed EBO");
-        GLStateManager.glBindVertexArray(vaoB);
-        assertEquals(0, GLStateManager.getBoundEBO(), "vaoB still references freed EBO");
-        GLStateManager.glBindVertexArray(0);
+        GLSMVertexInput.glBindVertexArray(vaoA);
+        assertEquals(0, GLSMVertexInput.getBoundEBO(), "vaoA still references freed EBO");
+        GLSMVertexInput.glBindVertexArray(vaoB);
+        assertEquals(0, GLSMVertexInput.getBoundEBO(), "vaoB still references freed EBO");
+        GLSMVertexInput.glBindVertexArray(0);
     }
 
     @Test
     void glDeleteProgram_zero_isNoOpAndLeavesActiveProgram() {
-        final int prog = linkMinimalProgram();
-        while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
+        final int prog = GlTestSupport.program(GlTestSupport.TRIVIAL_VS, GlTestSupport.TRIVIAL_FS);
+        drainErrors();
 
-        GLStateManager.glUseProgram(prog);
-        assertEquals(prog, GLStateManager.getActiveProgram());
+        GLSMPrograms.glUseProgram(prog);
+        assertEquals(prog, GLSMPrograms.getActiveProgram());
 
-        GLStateManager.glDeleteProgram(0);
+        GLSMPrograms.glDeleteProgram(0);
 
-        assertEquals(prog, GLStateManager.getActiveProgram(), "glDeleteProgram(0) must be a silent no-op");
+        assertEquals(prog, GLSMPrograms.getActiveProgram(), "glDeleteProgram(0) must be a silent no-op");
 
-        GLStateManager.glUseProgram(0);
-        GLStateManager.glDeleteProgram(prog);
-        while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
+        GLSMPrograms.glUseProgram(0);
+        GLSMPrograms.glDeleteProgram(prog);
+        drainErrors();
     }
 
     @Test
     void activeProgram_retainedAfterDelete_perGlSpec() {
-        final int prog = linkMinimalProgram();
-        while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
+        final int prog = GlTestSupport.program(GlTestSupport.TRIVIAL_VS, GlTestSupport.TRIVIAL_FS);
+        drainErrors();
 
-        GLStateManager.glUseProgram(prog);
-        assertEquals(prog, GLStateManager.getActiveProgram());
+        GLSMPrograms.glUseProgram(prog);
+        assertEquals(prog, GLSMPrograms.getActiveProgram());
 
-        GLStateManager.glDeleteProgram(prog);
+        GLSMPrograms.glDeleteProgram(prog);
 
-        assertEquals(prog, GLStateManager.getActiveProgram(), "activeProgram must remain set after delete (GL spec: deletion deferred until unbind)");
+        assertEquals(prog, GLSMPrograms.getActiveProgram(), "activeProgram must remain set after delete (GL spec: deletion deferred until unbind)");
 
-        GLStateManager.glUseProgram(0);
-        assertEquals(0, GLStateManager.getActiveProgram(), "activeProgram clears once the deleted program is unbound");
-        while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
+        GLSMPrograms.glUseProgram(0);
+        assertEquals(0, GLSMPrograms.getActiveProgram(), "activeProgram clears once the deleted program is unbound");
+        drainErrors();
     }
-
-    private static int linkMinimalProgram() {
-        final int vert = GLStateManager.glCreateShader(GL20.GL_VERTEX_SHADER);
-        GLStateManager.glShaderSource(vert, MIN_VERT_SRC);
-        GLStateManager.glCompileShader(vert);
-        if (GL20.glGetShaderi(vert, GL20.GL_COMPILE_STATUS) == GL11.GL_FALSE) {
-            throw new AssertionError("vertex shader failed to compile: " + GL20.glGetShaderInfoLog(vert, 4096));
-        }
-
-        final int frag = GLStateManager.glCreateShader(GL20.GL_FRAGMENT_SHADER);
-        GLStateManager.glShaderSource(frag, MIN_FRAG_SRC);
-        GLStateManager.glCompileShader(frag);
-        if (GL20.glGetShaderi(frag, GL20.GL_COMPILE_STATUS) == GL11.GL_FALSE) {
-            throw new AssertionError("fragment shader failed to compile: " + GL20.glGetShaderInfoLog(frag, 4096));
-        }
-
-        final int prog = GLStateManager.glCreateProgram();
-        GLStateManager.glAttachShader(prog, vert);
-        GLStateManager.glAttachShader(prog, frag);
-        GLStateManager.glLinkProgram(prog);
-        if (GL20.glGetProgrami(prog, GL20.GL_LINK_STATUS) == GL11.GL_FALSE) {
-            throw new AssertionError("program failed to link: " + GL20.glGetProgramInfoLog(prog, 4096));
-        }
-        GLStateManager.glDetachShader(prog, vert);
-        GLStateManager.glDetachShader(prog, frag);
-        GLStateManager.glDeleteShader(vert);
-        GLStateManager.glDeleteShader(frag);
-        return prog;
-    }
-
-    private static final String MIN_VERT_SRC = "#version 330 core\nvoid main(){gl_Position=vec4(0.0);}";
-    private static final String MIN_FRAG_SRC = "#version 330 core\nout vec4 oC;void main(){oC=vec4(1.0);}";
 }

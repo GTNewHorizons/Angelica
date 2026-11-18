@@ -1,9 +1,10 @@
 package com.gtnewhorizons.angelica.sdlgpu.resource;
 
-import java.util.Map;
 import java.util.Queue;
 
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 
 public final class SdlReflect {
@@ -30,20 +31,27 @@ public final class SdlReflect {
         final Object slot = Reflect.construct(slotClass);
         Reflect.setDeclared(slotClass, slot, "transferBuffer", handle);
         Reflect.setDeclared(slotClass, slot, "capacity", capacity);
+        Reflect.setDeclared(slotClass, slot, "validLen", capacity);
         Reflect.setDeclared(slotClass, slot, "valid", valid);
-        readbackSlots(shadows).put(readbackKey(glId, offset), slot);
+        readbackSlots(shadows).computeIfAbsent(glId, k -> new Long2ObjectOpenHashMap<>()).put(offset, slot);
     }
 
     static boolean readbackSlotValid(ReadbackShadows shadows, int glId, long offset) {
-        return Reflect.get(readbackSlots(shadows).get(readbackKey(glId, offset)), "valid");
+        return Reflect.get(readbackSlots(shadows).get(glId).get(offset), "valid");
     }
 
-    private static long readbackKey(int glId, long offset) {
-        return (((long) glId) << 32) | (offset & 0xFFFFFFFFL);
+    public static long readbackSlotSync(ReadbackShadows shadows, int glId, long offset) {
+        return Reflect.get(readbackSlots(shadows).get(glId).get(offset), "sync");
     }
 
-    private static Map<Long, Object> readbackSlots(ReadbackShadows shadows) {
-        return Reflect.get(shadows, "slots");
+    static int readbackSlotCount(ReadbackShadows shadows) {
+        int count = 0;
+        for (Long2ObjectOpenHashMap<Object> slots : readbackSlots(shadows).values()) count += slots.size();
+        return count;
+    }
+
+    private static Int2ObjectOpenHashMap<Long2ObjectOpenHashMap<Object>> readbackSlots(ReadbackShadows shadows) {
+        return Reflect.get(shadows, "byBuffer");
     }
 
     static void recordBuffer(ResourceManager rm, int glId, long handle, long size, int usage) {

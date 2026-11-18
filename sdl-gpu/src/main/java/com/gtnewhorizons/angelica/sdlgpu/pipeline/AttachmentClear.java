@@ -1,0 +1,270 @@
+package com.gtnewhorizons.angelica.sdlgpu.pipeline;
+
+import com.gtnewhorizons.angelica.glsm.GlslTransformUtils;
+import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
+import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
+import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager.FrameState;
+import com.gtnewhorizons.angelica.sdlgpu.resource.FboState;
+import com.gtnewhorizons.angelica.sdlgpu.resource.PixelOps;
+import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
+import org.lwjgl.sdl.SDL_GPUColorTargetDescription;
+import org.lwjgl.sdl.SDL_GPUDepthStencilState;
+import org.lwjgl.system.MemoryStack;
+import org.taumc.glsl.Transformer;
+
+import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.function.LongSupplier;
+
+import static org.lwjgl.sdl.SDLGPU.*;
+import static org.lwjgl.system.MemoryStack.stackPush;
+
+public final class AttachmentClear {
+
+    private static final String FRAGMENT_SOURCE = "angelica:sdlgpu/clear_attachment.fsh";
+    private static final long KEY_SEED = 0x5B1D2A7C4E9F3061L;
+    private static final int CACHE_SLOTS = 4;
+    private static final int MAX_COLOR_TARGETS = ContextState.MAX_COLOR_ATTACHMENTS;
+
+    public static final int EMPTY = 0;
+    public static final int PARTIAL = 1;
+    public static final int FULL = 2;
+
+    public static final class Target {
+        public int[] colorFormats;
+        public int[] drawBuffers;
+        public int depthFormat;
+        public long depthTexture;
+        public int width;
+        public int height;
+        public boolean flipY;
+    }
+
+    private final FrameManager frameManager;
+    private final PipelineStore pipelineStore;
+
+    private final Target fboTarget = new Target();
+    private final Target fbo0Target = new Target();
+
+    private final FullscreenPass fullscreen;
+    private final FullscreenPass.Fragment[] fragments = new FullscreenPass.Fragment[MAX_COLOR_TARGETS + 1];
+
+    private final long[] cacheKeys = new long[CACHE_SLOTS];
+    private final long[] cachePipelines = new long[CACHE_SLOTS];
+    private int cacheNext;
+
+    private final int[] scissorRect = new int[4];
+
+    private final Builder builder = new Builder();
+    private Target buildTarget;
+    private int buildColorTargets;
+    private boolean buildDepthFlag;
+    private boolean buildStencilFlag;
+    private int buildStencilMask;
+    private int buildColorMask;
+
+    public AttachmentClear(FrameManager frameManager, PipelineStore pipelineStore, FullscreenPass fullscreen) {
+        this.frameManager = frameManager;
+        this.pipelineStore = pipelineStore;
+        this.fullscreen = fullscreen;
+        for (int i = 0; i <= MAX_COLOR_TARGETS; i++) {
+            final int count = i;
+            fragments[i] = fullscreen.fragment(FRAGMENT_SOURCE + " COLOR_TARGETS=" + count, count > 0 ? 16 : -1, () -> {
+                final String source = ShaderLoader.getShaderSource(FRAGMENT_SOURCE);
+                return count == 0 ? source : withColorOutputs(source, count);
+            });
+        }
+    }
+
+    private final class Builder implements LongSupplier {
+        @Override public long getAsLong() { return createPipeline(); }
+    }
+
+    public Target forFbo(FboState fbo) {
+        final Target t = fboTarget;
+        t.colorFormats = fbo.cachedColorFormats;
+        t.drawBuffers = fbo.drawBuffers;
+        t.depthFormat = fbo.depthTexture != 0 ? fbo.depthFormat : 0;
+        t.depthTexture = fbo.depthTexture;
+        t.width = fbo.width;
+        t.height = fbo.height;
+        t.flipY = false;
+        return t;
+    }
+
+    public Target forFbo0(int[] swapchainFormats, int w, int h) {
+        final Target t = fbo0Target;
+        t.colorFormats = swapchainFormats;
+        t.drawBuffers = null;
+        t.depthFormat = 0;
+        t.depthTexture = 0;
+        t.width = w;
+        t.height = h;
+        t.flipY = true;
+        return t;
+    }
+
+    static boolean enabled(Target t, int i) {
+        return t.drawBuffers == null || t.drawBuffers[i] >= 0;
+    }
+
+    public boolean hasIntegerColorTarget(Target t) {
+        final int[] formats = t.colorFormats;
+        if (formats == null) return false;
+        for (int i = 0; i < formats.length; i++) {
+            if (enabled(t, i) && PixelOps.isSdlFormatInteger(formats[i])) return true;
+        }
+        return false;
+    }
+
+    public int coverage(ContextState st, Target t) {
+        final int sx, sy, sw, sh;
+        if (st.scissorEnabled) {
+            sx = st.scissorX;
+            sy = t.flipY ? t.height - st.scissorY - st.scissorH : st.scissorY;
+            sw = st.scissorW;
+            sh = st.scissorH;
+        } else {
+            sx = 0;
+            sy = 0;
+            sw = t.width;
+            sh = t.height;
+        }
+        if (!ScissorClamp.clamp(sx, sy, sw, sh, t.width, t.height, scissorRect)) return EMPTY;
+        if (scissorRect[ScissorClamp.X] == 0 && scissorRect[ScissorClamp.Y] == 0
+            && scissorRect[ScissorClamp.W] == t.width && scissorRect[ScissorClamp.H] == t.height) return FULL;
+        return PARTIAL;
+    }
+
+    public boolean clearInPass(ContextState st, FrameState f, Target t, boolean color, boolean depth, boolean stencil) {
+        final int colorTargets = color ? t.colorFormats.length : 0;
+        final int stencilMask = stencil ? (st.pipeline.stencilWriteMask & 0xFF) : 0;
+        final int colorMask = color ? st.pipeline.colorWriteMask : 0;
+        final long pipeline = getOrCreatePipeline(t, colorTargets, depth, stencil, stencilMask, colorMask);
+        if (pipeline == 0) return false;
+        if (coverage(st, t) == EMPTY) return false;
+
+        final long rp = f.renderPass;
+        SDL_BindGPUGraphicsPipeline(rp, pipeline);
+
+        final float clearDepth = Math.min(1.0f, Math.max(0.0f, st.depthClearValue));
+        FullscreenPass.setViewport(rp, st, t.width, t.height, clearDepth);
+        FullscreenPass.setScissor(rp, st, scissorRect[ScissorClamp.X], scissorRect[ScissorClamp.Y], scissorRect[ScissorClamp.W], scissorRect[ScissorClamp.H]);
+
+        if (stencil) {
+            SDL_SetGPUStencilReference(rp, (byte) st.stencilClearValue);
+        }
+
+        if (colorTargets > 0) {
+            try (MemoryStack stack = stackPush()) {
+                final ByteBuffer clearColor = stack.malloc(16);
+                clearColor.putFloat(0, st.clearR);
+                clearColor.putFloat(4, st.clearG);
+                clearColor.putFloat(8, st.clearB);
+                clearColor.putFloat(12, st.clearA);
+                SDL_PushGPUFragmentUniformData(frameManager.getCommandBuffer(f), 0, clearColor);
+            }
+            st.lastPushedProgramFs = -1;
+        }
+
+        SDL_DrawGPUPrimitives(rp, 3, 1, 0, 0);
+
+        FullscreenPass.markStateClobbered(st);
+
+        frameManager.noteInPassClear();
+        return true;
+    }
+
+    long getOrCreatePipeline(Target t, int colorTargets, boolean depth, boolean stencil, int stencilMask, int colorMask) {
+        if (colorTargets < 0 || colorTargets > MAX_COLOR_TARGETS || fragments[colorTargets].shader() == 0) return 0;
+
+        final int[] formats = t.colorFormats;
+        final int count = formats != null ? formats.length : 0;
+        long key = KEY_SEED;
+        key = Hashing.fmix64(key, count);
+        for (int i = 0; i < count; i++) {
+            key = Hashing.fmix64(key, formats[i]);
+            key = Hashing.fmix64(key, enabled(t, i) ? 1 : 0);
+        }
+        key = Hashing.fmix64(key, t.depthFormat);
+        key = Hashing.fmix64(key, colorTargets);
+        key = Hashing.fmix64(key, (depth ? 1 : 0) | ((stencil ? 1 : 0) << 1) | (stencilMask << 8) | (colorMask << 16));
+
+        for (int i = 0; i < CACHE_SLOTS; i++) {
+            if (cacheKeys[i] == key && cachePipelines[i] != 0) return cachePipelines[i];
+        }
+
+        buildTarget = t;
+        buildColorTargets = colorTargets;
+        buildDepthFlag = depth;
+        buildStencilFlag = stencil;
+        buildStencilMask = stencilMask;
+        buildColorMask = colorMask;
+        final long pipeline = pipelineStore.getOrBuild(key, builder);
+        if (pipeline != 0) {
+            cacheKeys[cacheNext] = key;
+            cachePipelines[cacheNext] = pipeline;
+            cacheNext = (cacheNext + 1) & (CACHE_SLOTS - 1);
+        }
+        return pipeline;
+    }
+
+    private long createPipeline() {
+        try (var stack = stackPush()) {
+            final Target t = buildTarget;
+            final int numColorTargets = t.colorFormats != null ? t.colorFormats.length : 0;
+            final SDL_GPUColorTargetDescription.Buffer colorDesc = SDL_GPUColorTargetDescription.calloc(numColorTargets, stack);
+            for (int i = 0; i < numColorTargets; i++) {
+                final var desc = colorDesc.get(i);
+                desc.format(t.colorFormats[i]);
+                final int mask = (buildColorTargets > 0 && enabled(t, i)) ? buildColorMask : 0;
+                desc.blend_state()
+                    .enable_blend(false)
+                    .color_write_mask((byte) mask)
+                    .enable_color_write_mask(true);
+            }
+
+            final SDL_GPUDepthStencilState depthStencil = SDL_GPUDepthStencilState.calloc(stack)
+                .enable_depth_test(buildDepthFlag)
+                .enable_depth_write(buildDepthFlag)
+                .compare_op(SDL_GPU_COMPAREOP_ALWAYS)
+                .enable_stencil_test(buildStencilFlag)
+                .compare_mask((byte) 0xFF)
+                .write_mask((byte) buildStencilMask);
+            if (buildStencilFlag) {
+                depthStencil.front_stencil_state()
+                    .fail_op(SDL_GPU_STENCILOP_REPLACE)
+                    .pass_op(SDL_GPU_STENCILOP_REPLACE)
+                    .depth_fail_op(SDL_GPU_STENCILOP_REPLACE)
+                    .compare_op(SDL_GPU_COMPAREOP_ALWAYS);
+                depthStencil.back_stencil_state()
+                    .fail_op(SDL_GPU_STENCILOP_REPLACE)
+                    .pass_op(SDL_GPU_STENCILOP_REPLACE)
+                    .depth_fail_op(SDL_GPU_STENCILOP_REPLACE)
+                    .compare_op(SDL_GPU_COMPAREOP_ALWAYS);
+            }
+
+            return fullscreen.createPipeline(pipelineStore, stack, fragments[buildColorTargets].shader(), colorDesc, numColorTargets, depthStencil, t.depthFormat, "AttachmentClear");
+        }
+    }
+
+    private static String withColorOutputs(String source, int count) {
+        final GlslTransformUtils.QuietParse parsed = GlslTransformUtils.parseBothQuiet(source);
+        final Transformer transformer = new Transformer(parsed.full());
+        transformer.injectVariable("uniform vec4 clearColor;");
+        for (int i = 0; i < count; i++) {
+            transformer.injectVariable("layout(location = " + i + ") out vec4 angelica_ClearColor" + i + ";");
+            transformer.appendMain("angelica_ClearColor" + i + " = clearColor;");
+        }
+        final String header = GlslTransformUtils.getFormattedShader(parsed.pre(), "").trim();
+        final StringBuilder out = new StringBuilder();
+        transformer.mutateTree(tree -> out.append(GlslTransformUtils.getFormattedShader(tree, header)));
+        return out.toString();
+    }
+
+    public void shutdown() {
+        Arrays.fill(cacheKeys, 0L);
+        Arrays.fill(cachePipelines, 0L);
+        cacheNext = 0;
+    }
+}

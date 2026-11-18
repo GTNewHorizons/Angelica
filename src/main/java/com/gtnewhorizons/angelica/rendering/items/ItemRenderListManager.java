@@ -33,7 +33,8 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vao.VAOManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
 
@@ -121,19 +122,19 @@ public class ItemRenderListManager {
 
             final boolean firstAttach = extVbo == 0;
             if (firstAttach) {
-                extVbo = GLStateManager.glGenBuffers();
+                extVbo = GLSMBuffers.glGenBuffers();
             }
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, extVbo);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, extVbo);
             ext.position(0).limit(vertexCount * extStride);
-            GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, ext, GL15.GL_STATIC_DRAW);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, ext, GL15.GL_STATIC_DRAW);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
             memFree(ext);
 
             if (firstAttach) {
                 vertexBuffer.bind();
-                GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, extVbo);
+                GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, extVbo);
                 ImmediateExtendedAttribHandler.setupExtAttribPointers(0L, extStride);
-                GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+                GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
                 vertexBuffer.unbind();
             }
         }
@@ -141,10 +142,10 @@ public class ItemRenderListManager {
         private void detachExtAttribs() {
             if (extVbo == 0) return;
             vertexBuffer.bind();
-            GLStateManager.glDisableVertexAttribArray(ImmediateExtendedAttribHandler.LOC_MID_TEX);
-            GLStateManager.glDisableVertexAttribArray(ImmediateExtendedAttribHandler.LOC_TANGENT);
+            GLSMVertexInput.glDisableVertexAttribArray(ImmediateExtendedAttribHandler.LOC_MID_TEX);
+            GLSMVertexInput.glDisableVertexAttribArray(ImmediateExtendedAttribHandler.LOC_TANGENT);
             vertexBuffer.unbind();
-            GLStateManager.glDeleteBuffers(extVbo);
+            GLSMBuffers.glDeleteBuffers(extVbo);
             extVbo = 0;
         }
 
@@ -156,7 +157,7 @@ public class ItemRenderListManager {
             vertexBuffer.delete();
             // EBO gets deleted by vertexBuffer.delete()
             if (extVbo != 0) {
-                GLStateManager.glDeleteBuffers(extVbo);
+                GLSMBuffers.glDeleteBuffers(extVbo);
                 extVbo = 0;
             }
         }

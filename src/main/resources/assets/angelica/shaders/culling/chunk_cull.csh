@@ -34,30 +34,24 @@ layout(std430, binding = 2) writeonly buffer IndirectCmds {
 } indirect;
 
 layout(std140, binding = 1) uniform Frustum {
-    vec4 planes[6];     // camera-relative planes from `proj * mv` (no translate baked in)
+    vec4 planes[6];     // planes from `proj * mv`; .w has the padded section box and camera fraction folded in
     //   control.x = visibleCount (iteration bound)
     //   control.y = indexPointerMask (0 non-sorted -> firstIndex masked to 0; 0xFFFFFFFF sorted)
     //   control.z = bypassFrustum (shadow passes; renderLists already carry the caster set)
     uvec4 control;
-    //   cameraWorld.xyz = current-frame camera (subtract from world AABB for frustum test)
-    vec4 cameraWorld;
+    //   cameraBlock.xyz = integer part of the current-frame camera (subtract from section origin for frustum test)
+    ivec4 cameraBlock;
     //   batch.x = visible-list entryBase for this dispatch (batched culls)
     uvec4 batch;
     //   pyr.zw = vertices and index elements per primitive, from ChunkPrimitiveType (exact as floats)
     vec4 pyr;
 } frustum;
 
-bool insideFrustum(vec3 minP, vec3 maxP) {
-    // Planes are camera-relative; reduce world AABB to camera-relative before the n-vertex test.
-    vec3 cam  = frustum.cameraWorld.xyz;
-    vec3 minR = minP - cam;
-    vec3 maxR = maxP - cam;
+bool insideFrustum(ivec3 origin) {
+    vec3 rel = vec3(origin - frustum.cameraBlock.xyz);
     for (int i = 0; i < 6; i++) {
         vec4 p = frustum.planes[i];
-        vec3 ext = vec3(p.x > 0.0 ? maxR.x : minR.x,
-                        p.y > 0.0 ? maxR.y : minR.y,
-                        p.z > 0.0 ? maxR.z : minR.z);
-        if (dot(p.xyz, ext) + p.w < 0.0) return false;
+        if (dot(p.xyz, rel) + p.w < 0.0) return false;
     }
     return true;
 }
@@ -74,10 +68,8 @@ void main() {
     uint outputBase  = packedEntry >> 8;
 
     Section s = meta.sections[slot];
-    vec3 minP = vec3(s.origin.xyz);
-    vec3 maxP = minP + vec3(16.0);
 
-    bool inside = (frustum.control.z != 0u) || insideFrustum(minP, maxP);
+    bool inside = (frustum.control.z != 0u) || insideFrustum(s.origin.xyz);
 
     uint indexMask = frustum.control.y;
     uint vertsPerPrim = uint(frustum.pyr.z);

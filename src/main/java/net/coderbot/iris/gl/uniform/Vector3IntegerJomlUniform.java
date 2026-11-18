@@ -8,7 +8,7 @@ import org.joml.Vector3ic;
 import java.util.function.Supplier;
 
 public class Vector3IntegerJomlUniform extends Uniform {
-	private final Runnable updateListener = this::updateValue;
+	private final Runnable updateListener = uploadWhileBound(this::updateValue);
     private final Vector3i cachedValue;
     private final Supplier<Vector3ic> value;
 
@@ -35,7 +35,8 @@ public class Vector3IntegerJomlUniform extends Uniform {
     private void updateValue() {
         Vector3ic newValue = value.get();
 
-        if (!newValue.equals(cachedValue)) {
+        if (dirty || !newValue.equals(cachedValue)) {
+            dirty = false;
             cachedValue.set(newValue.x(), newValue.y(), newValue.z());
             RenderSystem.uniform3i(this.location, cachedValue.x(), cachedValue.y(), cachedValue.z());
         }

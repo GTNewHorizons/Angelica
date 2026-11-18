@@ -6,7 +6,10 @@ public final class TesrAnchorMath {
 
     public static final int ANCHOR_GRID = 16;
     public static final double REANCHOR_DISTANCE = 512.0;
-    private static final float HASH_QUANT = 4096f;
+    public static final float TRANSFORM_TOLERANCE = 1f / 2048;
+    public static final int TEX_MATRIX_TERMS = 7;
+    private static final int TEX_PRESENT = TEX_MATRIX_TERMS - 1;
+    private static final float HASH_QUANT = 1f / TRANSFORM_TOLERANCE;
 
     private TesrAnchorMath() {}
 
@@ -25,6 +28,48 @@ public final class TesrAnchorMath {
         m.m30(m.m30() + (float) (camX - anchorX));
         m.m31(m.m31() + (float) (camY - anchorY));
         m.m32(m.m32() + (float) (camZ - anchorZ));
+    }
+
+    public static boolean close(float a, float b) {
+        return Math.abs(a - b) <= TRANSFORM_TOLERANCE || Float.floatToRawIntBits(a) == Float.floatToRawIntBits(b);
+    }
+
+    public static boolean sameTransform(float[] a, int aOffset, float[] b, int bOffset) {
+        for (int column = 0; column < 16; column += 4) {
+            for (int row = 0; row < 3; row++) {
+                if (!close(a[aOffset + column + row], b[bOffset + column + row])) return false;
+            }
+        }
+        return true;
+    }
+
+    public static void storeTexMatrix(float[] dst, int offset, Matrix4f t) {
+        if (t == null) {
+            for (int i = 0; i < TEX_MATRIX_TERMS; i++) dst[offset + i] = 0f;
+            return;
+        }
+        for (int i = 0; i < TEX_PRESENT; i++) dst[offset + i] = texTerm(t, i);
+        dst[offset + TEX_PRESENT] = 1f;
+    }
+
+    public static boolean sameTexMatrix(float[] stored, int offset, Matrix4f t) {
+        final boolean storedPresent = stored[offset + TEX_PRESENT] != 0f;
+        if (t == null || !storedPresent) return t == null && !storedPresent;
+        for (int i = 0; i < TEX_PRESENT; i++) {
+            if (!close(stored[offset + i], texTerm(t, i))) return false;
+        }
+        return true;
+    }
+
+    private static float texTerm(Matrix4f t, int i) {
+        return switch (i) {
+            case 0 -> t.m00();
+            case 1 -> t.m01();
+            case 2 -> t.m10();
+            case 3 -> t.m11();
+            case 4 -> t.m30();
+            default -> t.m31();
+        };
     }
 
     public static long instanceHash(int templateIdentity, Matrix4f mA, int packedLight, int colorABGR) {
@@ -47,13 +92,9 @@ public final class TesrAnchorMath {
     }
 
     public static long texMatrixHash(Matrix4f t) {
-        long h = 0x2545F4914F6CDD1DL;
-        h = mix(h, quantize(t.m00()));
-        h = mix(h, quantize(t.m01()));
-        h = mix(h, quantize(t.m10()));
-        h = mix(h, quantize(t.m11()));
-        h = mix(h, quantize(t.m30()));
-        h = mix(h, quantize(t.m31()));
+        if (t == null) return 0L;
+        long h = 0x9E3779B97F4A7C15L;
+        for (int i = 0; i < TEX_PRESENT; i++) h = mix(h, quantize(texTerm(t, i)));
         return avalanche(h);
     }
 

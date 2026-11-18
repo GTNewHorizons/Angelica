@@ -7,7 +7,11 @@ import java.util.Set;
 
 import net.minecraft.client.resources.IResourcePack;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.prupe.mcpatcher.MCLogger;
+
+import cpw.mods.fml.common.Loader;
+import cpw.mods.fml.common.LoaderState;
 
 abstract public class TexturePackChangeHandler implements Comparable<TexturePackChangeHandler> {
 
@@ -18,6 +22,8 @@ abstract public class TexturePackChangeHandler implements Comparable<TexturePack
     private static boolean initialized;
     private static long startTime;
     private static long startMem;
+    private static boolean loaderAvailable;
+    private static int deferredDepth;
 
     private boolean updateNeeded;
 
@@ -50,14 +56,29 @@ abstract public class TexturePackChangeHandler implements Comparable<TexturePack
         return this.order - that.order;
     }
 
+    public static boolean isBootDeferred() {
+        if (loaderAvailable) {
+            return false;
+        }
+        if (!AngelicaConfig.enableMCPatcherForgeFeatures || Loader.instance().hasReachedState(LoaderState.AVAILABLE)) {
+            loaderAvailable = true;
+            return false;
+        }
+        return true;
+    }
+
     public static void register(TexturePackChangeHandler handler) {
         if (handler != null) {
-            try {
-                logger.info("initializing %s...", handler.name);
-                handler.initialize();
-            } catch (Exception e) {
-                e.printStackTrace();
-                logger.severe("%s initialization failed", handler.name);
+            if (isBootDeferred()) {
+                logger.fine("deferring %s initialization until mod loading completes", handler.name);
+            } else {
+                try {
+                    logger.info("initializing %s...", handler.name);
+                    handler.initialize();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    logger.severe("%s initialization failed", handler.name);
+                }
             }
             handlers.add(handler);
             logger.fine("registered texture pack handler %s, priority %d", handler.name, handler.order);
@@ -81,6 +102,10 @@ abstract public class TexturePackChangeHandler implements Comparable<TexturePack
     }
 
     public static void beforeChange1() {
+        if (deferredDepth > 0 || isBootDeferred()) {
+            deferredDepth++;
+            return;
+        }
         logger.finer("beforeChange1 depth %d", recurseDepth);
         if (recurseDepth++ > 0) {
             return;
@@ -115,6 +140,10 @@ abstract public class TexturePackChangeHandler implements Comparable<TexturePack
     }
 
     public static void afterChange1() {
+        if (deferredDepth > 0) {
+            deferredDepth--;
+            return;
+        }
         logger.finer("afterChange1 depth %d", recurseDepth - 1);
         if (--recurseDepth > 0) {
             return;

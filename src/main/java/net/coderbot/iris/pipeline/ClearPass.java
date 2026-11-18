@@ -1,6 +1,8 @@
 package net.coderbot.iris.pipeline;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.profiler.Profiler;
@@ -30,7 +32,7 @@ public class ClearPass {
 	public void execute(Vector4f defaultClearColor) {
 		final Profiler profiler = Minecraft.getMinecraft().mcProfiler;
 		profiler.startSection(name);
-		GLStateManager.glViewport(0, 0, viewportX.getAsInt(), viewportY.getAsInt());
+		GLSMRasterizer.glViewport(0, 0, viewportX.getAsInt(), viewportY.getAsInt());
 		framebuffer.bind();
 
 		Vector4f color = Objects.requireNonNull(defaultClearColor);
@@ -39,8 +41,8 @@ public class ClearPass {
 			color = this.color;
 		}
 
-		GLStateManager.glClearColor(color.x, color.y, color.z, color.w);
-        GLStateManager.glClear(clearFlags);
+		GLSMBlend.glClearColor(color.x, color.y, color.z, color.w);
+        GLSMFramebuffer.glClear(clearFlags);
 		profiler.endSection();
 	}
 

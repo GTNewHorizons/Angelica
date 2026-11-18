@@ -43,4 +43,15 @@ class GLVersionParseTest {
         assertFalse(RenderSystem.isContextValid(4, 4, -1, false));
         assertTrue(RenderSystem.isContextValid(3, 3, 33, true));
     }
+
+    @Test
+    void probeCapAfterRejection() {
+        assertEquals(41, RenderSystem.probeCapAfterRejection(46, 41));
+        assertEquals(33, RenderSystem.probeCapAfterRejection(46, 11));
+        assertEquals(33, RenderSystem.probeCapAfterRejection(46, 21));
+        assertEquals(32, RenderSystem.probeCapAfterRejection(33, 11));
+        assertEquals(45, RenderSystem.probeCapAfterRejection(46, 46));
+        assertEquals(45, RenderSystem.probeCapAfterRejection(46, -1));
+        assertEquals(33, RenderSystem.probeCapAfterRejection(46, 33));
+    }
 }

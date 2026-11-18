@@ -2,7 +2,12 @@ package com.gtnewhorizons.angelica.glsm.ffp;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.api.util.NormI8;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement.Usage;
+import com.gtnewhorizons.angelica.glsm.GLContextState;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
@@ -59,7 +64,6 @@ public final class FfpExtendedAttribs {
 
     private static final HashMap<Key, ExtBuffer> cache = new HashMap<>();
     private static final Key lookup = new Key();
-    private static int internalGlDepth = 0;
 
     private static final HashMap<EboKey, Boolean> eboPatternCache = new HashMap<>();
     private static final EboKey eboLookup = new EboKey();
@@ -79,15 +83,19 @@ public final class FfpExtendedAttribs {
         return cache.isEmpty() && eboPatternCache.isEmpty();
     }
 
-    private static int internalDrawDepth = 0;
+    public static void beginInternalDraw() { GLStateManager.ctx().internalDrawDepth++; }
 
-    public static void beginInternalDraw() { internalDrawDepth++; }
+    public static void endInternalDraw() {
+        final GLContextState glCtx = GLStateManager.ctx();
+        if (glCtx.internalDrawDepth > 0) glCtx.internalDrawDepth--;
+    }
 
-    public static void endInternalDraw() { if (internalDrawDepth > 0) internalDrawDepth--; }
+    private static void beginInternalGl() { GLStateManager.ctx().internalGlDepth++; }
 
-    private static void beginInternalGl() { internalGlDepth++; }
-
-    private static void endInternalGl() { if (internalGlDepth > 0) internalGlDepth--; }
+    private static void endInternalGl() {
+        final GLContextState glCtx = GLStateManager.ctx();
+        if (glCtx.internalGlDepth > 0) glCtx.internalGlDepth--;
+    }
 
     private static boolean isNotConventionalTexturedArray(VAOManager.Attrib a) {
         return a == null || !a.enabled || a.genericPointer || a.vboId == 0 || a.size < 2;
@@ -104,20 +112,20 @@ public final class FfpExtendedAttribs {
         return true;
     }
 
-    public static boolean maybeBind(int mode, int first, int count) {
+    public static boolean maybeBind(GLContextState glCtx, int mode, int first, int count) {
         final ImmediateExtendedAttribHandler h = GLSMHooks.immediateExtendedHandler;
         if (h == null) return false;
-        if (internalDrawDepth > 0) return false;
+        if (glCtx.internalDrawDepth > 0) return false;
         final int extPrim = ImmediateExtendedAttribHandler.extPrimVerts(mode, count);
         if (extPrim == 0 || first < 0) return false;
         if (!h.wantsExtended()) return false;
 
-        final VAOManager.Attrib pos = VAOManager.get(POSITION_LOC);
-        final VAOManager.Attrib uv = VAOManager.get(UV_LOC);
+        final VAOManager.Attrib pos = glCtx.vaos.attrib(POSITION_LOC);
+        final VAOManager.Attrib uv = glCtx.vaos.attrib(UV_LOC);
         if (isNotConventionalTexturedArray(pos) || isNotConventionalTexturedArray(uv)) return false;
         if (isStreaming(pos.vboId) || isStreaming(uv.vboId)) return false;
 
-        VAOManager.Attrib normal = extPrim == 3 ? VAOManager.get(NORMAL_LOC) : null;
+        VAOManager.Attrib normal = extPrim == 3 ? glCtx.vaos.attrib(NORMAL_LOC) : null;
         if (normal != null && (!normal.enabled || normal.genericPointer || normal.vboId == 0 || normal.size < 3
             || isStreaming(normal.vboId))) {
             normal = null;
@@ -126,17 +134,17 @@ public final class FfpExtendedAttribs {
         return bindExt(h, mode, first, count, extPrim, pos, uv, normal);
     }
 
-    public static boolean maybeBindIndexed(int mode, int indexCount, int indexType, long indicesOffset) {
+    public static boolean maybeBindIndexed(GLContextState glCtx, int mode, int indexCount, int indexType, long indicesOffset) {
         final ImmediateExtendedAttribHandler h = GLSMHooks.immediateExtendedHandler;
         if (h == null) return false;
-        if (internalDrawDepth > 0) return false;
+        if (glCtx.internalDrawDepth > 0) return false;
         if (mode != GL11.GL_TRIANGLES || indexCount <= 0 || indexCount % 6 != 0) return false;
         if (!h.wantsExtended()) return false;
 
-        final VAOManager.Attrib pos = VAOManager.get(POSITION_LOC);
-        final VAOManager.Attrib uv = VAOManager.get(UV_LOC);
+        final VAOManager.Attrib pos = glCtx.vaos.attrib(POSITION_LOC);
+        final VAOManager.Attrib uv = glCtx.vaos.attrib(UV_LOC);
         if (isNotConventionalTexturedArray(pos) || isNotConventionalTexturedArray(uv)) return false;
-        if (isStreaming(pos.vboId) || isStreaming(uv.vboId) || isStreaming(VAOManager.boundEBO)) return false;
+        if (isStreaming(pos.vboId) || isStreaming(uv.vboId) || isStreaming(glCtx.vaos.boundEBO)) return false;
 
         final int indexSize = indexTypeBytes(indexType);
         if (indexSize == 0) return false;
@@ -144,7 +152,7 @@ public final class FfpExtendedAttribs {
         final int first = (int) (indicesOffset / indexSize) / 6 * 4;
         final int count = indexCount / 6 * 4;
 
-        if (!isQuadPatternEbo(VAOManager.boundEBO, indicesOffset, indexCount, indexType, indexSize, first)) return false;
+        if (!isQuadPatternEbo(glCtx.vaos.boundEBO, indicesOffset, indexCount, indexType, indexSize, first)) return false;
 
         // Build/bind as GL_QUADS (the real primitive): face-normal tangents, 4-vertex tiles, no per-vertex normal.
         return bindExt(h, GL11.GL_QUADS, first, count, 4, pos, uv, null);
@@ -208,26 +216,31 @@ public final class FfpExtendedAttribs {
         final int extVbo = getOrBuild(h, pos, uv, normal, first, count, extPrim, mode);
         if (extVbo == 0) return false;
 
-        final int savedVBO = GLStateManager.getBoundVBO();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, extVbo);
+        final int savedVBO = GLSMBuffers.getBoundVBO();
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, extVbo);
         ImmediateExtendedAttribHandler.setupExtAttribPointers(0L, ImmediateExtendedAttribHandler.EXT_STRIDE);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, savedVBO);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, savedVBO);
         return true;
     }
 
     public static void unbind() {
-        GLStateManager.glDisableVertexAttribArray(ImmediateExtendedAttribHandler.LOC_MID_TEX);
-        GLStateManager.glDisableVertexAttribArray(ImmediateExtendedAttribHandler.LOC_TANGENT);
+        GLSMVertexInput.glDisableVertexAttribArray(ImmediateExtendedAttribHandler.LOC_MID_TEX);
+        GLSMVertexInput.glDisableVertexAttribArray(ImmediateExtendedAttribHandler.LOC_TANGENT);
         setNeutralCurrentValues();
     }
 
     public static void setNeutralCurrentValues() {
-        GLStateManager.glVertexAttrib2f(ImmediateExtendedAttribHandler.LOC_MID_TEX, 0.5f, 0.5f);
-        GLStateManager.glVertexAttrib4f(ImmediateExtendedAttribHandler.LOC_TANGENT, 1.0f, 0.0f, 0.0f, 1.0f);
+        BatchStateGuard.suspend();
+        try {
+            GLSMCurrentAttribs.glVertexAttrib2f(ImmediateExtendedAttribHandler.LOC_MID_TEX, 0.5f, 0.5f);
+            GLSMCurrentAttribs.glVertexAttrib4f(ImmediateExtendedAttribHandler.LOC_TANGENT, 1.0f, 0.0f, 0.0f, 1.0f);
+        } finally {
+            BatchStateGuard.resume();
+        }
     }
 
-    public static void onDeleteBuffer(int vboId) {
-        if (internalGlDepth > 0 || vboId == 0) return;
+    public static void onDeleteBuffer(GLContextState glCtx, int vboId) {
+        if (glCtx.internalGlDepth > 0 || vboId == 0) return;
         dropDerivedFrom(vboId);
         respecCounts.remove(vboId);
         respecFrames.remove(vboId);
@@ -236,8 +249,8 @@ public final class FfpExtendedAttribs {
         persistentSources.remove(vboId);
     }
 
-    public static void onBufferRespecified(int vboId) {
-        if (internalGlDepth > 0 || vboId == 0) return;
+    public static void onBufferRespecified(GLContextState glCtx, int vboId) {
+        if (glCtx.internalGlDepth > 0 || vboId == 0) return;
         if (streamingSources.contains(vboId)) {
             respecFrames.put(vboId, frame);
             return;
@@ -268,16 +281,15 @@ public final class FfpExtendedAttribs {
         respecFrames.put(vboId, frame);
     }
 
-    public static void markStreaming(int vboId) {
-        if (internalGlDepth > 0 || vboId == 0) return;
+    private static void markStreaming(int vboId) {
         respecCounts.remove(vboId);
         respecRunStart.remove(vboId);
         respecFrames.put(vboId, frame);
         if (streamingSources.add(vboId)) dropDerivedFrom(vboId);
     }
 
-    public static void markPersistent(int vboId) {
-        if (internalGlDepth > 0 || vboId == 0) return;
+    public static void markPersistent(GLContextState glCtx, int vboId) {
+        if (glCtx.internalGlDepth > 0 || vboId == 0) return;
         markStreaming(vboId);
         persistentSources.add(vboId);
     }
@@ -363,22 +375,22 @@ public final class FfpExtendedAttribs {
         final int newCap = Math.min(MAX_EXT_VERTS, Math.max(neededVerts, buf.capacityVerts * 2));
         beginInternalGl();
         try {
-            final int vbo = GLStateManager.glGenBuffers();
+            final int vbo = GLSMBuffers.glGenBuffers();
             if (vbo == 0) return false;
-            final int savedVBO = GLStateManager.getBoundVBO();
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-            GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, (long) newCap * extStride, GL15.GL_STATIC_DRAW);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, savedVBO);
+            final int savedVBO = GLSMBuffers.getBoundVBO();
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+            GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, (long) newCap * extStride, GL15.GL_STATIC_DRAW);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, savedVBO);
             if (buf.vbo != 0) {
-                final int savedRead = GLStateManager.getBoundCopyReadBuffer();
-                final int savedWrite = GLStateManager.getBoundCopyWriteBuffer();
-                GLStateManager.glBindBuffer(GL31.GL_COPY_READ_BUFFER, buf.vbo);
-                GLStateManager.glBindBuffer(GL31.GL_COPY_WRITE_BUFFER, vbo);
-                GLStateManager.glCopyBufferSubData(GL31.GL_COPY_READ_BUFFER, GL31.GL_COPY_WRITE_BUFFER, 0L, 0L,
+                final int savedRead = GLSMBuffers.getBoundCopyReadBuffer();
+                final int savedWrite = GLSMBuffers.getBoundCopyWriteBuffer();
+                GLSMBuffers.glBindBuffer(GL31.GL_COPY_READ_BUFFER, buf.vbo);
+                GLSMBuffers.glBindBuffer(GL31.GL_COPY_WRITE_BUFFER, vbo);
+                GLSMBuffers.glCopyBufferSubData(GL31.GL_COPY_READ_BUFFER, GL31.GL_COPY_WRITE_BUFFER, 0L, 0L,
                     (long) buf.capacityVerts * extStride);
-                GLStateManager.glBindBuffer(GL31.GL_COPY_READ_BUFFER, savedRead);
-                GLStateManager.glBindBuffer(GL31.GL_COPY_WRITE_BUFFER, savedWrite);
-                GLStateManager.glDeleteBuffers(buf.vbo);
+                GLSMBuffers.glBindBuffer(GL31.GL_COPY_READ_BUFFER, savedRead);
+                GLSMBuffers.glBindBuffer(GL31.GL_COPY_WRITE_BUFFER, savedWrite);
+                GLSMBuffers.glDeleteBuffers(buf.vbo);
             }
             buf.vbo = vbo;
             buf.capacityVerts = newCap;
@@ -424,11 +436,11 @@ public final class FfpExtendedAttribs {
 
         beginInternalGl();
         try {
-            final int savedVBO = GLStateManager.getBoundVBO();
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, extVbo);
+            final int savedVBO = GLSMBuffers.getBoundVBO();
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, extVbo);
             ext.position(0).limit(count * extStride);
-            GLStateManager.glBufferSubData(GL15.GL_ARRAY_BUFFER, (long) first * extStride, ext);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, savedVBO);
+            GLSMBuffers.glBufferSubData(GL15.GL_ARRAY_BUFFER, (long) first * extStride, ext);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, savedVBO);
         } finally {
             endInternalGl();
         }
@@ -445,10 +457,10 @@ public final class FfpExtendedAttribs {
         final int bytes = (count - 1) * stride + elementBytes;
         final ByteBuffer dst = memAlloc(bytes).order(ByteOrder.nativeOrder());
         dst.position(0).limit(bytes);
-        final int savedVBO = GLStateManager.getBoundVBO();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, a.vboId);
+        final int savedVBO = GLSMBuffers.getBoundVBO();
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, a.vboId);
         RENDER_BACKEND.getBufferSubData(GL15.GL_ARRAY_BUFFER, a.offset + (long) first * stride, dst);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, savedVBO);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, savedVBO);
         dst.position(0).limit(bytes);
         return dst;
     }
@@ -475,7 +487,7 @@ public final class FfpExtendedAttribs {
         beginInternalGl();
         try {
             for (int i = 0; i < vbos.size(); i++) {
-                GLStateManager.glDeleteBuffers(vbos.getInt(i));
+                GLSMBuffers.glDeleteBuffers(vbos.getInt(i));
             }
         } finally {
             endInternalGl();

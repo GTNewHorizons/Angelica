@@ -2,12 +2,14 @@ package com.gtnewhorizons.angelica.mixins.early.angelica.startup;
 
 import com.gtnewhorizon.gtnhlib.core.GTNHLibCore;
 import com.gtnewhorizons.angelica.AngelicaMod;
+import com.gtnewhorizons.angelica.Tags;
 import com.gtnewhorizons.angelica.client.rendering.TextureTracker;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.compat.DriverCompatabilityCheck;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
+import com.gtnewhorizons.angelica.glsm.backend.BackendStartGuard;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
@@ -28,6 +30,7 @@ public class MixinInitGLStateManager {
 
     @Inject(method = "initializeTextures", at = @At("HEAD"))
     private static void angelica$installSDLDrawable(CallbackInfo ci) {
+        GLSMConfig.workerThreadCount = AngelicaConfig.workerThreadCount;
         SDLGPUGate.ensureDrawableInstalled();
     }
 
@@ -45,7 +48,9 @@ public class MixinInitGLStateManager {
             .noErrorChecks(AngelicaConfig.disableErrorChecks && GTNHLibCore.isObf() && !AngelicaMod.lwjglDebug)
             .enableDSA(AngelicaConfig.enableDSA)
             .postInitCallback(SelectionBoxRenderer::init)
+            .buildLabel("Angelica " + Tags.VERSION)
             .build());
+        BackendStartGuard.disarm();
 
         GLSMConfig.extendedAttribsExpected = AngelicaConfig.enableIris;
 

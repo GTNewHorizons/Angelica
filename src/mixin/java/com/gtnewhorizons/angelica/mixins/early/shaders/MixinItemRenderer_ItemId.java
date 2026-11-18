@@ -1,9 +1,8 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import com.gtnewhorizons.angelica.mixins.interfaces.ItemRendererAccessor;
 import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
-import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.HandRenderer;
@@ -31,25 +30,24 @@ public class MixinItemRenderer_ItemId implements ItemRendererAccessor {
         return itemToRender;
     }
 
-    @WrapMethod(
+    @Surround(
         method = "renderItem(Lnet/minecraft/entity/EntityLivingBase;Lnet/minecraft/item/ItemStack;ILnet/minecraftforge/client/IItemRenderer$ItemRenderType;)V",
         remap = false
     )
-    private void iris$entityItemId(EntityLivingBase entity, ItemStack itemStack, int renderPass, IItemRenderer.ItemRenderType type, Operation<Void> original) {
-        final int prevItemId = ItemIdManager.getItemId();
-        final long prevCutout = GbufferPrograms.pushCutoutDefaults();
+    private void iris$entityItemId(EntityLivingBase entity, ItemStack itemStack, int renderPass, IItemRenderer.ItemRenderType type) {
+        final boolean translucent = HandRenderer.INSTANCE.isItemTranslucent(itemStack);
 
-        final Boolean prevTranslucency = GbufferPrograms.beginTranslucencyDeclaration(
-            HandRenderer.INSTANCE.isItemTranslucent(itemStack));
+        @Surround.Carry
+        final int stateDepth = ItemIdManager.beginCutout(itemStack);
 
-        ItemIdManager.setItemId(itemStack);
-        try {
-            original.call(entity, itemStack, renderPass, type);
-        } finally {
-            GbufferPrograms.endTranslucencyDeclaration(prevTranslucency);
-            ItemIdManager.setItemIdRaw(prevItemId);
-            GbufferPrograms.popCutoutDefaults(prevCutout);
-        }
+        @Surround.Carry
+        final Boolean prevTranslucency = GbufferPrograms.beginTranslucencyDeclaration(translucent);
+    }
+
+    @Surround.Finally
+    private void iris$entityItemRestore(@Surround.Carry Boolean prevTranslucency, @Surround.Carry int stateDepth) {
+        GbufferPrograms.endTranslucencyDeclaration(prevTranslucency);
+        ItemIdManager.endCutout(stateDepth);
     }
 
     @Inject(
@@ -58,6 +56,7 @@ public class MixinItemRenderer_ItemId implements ItemRendererAccessor {
         remap = false
     )
     private void iris$glintStart(CallbackInfo ci) {
+        ItemIdManager.pushItemId();
         ItemIdManager.resetItemId();
         GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.GLINT);
         ShaderGlint.beginGlint();
@@ -71,5 +70,6 @@ public class MixinItemRenderer_ItemId implements ItemRendererAccessor {
     private void iris$glintEnd(CallbackInfo ci) {
         GbufferPrograms.teardownSpecialRenderCondition();
         ShaderGlint.endGlint();
+        ItemIdManager.popItemId();
     }
 }

@@ -1,7 +1,11 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.bugfixes;
 
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
+import com.gtnewhorizons.angelica.glsm.GLSMQueries;
 import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.pipeline.FixedFunctionWorldRenderingPipeline;
@@ -31,7 +35,6 @@ public class MixinRendererLivingEntity_OverlayTint {
     @Unique private boolean angelica$skipReRender;
     @Unique private boolean angelica$ffpOverlayActive;
     @Unique private boolean angelica$shaderEntityColorActive;
-    @Unique private boolean angelica$untint;
 
     @Inject(
         method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
@@ -41,10 +44,10 @@ public class MixinRendererLivingEntity_OverlayTint {
     )
     private void angelica$setupOverlay(EntityLivingBase entity, double x, double y, double z,
                                        float yaw, float partialTick, CallbackInfo ci) {
-        GLStateManager.glDisable(GL11.GL_BLEND);
-        GLStateManager.glEnable(GL11.GL_ALPHA_TEST);
-        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
-        GLStateManager.glDepthMask(true);
+        GLSMEnable.glDisable(GL11.GL_BLEND);
+        GLSMEnable.glEnable(GL11.GL_ALPHA_TEST);
+        GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_LEQUAL);
+        GLSMDepthStencilAlpha.glDepthMask(true);
 
         if (entity.hurtTime <= 0 && entity.deathTime <= 0) return;
         if (angelica$isShaderPackActive()) {
@@ -53,7 +56,7 @@ public class MixinRendererLivingEntity_OverlayTint {
             angelica$shaderEntityColorActive = true;
         } else {
             // FFP path
-            GLStateManager.setOverlayColor(1.0F, 0.0F, 0.0F, ANGELICA$RED_MIX);
+            GLSMCurrentAttribs.setOverlayColor(1.0F, 0.0F, 0.0F, ANGELICA$RED_MIX);
             angelica$ffpOverlayActive = true;
         }
         angelica$skipReRender = true;
@@ -68,7 +71,7 @@ public class MixinRendererLivingEntity_OverlayTint {
     private void angelica$teardownOverlay(EntityLivingBase entity, double x, double y, double z,
                                           float yaw, float partialTick, CallbackInfo ci) {
         if (angelica$ffpOverlayActive) {
-            GLStateManager.setOverlayColor(0.0F, 0.0F, 0.0F, 0.0F);
+            GLSMCurrentAttribs.setOverlayColor(0.0F, 0.0F, 0.0F, 0.0F);
             angelica$ffpOverlayActive = false;
         }
         if (angelica$shaderEntityColorActive) {
@@ -93,7 +96,7 @@ public class MixinRendererLivingEntity_OverlayTint {
         return !angelica$skipReRender;
     }
 
-    @Inject(
+    @Surround(
         method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
         at = @At(value = "INVOKE",
             target = "Lnet/minecraft/client/model/ModelBase;render(Lnet/minecraft/entity/Entity;FFFFFF)V"),
@@ -103,38 +106,27 @@ public class MixinRendererLivingEntity_OverlayTint {
             to = @At(value = "INVOKE",
                 target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;renderEquippedItems(Lnet/minecraft/entity/EntityLivingBase;F)V")
         ),
-        require = 1, expect = 1
+        require = 1
     )
-    private void angelica$untintAdditivePass(CallbackInfo ci) {
-        angelica$untint = false;
-        if (!angelica$skipReRender || !angelica$isAdditivePass()) return;
-        if (angelica$ffpOverlayActive) {
-            GLStateManager.setOverlayColor(0.0F, 0.0F, 0.0F, 0.0F);
-            angelica$untint = true;
-        } else if (angelica$shaderEntityColorActive) {
-            CapturedRenderingState.INSTANCE.setCurrentEntityColor(0.0F, 0.0F, 0.0F, 0.0F);
-            angelica$untint = true;
+    private void angelica$untintAdditivePass() {
+        @Surround.Carry
+        boolean untint = false;
+        if (angelica$skipReRender && angelica$isAdditivePass()) {
+            if (angelica$ffpOverlayActive) {
+                GLSMCurrentAttribs.setOverlayColor(0.0F, 0.0F, 0.0F, 0.0F);
+                untint = true;
+            } else if (angelica$shaderEntityColorActive) {
+                CapturedRenderingState.INSTANCE.setCurrentEntityColor(0.0F, 0.0F, 0.0F, 0.0F);
+                untint = true;
+            }
         }
     }
 
-    @Inject(
-        method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
-        at = @At(value = "INVOKE",
-            target = "Lnet/minecraft/client/model/ModelBase;render(Lnet/minecraft/entity/Entity;FFFFFF)V",
-            shift = At.Shift.AFTER),
-        slice = @Slice(
-            from = @At(value = "INVOKE",
-                target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;shouldRenderPass(Lnet/minecraft/entity/EntityLivingBase;IF)I"),
-            to = @At(value = "INVOKE",
-                target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;renderEquippedItems(Lnet/minecraft/entity/EntityLivingBase;F)V")
-        ),
-        require = 1, expect = 1
-    )
-    private void angelica$retintAfterAdditivePass(CallbackInfo ci) {
-        if (!angelica$untint) return;
-        angelica$untint = false;
+    @Surround.Finally
+    private void angelica$retintAfterAdditivePass(@Surround.Carry boolean untint) {
+        if (!untint) return;
         if (angelica$ffpOverlayActive) {
-            GLStateManager.setOverlayColor(1.0F, 0.0F, 0.0F, ANGELICA$RED_MIX);
+            GLSMCurrentAttribs.setOverlayColor(1.0F, 0.0F, 0.0F, ANGELICA$RED_MIX);
         } else if (angelica$shaderEntityColorActive) {
             CapturedRenderingState.INSTANCE.setCurrentEntityColor(1.0F, 0.0F, 0.0F, ANGELICA$RED_MIX);
         }
@@ -146,7 +138,7 @@ public class MixinRendererLivingEntity_OverlayTint {
     )
     private void angelica$reset(CallbackInfo ci) {
         if (angelica$ffpOverlayActive) {
-            GLStateManager.setOverlayColor(0.0F, 0.0F, 0.0F, 0.0F);
+            GLSMCurrentAttribs.setOverlayColor(0.0F, 0.0F, 0.0F, 0.0F);
             angelica$ffpOverlayActive = false;
         }
         if (angelica$shaderEntityColorActive) {
@@ -154,14 +146,13 @@ public class MixinRendererLivingEntity_OverlayTint {
             angelica$shaderEntityColorActive = false;
         }
         angelica$skipReRender = false;
-        angelica$untint = false;
     }
 
     @Unique
     private static boolean angelica$isAdditivePass() {
-        if (!GLStateManager.glIsEnabled(GL11.GL_BLEND)) return false;
-        if (GLStateManager.glGetInteger(GL14.GL_BLEND_DST_RGB) != GL11.GL_ONE) return false;
-        final int src = GLStateManager.glGetInteger(GL14.GL_BLEND_SRC_RGB);
+        if (!GLSMEnable.glIsEnabled(GL11.GL_BLEND)) return false;
+        if (GLSMQueries.glGetInteger(GL14.GL_BLEND_DST_RGB) != GL11.GL_ONE) return false;
+        final int src = GLSMQueries.glGetInteger(GL14.GL_BLEND_SRC_RGB);
         return src == GL11.GL_ONE || src == GL11.GL_SRC_COLOR;
     }
 

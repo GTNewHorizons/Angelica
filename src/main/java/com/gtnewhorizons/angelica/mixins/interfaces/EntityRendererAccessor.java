@@ -10,4 +10,7 @@ public interface EntityRendererAccessor {
      * Get the lightmap texture for shader binding.
      */
     DynamicTexture getLightmapTexture();
+
+    /** Drives the rain and snow texture scroll. */
+    int getRendererUpdateCount();
 }

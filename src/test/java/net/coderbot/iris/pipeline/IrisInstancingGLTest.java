@@ -1,10 +1,24 @@
 package net.coderbot.iris.pipeline;
 
+import com.gtnewhorizons.angelica.glsm.EntityIdsOnlyHandler;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.GlTestSupport;
 import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
+import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
+import com.gtnewhorizons.angelica.glsm.ffp.FfpFixture;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
+import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
 import com.gtnewhorizons.angelica.glsm.shader.ShaderType;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.rendering.tesr.BatchEligibility;
@@ -13,20 +27,34 @@ import net.coderbot.iris.gbuffer_overrides.matching.ProgramTable;
 import net.coderbot.iris.gbuffer_overrides.matching.RenderCondition;
 import net.coderbot.iris.gl.shader.GlShader;
 import net.coderbot.iris.gl.shader.ProgramCreator;
+import net.coderbot.iris.gl.program.ProgramUniforms;
+import net.coderbot.iris.gl.uniform.Uniform;
+import net.coderbot.iris.uniforms.CapturedRenderingState;
+import net.coderbot.batchedentityrendering.impl.AngelicaBufferSource;
 import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline.Pass;
 import net.coderbot.iris.pipeline.transform.PatchShaderType;
-import net.coderbot.iris.pipeline.transform.ShaderTransformer;
 import net.coderbot.iris.pipeline.transform.TransformPatcher;
+import net.coderbot.iris.pipeline.transform.TransformTestSupport;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.GL15;
+import org.lwjgl.BufferUtils;
+
+import java.nio.ByteBuffer;
 
 import java.util.Map;
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Consumer;
 
+import static net.coderbot.iris.pipeline.transform.TransformTestSupport.TEX_LM;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -35,8 +63,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @GLCoreTest
 class IrisInstancingGLTest {
-
-    private static final InputAvailability TEX_LM = InputAvailability.of(true, true);
 
     private static final String CUBE_VERTEX = """
         #version 120
@@ -153,22 +179,18 @@ class IrisInstancingGLTest {
 
     @BeforeAll
     static void pinGlslVersion() {
-        previousMaxGlslVersion = RenderSystem.getMaxGlslVersion();
-        Reflect.setStatic(RenderSystem.class, "maxGlslVersion", 330);
-        ShaderTransformer.init();
+        previousMaxGlslVersion = TransformTestSupport.pinGlslVersion(330);
     }
 
     @AfterAll
     static void restoreGlslVersion() {
-        Reflect.setStatic(RenderSystem.class, "maxGlslVersion", previousMaxGlslVersion);
-        ShaderTransformer.init();
+        TransformTestSupport.restoreGlslVersion(previousMaxGlslVersion);
     }
 
     @BeforeEach
     void setUp() {
-        TransformPatcher.clearCache();
-        ShaderTransformer.clearCache();
-        GLStateManager.disableBlend();
+        TransformTestSupport.clearCaches();
+        GLSMBlend.disableBlend();
     }
 
     @AfterEach
@@ -176,7 +198,7 @@ class IrisInstancingGLTest {
         GLSMHooks.pendingProgramSelection = null;
         Reflect.setStatic(BatchEligibility.class, "depth", 0);
         Reflect.setStatic(BatchEligibility.class, "allowed", false);
-        Reflect.setStatic(GLStateManager.class, "foreignDrawDepth", 0);
+        GLStateManager.ctx().foreignDrawDepth = 0;
     }
 
     private static DeferredWorldRenderingPipeline newPipeline(WorldRenderingPhase phase, boolean isMainBound) {
@@ -197,7 +219,7 @@ class IrisInstancingGLTest {
     @Test
     void settersDeferInsideASafeBatchWindowAndResolveWhenItCloses() {
         final DeferredWorldRenderingPipeline pipeline = newPipeline(WorldRenderingPhase.ENTITIES, true);
-        final long dc = GLStateManager.drawCalls;
+        final long dc = GLSMDraws.drawCalls;
 
         BatchEligibility.begin(BatchEligibility.SAFE, dc);
         BatchEligibility.begin(BatchEligibility.SAFE, dc);
@@ -240,7 +262,7 @@ class IrisInstancingGLTest {
         final DeferredWorldRenderingPipeline pipeline = newPipeline(WorldRenderingPhase.ENTITIES, true);
         Reflect.set(pipeline, "currentCondition", RenderCondition.ENTITIES);
 
-        final long dc = GLStateManager.drawCalls;
+        final long dc = GLSMDraws.drawCalls;
         BatchEligibility.begin(BatchEligibility.SAFE, dc);
         pipeline.setInputs(InputAvailability.of(true, true));
         assertSame(pipeline, GLSMHooks.pendingProgramSelection);
@@ -256,10 +278,12 @@ class IrisInstancingGLTest {
     void rebindCurrentPassResolvesBeforeItsOwnNullPassFallback() {
         final DeferredWorldRenderingPipeline pipeline = newPipeline(WorldRenderingPhase.ENTITIES, true);
 
-        final int program = GLStateManager.glCreateProgram();
-        GLStateManager.glUseProgram(program);
+        final int program = GLSMPrograms.glCreateProgram();
+        GLSMPrograms.glUseProgram(program);
+        // Never linked, so the driver rejects the bind; GLSM still tracks it as the active program.
+        assertEquals(GL11.GL_INVALID_OPERATION, GL11.glGetError());
         try {
-            final long dc = GLStateManager.drawCalls;
+            final long dc = GLSMDraws.drawCalls;
             BatchEligibility.begin(BatchEligibility.SAFE, dc);
             pipeline.setInputs(InputAvailability.of(true, true));
             assertSame(pipeline, GLSMHooks.pendingProgramSelection);
@@ -270,8 +294,8 @@ class IrisInstancingGLTest {
 
             BatchEligibility.end(BatchEligibility.SAFE, dc);
         } finally {
-            GLStateManager.glUseProgram(0);
-            GLStateManager.glDeleteProgram(program);
+            GLSMPrograms.glUseProgram(0);
+            GLSMPrograms.glDeleteProgram(program);
         }
     }
 
@@ -299,6 +323,16 @@ class IrisInstancingGLTest {
     }
 
     @Test
+    void weatherVariantLinks() {
+        final Map<PatchShaderType, String> result = TransformPatcher.patchAttributesInstanced(PARTICLE_VERTEX, null, null, null, PARTICLE_FRAGMENT, TEX_LM, false, Instancing.WEATHER);
+        assertNotNull(result);
+        final String v = result.get(PatchShaderType.VERTEX);
+        assertNotNull(v);
+        assertTrue(v.startsWith("#version 330"), () -> "expected a 3.3 core vertex shader:\n" + v);
+        link("weatherVariant", result);
+    }
+
+    @Test
     void templateVariantCompilesAndLinksWithGeometryStage() {
         final Map<PatchShaderType, String> result = TransformPatcher.patchAttributesInstanced(TEMPLATE_VERTEX, TEMPLATE_GEOMETRY, null, null, TEMPLATE_FRAGMENT, TEX_LM, false, Instancing.TEMPLATE);
         assertNotNull(result);
@@ -307,6 +341,174 @@ class IrisInstancingGLTest {
     }
 
     private static void link(String name, Map<PatchShaderType, String> result) {
+        GLSMPrograms.glDeleteProgram(linkProgram(name, result));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = Instancing.class, names = { "NONE", "TEMPLATE", "CUBE" })
+    void freshEntityTintPreservesColorBeforeAndAfterAHurtScope(Instancing kind) {
+        final CapturedRenderingState state = Reflect.construct(CapturedRenderingState.class);
+        final String vertexSource = """
+            #version 120
+            void main() {
+                gl_Position = vec4(gl_VertexID == 1 ? 3.0 : -1.0, gl_VertexID == 2 ? 3.0 : -1.0, 0.0, 1.0);
+            }
+            """;
+        final String fragmentSource = """
+            #version 120
+            uniform vec4 entityColor;
+            void main() {
+                gl_FragData[0] = vec4(mix(vec3(0, 0, 1), entityColor.rgb, entityColor.a), 1);
+            }
+            """;
+        final int program = linkProgram("entityTint", kind == Instancing.NONE
+            ? TransformPatcher.patchAttributes(vertexSource, null, fragmentSource, TEX_LM)
+            : TransformPatcher.patchAttributesInstanced(vertexSource, null, null, null, fragmentSource, TEX_LM, false, kind));
+        final int vao = GLSMVertexInput.glGenVertexArrays();
+        final int buffer = GLSMBuffers.glGenBuffers();
+        GLSMAttribStack.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+        try {
+            GLSMDepthStencilAlpha.disableDepthTest();
+            GLSMRasterizer.disableCull();
+            GLSMBlend.glColorMask(true, true, true, true);
+            GLSMRasterizer.glViewport(0, 0, 8, 8);
+            GLSMPrograms.glUseProgram(program);
+            GLSMPrograms.glUniform1i(GLSMPrograms.glGetUniformLocation(program, "iris_currentAlphaFunc"), 7);
+            GLSMVertexInput.glBindVertexArray(vao);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, buffer);
+            InstancedAttribs.pointHead(0, InstancedAttribs.HEAD_SIZE);
+            GLSMVertexInput.glEnableVertexAttribArray(InstancedAttribs.LOC_OVERLAY);
+            GLSMVertexInput.glVertexAttribDivisor(InstancedAttribs.LOC_OVERLAY, 1);
+            final ByteBuffer data = BufferUtils.createByteBuffer(InstancedAttribs.HEAD_SIZE);
+            final var builder = ProgramUniforms.builder("entityTint", program);
+            builder.uniform4f("entityColor", state::getCurrentEntityColor, state.getEntityColorNotifier());
+            final List<Uniform> uniforms = Reflect.get(builder.buildUniforms(), "dynamic");
+            final Consumer<int[]> checkPixel = expected -> {
+                for (Uniform uniform : uniforms) uniform.update();
+                data.putInt(InstancedAttribs.OFFSET_OVERLAY, AngelicaBufferSource.packEntityColor(state.getCurrentEntityColor()));
+                GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, data, GL15.GL_STREAM_DRAW);
+                GLSMBlend.glClearColor(0, 0, 0, 1);
+                GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
+                if (kind == Instancing.NONE) GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
+                else GLSMDraws.glDrawArraysInstanced(GL11.GL_TRIANGLES, 0, 3, 1);
+                assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "draw error");
+                final int[] pixel = FfpFixture.readPixel(0, 0);
+                for (int channel = 0; channel < 4; channel++) {
+                    assertEquals(expected[channel], pixel[channel], 1, kind + " tint pixel " + Arrays.toString(pixel));
+                }
+            };
+            checkPixel.accept(new int[] {0, 0, 255, 255});
+            state.pushCurrentEntityColor();
+            state.setCurrentEntityColor(1, 0, 0, 0.5f);
+            checkPixel.accept(new int[] {128, 0, 127, 255});
+            state.popCurrentEntityColor();
+            checkPixel.accept(new int[] {0, 0, 255, 255});
+        } finally {
+            state.getEntityColorNotifier().setListener(null);
+            GLSMPrograms.glUseProgram(0);
+            GLSMVertexInput.glBindVertexArray(0);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            GLSMBuffers.glDeleteBuffers(buffer);
+            GLSMVertexInput.glDeleteVertexArrays(vao);
+            GLSMPrograms.glDeleteProgram(program);
+            GLSMAttribStack.glPopAttrib();
+        }
+    }
+
+    @Test
+    void highEntityBlockAndItemIdsReachTheFragmentShader() {
+        final String vertexSource = """
+            #version 120
+            void main() {
+                gl_Position = vec4(gl_VertexID == 1 ? 3.0 : -1.0, gl_VertexID == 2 ? 3.0 : -1.0, 0.0, 1.0);
+            }
+            """;
+        final String fragmentSource = """
+            #version 120
+            uniform int entityId, blockEntityId;
+            uniform int currentRenderedItemId;
+            uniform int expectedId;
+            // a parameter and a local sharing the id names keep their own values
+            bool isFortyTwo(int entityId) { return entityId == 42; }
+            void main() {
+                bool matches = entityId == expectedId && blockEntityId == expectedId && currentRenderedItemId == expectedId;
+                bool shadowed = isFortyTwo(42);
+                { int blockEntityId = 7; shadowed = shadowed && blockEntityId == 7; }
+                gl_FragData[0] = matches && shadowed ? vec4(0, 1, 0, 1) : vec4(1, 0, 0, 1);
+            }
+            """;
+        final int[] ids = { -1, 0, 32767, 32768, 45020, 50020, 50072, 65534 };
+        final int vao = GLSMVertexInput.glGenVertexArrays();
+        final int buffer = GLSMBuffers.glGenBuffers();
+        GLSMAttribStack.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+        GLSMDepthStencilAlpha.disableDepthTest();
+        GLSMRasterizer.disableCull();
+        GLSMBlend.glColorMask(true, true, true, true);
+        GLSMRasterizer.glViewport(0, 0, 8, 8);
+        try {
+            for (Instancing kind : new Instancing[] { Instancing.TEMPLATE, Instancing.CUBE }) {
+                final int program = linkProgram("highIds", TransformPatcher.patchAttributesInstanced(
+                    vertexSource, null, null, null, fragmentSource, TEX_LM, false, kind));
+                try {
+                    GLSMPrograms.glUseProgram(program);
+                    GLSMPrograms.glUniform1i(GLSMPrograms.glGetUniformLocation(program, "iris_currentAlphaFunc"), 7);
+                    GLSMVertexInput.glBindVertexArray(vao);
+                    GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, buffer);
+                    InstancedAttribs.pointHead(0, InstancedAttribs.HEAD_SIZE);
+                    GLSMVertexInput.glEnableVertexAttribArray(InstancedAttribs.LOC_ENTITY);
+                    GLSMVertexInput.glVertexAttribDivisor(InstancedAttribs.LOC_ENTITY, 1);
+                    final ByteBuffer data = BufferUtils.createByteBuffer(InstancedAttribs.HEAD_SIZE);
+                    for (int id : ids) {
+                        data.putLong(InstancedAttribs.OFFSET_ENTITY, InstancedAttribs.packEntityInfo(id, id, id));
+                        GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, data, GL15.GL_STREAM_DRAW);
+                        GLSMPrograms.glUniform1i(GLSMPrograms.glGetUniformLocation(program, "expectedId"), id);
+                        GLSMBlend.glClearColor(0, 0, 0, 1);
+                        GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
+                        GLSMDraws.glDrawArraysInstanced(GL11.GL_TRIANGLES, 0, 3, 1);
+                        assertEquals(program, GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM), "draw program");
+                        assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "draw error");
+                        final int[] pixel = FfpFixture.readPixel(0, 0);
+                        assertEquals(255, pixel[1], kind + " material ID " + id + " pixel " + Arrays.toString(pixel));
+                    }
+                } finally {
+                    GLSMPrograms.glUseProgram(0);
+                    GLSMPrograms.glDeleteProgram(program);
+                }
+            }
+
+            final int program = linkProgram("highIdsImmediate", TransformPatcher.patchAttributes(vertexSource, null, null, null, fragmentSource, TEX_LM, false));
+            final ImmediateExtendedAttribHandler previousHandler = GLSMHooks.immediateExtendedHandler;
+            try {
+                EntityIdsOnlyHandler.install();
+                GLSMPrograms.glUseProgram(program);
+                GLSMPrograms.glUniform1i(GLSMPrograms.glGetUniformLocation(program, "iris_currentAlphaFunc"), 7);
+                GLSMVertexInput.glBindVertexArray(vao);
+                for (int id : ids) {
+                    GLSMCurrentAttribs.setEntityIds(id, id, id);
+                    GLSMPrograms.glUniform1i(GLSMPrograms.glGetUniformLocation(program, "expectedId"), id);
+                    GLSMBlend.glClearColor(0, 0, 0, 1);
+                    GLSMFramebuffer.glClear(GL11.GL_COLOR_BUFFER_BIT);
+                    GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
+                    assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "draw error");
+                    final int[] pixel = FfpFixture.readPixel(0, 0);
+                    assertEquals(255, pixel[1], "immediate material ID " + id + " pixel " + Arrays.toString(pixel));
+                }
+            } finally {
+                GLSMPrograms.glUseProgram(0);
+                GLSMPrograms.glDeleteProgram(program);
+                GLSMHooks.immediateExtendedHandler = previousHandler;
+                GLSMCurrentAttribs.setEntityIds(-1, 0, -1);
+            }
+        } finally {
+            GLSMVertexInput.glBindVertexArray(0);
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            GLSMBuffers.glDeleteBuffers(buffer);
+            GLSMVertexInput.glDeleteVertexArrays(vao);
+            GLSMAttribStack.glPopAttrib();
+        }
+    }
+
+    private static int linkProgram(String name, Map<PatchShaderType, String> result) {
         final String v = result.get(PatchShaderType.VERTEX);
         final String g = result.get(PatchShaderType.GEOMETRY);
         final String f = result.get(PatchShaderType.FRAGMENT);
@@ -317,10 +519,9 @@ class IrisInstancingGLTest {
         final GlShader geometry = g == null ? null : new GlShader(ShaderType.GEOMETRY, name + "Geometry", g);
         final GlShader fragment = new GlShader(ShaderType.FRAGMENT, name + "Fragment", f);
         try {
-            final int program = geometry == null
+            return geometry == null
                 ? ProgramCreator.create(name, vertex, fragment)
                 : ProgramCreator.create(name, vertex, geometry, fragment);
-            GLStateManager.glDeleteProgram(program);
         } finally {
             vertex.destroy();
             if (geometry != null) {
@@ -331,10 +532,6 @@ class IrisInstancingGLTest {
     }
 
     private static void compile(int type, String source) {
-        final int shader = GLStateManager.glCreateShader(type);
-        GLStateManager.glShaderSource(shader, source);
-        GLStateManager.glCompileShader(shader);
-        assertEquals(GL11.GL_TRUE, GLStateManager.glGetShaderi(shader, GL20.GL_COMPILE_STATUS), () -> "shader failed to compile:\n" + GLStateManager.glGetShaderInfoLog(shader, 4096) + "\n" + source);
-        GLStateManager.glDeleteShader(shader);
+        GLSMPrograms.glDeleteShader(GlTestSupport.compile(type, source));
     }
 }

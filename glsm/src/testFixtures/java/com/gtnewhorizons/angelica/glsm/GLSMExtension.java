@@ -61,6 +61,7 @@ public class GLSMExtension implements BeforeAllCallback, BeforeEachCallback, Aft
 
     @Override
     public void beforeAll(ExtensionContext context) throws LWJGLException {
+        GlsmRedirectAgent.requireInstalled();
         if (startFailure != null) {
             throw new IllegalStateException("GLSMExtension context setup failed earlier in this JVM", startFailure);
         }
@@ -70,7 +71,6 @@ public class GLSMExtension implements BeforeAllCallback, BeforeEachCallback, Aft
             final GLSMInitConfig config = GLSMInitConfig.builder()
                 .displaySize(displayMode.getWidth(), displayMode.getHeight())
                 .directDrawer(t -> {})
-                .streamingDrawerDestroy(() -> {})
                 .enableDSA(false)
                 .build();
             setMainThread(Thread.currentThread());
@@ -144,12 +144,12 @@ public class GLSMExtension implements BeforeAllCallback, BeforeEachCallback, Aft
         if (ffp.isActive()) {
             ffp.deactivate();
         }
-        ffp.disable();
+        ShaderManager.disable();
 
         // Force-sync VAO binding. Tests may unbind via raw GL, desynchronizing GLSM's cache.
         // Invalidate the cache so glBindVertexArray(0) actually issues the GL call.
         GLStateManager.ctx().boundVAO = -1;
-        GLStateManager.glBindVertexArray(0);
+        GLSMVertexInput.glBindVertexArray(0);
 
         GL11.glMatrixMode(GL11.GL_MODELVIEW);
         while (GL11.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH) > EXPECTED_MODELVIEW_STACK_DEPTH) {
@@ -180,6 +180,7 @@ public class GLSMExtension implements BeforeAllCallback, BeforeEachCallback, Aft
             fail("Test leaked an open display-list recorder! Missing glEndList.");
         }
 
+        GlsmRedirectAgent.assertNoFailures();
         final int error = GL11.glGetError();
         assertEquals(GL11.GL_NO_ERROR, error,
             () -> "GL Error: 0x" + Integer.toHexString(error));

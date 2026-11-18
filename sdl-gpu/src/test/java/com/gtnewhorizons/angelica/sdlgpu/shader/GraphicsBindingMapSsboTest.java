@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.sdlgpu.shader;
 
-import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.opengl.GL20;
@@ -14,6 +13,7 @@ import org.lwjgl.util.spvc.SpvcReflectedResource;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 
+import static com.gtnewhorizons.angelica.sdlgpu.shader.SpirvTestShaders.compileOrFail;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -33,7 +33,7 @@ class GraphicsBindingMapSsboTest {
 
     @Test
     void extractsOriginalSsboBinding() {
-        final ByteBuffer spirv = compile(FRAG_WITH_SSBO, Shaderc.shaderc_fragment_shader);
+        final ByteBuffer spirv = compileOrFail(FRAG_WITH_SSBO, Shaderc.shaderc_fragment_shader);
         try {
             final ShaderManager.GraphicsBindingMap map = ShaderManager.remapSpirvForSDLGPU(spirv, GL20.GL_FRAGMENT_SHADER);
             assertEquals(1, map.roSsboGlSlots().length);
@@ -56,7 +56,7 @@ class GraphicsBindingMapSsboTest {
             layout(location = 0) out vec4 o;
             void main() { o = texture(s0, uv); }
             """;
-        final ByteBuffer spirv = compile(src, Shaderc.shaderc_fragment_shader);
+        final ByteBuffer spirv = compileOrFail(src, Shaderc.shaderc_fragment_shader);
         try {
             final ShaderManager.GraphicsBindingMap map = ShaderManager.remapSpirvForSDLGPU(spirv, GL20.GL_FRAGMENT_SHADER);
             assertEquals(0, map.roSsboGlSlots().length);
@@ -96,13 +96,5 @@ class GraphicsBindingMapSsboTest {
             }
         }
         return out;
-    }
-
-    private static ByteBuffer compile(String source, int shaderKind) {
-        final SpirvCompiler.Result r = SpirvCompiler.compile(source, shaderKind, "frag_test", SpirvCompiler.Options.vulkanForced460Core());
-        if (r.spirv() == null) {
-            fail("frag compile failed: " + r.error());
-        }
-        return r.spirv();
     }
 }

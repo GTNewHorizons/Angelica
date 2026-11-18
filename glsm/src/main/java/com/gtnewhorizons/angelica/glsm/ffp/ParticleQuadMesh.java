@@ -3,7 +3,8 @@ package com.gtnewhorizons.angelica.glsm.ffp;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.api.util.NormI8;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
@@ -76,11 +77,11 @@ public final class ParticleQuadMesh {
         written = true;
 
         write(memAddress0(staging), rotX, rotXZ, rotZ, rotYZ, rotXY);
-        final int savedVBO = GLStateManager.getBoundVBO();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        final int savedVBO = GLSMBuffers.getBoundVBO();
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
         staging.position(0).limit(VERTEX_COUNT * VERTEX_STRIDE);
-        GLStateManager.glBufferSubData(GL15.GL_ARRAY_BUFFER, 0L, staging);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, savedVBO);
+        GLSMBuffers.glBufferSubData(GL15.GL_ARRAY_BUFFER, 0L, staging);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, savedVBO);
     }
 
     private static void write(long dst, float rotX, float rotXZ, float rotZ, float rotYZ, float rotXY) {
@@ -116,13 +117,13 @@ public final class ParticleQuadMesh {
     }
 
     private static void build() {
-        final int savedVAO = GLStateManager.getBoundVAO();
-        final int savedVBO = GLStateManager.getBoundVBO();
-        vao = GLStateManager.glGenVertexArrays();
-        GLStateManager.glBindVertexArray(vao);
-        vbo = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-        GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, (long) VERTEX_COUNT * VERTEX_STRIDE, GL15.GL_DYNAMIC_DRAW);
+        final int savedVAO = GLSMVertexInput.getBoundVAO();
+        final int savedVBO = GLSMBuffers.getBoundVBO();
+        vao = GLSMVertexInput.glGenVertexArrays();
+        GLSMVertexInput.glBindVertexArray(vao);
+        vbo = GLSMBuffers.glGenBuffers();
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, (long) VERTEX_COUNT * VERTEX_STRIDE, GL15.GL_DYNAMIC_DRAW);
 
         attrib(VertexFormatElement.Usage.POSITION.getAttributeLocation(), 3, GL11.GL_FLOAT, false, OFFSET_OFFSET);
         attrib(VertexFormatElement.Usage.PRIMARY_UV.getAttributeLocation(), 2, GL11.GL_FLOAT, false, OFFSET_CORNER);
@@ -130,25 +131,25 @@ public final class ParticleQuadMesh {
 
         ParticleInstancedAttribs.enableInstanceArrays();
 
-        GLStateManager.glBindVertexArray(savedVAO);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, savedVBO);
+        GLSMVertexInput.glBindVertexArray(savedVAO);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, savedVBO);
 
         if (staging == null) staging = memAlloc(VERTEX_COUNT * VERTEX_STRIDE);
         written = false;
     }
 
     private static void attrib(int loc, int size, int type, boolean normalized, int offset) {
-        GLStateManager.glEnableVertexAttribArray(loc);
-        GLStateManager.glVertexAttribPointer(loc, size, type, normalized, VERTEX_STRIDE, offset);
+        GLSMVertexInput.glEnableVertexAttribArray(loc);
+        GLSMVertexInput.glVertexAttribPointer(loc, size, type, normalized, VERTEX_STRIDE, offset);
     }
 
     public static void delete() {
         if (vbo != 0) {
-            GLStateManager.glDeleteBuffers(vbo);
+            GLSMBuffers.glDeleteBuffers(vbo);
             vbo = 0;
         }
         if (vao != 0) {
-            GLStateManager.glDeleteVertexArrays(vao);
+            GLSMVertexInput.glDeleteVertexArrays(vao);
             vao = 0;
         }
         if (staging != null) {

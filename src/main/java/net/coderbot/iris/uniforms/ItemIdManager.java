@@ -1,6 +1,9 @@
 package net.coderbot.iris.uniforms;
 
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.StateSet;
 import net.coderbot.iris.Iris;
+import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.minecraft.block.Block;
@@ -10,6 +13,32 @@ import net.minecraft.item.ItemStack;
  * Helper class to manage the currentRenderedItem ID uniform.
  */
 public class ItemIdManager {
+    public static void pushItemId() {
+        CapturedRenderingState.INSTANCE.pushCurrentRenderedItem();
+    }
+
+    public static void popItemId() {
+        CapturedRenderingState.INSTANCE.popCurrentRenderedItem();
+    }
+
+    public static int beginCutout(ItemStack stack) {
+        pushItemId();
+        final int depth = GLSMAttribStack.pushState(StateSet.CUTOUT);
+        try {
+            GbufferPrograms.setCutoutDefaults();
+            setItemId(stack);
+        } catch (Throwable t) {
+            endCutout(depth);
+            throw t;
+        }
+        return depth;
+    }
+
+    public static void endCutout(int depth) {
+        popItemId();
+        GLSMAttribStack.popStateTo(depth);
+    }
+
     /**
      * Set the item ID for an armor piece or held item.
      * If the ItemStack is null/empty, resets to 0.
@@ -18,20 +47,14 @@ public class ItemIdManager {
      * @param itemStack The armor or item being rendered
      */
     public static void setItemId(ItemStack itemStack) {
-        if (itemStack == null || itemStack.getItem() == null) {
-            CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
-            return;
-        }
-
-        int id = ItemMaterialHelper.getMaterialId(itemStack);
-        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(id);
+        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(itemStack);
     }
 
     /**
      * Set the item ID for a Block rendered outside of terrain.
      */
     public static void setBlockId(Block block, int metadata) {
-        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(ItemMaterialHelper.getMaterialId(block, metadata));
+        CapturedRenderingState.INSTANCE.setCurrentRenderedBlockItem(block, metadata);
     }
 
     /**
