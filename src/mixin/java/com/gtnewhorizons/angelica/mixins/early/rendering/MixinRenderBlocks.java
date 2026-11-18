@@ -264,7 +264,7 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
                 angelica$nudgeFaceOutward(rb, face);
                 angelica$overrideBoundsNudged = true;
             }
-            return;
+            return false;
         }
         double minX = rb.renderMinX, minY = rb.renderMinY, minZ = rb.renderMinZ;
         double maxX = rb.renderMaxX, maxY = rb.renderMaxY, maxZ = rb.renderMaxZ;
@@ -278,7 +278,7 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
             angelica$overrideBoundsNudged = true;
         }
         angelica$restoreOverrideBounds();
-        ci.cancel();
+        return true;
     }
 
     @Unique
@@ -351,32 +351,32 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
     }
 
 
-    @Inject(method = "renderFaceYNeg", at = @At("TAIL"))
+    @Surround.Finally("ctmYNeg")
     private void compactCtm_afterRenderFaceYNeg(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
         angelica$restoreOverrideBounds();
     }
 
-    @Inject(method = "renderFaceYPos", at = @At("TAIL"))
+    @Surround.Finally("ctmYPos")
     private void compactCtm_afterRenderFaceYPos(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
         angelica$restoreOverrideBounds();
     }
 
-    @Inject(method = "renderFaceZNeg", at = @At("TAIL"))
+    @Surround.Finally("ctmZNeg")
     private void compactCtm_afterRenderFaceZNeg(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
         angelica$restoreOverrideBounds();
     }
 
-    @Inject(method = "renderFaceZPos", at = @At("TAIL"))
+    @Surround.Finally("ctmZPos")
     private void compactCtm_afterRenderFaceZPos(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
         angelica$restoreOverrideBounds();
     }
 
-    @Inject(method = "renderFaceXNeg", at = @At("TAIL"))
+    @Surround.Finally("ctmXNeg")
     private void compactCtm_afterRenderFaceXNeg(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
         angelica$restoreOverrideBounds();
     }
 
-    @Inject(method = "renderFaceXPos", at = @At("TAIL"))
+    @Surround.Finally("ctmXPos")
     private void compactCtm_afterRenderFaceXPos(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
         angelica$restoreOverrideBounds();
     }
