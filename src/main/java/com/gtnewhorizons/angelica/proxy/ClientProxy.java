@@ -40,6 +40,7 @@ import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.common.BlockError;
 import com.gtnewhorizons.angelica.common.BlockIsbrhTest;
 import com.gtnewhorizons.angelica.common.TileEntityClipPlaneTest;
+import com.gtnewhorizons.angelica.common.TileTesrTranslucentTest;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.bettercrashes.BetterCrashesCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
@@ -75,6 +76,7 @@ import com.gtnewhorizons.angelica.rendering.ClipPlaneTestRenderer;
 import com.gtnewhorizons.angelica.rendering.FpsReducer;
 import com.gtnewhorizons.angelica.rendering.FramePacer;
 import com.gtnewhorizons.angelica.rendering.IsbrhTestRenderer;
+import com.gtnewhorizons.angelica.rendering.TesrTranslucentTestRenderers;
 import com.gtnewhorizons.angelica.rendering.TextureSamplers;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasSetup;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
@@ -150,6 +152,10 @@ public final class ClientProxy extends CommonProxy {
             BlockIsbrhTest.renderId = RenderingRegistry.getNextAvailableRenderId();
             RenderingRegistry.registerBlockHandler(BlockIsbrhTest.renderId, new IsbrhTestRenderer());
             ClientRegistry.bindTileEntitySpecialRenderer(TileEntityClipPlaneTest.class, new ClipPlaneTestRenderer());
+            ClientRegistry.bindTileEntitySpecialRenderer(TileTesrTranslucentTest.Provider.class, new TesrTranslucentTestRenderers.Provider());
+            ClientRegistry.bindTileEntitySpecialRenderer(TileTesrTranslucentTest.Model.class, new TesrTranslucentTestRenderers.Model());
+            ClientRegistry.bindTileEntitySpecialRenderer(TileTesrTranslucentTest.Decal.class, new TesrTranslucentTestRenderers.Decal());
+            ClientRegistry.bindTileEntitySpecialRenderer(TileTesrTranslucentTest.Glow.class, new TesrTranslucentTestRenderers.Glow());
         }
         AngelicaJar.configureShaderDiskCache(event.getSourceFile());
         if (AngelicaConfig.enableIris) {
