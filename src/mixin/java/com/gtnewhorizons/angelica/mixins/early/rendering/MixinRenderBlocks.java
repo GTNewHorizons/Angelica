@@ -352,32 +352,32 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
 
 
     @Surround.Finally("ctmYNeg")
-    private void compactCtm_afterRenderFaceYNeg(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
+    private void compactCtm_afterRenderFaceYNeg(Block block, double x, double y, double z, IIcon icon) {
         angelica$restoreOverrideBounds();
     }
 
     @Surround.Finally("ctmYPos")
-    private void compactCtm_afterRenderFaceYPos(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
+    private void compactCtm_afterRenderFaceYPos(Block block, double x, double y, double z, IIcon icon) {
         angelica$restoreOverrideBounds();
     }
 
     @Surround.Finally("ctmZNeg")
-    private void compactCtm_afterRenderFaceZNeg(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
+    private void compactCtm_afterRenderFaceZNeg(Block block, double x, double y, double z, IIcon icon) {
         angelica$restoreOverrideBounds();
     }
 
     @Surround.Finally("ctmZPos")
-    private void compactCtm_afterRenderFaceZPos(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
+    private void compactCtm_afterRenderFaceZPos(Block block, double x, double y, double z, IIcon icon) {
         angelica$restoreOverrideBounds();
     }
 
     @Surround.Finally("ctmXNeg")
-    private void compactCtm_afterRenderFaceXNeg(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
+    private void compactCtm_afterRenderFaceXNeg(Block block, double x, double y, double z, IIcon icon) {
         angelica$restoreOverrideBounds();
     }
 
     @Surround.Finally("ctmXPos")
-    private void compactCtm_afterRenderFaceXPos(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
+    private void compactCtm_afterRenderFaceXPos(Block block, double x, double y, double z, IIcon icon) {
         angelica$restoreOverrideBounds();
     }
 
