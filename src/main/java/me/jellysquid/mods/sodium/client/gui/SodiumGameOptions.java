@@ -15,6 +15,7 @@ import me.jellysquid.mods.sodium.client.gui.options.named.MipmapGeneration;
 import me.jellysquid.mods.sodium.client.gui.options.named.MultiDrawMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.TexelSampling;
 import me.jellysquid.mods.sodium.client.gui.options.named.TextureFilterMode;
+import me.jellysquid.mods.sodium.client.gui.options.named.TranslucencyMode;
 import net.coderbot.iris.Iris;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.OpenGlHelper;
@@ -24,6 +25,7 @@ import org.embeddedt.embeddium.impl.render.chunk.occlusion.AsyncOcclusionMode;
 
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.Reader;
 import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -124,7 +126,7 @@ public class SodiumGameOptions {
 
         if (Files.exists(path)) {
             try (FileReader reader = new FileReader(path.toFile())) {
-                config = GSON.fromJson(reader, SodiumGameOptions.class);
+                config = read(reader);
             } catch (IOException e) {
                 throw new RuntimeException("Could not parse config", e);
             } catch (JsonSyntaxException e) {
@@ -141,23 +143,6 @@ public class SodiumGameOptions {
         }
 
         config.configPath = path;
-
-        if (config.advanced.streamingUploadStrategy == null) {
-            config.advanced.streamingUploadStrategy = StreamingUploader.UploadStrategy.MAP_BUFFER_RANGE;
-        }
-
-        if (config.quality.textureFilterMode == null) {
-            config.quality.textureFilterMode = TextureFilterMode.RGSS_ANISOTROPIC;
-        }
-
-        if (config.quality.texelSampling == null) {
-            config.quality.texelSampling = TexelSampling.LINEAR;
-        }
-        config.quality.guiBlockSupersampling = Integer.highestOneBit(MathHelper.clamp_int(config.quality.guiBlockSupersampling, 1, 16));
-
-        if (config.quality.mipmapGeneration == null) {
-            config.quality.mipmapGeneration = MipmapGeneration.MODERN_VANILLA;
-        }
 
         if (GLStateManager.capabilities != null) {
             if (!GLStateManager.capabilities.OpenGL32) {
@@ -179,6 +164,43 @@ public class SodiumGameOptions {
         return config;
     }
 
+    static SodiumGameOptions read(Reader reader) {
+        final SodiumGameOptions config = GSON.fromJson(reader, SodiumGameOptions.class);
+        config.normalize();
+        return config;
+    }
+
+    private void normalize() {
+        if (this.advanced.streamingUploadStrategy == null) {
+            this.advanced.streamingUploadStrategy = StreamingUploader.UploadStrategy.MAP_BUFFER_RANGE;
+        }
+
+        if (this.quality.textureFilterMode == null) {
+            this.quality.textureFilterMode = TextureFilterMode.RGSS_ANISOTROPIC;
+        }
+
+        if (this.quality.texelSampling == null) {
+            this.quality.texelSampling = TexelSampling.LINEAR;
+        }
+        this.quality.guiBlockSupersampling = Integer.highestOneBit(MathHelper.clamp_int(this.quality.guiBlockSupersampling, 1, 16));
+
+        if (this.quality.mipmapGeneration == null) {
+            this.quality.mipmapGeneration = MipmapGeneration.MODERN_VANILLA;
+        }
+
+        if (this.performance.translucencySorting != null) {
+            this.performance.translucencyMode = this.performance.translucencySorting ? TranslucencyMode.FAST : TranslucencyMode.OFF;
+            this.performance.translucencySorting = null;
+        }
+        if (this.performance.translucencyMode == null) {
+            this.performance.translucencyMode = TranslucencyMode.FAST;
+        }
+    }
+
+    String toJson() {
+        return GSON.toJson(this);
+    }
+
     private static boolean isLwjgl2() {
         return SodiumGameOptions.class.getClassLoader().getResource("org/lwjgl/Sys.class") != null;
     }
@@ -196,7 +218,7 @@ public class SodiumGameOptions {
             throw new IOException("Not a directory: " + dir);
         }
 
-        Files.writeString(this.configPath, GSON.toJson(this));
+        Files.writeString(this.configPath, toJson());
         if (Iris.enabled) {
             try {
                 if (Iris.getIrisConfig() != null) {
@@ -233,7 +255,8 @@ public class SodiumGameOptions {
         public boolean useFogOcclusion = true;
         public boolean useBlockFaceCulling = true;
         public boolean useCompactVertexFormat = true;
-        public boolean translucencySorting = true;
+        public TranslucencyMode translucencyMode = TranslucencyMode.FAST;
+        public Boolean translucencySorting;
         public boolean blockEntitiesBeforeTranslucentTerrain = true;
         public boolean useRenderPassOptimization = true;
         public int cpuRenderAheadLimit = 3;

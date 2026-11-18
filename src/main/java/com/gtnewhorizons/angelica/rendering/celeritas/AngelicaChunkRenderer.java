@@ -13,6 +13,7 @@ import com.gtnewhorizons.angelica.rendering.TextureSamplers;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
 import com.gtnewhorizons.angelica.rendering.culling.GpuCulling;
+import com.gtnewhorizons.angelica.rendering.translucency.TranslucencyLayers;
 import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
 import me.jellysquid.mods.sodium.client.gui.options.named.MultiDrawMode;
 import com.gtnewhorizons.angelica.rendering.voxelization.SdlShadowVoxelizationSink;
@@ -196,6 +197,7 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
         if (program != null) {
             program.bind();
             program.getInterface().setupState(pass);
+            if (pass == AngelicaRenderPassConfiguration.TRANSLUCENT_PASS) TranslucencyLayers.INSTANCE.beginTerrainSplit(program.handle());
         }
     }
 
@@ -204,6 +206,7 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
         if (irisProgram != null) {
             endIrisPass(pass);
         } else {
+            if (pass == AngelicaRenderPassConfiguration.TRANSLUCENT_PASS) TranslucencyLayers.INSTANCE.endTerrainSplit();
             super.end(pass);
         }
     }
