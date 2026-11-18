@@ -39,17 +39,16 @@ public final class InstancedGlslHelpers {
         vec2 {p}wColumn = {span}.xy;
         float {p}wBottom = {span}.z;
         float {p}wTop = {span}.w;
-        vec2 {p}wLightmap = {params}.xy;
-        float {p}wHash = {params}.z;
-        bool {p}wSnow = {params}.w > 0.5;
+        float {p}wLightV = floor({params}.x / 65536.0);
+        vec2 {p}wLightmap = vec2({params}.x - {p}wLightV * 65536.0, {p}wLightV);
+        bool {p}wProvider = {params}.w > 0.5;
         vec3 {p}wTranslate = {p}WeatherParams0.xyz;
-        float {p}wInvRadius = {p}WeatherParams0.w;
+        float {p}wInvRadius = {p}wProvider ? {p}WeatherParams3.x : {p}WeatherParams0.w;
         vec2 {p}wCameraFrac = {p}WeatherParams1.xy;
         float {p}wPartialTicks = {p}WeatherParams1.z;
-        float {p}wAge = {p}WeatherParams1.w;
-        float {p}wRainScroll = {p}WeatherParams2.x;
-        float {p}wSnowScroll = {p}WeatherParams2.y;
-        float {p}wStrength = {p}WeatherParams2.z;
+        float {p}wAge = {p}wProvider ? {p}WeatherParams2.w : {p}WeatherParams1.w;
+        float {p}wTick = {p}wProvider ? {p}WeatherParams2.y : {p}WeatherParams2.x;
+        float {p}wStrength = {p}wProvider ? 1.0 : {p}WeatherParams2.z;
 
         vec2 {p}wHalfWidth = vec2(-{p}wColumn.y, {p}wColumn.x) * (0.5 / sqrt(dot({p}wColumn, {p}wColumn)));
         vec2 {p}wCornerXZ = {p}wColumn + vec2(0.5) + ({corner}.x * 2.0 - 1.0) * {p}wHalfWidth;
@@ -58,22 +57,13 @@ public final class InstancedGlslHelpers {
 
         float {p}wDistance = length({p}wColumn + vec2(0.5) - {p}wCameraFrac) * {p}wInvRadius;
         float {p}wFade = 1.0 - {p}wDistance * {p}wDistance;
-        float {p}wScroll;
-        vec2 {p}wDrift;
-        float {p}wAlpha;
-        if ({p}wSnow) {
-            {p}wScroll = ({p}wSnowScroll + {p}wPartialTicks) / 512.0;
-            {p}wDrift = vec2({jitter}.x + {p}wAge * 0.01 * {jitter}.y, {jitter}.z + {p}wAge * {jitter}.w * 0.001);
-            {p}wAlpha = {p}wFade * 0.3 + 0.5;
-        } else {
-            {p}wScroll = (mod({p}wRainScroll + {p}wHash, 32.0) + {p}wPartialTicks) / 32.0 * (3.0 + {jitter}.x);
-            {p}wDrift = vec2(0.0);
-            {p}wAlpha = {p}wFade * 0.5 + 0.5;
-        }
+        float {p}wScroll = (mod({p}wTick + {params}.y, {layer}.x) + {p}wPartialTicks) / {layer}.x * {params}.z;
+        vec2 {p}wDrift = vec2({jitter}.x + {p}wAge * {layer}.y * {jitter}.y, {jitter}.z + {p}wAge * {layer}.z * {jitter}.w);
+        float {p}wAlpha = {p}wFade * {layer}.w + 0.5;
 
         {tex0} = vec4({corner}.x + {p}wDrift.x, {p}wCornerY * 0.25 + {p}wScroll + {p}wDrift.y, 0.0, 1.0);
         {tex1} = vec4({p}wLightmap, 0.0, 1.0);
-        {color} = vec4(1.0, 1.0, 1.0, {p}wAlpha * {p}wStrength);""";
+        {color} = floor(clamp(vec4({colorAttr}.rgb, {p}wAlpha * {colorAttr}.a * {p}wStrength), 0.0, 1.0) * 255.0) / 255.0;""";
 
     public static String weatherPrologue(String uniformPrefix, String attribPrefix, String corner,
         String vertex, String color, String tex0, String tex1, String sep) {
@@ -82,6 +72,8 @@ public final class InstancedGlslHelpers {
             .replace("{span}", attribPrefix + "InstColumnSpan")
             .replace("{jitter}", attribPrefix + "InstJitter")
             .replace("{params}", attribPrefix + "InstWeatherParams")
+            .replace("{layer}", attribPrefix + "InstWeatherLayer")
+            .replace("{colorAttr}", attribPrefix + "InstWeatherColor")
             .replace("{corner}", corner)
             .replace("{vertex}", vertex)
             .replace("{color}", color)
@@ -125,6 +117,8 @@ public final class InstancedGlslHelpers {
                 decls.add(decl(WeatherInstancedAttribs.LOC_COLUMN_SPAN, "vec4", prefix + "InstColumnSpan"));
                 decls.add(decl(WeatherInstancedAttribs.LOC_JITTER, "vec4", prefix + "InstJitter"));
                 decls.add(decl(WeatherInstancedAttribs.LOC_PARAMS, "vec4", prefix + "InstWeatherParams"));
+                decls.add(decl(WeatherInstancedAttribs.LOC_COLOR, "vec4", prefix + "InstWeatherColor"));
+                decls.add(decl(WeatherInstancedAttribs.LOC_LAYER, "vec4", prefix + "InstWeatherLayer"));
             }
         }
         return decls.toArray(String[]::new);

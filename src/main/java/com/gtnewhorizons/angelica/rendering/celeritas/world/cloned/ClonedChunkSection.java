@@ -9,6 +9,8 @@ import com.gtnewhorizons.angelica.compat.cubicchunks.CubicChunksAPI;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import com.gtnewhorizons.angelica.mixins.interfaces.IChunkTileEntityMapHolder;
 import com.gtnewhorizons.angelica.utils.ConcurrentTileEntityMap;
+import com.gtnewhorizons.liquidlogged.api.LiquidLoggedAPI;
+import com.gtnewhorizons.liquidlogged.api.SectionFluidsView;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectOpenHashMap;
 import mega.fluidlogged.internal.mixin.hook.FLSubChunk;
 
@@ -40,6 +42,9 @@ public class ClonedChunkSection {
     private final BiomeGenBase[] biomeData = new BiomeGenBase[BIOME_DATA_LENGTH];
     private SectionLightData sectionLightData;
     private final Short2ObjectOpenHashMap<TileEntity> tileEntities;
+
+    // Fluids stored in blocks by LiquidLogged, indexed y << 8 | z << 4 | x; null when the section holds none
+    private Fluid[] liquidLoggedFluids;
 
     private long lastUsedTimestamp = Long.MAX_VALUE;
 
@@ -77,6 +82,10 @@ public class ClonedChunkSection {
             this.data = new ExtendedBlockStorageExt(chunk, section);
         } else {
             this.data.copyFrom(chunk, section);
+        }
+
+        if (ModStatus.isLiquidLoggedLoaded) {
+            copyLiquidLoggedFluids(section);
         }
 
         copyBlockEntities(chunk, pos);
@@ -130,7 +139,22 @@ public class ClonedChunkSection {
         return data.getExtBlockMetadata(x, y, z);
     }
 
+    private void copyLiquidLoggedFluids(ExtendedBlockStorage section) {
+        final SectionFluidsView view = LiquidLoggedAPI.getSection(section);
+        if (view == null || view.isEmpty()) {
+            this.liquidLoggedFluids = null;
+            return;
+        }
+        if (this.liquidLoggedFluids == null) {
+            this.liquidLoggedFluids = new Fluid[SECTION_BLOCK_LENGTH * SECTION_BLOCK_LENGTH * SECTION_BLOCK_LENGTH];
+        }
+        view.copyTo(this.liquidLoggedFluids);
+    }
+
     public Fluid getFluid(int x, int y, int z) {
+        if (ModStatus.isLiquidLoggedLoaded) {
+            return this.liquidLoggedFluids != null ? this.liquidLoggedFluids[y << 8 | z << 4 | x] : null;
+        }
         if (ModStatus.isFluidLoggedLoaded) {
             return ((FLSubChunk) data).fl$getFluid(x, y, z);
         }

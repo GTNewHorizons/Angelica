@@ -134,27 +134,10 @@ public final class WeatherColumns {
         return height[slotOf(x, z)];
     }
 
-    public int hashAt(int x, int z) {
-        return hash[slotOf(x, z)];
-    }
-
     public float temperatureAt(int x, int z, int y) {
         final int slot = slotOf(x, z);
         if (y <= 64) return temperatureBelow65[slot];
         return temperatureAtReference[slot] - (y - TEMPERATURE_REFERENCE_Y) * TEMPERATURE_PER_BLOCK;
-    }
-
-    public int lightAt(WorldClient world, int x, int z, int y) {
-        final int slot = slotOf(x, z);
-        if (lightY[slot] != y) {
-            lightY[slot] = y;
-            light[slot] = world.getLightBrightnessForSkyBlocks(x, y, z, 0);
-        }
-        return light[slot];
-    }
-
-    public float jitterAt(int x, int z, int index) {
-        return jitter[slotOf(x, z) * 4 + index];
     }
 
     private int slotOf(int x, int z) {

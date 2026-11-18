@@ -900,6 +900,18 @@ public enum Mixins implements IMixins {
             "MixinBlockTFMagicLeaves"
         ))
     ),
+    NOTFINE_BIOMES_O_PLENTY_COMPAT(new MixinBuilder()
+        .setPhase(Phase.LATE)
+        .setApplyIf(() -> AngelicaConfig.enableNotFineFeatures)
+        .addRequiredMod(TargetedMod.BIOMES_O_PLENTY)
+        .addClientMixins(addPrefix("notfine.leaves.biomesoplenty.",
+            "MixinBlockBOPLeaves",
+            "MixinBlockBOPColorizedLeaves",
+            "MixinBlockBOPAppleLeaves",
+            "MixinBlockBOPPersimmonLeaves",
+            "MixinColorizedLeavesRenderer"
+        ))
+    ),
     ET_FUTURUM_ELYTRA_CAPE(new MixinBuilder("Set custom item ID for elytra with cape texture")
         .setPhase(Phase.LATE)
         .addRequiredMod(TargetedMod.ET_FUTURUM_REQUIEM)

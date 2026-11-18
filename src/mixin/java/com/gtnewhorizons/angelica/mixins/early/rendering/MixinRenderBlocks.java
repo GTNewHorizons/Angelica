@@ -68,7 +68,10 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
     private boolean renderingPlainCube;
 
     @Surround(method = "renderBlockByRenderType", id = "plainCube",
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderBlocks;renderStandardBlock(Lnet/minecraft/block/Block;III)Z"),
+        at = {
+            @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderBlocks;renderStandardBlock(Lnet/minecraft/block/Block;III)Z"),
+            // LOTR's coremod swaps the call for its natural-blocks wrapper, which ends in renderStandardBlock
+            @At(value = "INVOKE", target = "Llotr/common/coremod/LOTRReplacedMethods$BlockRendering;renderStandardBlock(Lnet/minecraft/client/renderer/RenderBlocks;Lnet/minecraft/block/Block;III)Z", remap = false) },
         require = 1)
     private void angelica$enterPlainCube() {
         @Surround.Carry final boolean wasPlainCube = this.renderingPlainCube;

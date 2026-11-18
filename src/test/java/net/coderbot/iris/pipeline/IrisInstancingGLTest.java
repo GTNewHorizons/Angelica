@@ -323,6 +323,16 @@ class IrisInstancingGLTest {
     }
 
     @Test
+    void weatherVariantLinks() {
+        final Map<PatchShaderType, String> result = TransformPatcher.patchAttributesInstanced(PARTICLE_VERTEX, null, null, null, PARTICLE_FRAGMENT, TEX_LM, false, Instancing.WEATHER);
+        assertNotNull(result);
+        final String v = result.get(PatchShaderType.VERTEX);
+        assertNotNull(v);
+        assertTrue(v.startsWith("#version 330"), () -> "expected a 3.3 core vertex shader:\n" + v);
+        link("weatherVariant", result);
+    }
+
+    @Test
     void templateVariantCompilesAndLinksWithGeometryStage() {
         final Map<PatchShaderType, String> result = TransformPatcher.patchAttributesInstanced(TEMPLATE_VERTEX, TEMPLATE_GEOMETRY, null, null, TEMPLATE_FRAGMENT, TEX_LM, false, Instancing.TEMPLATE);
         assertNotNull(result);

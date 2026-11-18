@@ -391,8 +391,9 @@ public class Uniforms {
             WeatherParams.translateZ, WeatherParams.invRadius);
         putVec4(FFPUniformBlock.WEATHER_PARAMS_1, WeatherParams.cameraFracX, WeatherParams.cameraFracZ,
             WeatherParams.partialTicks, WeatherParams.age);
-        putVec4(FFPUniformBlock.WEATHER_PARAMS_2, WeatherParams.rainScroll, WeatherParams.snowScroll,
-            WeatherParams.rainStrength, 0.0f);
+        putVec4(FFPUniformBlock.WEATHER_PARAMS_2, WeatherParams.vanillaTick, WeatherParams.providerTick,
+            WeatherParams.rainStrength, WeatherParams.providerAge);
+        putVec4(FFPUniformBlock.WEATHER_PARAMS_3, WeatherParams.providerInvRadius, 0.0f, 0.0f, 0.0f);
     }
 
     private void putVec4(int offset, Vector4f v) {

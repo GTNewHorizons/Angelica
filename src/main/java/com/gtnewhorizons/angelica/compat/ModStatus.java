@@ -30,6 +30,7 @@ public class ModStatus {
     public static boolean isBaublesLoaded;
     public static boolean isCosmeticArmorReworkedLoaded;
     public static boolean isFluidLoggedLoaded;
+    public static boolean isLiquidLoggedLoaded;
     public static boolean isCubicChunksLoaded;
     public static boolean isBOPLoaded;
     public static boolean isEtFuturumLoaded;
@@ -51,6 +52,7 @@ public class ModStatus {
         isBaublesLoaded = Loader.isModLoaded("Baubles");
         isCosmeticArmorReworkedLoaded = Loader.isModLoaded("cosmeticarmorreworked");
         isFluidLoggedLoaded = Loader.isModLoaded("fluidlogged");
+        isLiquidLoggedLoaded = Loader.isModLoaded("liquidlogged");
         isCubicChunksLoaded = Loader.isModLoaded("cubicchunks");
         isEtFuturumLoaded = Loader.isModLoaded("etfuturum");
 

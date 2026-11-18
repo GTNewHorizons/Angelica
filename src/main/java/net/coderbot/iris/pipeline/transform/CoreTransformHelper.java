@@ -41,6 +41,7 @@ class CoreTransformHelper {
                 transformer.injectVariable("uniform vec4 iris_WeatherParams0;");
                 transformer.injectVariable("uniform vec4 iris_WeatherParams1;");
                 transformer.injectVariable("uniform vec4 iris_WeatherParams2;");
+                transformer.injectVariable("uniform vec4 iris_WeatherParams3;");
                 transformer.injectVariable("vec4 iris_Vertex;");
                 transformer.injectVariable("vec4 iris_Color;");
                 transformer.injectVariable("vec4 iris_MultiTexCoord0;");

@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.render;
 
+import com.gtnewhorizons.angelica.api.weather.WeatherColumnProvider;
+import com.gtnewhorizons.angelica.api.weather.WeatherColumnSink;
 import com.gtnewhorizons.angelica.compat.dragonapi.DragonAPICompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.SystemProperties;
@@ -27,27 +29,30 @@ import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.particle.EntityRainFX;
 import net.minecraft.client.particle.EntitySmokeFX;
-import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraft.world.biome.WorldChunkManager;
+import net.minecraftforge.client.IRenderHandler;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Arrays;
 import java.util.Random;
 
 /**
  * Replaces EntityRenderer.renderRainSnow.
  *
- * <p>The whole grid is one instanced draw per precipitation type. Everything that varies per frame
+ * <p>The whole grid is one instanced draw per layer: vanilla rain, vanilla snow, and each provider layer. Everything that varies per frame
  * (billboard axis, distance falloff, texture scroll, snow drift) happens in the vertex shader, and the
  * instance buffer is only rebuilt when the camera changes block or {@link WeatherColumns} actually
  * resamples something. Per-column data comes from that cache rather than being recomputed every frame.
+ * {@link WeatherColumnProvider} columns are collected from the provider instead, and re-collected only when its revision,
+ * the dimension, or the player's block X/Z changes.
  */
 public final class WeatherRenderer {
 
@@ -63,17 +68,18 @@ public final class WeatherRenderer {
     private static final long P_REBUILDS = Tracy.plotHandle("weather.rebuilds");
     private static final long P_PARTICLE_MICROS = Tracy.plotHandle("weather.particleMicros");
     private static final long P_PARTICLES_SPAWNED = Tracy.plotHandle("weather.particlesSpawned");
+    private static final long P_PROVIDER_COLUMNS = Tracy.plotHandle("weather.providerColumns");
+    private static final long P_PROVIDER_DRAWS = Tracy.plotHandle("weather.providerDraws");
+    private static final long P_PROVIDER_REBUILDS = Tracy.plotHandle("weather.providerRebuilds");
+    private static final long P_LEGACY_HANDLER = Tracy.plotHandle("weather.legacyHandler");
 
     private static final WeatherColumns columns = new WeatherColumns();
 
     private static float[] axisX;
     private static float[] axisZ;
 
-    private static int instanceBuffer;
-    private static ByteBuffer instanceData;
-    private static int instanceCapacity;
-    private static int instanceCount;
-    private static int rainInstances;
+    private static final WeatherBatch VANILLA = new WeatherBatch();
+    private static final WeatherBatch PROVIDER = new WeatherBatch();
 
     private static int builtRevision = Integer.MIN_VALUE;
     private static int builtX = Integer.MIN_VALUE;
@@ -83,6 +89,32 @@ public final class WeatherRenderer {
     private static int builtUpdateCount = Integer.MIN_VALUE;
     private static int builtCameraY = Integer.MIN_VALUE;
     private static boolean rebuiltThisFrame;
+
+    private static int builtProviderRevision = Integer.MIN_VALUE;
+    private static int builtProviderDimension = Integer.MIN_VALUE;
+    private static int builtProviderX = Integer.MIN_VALUE;
+    private static int builtProviderZ = Integer.MIN_VALUE;
+    private static boolean providerRebuiltThisFrame;
+
+    private static int frameQuads;
+    private static int frameDrawCalls;
+    private static int providerColumns;
+    private static int providerDraws;
+    private static boolean legacyHandler;
+
+    private static int entityBlockX;
+    private static int entityBlockY;
+    private static int entityBlockZ;
+    private static double cameraX;
+    private static double cameraY;
+    private static double cameraZ;
+    private static int cameraBlockY;
+    private static double viewPosX;
+    private static double viewPosZ;
+    private static int updateCount;
+    private static int radius;
+    private static float rainStrength;
+    private static float partialTicks;
 
     private static final int PARTICLE_RADIUS = 10;
     private static final Random particleRandom = new Random();
@@ -181,53 +213,171 @@ public final class WeatherRenderer {
     }
 
     public static boolean render(float partialTicks) {
-        final Minecraft mc = Minecraft.getMinecraft();
-        final WorldClient world = mc.theWorld;
         final long startNanos = System.nanoTime();
         if (!AngelicaConfig.enableInstancedWeather) return false;
-        if (world.provider.getWeatherRenderer() != null) {
-            Tracy.plot(P_STRENGTH, 0.0);
-            report(0, 0, startNanos);
-            return false;
-        }
-        if (DragonAPICompat.forcingSeasonalSnow) {
-            report(0, 0, startNanos);
-            return false;
-        }
-        final float rainStrength = world.getRainStrength(partialTicks);
-        Tracy.plot(P_STRENGTH, rainStrength);
+        frameQuads = 0;
+        frameDrawCalls = 0;
+        providerColumns = 0;
+        providerDraws = 0;
+        legacyHandler = false;
+        final boolean handled = renderFrame(partialTicks);
+        report(startNanos);
+        return handled;
+    }
 
-        final int radius = SettingsManager.downfallDistance;
-        if (rainStrength <= 0.0F || radius <= 0) {
-            report(0, 0, startNanos);
+    private static boolean renderFrame(float partialTicks) {
+        final Minecraft mc = Minecraft.getMinecraft();
+        final WorldClient world = mc.theWorld;
+        final IRenderHandler handler = world.provider.getWeatherRenderer();
+        final WeatherColumnProvider provider;
+        if (handler == null) {
+            if (DragonAPICompat.forcingSeasonalSnow) return false;
+            provider = null;
+        } else if (handler instanceof WeatherColumnProvider columnProvider) {
+            provider = columnProvider;
+        } else {
+            return useLegacyHandler();
+        }
+
+        rainStrength = provider == null || provider.rendersVanillaWeather() ? world.getRainStrength(partialTicks) : 0.0F;
+        radius = SettingsManager.downfallDistance;
+        final boolean vanillaActive = rainStrength > 0.0F && radius > 0;
+        if (provider == null && !vanillaActive) {
+            Tracy.plot(P_STRENGTH, rainStrength);
             return true;
         }
-        buildAxisTable();
 
         final EntityLivingBase view = mc.renderViewEntity;
-        final int entityBlockX = MathHelper.floor_double(view.posX);
-        final int entityBlockY = MathHelper.floor_double(view.posY);
-        final int entityBlockZ = MathHelper.floor_double(view.posZ);
-
-        final double cameraX = view.lastTickPosX + (view.posX - view.lastTickPosX) * partialTicks;
-        final double cameraY = view.lastTickPosY + (view.posY - view.lastTickPosY) * partialTicks;
-        final double cameraZ = view.lastTickPosZ + (view.posZ - view.lastTickPosZ) * partialTicks;
-        final int cameraBlockY = MathHelper.floor_double(cameraY);
-
-        final int updateCount = ((EntityRendererAccessor) mc.entityRenderer).getRendererUpdateCount();
-        columns.update(world, entityBlockX, entityBlockZ, radius, updateCount);
+        WeatherRenderer.partialTicks = partialTicks;
+        entityBlockX = MathHelper.floor_double(view.posX);
+        entityBlockY = MathHelper.floor_double(view.posY);
+        entityBlockZ = MathHelper.floor_double(view.posZ);
+        cameraX = view.lastTickPosX + (view.posX - view.lastTickPosX) * partialTicks;
+        cameraY = view.lastTickPosY + (view.posY - view.lastTickPosY) * partialTicks;
+        cameraZ = view.lastTickPosZ + (view.posZ - view.lastTickPosZ) * partialTicks;
+        cameraBlockY = MathHelper.floor_double(cameraY);
+        viewPosX = view.posX;
+        viewPosZ = view.posZ;
+        updateCount = ((EntityRendererAccessor) mc.entityRenderer).getRendererUpdateCount();
 
         final DeferredWorldRenderingPipeline deferred = deferredPipeline();
+        mc.entityRenderer.enableLightmap(partialTicks);
+        GLSMRasterizer.disableCull();
+        GLSMCurrentAttribs.glNormal3f(0.0F, 1.0F, 0.0F);
+        GLSMBlend.enableBlend();
+        GLSMBlend.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, 0.1F);
+        GLSMCurrentAttribs.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
 
-        if (deferred != null && !deferred.supportsInstancing(Instancing.WEATHER)) {
-            renderTessellator(mc, world, view, partialTicks, rainStrength, radius, updateCount,
-                entityBlockX, entityBlockY, entityBlockZ, cameraX, cameraY, cameraZ, cameraBlockY, startNanos);
-            return true;
+        final boolean instanced;
+        if (deferred == null) {
+            instanced = true;
+        } else if (deferred.supportsInstancing(Instancing.WEATHER)) {
+            deferred.rebindCurrentPass();
+            instanced = deferred.hasInstancedVariant(Instancing.WEATHER);
+        } else {
+            instanced = false;
+        }
+        if (provider != null && !instanced) {
+            exitState(mc, partialTicks);
+            return useLegacyHandler();
+        }
+        Tracy.plot(P_STRENGTH, rainStrength);
+
+        if (vanillaActive) {
+            buildAxisTable();
+            columns.update(world, entityBlockX, entityBlockZ, radius, updateCount);
+            if (instanced) {
+                final boolean rebuild = SystemProperties.WEATHER_REBUILD_ALWAYS
+                    || updateCount - builtUpdateCount >= REBUILD_TICKS
+                    || columns.revision() != builtRevision
+                    || entityBlockX != builtX || entityBlockY != builtY || entityBlockZ != builtZ
+                    || cameraBlockY != builtCameraY
+                    || radius != builtRadius;
+                if (rebuild) {
+                    VANILLA.begin(entityBlockX, entityBlockZ, WeatherInstancedAttribs.SOURCE_VANILLA);
+                    VANILLA.beginLayer(RAIN_TEXTURE, WeatherInstancedAttribs.RAIN_PERIOD, 0.0F, 0.0F, WeatherInstancedAttribs.RAIN_FADE);
+                    writeColumns(world, true);
+                    VANILLA.beginLayer(SNOW_TEXTURE, WeatherInstancedAttribs.SNOW_PERIOD, WeatherInstancedAttribs.SNOW_U_DRIFT, WeatherInstancedAttribs.SNOW_V_DRIFT, WeatherInstancedAttribs.SNOW_FADE);
+                    writeColumns(world, false);
+                    VANILLA.upload();
+                    builtCameraY = cameraBlockY;
+                    builtRevision = columns.revision();
+                    builtX = entityBlockX;
+                    builtY = entityBlockY;
+                    builtZ = entityBlockZ;
+                    builtRadius = radius;
+                    builtUpdateCount = updateCount;
+                }
+                rebuiltThisFrame = rebuild;
+            } else {
+                renderTessellator(mc, world);
+            }
         }
 
-        renderInstanced(mc, world, view, deferred, partialTicks, rainStrength, radius, updateCount,
-            entityBlockX, entityBlockY, entityBlockZ, cameraX, cameraY, cameraZ, cameraBlockY, startNanos);
+        int providerTick = 0;
+        float providerAge = 0.0F;
+        float providerInvRadius = 0.0F;
+        if (provider != null) {
+            providerTick = provider.beginFrame(world, view, partialTicks);
+            final int revision = provider.columnRevision();
+            final float fadeRadius = provider.fadeRadius();
+            if (!Float.isFinite(fadeRadius) || fadeRadius <= 0.0F) {
+                throw new IllegalArgumentException("Weather fade radius must be finite and positive");
+            }
+            final int dimension = world.provider.dimensionId;
+            if (SystemProperties.WEATHER_REBUILD_ALWAYS
+                || revision != builtProviderRevision || dimension != builtProviderDimension
+                || entityBlockX != builtProviderX || entityBlockZ != builtProviderZ) {
+                PROVIDER.begin(entityBlockX, entityBlockZ, WeatherInstancedAttribs.SOURCE_PROVIDER);
+                provider.collectColumns(PROVIDER);
+                PROVIDER.upload();
+                builtProviderRevision = revision;
+                builtProviderDimension = dimension;
+                builtProviderX = entityBlockX;
+                builtProviderZ = entityBlockZ;
+                providerRebuiltThisFrame = true;
+            }
+            providerAge = providerTick + partialTicks;
+            providerInvRadius = 1.0F / fadeRadius;
+        }
+
+        if (instanced && (vanillaActive && VANILLA.count > 0 || provider != null && PROVIDER.count > 0)) {
+            WeatherParams.set((float) (entityBlockX - cameraX), (float) -cameraY, (float) (entityBlockZ - cameraZ),
+                radius > 0 ? 1.0F / radius : 0.0F,
+                (float) (viewPosX - entityBlockX), (float) (viewPosZ - entityBlockZ), partialTicks,
+                updateCount + partialTicks,
+                updateCount, rainStrength, providerTick, providerAge, providerInvRadius);
+
+            GLSMVertexInput.glBindVertexArray(WeatherQuadMesh.vao());
+            if (deferred == null) GLSMPrograms.setFfpInstancing(Instancing.WEATHER);
+            if (vanillaActive) {
+                frameDrawCalls += VANILLA.draw(mc, deferred);
+                frameQuads += VANILLA.count;
+            }
+            if (provider != null) {
+                providerDraws = PROVIDER.draw(mc, deferred);
+                providerColumns = PROVIDER.count;
+            }
+            if (deferred == null) GLSMPrograms.setFfpInstancing(Instancing.NONE);
+            GLSMVertexInput.glBindVertexArray(0);
+            if (deferred != null) deferred.rebindCurrentPass();
+        }
+        exitState(mc, partialTicks);
         return true;
+    }
+
+    private static boolean useLegacyHandler() {
+        Tracy.plot(P_STRENGTH, 0.0);
+        legacyHandler = true;
+        return false;
+    }
+
+    private static void exitState(Minecraft mc, float partialTicks) {
+        GLSMRasterizer.enableCull();
+        GLSMBlend.disableBlend();
+        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, 0.1F);
+        mc.entityRenderer.disableLightmap(partialTicks);
     }
 
     private static DeferredWorldRenderingPipeline deferredPipeline() {
@@ -236,125 +386,7 @@ public final class WeatherRenderer {
             ? pipeline : null;
     }
 
-    private static void renderInstanced(Minecraft mc, WorldClient world, EntityLivingBase view,
-        DeferredWorldRenderingPipeline deferred, float partialTicks, float rainStrength, int radius,
-        int updateCount, int entityBlockX, int entityBlockY, int entityBlockZ, double cameraX,
-        double cameraY, double cameraZ, int cameraBlockY, long startNanos) {
-
-        final boolean rebuild = SystemProperties.WEATHER_REBUILD_ALWAYS
-            || updateCount - builtUpdateCount >= REBUILD_TICKS
-            || columns.revision() != builtRevision
-            || entityBlockX != builtX || entityBlockY != builtY || entityBlockZ != builtZ
-            || cameraBlockY != builtCameraY
-            || radius != builtRadius;
-        if (rebuild) {
-            rebuildInstances(world, radius, entityBlockX, entityBlockY, entityBlockZ, cameraBlockY);
-            builtCameraY = cameraBlockY;
-            builtRevision = columns.revision();
-            builtX = entityBlockX;
-            builtY = entityBlockY;
-            builtZ = entityBlockZ;
-            builtRadius = radius;
-            builtUpdateCount = updateCount;
-        }
-        rebuiltThisFrame = rebuild;
-
-        if (instanceCount == 0) {
-            report(0, 0, startNanos);
-            return;
-        }
-
-        if (deferred != null) {
-            deferred.rebindCurrentPass();
-            if (!deferred.hasInstancedVariant(Instancing.WEATHER)) {
-                renderTessellator(mc, world, view, partialTicks, rainStrength, radius, updateCount,
-                    entityBlockX, entityBlockY, entityBlockZ, cameraX, cameraY, cameraZ, cameraBlockY, startNanos);
-                return;
-            }
-        }
-
-        WeatherParams.set((float) (entityBlockX - cameraX), (float) -cameraY, (float) (entityBlockZ - cameraZ),
-            1.0F / radius,
-            (float) (view.posX - entityBlockX), (float) (view.posZ - entityBlockZ), partialTicks,
-            updateCount + partialTicks,
-            updateCount & 31, updateCount & 511, rainStrength);
-
-        mc.entityRenderer.enableLightmap(partialTicks);
-        GLSMRasterizer.disableCull();
-        GLSMCurrentAttribs.glNormal3f(0.0F, 1.0F, 0.0F);
-        GLSMBlend.enableBlend();
-        OpenGlHelper.glBlendFunc(770, 771, 1, 0);
-        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, 0.1F);
-        GLSMCurrentAttribs.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
-
-        int drawCalls = 0;
-        drawCalls += drawRange(mc, deferred, RAIN_TEXTURE, 0, rainInstances);
-        drawCalls += drawRange(mc, deferred, SNOW_TEXTURE, rainInstances, instanceCount - rainInstances);
-
-        GLSMRasterizer.enableCull();
-        GLSMBlend.disableBlend();
-        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, 0.1F);
-        mc.entityRenderer.disableLightmap(partialTicks);
-
-        report(instanceCount, drawCalls, startNanos);
-    }
-
-    private static int drawRange(Minecraft mc, DeferredWorldRenderingPipeline deferred,
-        ResourceLocation texture, int first, int count) {
-        if (count <= 0) return 0;
-        mc.getTextureManager().bindTexture(texture);
-
-        if (deferred != null) {
-            deferred.rebindCurrentPass();
-            if (!deferred.hasInstancedVariant(Instancing.WEATHER)) return 0;
-            deferred.bindInstancedVariant(Instancing.WEATHER);
-        }
-
-        GLSMVertexInput.glBindVertexArray(WeatherQuadMesh.vao());
-        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, instanceBuffer);
-        WeatherInstancedAttribs.pointInstanceAttribs((long) first * WeatherInstancedAttribs.STRIDE);
-        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-        VAOManager.setCurrentVertexFlags(WeatherQuadMesh.VERTEX_FLAGS);
-        if (deferred == null) GLSMPrograms.setFfpInstancing(Instancing.WEATHER);
-        GLSMDraws.glDrawArraysInstanced(GL11.GL_TRIANGLE_FAN, 0, WeatherQuadMesh.VERTEX_COUNT, count);
-        GLSMPrograms.setFfpInstancing(Instancing.NONE);
-        GLSMVertexInput.glBindVertexArray(0);
-
-        if (deferred != null) deferred.rebindCurrentPass();
-        return 1;
-    }
-
-    private static void rebuildInstances(WorldClient world, int radius, int entityBlockX, int entityBlockY,
-        int entityBlockZ, int cameraBlockY) {
-        final int slots = (radius * 2 + 1) * (radius * 2 + 1);
-        final int stride = WeatherInstancedAttribs.STRIDE;
-        if (instanceCapacity < slots) {
-            instanceCapacity = slots;
-            instanceData = ByteBuffer.allocateDirect(slots * stride).order(ByteOrder.nativeOrder());
-            if (instanceBuffer == 0) instanceBuffer = GLSMBuffers.glGenBuffers();
-            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, instanceBuffer);
-            GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, (long) slots * stride, GL15.GL_DYNAMIC_DRAW);
-            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-            WeatherQuadMesh.bindInstanceBuffer(instanceBuffer);
-        }
-
-        int count = writeColumns(world, radius, entityBlockX, entityBlockY, entityBlockZ, cameraBlockY, true, 0);
-        rainInstances = count;
-        count = writeColumns(world, radius, entityBlockX, entityBlockY, entityBlockZ, cameraBlockY, false, count);
-        instanceCount = count;
-        if (count == 0) return;
-
-        instanceData.position(0);
-        instanceData.limit(count * stride);
-        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, instanceBuffer);
-        GLSMBuffers.glBufferSubData(GL15.GL_ARRAY_BUFFER, 0L, instanceData);
-        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-        instanceData.clear();
-    }
-
-    private static int writeColumns(WorldClient world, int radius, int entityBlockX, int entityBlockY,
-        int entityBlockZ, int cameraBlockY, boolean wantRain, int count) {
-        final int stride = WeatherInstancedAttribs.STRIDE;
+    private static void writeColumns(WorldClient world, boolean wantRain) {
         final WorldChunkManager chunkManager = world.getWorldChunkManager();
         for (int z = entityBlockZ - radius; z <= entityBlockZ + radius; z++) {
             for (int x = entityBlockX - radius; x <= entityBlockX + radius; x++) {
@@ -371,68 +403,48 @@ public final class WeatherRenderer {
                 if (rain != wantRain) continue;
 
                 final int lightY = Math.max(precipitationHeight, cameraBlockY);
-                int brightness = columns.lightAtSlot(world, slot, x, z, lightY);
-                if (!rain) brightness = (brightness * 3 + 15728880) / 4;
+                final int light = columns.lightAtSlot(world, slot, x, z, lightY);
 
-                final int base = count * stride;
-                instanceData.putFloat(base + WeatherInstancedAttribs.OFFSET_COLUMN_SPAN, x - entityBlockX);
-                instanceData.putFloat(base + WeatherInstancedAttribs.OFFSET_COLUMN_SPAN + 4, z - entityBlockZ);
-                instanceData.putFloat(base + WeatherInstancedAttribs.OFFSET_COLUMN_SPAN + 8, bottom);
-                instanceData.putFloat(base + WeatherInstancedAttribs.OFFSET_COLUMN_SPAN + 12, top);
-                instanceData.putFloat(base + WeatherInstancedAttribs.OFFSET_JITTER, columns.jitterAtSlot(slot, 0));
-                instanceData.putFloat(base + WeatherInstancedAttribs.OFFSET_JITTER + 4, columns.jitterAtSlot(slot, 1));
-                instanceData.putFloat(base + WeatherInstancedAttribs.OFFSET_JITTER + 8, columns.jitterAtSlot(slot, 2));
-                instanceData.putFloat(base + WeatherInstancedAttribs.OFFSET_JITTER + 12, columns.jitterAtSlot(slot, 3));
-                instanceData.putFloat(base + WeatherInstancedAttribs.OFFSET_PARAMS, brightness & 0xFFFF);
-                instanceData.putFloat(base + WeatherInstancedAttribs.OFFSET_PARAMS + 4, brightness >> 16 & 0xFFFF);
-                instanceData.putFloat(base + WeatherInstancedAttribs.OFFSET_PARAMS + 8, columns.hashAtSlot(slot) & 31);
-                instanceData.putFloat(base + WeatherInstancedAttribs.OFFSET_PARAMS + 12, rain ? 0.0F : 1.0F);
-                count++;
+                final float j0 = columns.jitterAtSlot(slot, 0);
+                VANILLA.put(x, z, bottom, top,
+                    rain ? 0.0F : j0, rain ? 0.0F : columns.jitterAtSlot(slot, 1),
+                    rain ? 0.0F : columns.jitterAtSlot(slot, 2), rain ? 0.0F : columns.jitterAtSlot(slot, 3),
+                    rain ? light : snowBrightness(light), rain ? columns.hashAtSlot(slot) : 0,
+                    rain ? WeatherInstancedAttribs.RAIN_SCROLL_BASE + j0 : 1.0F,
+                    1.0F, 1.0F, 1.0F, 1.0F);
             }
         }
-        return count;
     }
 
-    private static void renderTessellator(Minecraft mc, WorldClient world, EntityLivingBase view,
-        float partialTicks, float rainStrength, int radius, int updateCount, int entityBlockX,
-        int entityBlockY, int entityBlockZ, double cameraX, double cameraY, double cameraZ,
-        int cameraBlockY, long startNanos) {
-
-        mc.entityRenderer.enableLightmap(partialTicks);
-
+    private static void renderTessellator(Minecraft mc, WorldClient world) {
         final float age = updateCount + partialTicks;
-        GLSMRasterizer.disableCull();
-        GLSMCurrentAttribs.glNormal3f(0.0F, 1.0F, 0.0F);
-        GLSMBlend.enableBlend();
-        OpenGlHelper.glBlendFunc(770, 771, 1, 0);
-        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, 0.1F);
-        GLSMCurrentAttribs.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
-
         final Tessellator tessellator = Tessellator.instance;
+        final WorldChunkManager chunkManager = world.getWorldChunkManager();
         int bound = -1;
         int quads = 0;
         int drawCalls = 0;
 
         for (int z = entityBlockZ - radius; z <= entityBlockZ + radius; z++) {
             for (int x = entityBlockX - radius; x <= entityBlockX + radius; x++) {
-                if (!columns.precipitates(x, z)) continue;
+                final int slot = columns.slotAt(x, z);
+                if (!columns.precipitatesAtSlot(slot)) continue;
 
-                final int precipitationHeight = columns.heightAt(x, z);
+                final int precipitationHeight = columns.heightAtSlot(slot);
                 final int bottom = Math.max(entityBlockY - radius, precipitationHeight);
                 final int top = Math.max(entityBlockY + radius, precipitationHeight);
                 if (bottom == top) continue;
 
                 final int lightY = Math.max(precipitationHeight, cameraBlockY);
-                final float temperature = columns.temperatureAt(x, z, bottom);
-                final boolean rain = world.getWorldChunkManager()
-                    .getTemperatureAtHeight(temperature, precipitationHeight) >= 0.15F;
+                final int light = columns.lightAtSlot(world, slot, x, z, lightY);
+                final float temperature = columns.temperatureAtSlot(slot, bottom);
+                final boolean rain = chunkManager.getTemperatureAtHeight(temperature, precipitationHeight) >= 0.15F;
 
                 final int axis = (z - entityBlockZ + 16) * 32 + x - entityBlockX + 16;
                 final float halfX = axisX[axis] * 0.5F;
                 final float halfZ = axisZ[axis] * 0.5F;
 
-                final double offsetX = (x + 0.5F) - view.posX;
-                final double offsetZ = (z + 0.5F) - view.posZ;
+                final double offsetX = (x + 0.5F) - viewPosX;
+                final double offsetZ = (z + 0.5F) - viewPosZ;
                 final float distance = MathHelper.sqrt_double(offsetX * offsetX + offsetZ * offsetZ) / radius;
 
                 if (rain) {
@@ -445,13 +457,12 @@ public final class WeatherRenderer {
                         mc.getTextureManager().bindTexture(RAIN_TEXTURE);
                         tessellator.startDrawingQuads();
                     }
-                    final float scroll = ((updateCount + columns.hashAt(x, z) & 31) + partialTicks) / 32.0F
-                        * (3.0F + columns.jitterAt(x, z, 0));
-                    tessellator.setBrightness(columns.lightAt(world, x, z, lightY));
+                    final float scroll = ((updateCount + columns.hashAtSlot(slot) & WeatherInstancedAttribs.RAIN_PERIOD - 1) + partialTicks)
+                        / WeatherInstancedAttribs.RAIN_PERIOD * (WeatherInstancedAttribs.RAIN_SCROLL_BASE + columns.jitterAtSlot(slot, 0));
+                    tessellator.setBrightness(light);
                     tessellator.setColorRGBA_F(1.0F, 1.0F, 1.0F,
-                        ((1.0F - distance * distance) * 0.5F + 0.5F) * rainStrength);
-                    emit(tessellator, x, z, bottom, top, halfX, halfZ, scroll, 0.0F, 0.0F,
-                        cameraX, cameraY, cameraZ);
+                        ((1.0F - distance * distance) * WeatherInstancedAttribs.RAIN_FADE + 0.5F) * rainStrength);
+                    emit(tessellator, x, z, bottom, top, halfX, halfZ, scroll, 0.0F, 0.0F);
                 } else {
                     if (bound != 1) {
                         if (bound == 0) {
@@ -462,14 +473,14 @@ public final class WeatherRenderer {
                         mc.getTextureManager().bindTexture(SNOW_TEXTURE);
                         tessellator.startDrawingQuads();
                     }
-                    final float scroll = ((updateCount & 511) + partialTicks) / 512.0F;
-                    final float driftU = columns.jitterAt(x, z, 0) + age * 0.01F * columns.jitterAt(x, z, 1);
-                    final float driftV = columns.jitterAt(x, z, 2) + age * columns.jitterAt(x, z, 3) * 0.001F;
-                    tessellator.setBrightness((columns.lightAt(world, x, z, lightY) * 3 + 15728880) / 4);
+                    final float scroll = ((updateCount & WeatherInstancedAttribs.SNOW_PERIOD - 1) + partialTicks)
+                        / WeatherInstancedAttribs.SNOW_PERIOD;
+                    final float driftU = columns.jitterAtSlot(slot, 0) + age * WeatherInstancedAttribs.SNOW_U_DRIFT * columns.jitterAtSlot(slot, 1);
+                    final float driftV = columns.jitterAtSlot(slot, 2) + age * columns.jitterAtSlot(slot, 3) * WeatherInstancedAttribs.SNOW_V_DRIFT;
+                    tessellator.setBrightness(snowBrightness(light));
                     tessellator.setColorRGBA_F(1.0F, 1.0F, 1.0F,
-                        ((1.0F - distance * distance) * 0.3F + 0.5F) * rainStrength);
-                    emit(tessellator, x, z, bottom, top, halfX, halfZ, scroll, driftU, driftV,
-                        cameraX, cameraY, cameraZ);
+                        ((1.0F - distance * distance) * WeatherInstancedAttribs.SNOW_FADE + 0.5F) * rainStrength);
+                    emit(tessellator, x, z, bottom, top, halfX, halfZ, scroll, driftU, driftV);
                 }
                 quads++;
             }
@@ -480,16 +491,16 @@ public final class WeatherRenderer {
             drawCalls++;
         }
 
-        GLSMRasterizer.enableCull();
-        GLSMBlend.disableBlend();
-        GLSMDepthStencilAlpha.glAlphaFunc(GL11.GL_GREATER, 0.1F);
-        mc.entityRenderer.disableLightmap(partialTicks);
+        frameQuads += quads;
+        frameDrawCalls += drawCalls;
+    }
 
-        report(quads, drawCalls, startNanos);
+    private static int snowBrightness(int light) {
+        return (light * 3 + 15728880) / 4;
     }
 
     private static void emit(Tessellator tessellator, int x, int z, int bottom, int top, float halfX,
-        float halfZ, float scroll, float driftU, float driftV, double cameraX, double cameraY, double cameraZ) {
+        float halfZ, float scroll, float driftU, float driftV) {
         tessellator.setTranslation(-cameraX, -cameraY, -cameraZ);
         tessellator.addVertexWithUV(x - halfX + 0.5D, bottom, z - halfZ + 0.5D, driftU, bottom / 4.0F + scroll + driftV);
         tessellator.addVertexWithUV(x + halfX + 0.5D, bottom, z + halfZ + 0.5D, 1.0F + driftU, bottom / 4.0F + scroll + driftV);
@@ -498,12 +509,17 @@ public final class WeatherRenderer {
         tessellator.setTranslation(0.0D, 0.0D, 0.0D);
     }
 
-    private static void report(int quads, int drawCalls, long startNanos) {
-        Tracy.plotInt(P_QUADS, quads);
-        Tracy.plotInt(P_DRAW_CALLS, drawCalls);
+    private static void report(long startNanos) {
+        Tracy.plotInt(P_QUADS, frameQuads);
+        Tracy.plotInt(P_DRAW_CALLS, frameDrawCalls);
         Tracy.plotInt(P_REBUILDS, rebuiltThisFrame ? 1 : 0);
+        Tracy.plotInt(P_PROVIDER_COLUMNS, providerColumns);
+        Tracy.plotInt(P_PROVIDER_DRAWS, providerDraws);
+        Tracy.plotInt(P_PROVIDER_REBUILDS, providerRebuiltThisFrame ? 1 : 0);
+        Tracy.plotInt(P_LEGACY_HANDLER, legacyHandler ? 1 : 0);
         Tracy.plot(P_MICROS, (System.nanoTime() - startNanos) / 1000.0);
         rebuiltThisFrame = false;
+        providerRebuiltThisFrame = false;
     }
 
     private static void buildAxisTable() {
@@ -522,14 +538,145 @@ public final class WeatherRenderer {
     }
 
     public static void clear() {
+        VANILLA.release();
+        PROVIDER.release();
         WeatherQuadMesh.delete();
-        if (instanceBuffer != 0) {
-            GLSMBuffers.glDeleteBuffers(instanceBuffer);
-            instanceBuffer = 0;
+        builtRevision = Integer.MIN_VALUE;
+        builtX = Integer.MIN_VALUE;
+        builtY = Integer.MIN_VALUE;
+        builtZ = Integer.MIN_VALUE;
+        builtRadius = -1;
+        builtUpdateCount = Integer.MIN_VALUE;
+        builtCameraY = Integer.MIN_VALUE;
+        builtProviderRevision = Integer.MIN_VALUE;
+        builtProviderDimension = Integer.MIN_VALUE;
+        builtProviderX = Integer.MIN_VALUE;
+        builtProviderZ = Integer.MIN_VALUE;
+    }
+
+    private static final class WeatherBatch implements WeatherColumnSink {
+
+        private static final int STRIDE = WeatherInstancedAttribs.STRIDE;
+        private static final int MIN_CAPACITY = 256;
+
+        private ByteBuffer data;
+        private int capacity;
+        private int count;
+        private ResourceLocation[] textures = new ResourceLocation[4];
+        private int[] firsts = new int[4];
+        private int layers;
+        private int originX;
+        private int originZ;
+        private float source;
+        private int period;
+        private float uDriftScale;
+        private float vDriftScale;
+        private float fadeScale;
+        private int buffer;
+        private int bufferCapacity;
+
+        void begin(int originX, int originZ, float source) {
+            this.originX = originX;
+            this.originZ = originZ;
+            this.source = source;
+            Arrays.fill(textures, 0, layers, null);
+            layers = 0;
+            count = 0;
         }
-        instanceData = null;
-        instanceCapacity = 0;
-        instanceCount = 0;
-        rainInstances = 0;
+
+        void upload() {
+            if (count == 0) return;
+            if (buffer == 0) buffer = GLSMBuffers.glGenBuffers();
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, buffer);
+            if (bufferCapacity < count) {
+                bufferCapacity = capacity;
+                GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, (long) bufferCapacity * STRIDE, GL15.GL_DYNAMIC_DRAW);
+            }
+            data.position(0);
+            data.limit(count * STRIDE);
+            GLSMBuffers.glBufferSubData(GL15.GL_ARRAY_BUFFER, 0L, data);
+            data.clear();
+            GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        }
+
+        int draw(Minecraft mc, DeferredWorldRenderingPipeline deferred) {
+            int draws = 0;
+            for (int layer = 0; layer < layers; layer++) {
+                final int first = firsts[layer];
+                final int layerCount = (layer + 1 < layers ? firsts[layer + 1] : count) - first;
+                if (layerCount == 0) continue;
+                mc.getTextureManager().bindTexture(textures[layer]);
+                if (deferred != null) deferred.bindInstancedVariant(Instancing.WEATHER);
+                GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, buffer);
+                WeatherInstancedAttribs.pointInstanceAttribs((long) first * STRIDE);
+                GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+                VAOManager.setCurrentVertexFlags(WeatherQuadMesh.VERTEX_FLAGS);
+                GLSMDraws.glDrawArraysInstanced(GL11.GL_TRIANGLE_FAN, 0, WeatherQuadMesh.VERTEX_COUNT, layerCount);
+                draws++;
+            }
+            return draws;
+        }
+
+        void release() {
+            begin(0, 0, 0.0F);
+            data = null;
+            capacity = 0;
+            if (buffer != 0) {
+                GLSMBuffers.glDeleteBuffers(buffer);
+                buffer = 0;
+            }
+            bufferCapacity = 0;
+        }
+
+        @Override
+        public void beginLayer(ResourceLocation texture, int scrollPeriod, float uDriftScale, float vDriftScale, float fadeScale) {
+            if (texture == null) throw new IllegalArgumentException("Weather layer texture must not be null");
+            if (scrollPeriod < 1 || scrollPeriod > WeatherParams.TICK_WRAP || (scrollPeriod & scrollPeriod - 1) != 0) {
+                throw new IllegalArgumentException("Weather layer scroll period must be a power of two between 1 and " + WeatherParams.TICK_WRAP);
+            }
+            if (!Float.isFinite(uDriftScale) || !Float.isFinite(vDriftScale) || !Float.isFinite(fadeScale)) {
+                throw new IllegalArgumentException("Weather layer scales must be finite");
+            }
+            if (layers == textures.length) {
+                textures = Arrays.copyOf(textures, layers * 2);
+                firsts = Arrays.copyOf(firsts, layers * 2);
+            }
+            textures[layers] = texture;
+            firsts[layers] = count;
+            layers++;
+            period = scrollPeriod;
+            this.uDriftScale = uDriftScale;
+            this.vDriftScale = vDriftScale;
+            this.fadeScale = fadeScale;
+        }
+
+        @Override
+        public void column(int x, int z, float bottom, float top, float uBase, float uDrift, float vBase, float vDrift,
+                           int brightness, int scrollOffset, float scrollScale, float r, float g, float b, float a) {
+            if (layers == 0) throw new IllegalStateException("Weather column written before beginLayer");
+            if (brightness < 0 || brightness >= 1 << 24) {
+                throw new IllegalArgumentException("Weather column brightness must be a packed lightmap coordinate below 2^24");
+            }
+            put(x, z, bottom, top, uBase, uDrift, vBase, vDrift, brightness, scrollOffset, scrollScale, r, g, b, a);
+        }
+
+        void put(int x, int z, float bottom, float top, float uBase, float uDrift, float vBase, float vDrift, int brightness, int scrollOffset, float scrollScale, float r, float g, float b, float a) {
+            if (count == capacity) grow();
+            WeatherInstancedAttribs.putColumn(data, count, x - originX, z - originZ, bottom, top, uBase, uDrift, vBase, vDrift, brightness, scrollOffset, scrollScale, source, r, g, b, a, period, uDriftScale, vDriftScale, fadeScale);
+            count++;
+        }
+
+        private void grow() {
+            final int grownCapacity = Math.max(MIN_CAPACITY, capacity * 2);
+            final ByteBuffer grown = ByteBuffer.allocateDirect(grownCapacity * STRIDE).order(ByteOrder.nativeOrder());
+            if (count > 0) {
+                data.position(0);
+                data.limit(count * STRIDE);
+                grown.put(data);
+                grown.clear();
+            }
+            data = grown;
+            capacity = grownCapacity;
+        }
     }
 }

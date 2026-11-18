@@ -66,6 +66,8 @@ public final class SystemProperties {
     public static final String FLYBY_COMMANDS = System.getProperty("angelica.flyby.commands", "");
     public static final String FLYBY_ORIGIN = System.getProperty("angelica.flyby.origin", "");
     public static final Integer FLYBY_DIMENSION = Integer.getInteger("angelica.flyby.dimension");
+    public static final String FLYBY_BIOME = System.getProperty("angelica.flyby.biome", "");
+    public static final boolean FLYBY_SURVIVAL = Boolean.getBoolean("angelica.flyby.survival");
     public static final FlybyPacing FLYBY_PACING = parseEnum("angelica.flyby.pacing", FlybyPacing.UNCAPPED, FlybyPacing.UNCAPPED, FlybyPacing.class);
     public static final FlybyWeather FLYBY_WEATHER = parseEnum("angelica.flyby.weather", FlybyWeather.CLEAR, FlybyWeather.CLEAR, FlybyWeather.class);
     public static final FlybyCamera FLYBY_CAMERA = parseEnum("angelica.flyby.camera", FlybyCamera.FIRST_PERSON, FlybyCamera.FIRST_PERSON, FlybyCamera.class);

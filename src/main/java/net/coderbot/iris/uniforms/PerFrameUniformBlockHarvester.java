@@ -48,7 +48,7 @@ public final class PerFrameUniformBlockHarvester {
         "gbufferModelView", "gbufferModelViewInverse", "gbufferPreviousModelView",
         "gbufferProjection", "gbufferProjectionInverse", "gbufferPreviousProjection",
         "fogColor", "iris_FogColor", "iris_FogStart", "iris_FogEnd", "iris_FogDensity",
-        "iris_WeatherParams0", "iris_WeatherParams1", "iris_WeatherParams2");
+        "iris_WeatherParams0", "iris_WeatherParams1", "iris_WeatherParams2", "iris_WeatherParams3");
 
     /**
      * @param primary   manifest whose entry order defines the block layout

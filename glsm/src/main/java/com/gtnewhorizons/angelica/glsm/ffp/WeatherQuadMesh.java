@@ -11,7 +11,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 /**
- * The four corners every rain and snow column is expanded from. x picks the end of the billboard, y picks
+ * The four corners every weather column is expanded from. x picks the end of the billboard, y picks
  * the bottom or top edge.
  */
 public final class WeatherQuadMesh {
@@ -47,14 +47,6 @@ public final class WeatherQuadMesh {
         GLSMVertexInput.glBindVertexArray(0);
         GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         return vao;
-    }
-
-    public static void bindInstanceBuffer(int bufferId) {
-        GLSMVertexInput.glBindVertexArray(vao());
-        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, bufferId);
-        WeatherInstancedAttribs.pointInstanceAttribs(0L);
-        GLSMVertexInput.glBindVertexArray(0);
-        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
     }
 
     public static void delete() {
