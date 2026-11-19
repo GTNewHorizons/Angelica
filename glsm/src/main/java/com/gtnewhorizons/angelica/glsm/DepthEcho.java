@@ -96,12 +96,16 @@ public final class DepthEcho {
         return replaying && !(blendsVisibly() && GLSMFramebuffer.getDrawFramebuffer() == framebuffer);
     }
 
+    public static boolean discardsCoverage() {
+        return replaying || echoes();
+    }
+
     public static boolean begin() {
         if (replayDepthWrite) {
             restoreReplayDepthMask();
             return false;
         }
-        if (framebuffer == 0 || GLSMDepthStencilAlpha.getDepthState().isEnabled() || !blendsVisibly() || GLSMFramebuffer.getDrawFramebuffer() != source) return false;
+        if (!echoes()) return false;
         echoed = true;
         if (tracking && immediate == 0 && !BatchStateGuard.isSuspended()) {
             hit = true;
@@ -121,6 +125,10 @@ public final class DepthEcho {
         if (!replayDepthWrite) return;
         replayDepthWrite = false;
         RENDER_BACKEND.depthMask(GLSMDepthStencilAlpha.getDepthState().isEnabled());
+    }
+
+    private static boolean echoes() {
+        return framebuffer != 0 && !GLSMDepthStencilAlpha.getDepthState().isEnabled() && blendsVisibly() && GLSMFramebuffer.getDrawFramebuffer() == source;
     }
 
     private static boolean blendsVisibly() {
