@@ -7,11 +7,13 @@ import com.gtnewhorizons.angelica.compat.bop.FogBiomeCache;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
+import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
 import net.minecraft.entity.Entity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.AxisAlignedBB;
+import net.minecraftforge.client.ForgeHooksClient;
 import net.minecraftforge.client.MinecraftForgeClient;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -35,15 +37,21 @@ import org.embeddedt.embeddium.impl.render.viewport.frustum.SimpleFrustum;
 import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL13;
 
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.cubicchunks.CubicChunksAPI;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightWorldRenderer;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
 import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
 import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
+import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.mixins.interfaces.ITileEntityBoundingBoxCache;
@@ -64,6 +72,8 @@ import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHold
 import com.gtnewhorizons.angelica.rendering.tesr.TesrAttribution;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrLifecycle;
+import net.coderbot.iris.Iris;
+import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.ShadowRenderer;
 
 public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, AngelicaRenderSectionManager, BlockRenderLayer, TileEntity, CeleritasWorldRenderer.TileEntityRenderContext> implements IDynamicLightWorldRenderer {
@@ -73,6 +83,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
     private static final Tracy.ZoneId Z_TESR_DISPATCH = Tracy.zoneId("tesrDispatch", Tracy.COLOR_CLIENT);
     private static final Tracy.ZoneId Z_TESR_MODEL_PARTS = Tracy.zoneId("tesrModelParts", Tracy.COLOR_CLIENT);
     private static final Tracy.ZoneId Z_TESR_RENDER_TE = Tracy.zoneId("tesrRenderTE", Tracy.COLOR_CLIENT);
+    private static final long P_BLOCK_ENTITIES_RENDERED = Tracy.plotHandle("blockEntitiesRendered");
 
     private final Minecraft mc;
     private static CeleritasWorldRenderer instance;
@@ -94,6 +105,10 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
     private final ObjectArrayList<TileEntity> frameOverride = new ObjectArrayList<>();
 
     private final TileEntityDepthOrder depthOrder = new TileEntityDepthOrder();
+    private final Matrix4f savedTextureMatrix = new Matrix4f();
+    private PassOne passOne = PassOne.NONE;
+
+    private enum PassOne { NONE, PENDING, DRAWN_EARLY }
 
     private CeleritasWorldRenderer(Minecraft mc) {
         // Private constructor for singleton
@@ -403,6 +418,58 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
         GLSMCurrentAttribs.glColor4f(1, 1, 1, 1);
     }
 
+    public void renderBlockEntitiesBeforeTranslucent(float partialTicks) {
+        if (passOne != PassOne.PENDING) return;
+        passOne = PassOne.DRAWN_EARLY;
+        if (frameOverride.isEmpty()) return;
+        final Minecraft mc = Minecraft.getMinecraft();
+        final int previousPass = MinecraftForgeClient.getRenderPass();
+        final int depth = GLSMAttribStack.pushState(StateSet.BLOCK_ENTITY_PASS);
+        savedTextureMatrix.set(GLSMTextures.getTextures().getTextureUnitMatrix(0));
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glPushMatrix();
+        try {
+            GLSMDepthStencilAlpha.glDepthMask(true);
+            GLSMDepthStencilAlpha.enableAlphaTest();
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+            GLSMTextures.enableTexture();
+            GLSMCurrentAttribs.glColor4f(1f, 1f, 1f, 1f);
+            if (mc.gameSettings.fancyGraphics) {
+                GLSMBlend.disableBlend();
+                GLSMRasterizer.glShadeModel(GL11.GL_FLAT);
+            }
+            RenderHelper.enableStandardItemLighting();
+            mc.entityRenderer.enableLightmap(partialTicks);
+            ForgeHooksClient.setRenderPass(1);
+            renderBlockEntitiesInPhase(partialTicks);
+        } finally {
+            ForgeHooksClient.setRenderPass(previousPass);
+            GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+            GLSMMatrices.glPopMatrix();
+            GLSMMatrices.setTextureMatrix(0, savedTextureMatrix);
+            GLSMAttribStack.popStateTo(depth);
+        }
+    }
+
+    public boolean takeLatePassOne() {
+        final boolean late = passOne != PassOne.DRAWN_EARLY;
+        passOne = PassOne.NONE;
+        return late;
+    }
+
+    public void renderBlockEntitiesInPhase(float partialTicks) {
+        if (Iris.enabled) {
+            GbufferPrograms.beginBlockEntities();
+            GbufferPrograms.setBlockEntityDefaults();
+        }
+        try {
+            final int rendered = renderBlockEntities(partialTicks);
+            if (Tracy.ENABLED) Tracy.plotInt(P_BLOCK_ENTITIES_RENDERED, rendered);
+        } finally {
+            if (Iris.enabled) GbufferPrograms.endBlockEntities();
+        }
+    }
+
     public int renderBlockEntities(float partialTicks) {
         AngelicaTesrMeshCache.INSTANCE.tick();
         final int pass = MinecraftForgeClient.getRenderPass();
@@ -456,6 +523,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             } finally {
                 if (Tracy.ENABLED) Tracy.endZone();
             }
+            passOne = PassOne.PENDING;
         } else {
             if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_DISPATCH);
             try {
