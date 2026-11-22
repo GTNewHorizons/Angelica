@@ -72,6 +72,8 @@ import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHold
 import com.gtnewhorizons.angelica.rendering.tesr.TesrAttribution;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrLifecycle;
+import com.gtnewhorizons.angelica.rendering.translucency.TranslucencyLayers;
+import com.gtnewhorizons.angelica.rendering.translucency.TranslucentLayer;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.ShadowRenderer;
@@ -395,6 +397,15 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
         return camera;
     }
 
+    public boolean hasVisibleLayer(BlockRenderLayer renderLayer) {
+        final Collection<TerrainRenderPass> passes = this.renderSectionManager.getRenderPassConfiguration().vanillaRenderStages().get(renderLayer);
+        if (passes == null) return false;
+        for (final TerrainRenderPass pass : passes) {
+            if (this.renderSectionManager.getRenderLists().hasPass(pass)) return true;
+        }
+        return false;
+    }
+
     @Override
     public void drawChunkLayer(BlockRenderLayer renderLayer, double x, double y, double z) {
         if (DEBUG_WIREFRAME_MODE) {
@@ -421,8 +432,9 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
     public void renderBlockEntitiesBeforeTranslucent(float partialTicks) {
         if (passOne != PassOne.PENDING) return;
         passOne = PassOne.DRAWN_EARLY;
-        if (frameOverride.isEmpty()) return;
+        if (!anyRendersInPassOne()) return;
         final Minecraft mc = Minecraft.getMinecraft();
+        final boolean layered = TranslucencyLayers.INSTANCE.active();
         final int previousPass = MinecraftForgeClient.getRenderPass();
         final int depth = GLSMAttribStack.pushState(StateSet.BLOCK_ENTITY_PASS);
         savedTextureMatrix.set(GLSMTextures.getTextures().getTextureUnitMatrix(0));
@@ -434,14 +446,23 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
             GLSMTextures.enableTexture();
             GLSMCurrentAttribs.glColor4f(1f, 1f, 1f, 1f);
-            if (mc.gameSettings.fancyGraphics) {
+            // A layer reads its color as premultiplied, which a blend-disabled draw does not write (TranslucencyLayers).
+            if (layered) {
+                GLSMBlend.enableBlend();
+                GLSMBlend.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            } else if (mc.gameSettings.fancyGraphics) {
                 GLSMBlend.disableBlend();
-                GLSMRasterizer.glShadeModel(GL11.GL_FLAT);
             }
+            if (mc.gameSettings.fancyGraphics) GLSMRasterizer.glShadeModel(GL11.GL_FLAT);
             RenderHelper.enableStandardItemLighting();
             mc.entityRenderer.enableLightmap(partialTicks);
             ForgeHooksClient.setRenderPass(1);
-            renderBlockEntitiesInPhase(partialTicks);
+            if (layered) TranslucencyLayers.INSTANCE.begin(TranslucentLayer.BLOCK_ENTITIES);
+            try {
+                renderBlockEntitiesInPhase(partialTicks);
+            } finally {
+                if (layered) TranslucencyLayers.INSTANCE.end();
+            }
         } finally {
             ForgeHooksClient.setRenderPass(previousPass);
             GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
@@ -449,6 +470,13 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             GLSMMatrices.setTextureMatrix(0, savedTextureMatrix);
             GLSMAttribStack.popStateTo(depth);
         }
+    }
+
+    private boolean anyRendersInPassOne() {
+        for (int i = 0; i < frameOverride.size(); i++) {
+            if (frameOverride.get(i).shouldRenderInPass(1)) return true;
+        }
+        return false;
     }
 
     public boolean takeLatePassOne() {
@@ -504,7 +532,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             this.teTransform = null;
             if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_DISPATCH);
             try {
-                if (ClientProxy.options().performance.translucencySorting) {
+                if (ClientProxy.options().performance.translucencyMode.sorts()) {
                     depthOrder.sortBackToFront(frameTEs, teCamX, teCamY, teCamZ);
                 }
                 for (int i = 0; i < frameTEs.size(); i++) {
