@@ -104,6 +104,16 @@ public class MixinTessellator implements StateAwareTessellator, BiomeBlendTessel
     }
 
     @Override
+    public boolean angelica$isAppliedAo() {
+        return this.appliedAo;
+    }
+
+    @Override
+    public boolean angelica$isNoDirectionalShading() {
+        return this.angelica$noDirectionalShading;
+    }
+
+    @Override
     public int[] angelica$getVertexStates() {
         return this.vertexStates.elements();
     }
