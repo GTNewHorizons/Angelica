@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.rendering.celeritas;
 import java.util.Collection;
 import java.util.List;
 
+import com.gtnewhorizons.angelica.api.world.WorldDrawStage;
 import com.gtnewhorizons.angelica.compat.bop.FogBiomeCache;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
 import net.minecraft.client.Minecraft;
@@ -540,6 +541,8 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
         try {
             final int rendered = renderBlockEntities(partialTicks);
             if (Tracy.ENABLED) Tracy.plotInt(P_BLOCK_ENTITIES_RENDERED, rendered);
+            // Inside the block entity phase so the pack lights mod geometry
+            WorldDrawStage.run(partialTicks);
         } finally {
             if (Iris.enabled) GbufferPrograms.endBlockEntities();
         }
