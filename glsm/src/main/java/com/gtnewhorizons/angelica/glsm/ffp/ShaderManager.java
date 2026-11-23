@@ -5,6 +5,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.CompatUniformManager;
 import com.gtnewhorizons.angelica.glsm.CoverageDiscard;
+import com.gtnewhorizons.angelica.glsm.DepthPeel;
 import com.gtnewhorizons.angelica.glsm.GLContextState;
 import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -189,6 +190,7 @@ public final class ShaderManager {
     private void uploadUniforms(GLContextState glCtx) {
         if (currentProgram != null) {
             uniforms.upload(glCtx);
+            if (currentProgram.peels()) currentProgram.syncPeelMode(DepthPeel.shaderMode());
             if (currentProgram.getFragmentKey().coverageDiscard()) currentProgram.syncCoverMode(CoverageDiscard.mode());
         }
     }

@@ -66,6 +66,7 @@ import com.gtnewhorizons.angelica.render.WeatherRenderer;
 import com.gtnewhorizons.angelica.rendering.culling.GpuTerrainCuller;
 import com.gtnewhorizons.angelica.rendering.tesr.AngelicaTesrMeshCache;
 import com.gtnewhorizons.angelica.rendering.tesr.GlowReplayExclusions;
+import com.gtnewhorizons.angelica.rendering.tesr.ImmediateDrawOrder;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.gtnewhorizons.angelica.rendering.tesr.PendingTesrDraws;
 import com.gtnewhorizons.angelica.rendering.tesr.SectionBuiltBlockEntity;
@@ -75,6 +76,7 @@ import com.gtnewhorizons.angelica.rendering.tesr.TesrAttribution;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrLifecycle;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrProviderDispatch;
+import com.gtnewhorizons.angelica.rendering.tesr.TranslucentPeel;
 import com.gtnewhorizons.angelica.rendering.translucency.TranslucencyLayers;
 import com.gtnewhorizons.angelica.rendering.translucency.TranslucentLayer;
 import net.coderbot.iris.Iris;
@@ -555,63 +557,70 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             TileEntityRendererDispatcher.staticPlayerZ);
         ModelPartBatcher.INSTANCE.begin(ModelPartBatcher.Mode.BLOCK_ENTITIES);
         PendingTesrDraws.beginPass();
+        ImmediateDrawOrder.beginPass();
+        TranslucentPeel.beginPass();
         int count = 0;
-        if (pass == 0) {
-            teRenderContext.set(partialTicks, pass);
-            final Viewport viewport = this.currentViewport;
-            this.teTransform = viewport != null ? viewport.getTransform() : null;
-            this.teFrustum = viewport != null && ClientProxy.options().performance.sectionGatedTesrCulling && viewport.getFrustum() instanceof SimpleFrustum simpleFrustum ? simpleFrustum.getFrustumIntersection() : null;
-            this.teCullEpoch++;
-            this.teCamX = TileEntityRendererDispatcher.staticPlayerX;
-            this.teCamY = TileEntityRendererDispatcher.staticPlayerY;
-            this.teCamZ = TileEntityRendererDispatcher.staticPlayerZ;
-            frameTEs.clear();
-            frameOverride.clear();
-            if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_COLLECT);
-            try {
-                super.renderBlockEntities(teRenderContext);
-            } finally {
-                if (Tracy.ENABLED) Tracy.endZone();
-            }
-            this.teFrustum = null;
-            this.teTransform = null;
-            if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_DISPATCH);
-            try {
-                if (ClientProxy.options().performance.translucencyMode.sorts()) {
-                    depthOrder.sortBackToFront(frameTEs, teCamX, teCamY, teCamZ);
+        try {
+            if (pass == 0) {
+                teRenderContext.set(partialTicks, pass);
+                final Viewport viewport = this.currentViewport;
+                this.teTransform = viewport != null ? viewport.getTransform() : null;
+                this.teFrustum = viewport != null && ClientProxy.options().performance.sectionGatedTesrCulling && viewport.getFrustum() instanceof SimpleFrustum simpleFrustum ? simpleFrustum.getFrustumIntersection() : null;
+                this.teCullEpoch++;
+                this.teCamX = TileEntityRendererDispatcher.staticPlayerX;
+                this.teCamY = TileEntityRendererDispatcher.staticPlayerY;
+                this.teCamZ = TileEntityRendererDispatcher.staticPlayerZ;
+                frameTEs.clear();
+                frameOverride.clear();
+                if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_COLLECT);
+                try {
+                    super.renderBlockEntities(teRenderContext);
+                } finally {
+                    if (Tracy.ENABLED) Tracy.endZone();
                 }
-                for (int i = 0; i < frameTEs.size(); i++) {
-                    final TileEntity te = frameTEs.get(i);
-                    if (!(te instanceof OverridesShouldRenderInPass)) {
-                        dispatchTE(te, partialTicks);
-                        count++;
-                        continue;
+                this.teFrustum = null;
+                this.teTransform = null;
+                if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_DISPATCH);
+                try {
+                    if (ClientProxy.options().performance.translucencyMode.sorts()) {
+                        depthOrder.sortBackToFront(frameTEs, teCamX, teCamY, teCamZ);
                     }
-                    frameOverride.add(te);
-                    if (te.shouldRenderInPass(0)) {
-                        dispatchTE(te, partialTicks);
-                        count++;
+                    for (int i = 0; i < frameTEs.size(); i++) {
+                        final TileEntity te = frameTEs.get(i);
+                        if (!(te instanceof OverridesShouldRenderInPass)) {
+                            dispatchTE(te, partialTicks);
+                            count++;
+                            continue;
+                        }
+                        frameOverride.add(te);
+                        if (te.shouldRenderInPass(0)) {
+                            dispatchTE(te, partialTicks);
+                            count++;
+                        }
                     }
+                } finally {
+                    if (Tracy.ENABLED) Tracy.endZone();
                 }
-            } finally {
-                if (Tracy.ENABLED) Tracy.endZone();
-            }
-            passOne = PassOne.PENDING;
-        } else {
-            if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_DISPATCH);
-            try {
-                for (int i = 0; i < frameOverride.size(); i++) {
-                    final TileEntity te = frameOverride.get(i);
-                    if (te.shouldRenderInPass(pass)) {
-                        dispatchTE(te, partialTicks);
-                        count++;
+                passOne = PassOne.PENDING;
+            } else {
+                if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_DISPATCH);
+                try {
+                    for (int i = 0; i < frameOverride.size(); i++) {
+                        final TileEntity te = frameOverride.get(i);
+                        if (te.shouldRenderInPass(pass)) {
+                            dispatchTE(te, partialTicks);
+                            count++;
+                        }
                     }
+                } finally {
+                    if (Tracy.ENABLED) Tracy.endZone();
                 }
-            } finally {
-                if (Tracy.ENABLED) Tracy.endZone();
             }
+        } finally {
+            ImmediateDrawOrder.endPass();
         }
         PendingTesrDraws.endPass();
+        TranslucentPeel.flush();
         if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_MODEL_PARTS);
         try {
             ModelPartBatcher.INSTANCE.flush();
@@ -750,6 +759,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             }
         }
         PendingTesrDraws.beforeTileEntity(tileEntity);
+        TranslucentPeel.beforeBlockEntity();
         try {
             final long start = Tracy.ENABLED ? System.nanoTime() : 0L;
             final boolean attribute = Tracy.ENABLED && TesrAttribution.currentRenderable == null;

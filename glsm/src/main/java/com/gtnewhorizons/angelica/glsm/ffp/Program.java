@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.glsm.ffp;
 
 import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.CompatShaderTransformer;
+import com.gtnewhorizons.angelica.glsm.DepthPeel;
 import com.gtnewhorizons.angelica.glsm.GLDebug;
 import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -35,6 +36,10 @@ public class Program {
     @Getter private final FragmentKey fragmentKey;
 
     public final int[] locSampler = { -1, -1, -1, -1 };
+    public final int locPeelDepth;
+    public final int locPeelScene;
+    private final int locPeelMode;
+    private int peelMode = -1;
     private final int locCoverMode;
     private int coverMode = -1;
 
@@ -45,7 +50,20 @@ public class Program {
         for (int i = 0; i < 4; i++) {
             locSampler[i] = RENDER_BACKEND.getUniformLocation(programId, "u_Sampler" + i);
         }
+        locPeelDepth = RENDER_BACKEND.getUniformLocation(programId, "u_PeelDepth");
+        locPeelScene = RENDER_BACKEND.getUniformLocation(programId, "u_PeelScene");
+        locPeelMode = RENDER_BACKEND.getUniformLocation(programId, "u_PeelMode");
         locCoverMode = RENDER_BACKEND.getUniformLocation(programId, "u_CoverMode");
+    }
+
+    boolean peels() {
+        return locPeelMode != -1;
+    }
+
+    void syncPeelMode(int mode) {
+        if (peelMode == mode) return;
+        RENDER_BACKEND.uniform1i(locPeelMode, mode);
+        peelMode = mode;
     }
 
     void syncCoverMode(int mode) {
@@ -108,6 +126,8 @@ public class Program {
             for (int i = 0; i < 4; i++) {
                 if (ffpProgram.locSampler[i] != -1) backend.uniform1i(ffpProgram.locSampler[i], i);
             }
+            if (ffpProgram.locPeelDepth != -1) backend.uniform1i(ffpProgram.locPeelDepth, DepthPeel.TEXTURE_UNIT);
+            if (ffpProgram.locPeelScene != -1) backend.uniform1i(ffpProgram.locPeelScene, DepthPeel.SCENE_TEXTURE_UNIT);
             if (previousProgram != 0) {
                 backend.useProgram(previousProgram);
             } else {
