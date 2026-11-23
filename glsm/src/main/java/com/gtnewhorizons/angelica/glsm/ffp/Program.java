@@ -35,6 +35,8 @@ public class Program {
     @Getter private final FragmentKey fragmentKey;
 
     public final int[] locSampler = { -1, -1, -1, -1 };
+    private final int locCoverMode;
+    private int coverMode = -1;
 
     Program(int programId, VertexKey vertexKey, FragmentKey fragmentKey) {
         this.programId = programId;
@@ -43,6 +45,13 @@ public class Program {
         for (int i = 0; i < 4; i++) {
             locSampler[i] = RENDER_BACKEND.getUniformLocation(programId, "u_Sampler" + i);
         }
+        locCoverMode = RENDER_BACKEND.getUniformLocation(programId, "u_CoverMode");
+    }
+
+    void syncCoverMode(int mode) {
+        if (locCoverMode == -1 || coverMode == mode) return;
+        RENDER_BACKEND.uniform1i(locCoverMode, mode);
+        coverMode = mode;
     }
 
     public void destroy() {

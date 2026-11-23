@@ -53,4 +53,7 @@ void main() {
 #if GLINT_REPLACE_ALPHA
     fragColor.a = visible1 ? b.a : a.a;
 #endif
+#ifdef COVERAGE_DISCARD
+    coverageTest(fragColor);
+#endif
 }

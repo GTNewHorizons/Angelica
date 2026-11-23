@@ -1,21 +1,33 @@
 package com.gtnewhorizons.angelica.rendering.translucency;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement;
+import com.gtnewhorizons.angelica.glsm.DepthEcho;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMBuffers;
 import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
 import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMEnable;
 import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
 import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
 import com.gtnewhorizons.angelica.glsm.GLSMTextures;
 import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.GlTestSupport;
+import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
+import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
+import com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL30;
 
 import java.nio.ByteBuffer;
@@ -23,6 +35,7 @@ import java.nio.FloatBuffer;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @GLCoreTest
 class TranslucencyCompositeGLTest {
@@ -226,5 +239,122 @@ class TranslucencyCompositeGLTest {
         final ByteBuffer color = readColor();
         assertColumn(color, 0, 159, 159, 191);
         assertColumn(color, 1, 64, 96, 159);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = { false, true })
+    void glowsCompositeAtTheirOwnDepthWithoutRejectingEachOther(boolean replayed) {
+        layers.beginFrame(true);
+        layers.begin(TranslucentLayer.BLOCK_ENTITIES);
+        if (replayed) DepthEcho.beginTracking();
+        drawGlows();
+        BatchStateGuard.suspend();
+        drawGlow(2, 0.3f, 0f, 0f, 1f);
+        BatchStateGuard.resume();
+        assertEquals(replayed, DepthEcho.endTracking());
+        if (replayed) {
+            assertTrue(layers.beginGlowReplay());
+            drawGlows();
+            layers.endGlowReplay();
+        }
+        layers.end();
+        assertEquals(GLSMDepthStencilAlpha.getDepthState().isEnabled(), GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK));
+        drawInto(TranslucentLayer.TERRAIN, 0, 0.6f, 0f, 1f, 0f, 0.5f);
+        drawInto(TranslucentLayer.TERRAIN, 2, 0.6f, 0f, 1f, 0f, 0.5f);
+        layers.composite();
+
+        final ByteBuffer color = readColor();
+        assertColumn(color, 0, 64, 64, 128);
+        assertColumn(color, 1, 64, 128, 64);
+        assertColumn(color, 2, 64, 64, 128);
+    }
+
+    private void drawGlows() {
+        drawGlow(0, 0.3f, 0f, 0f, 1f);
+        drawGlow(1, 0.3f, 0f, 0f, 1f);
+        drawGlow(1, 0.5f, 0f, 1f, 0f);
+    }
+
+    private void drawGlow(int column, float depth, float r, float g, float b) {
+        GLSMDepthStencilAlpha.glDepthMask(false);
+        drawBlended(quadProgram, column, depth, r, g, b, 0.5f, GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GLSMDepthStencilAlpha.glDepthMask(true);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = { false, true })
+    void transparentGlowTexelsLeaveBlockEntitiesBehindThemAtTheirOwnDepth(boolean replayed) {
+        final boolean ffpEnabled = ShaderManager.isEnabled();
+        final int glowVao = GLSMVertexInput.glGenVertexArrays();
+        final int glowVbo = GLSMBuffers.glGenBuffers();
+        try {
+            ShaderManager.enable();
+            buildFfpGlow(glowVao, glowVbo, 0.3f);
+            layers.beginFrame(true);
+            drawInto(TranslucentLayer.BLOCK_ENTITIES, 0, 0.6f, 0f, 0f, 1f, 0.5f);
+            layers.begin(TranslucentLayer.BLOCK_ENTITIES);
+            if (replayed) DepthEcho.beginTracking();
+            drawFfpGlow(glowVao, GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            drawFfpGlow(glowVao, GL11.GL_ONE, GL11.GL_ONE);
+            assertEquals(replayed, DepthEcho.endTracking());
+            if (replayed) {
+                assertTrue(layers.beginGlowReplay());
+                drawFfpGlow(glowVao, GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+                drawFfpGlow(glowVao, GL11.GL_ONE, GL11.GL_ONE);
+                layers.endGlowReplay();
+            }
+            layers.end();
+            drawInto(TranslucentLayer.TERRAIN, 0, 0.5f, 0f, 1f, 0f, 0.5f);
+            layers.composite();
+
+            assertColumn(readColor(), 0, 64, 128, 64);
+        } finally {
+            if (ShaderManager.getInstance().isActive()) ShaderManager.getInstance().deactivate();
+            if (!ffpEnabled) ShaderManager.disable();
+            GLSMVertexInput.glBindVertexArray(0);
+            GLSMBuffers.glDeleteBuffers(glowVbo);
+            GLSMVertexInput.glDeleteVertexArrays(glowVao);
+        }
+    }
+
+    private static void buildFfpGlow(int vao, int vbo, float depth) {
+        final ByteBuffer data = BufferUtils.createByteBuffer(3 * 16);
+        final float z = depth * 2f - 1f;
+        data.putFloat(-1f).putFloat(-1f).putFloat(z).putInt(0x00000000);
+        data.putFloat(3f).putFloat(-1f).putFloat(z).putInt(0x00000000);
+        data.putFloat(-1f).putFloat(3f).putFloat(z).putInt(0x00000000);
+        data.flip();
+        GLSMVertexInput.glBindVertexArray(vao);
+        GLSMBuffers.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        GLSMBuffers.glBufferData(GL15.GL_ARRAY_BUFFER, data, GL15.GL_STATIC_DRAW);
+        final int position = VertexFormatElement.Usage.POSITION.getAttributeLocation();
+        final int color = VertexFormatElement.Usage.COLOR.getAttributeLocation();
+        GLSMVertexInput.glEnableVertexAttribArray(position);
+        GLSMVertexInput.glVertexAttribPointer(position, 3, GL11.GL_FLOAT, false, 16, 0L);
+        GLSMVertexInput.glEnableVertexAttribArray(color);
+        GLSMVertexInput.glVertexAttribPointer(color, 4, GL11.GL_UNSIGNED_BYTE, true, 16, 12L);
+        GLSMVertexInput.glBindVertexArray(0);
+    }
+
+    private static void drawFfpGlow(int vao, int srcRgb, int dstRgb) {
+        GLSMRasterizer.glViewport(0, 0, 1, 1);
+        GLSMMatrices.glMatrixMode(GL11.GL_PROJECTION);
+        GLSMMatrices.glLoadIdentity();
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glLoadIdentity();
+        GLSMEnable.glDisable(GL11.GL_LIGHTING);
+        GLSMEnable.glDisable(GL11.GL_FOG);
+        GLSMEnable.glDisable(GL11.GL_ALPHA_TEST);
+        GLSMTextures.disableTexture();
+        GLSMDepthStencilAlpha.glDepthMask(false);
+        GLSMBlend.enableBlend();
+        GLSMBlend.glBlendFunc(srcRgb, dstRgb);
+        GLSMVertexInput.glBindVertexArray(vao);
+        VAOManager.setCurrentVertexFlags(VertexFlags.COLOR_BIT);
+        GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
+        GLSMVertexInput.glBindVertexArray(0);
+        GLSMBlend.disableBlend();
+        GLSMDepthStencilAlpha.glDepthMask(true);
+        GLSMRasterizer.glViewport(0, 0, WIDTH, 1);
     }
 }
