@@ -10,6 +10,7 @@ import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import com.gtnewhorizons.angelica.mixins.interfaces.IChunkTileEntityMapHolder;
 import com.gtnewhorizons.angelica.utils.ConcurrentTileEntityMap;
 import com.gtnewhorizons.liquidlogged.api.LiquidLoggedAPI;
+import com.gtnewhorizons.liquidlogged.api.LiquidLoggedBlockAccess;
 import com.gtnewhorizons.liquidlogged.api.SectionFluidsView;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectOpenHashMap;
 import mega.fluidlogged.internal.mixin.hook.FLSubChunk;
@@ -26,6 +27,9 @@ import net.minecraft.world.chunk.NibbleArray;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import net.minecraftforge.fluids.Fluid;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.util.Map;
 
 public class ClonedChunkSection {
@@ -45,6 +49,7 @@ public class ClonedChunkSection {
 
     // Fluids stored in blocks by LiquidLogged, indexed y << 8 | z << 4 | x; null when the section holds none
     private Fluid[] liquidLoggedFluids;
+    private byte[] liquidLoggedFluidLevels;
 
     private long lastUsedTimestamp = Long.MAX_VALUE;
 
@@ -143,12 +148,57 @@ public class ClonedChunkSection {
         final SectionFluidsView view = LiquidLoggedAPI.getSection(section);
         if (view == null || view.isEmpty()) {
             this.liquidLoggedFluids = null;
+            this.liquidLoggedFluidLevels = null;
             return;
         }
         if (this.liquidLoggedFluids == null) {
             this.liquidLoggedFluids = new Fluid[SECTION_BLOCK_LENGTH * SECTION_BLOCK_LENGTH * SECTION_BLOCK_LENGTH];
         }
         view.copyTo(this.liquidLoggedFluids);
+
+        final MethodHandle getter = LiquidLoggedLevels.GETTER;
+        if (getter == null) {
+            return;
+        }
+        final int minX = this.pos.getMinX();
+        final int minY = this.pos.getMinY();
+        final int minZ = this.pos.getMinZ();
+        try {
+            final LiquidLoggedBlockAccess access = (LiquidLoggedBlockAccess) this.world;
+            for (int i = 0; i < this.liquidLoggedFluids.length; i++) {
+                final int level = this.liquidLoggedFluids[i] == null ? 0
+                    : (int) getter.invokeExact(access, minX + (i & 15), minY + (i >> 8), minZ + ((i >> 4) & 15));
+                if (level != 0 && this.liquidLoggedFluidLevels == null) {
+                    this.liquidLoggedFluidLevels = new byte[this.liquidLoggedFluids.length];
+                }
+                if (this.liquidLoggedFluidLevels != null) {
+                    this.liquidLoggedFluidLevels[i] = (byte) level;
+                }
+            }
+        } catch (RuntimeException | Error e) {
+            throw e;
+        } catch (Throwable e) {
+            throw new IllegalStateException("Could not read LiquidLogged fluid levels", e);
+        }
+    }
+
+    private static final class LiquidLoggedLevels {
+        private static final MethodHandle GETTER = findGetter();
+
+        private static MethodHandle findGetter() {
+            try {
+                return MethodHandles.publicLookup().findVirtual(LiquidLoggedBlockAccess.class, "liquidlogged$getFluidLevel",
+                    MethodType.methodType(int.class, int.class, int.class, int.class));
+            } catch (NoSuchMethodException e) {
+                return null;
+            } catch (IllegalAccessException e) {
+                throw new IllegalStateException(e);
+            }
+        }
+    }
+
+    public int getFluidLevel(int x, int y, int z) {
+        return this.liquidLoggedFluidLevels == null ? 0 : this.liquidLoggedFluidLevels[y << 8 | z << 4 | x];
     }
 
     public Fluid getFluid(int x, int y, int z) {
