@@ -177,6 +177,11 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static String[] entityShadowReplayExcludedClasses;
 
+    @Config.Comment("Tile entity or renderer classes whose glows Fancy translucency records as they draw instead of rendering the tile entity a second time. For renderers that advance an animation or other state on each render.")
+    @Config.DefaultStringList({})
+    @Config.RequiresMcRestart
+    public static String[] glowDepthReplayExcludedClasses;
+
     @Config.Comment("Skip the end-of-frame shader buffer copy by ping-ponging buffers. Disable if a shader pack misrenders.")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart

@@ -103,8 +103,12 @@ public class PanoramaRenderer {
     }
 
     public static <T> GlProgram<T> loadProgram(String name, String vertBase, String fragBase, Function<ShaderBindingContext, T> factory) {
+        return loadProgram(name, vertBase, fragBase, ShaderConstants.EMPTY, factory);
+    }
+
+    public static <T> GlProgram<T> loadProgram(String name, String vertBase, String fragBase, ShaderConstants fragConstants, Function<ShaderBindingContext, T> factory) {
         final GlShader vert = ShaderLoader.loadShader(ShaderType.VERTEX, vertBase + ".vert", ShaderConstants.EMPTY);
-        final GlShader frag = ShaderLoader.loadShader(ShaderType.FRAGMENT, fragBase + ".frag", ShaderConstants.EMPTY);
+        final GlShader frag = ShaderLoader.loadShader(ShaderType.FRAGMENT, fragBase + ".frag", fragConstants);
         try {
             final GlProgram<T> program = GlProgram.builder(name).attachShader(vert).attachShader(frag).link(factory);
             program.bind();

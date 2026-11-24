@@ -15,6 +15,8 @@ public final class GLSMConfig {
     }
 
     public static boolean hudCacheOverride;
+    public static boolean layerBlending;
+    public static boolean depthPeel;
 
     public static boolean extendedAttribsExpected;
     public static volatile boolean expandVertexFormats;

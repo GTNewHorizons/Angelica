@@ -467,6 +467,18 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess, LiquidLo
         return fl$getFluid(x, y, z);
     }
 
+    public int liquidlogged$getFluidLevel(int x, int y, int z) {
+        if (this.context == null || !blockBoxContains(this.volume, x, y, z)) {
+            return 0;
+        }
+
+        final int relX = x - this.baseX;
+        final int relY = y - this.baseY;
+        final int relZ = z - this.baseZ;
+        return this.sections[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)]
+            .getFluidLevel(relX & 15, relY & 15, relZ & 15);
+    }
+
     public void fl$setFluid(int x, int y, int z, @Nullable Fluid fluid) {
         throw new UnsupportedOperationException("Cannot set fluids in a world slice. WorldSlice is read-only");
     }

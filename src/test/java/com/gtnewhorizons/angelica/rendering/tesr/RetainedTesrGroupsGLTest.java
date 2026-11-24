@@ -34,6 +34,7 @@ import com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard;
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import com.gtnewhorizons.angelica.glsm.streaming.PersistentStreamingBuffer;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
+import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.GlintClock;
 import com.gtnewhorizons.angelica.rendering.items.ItemGlint;
 import com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrGroups.Group;
@@ -41,6 +42,7 @@ import com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrGroups.InstanceColu
 import com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrGroups.TexRun;
 import com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrTestSupport.CountingPipeline;
 import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
+import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
 import net.coderbot.batchedentityrendering.impl.AngelicaBufferSource;
 import net.coderbot.iris.layer.PassOverride;
 import net.coderbot.iris.pipeline.ShadowRenderer;
@@ -101,6 +103,7 @@ class RetainedTesrGroupsGLTest {
     private static Runnable onBufferSetup;
 
     private final long[] clock = {1_000L};
+    private SodiumGameOptions previousOptions;
     private AngelicaBufferSource source;
     private InstanceRing ring;
     private InstancedTemplateRenderer instanced;
@@ -140,6 +143,8 @@ class RetainedTesrGroupsGLTest {
         GLSMFog.disableFog();
         GLSMLighting.disableLighting();
         GLSMCurrentAttribs.glColor4f(1f, 1f, 1f, 1f);
+        previousOptions = Reflect.getStatic(ClientProxy.class, "CONFIG");
+        Reflect.setStatic(ClientProxy.class, "CONFIG", new SodiumGameOptions());
 
         final ShaderManager ffp = ShaderManager.getInstance();
         ShaderManager.enable();
@@ -155,6 +160,7 @@ class RetainedTesrGroupsGLTest {
     @AfterEach
     void cleanup() {
         onBufferSetup = null;
+        Reflect.setStatic(ClientProxy.class, "CONFIG", previousOptions);
         source.discard();
         GLSMPrograms.setFfpInstancing(Instancing.NONE);
         GLSMVertexInput.glBindVertexArray(0);
@@ -259,6 +265,131 @@ class RetainedTesrGroupsGLTest {
         }
         assertEquals(1, groups.rebakes, "rotation alone must not re-bake a static group");
         assertEquals(0, groups.streamPromotions);
+    }
+
+    @Test
+    void groupSplitByAMidPassFlushBakesEachPartOnce() {
+        final TemplateBuffer template = capturedQuad(0.1);
+        final Matrix4f left = new Matrix4f().translation(-0.3f, 0f, 0f);
+        final Matrix4f right = new Matrix4f().translation(0.3f, 0f, 0f);
+        for (int frame = 0; frame < 8; frame++) {
+            clock[0] += 1;
+            groups.beginPass(new Matrix4f(), 0, 0, 0, instanced);
+            groups.queue(SCOPE, template, layer, BAKED_ADDITIVE, left, 0, -1, 0, 0L, 5, null);
+            groups.drawLayer(layer);
+            groups.continuePass(new Matrix4f(), 0, 0, 0, instanced, null);
+            groups.queue(SCOPE, template, layer, BAKED_ADDITIVE, right, 0, -1, 0, 0L, 5, null);
+            groups.drawLayer(layer);
+            ring.endFrame();
+            assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
+        }
+        assertEquals(2, groups.rebakes, "each side of the flush keeps its own mesh");
+        assertEquals(0, groups.streamPromotions);
+    }
+
+    @Test
+    void idleResetCountsPassesNotFlushSegments() {
+        final TemplateBuffer template = capturedQuad(0.1);
+        final Matrix4f model = new Matrix4f().translation(0.3f, 0f, 0f);
+        for (int frame = 0; frame < 4; frame++) {
+            clock[0] += 1;
+            groups.beginPass(new Matrix4f(), 0, 0, 0, instanced);
+            for (int i = 0; i <= RetainedTesrGroups.IDLE_RESET_FRAMES; i++) groups.continuePass(new Matrix4f(), 0, 0, 0, instanced, null);
+            groups.queue(SCOPE, template, layer, BAKED_ADDITIVE, model, 0, -1, 0, 0L, 5, null);
+            groups.drawLayer(layer);
+            ring.endFrame();
+            assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
+        }
+        assertEquals(1, groups.rebakes, "flushes within a pass must not age a group toward its idle reset");
+    }
+
+    @Test
+    void peelSkipsOnlyTranslucentsFromOneBatchOfOneBlockEntity() {
+        final TemplateBuffer template = capturedQuad(0.1);
+        final RenderLayer translucent = RetainedTesrTestSupport.layerFor(BAKED_TRANSLUCENT);
+        final Matrix4f mv = new Matrix4f();
+        try {
+            groups.beginPass(new Matrix4f(), 0, 0, 0);
+            TranslucentPeel.beginPass();
+            groups.queue(SCOPE, template, translucent, BAKED_TRANSLUCENT, mv, 0, -1, 0, 0L, 5, null);
+            groups.queue(SCOPE, template, translucent, BAKED_TRANSLUCENT, mv, 0, -1, 0, 0L, 5, null);
+            assertFalse(peelMixed(), "one block entity's parts in one group keep their submission order");
+            TranslucentPeel.beforeBlockEntity();
+            groups.queue(SCOPE, template, translucent, BAKED_TRANSLUCENT, mv, 0, -1, 0, 0L, 5, null);
+            assertTrue(peelMixed(), "a second block entity in the group can be in front of the first");
+
+            TranslucentPeel.beginPass();
+            groups.queue(SCOPE, template, translucent, BAKED_TRANSLUCENT, mv, 0, -1, 0, 0L, 5, null);
+            groups.queue(SCOPE, template, translucent, BAKED_TRANSLUCENT, mv, 0, -1, 0, 0L, 6, null);
+            assertTrue(peelMixed(), "two groups draw in group order");
+
+            groups.beginPass(new Matrix4f(), 0, 0, 0, instanced);
+            TranslucentPeel.beginPass();
+            groups.queue(SCOPE, template, translucent, RetainedTesrTestSupport.STREAM, mv, 0, -1, 0, 0L, 5, null);
+            assertTrue(peelMixed(), "instanced groups draw by template, not in submission order");
+        } finally {
+            TranslucentPeel.beginPass();
+        }
+    }
+
+    private static boolean peelMixed() {
+        return Reflect.getStatic(TranslucentPeel.class, "mixed");
+    }
+
+    @Test
+    void promotionFoundWhilePeelRecordingWaitsUntilThePeelEnds() {
+        final TemplateBuffer template = capturedQuad(0.1);
+        for (int frame = 0; frame < 6; frame++) {
+            clock[0] += 1;
+            groups.beginPass(new Matrix4f(), 0, 0, 0, instanced);
+            groups.queue(SCOPE, template, layer, BAKED_ADDITIVE, new Matrix4f().translation(frame * 0.03f, 0f, 0f), 0, -1, 0, 0L, 5, null);
+            final long before = groups.streamPromotions;
+            groups.setPeelReplay(true, false);
+            groups.drawLayer(layer);
+            assertEquals(before, groups.streamPromotions, "promoting deletes the mesh the replay passes still draw");
+            groups.setPeelReplay(false, true);
+            groups.drawLayer(layer);
+            groups.setPeelReplay(false, false);
+            ring.endFrame();
+            assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
+        }
+        assertEquals(1, groups.streamPromotions, "the promotion applies once the peel ends");
+    }
+
+    @Test
+    void unpeeledFlushDrawsBothBatchersOpaqueLayersBeforeTranslucentOnes() {
+        final TesrMaterial opaque = TesrMaterial.builder().build();
+        final RenderLayer opaqueLayer = RetainedTesrTestSupport.layerFor(opaque);
+        final RenderLayer translucentLayer = RetainedTesrTestSupport.layerFor(BAKED_TRANSLUCENT);
+        GLSMBlend.disableBlend();
+        GLSMDepthStencilAlpha.disableAlphaTest();
+        GLSMTextures.disableTexture();
+        GLSMEnable.glDisable(GL11.GL_SCISSOR_TEST);
+        FfpFixture.clear();
+        final AngelicaBufferSource tesrSource = new AngelicaBufferSource();
+        final RetainedTesrGroups tesrGroups = new RetainedTesrGroups(tesrSource, () -> clock[0]);
+        final TesrBatchRenderer renderer = TesrBatchRenderer.INSTANCE;
+        final RetainedTesrGroups[] retained = Reflect.get(renderer, "retained");
+        final RetainedTesrGroups oldGroups = retained[0];
+        retained[0] = tesrGroups;
+        try {
+            groups.beginPass(new Matrix4f(), 0, 0, 0);
+            groups.queue(SCOPE, capturedQuad(0.5), translucentLayer, BAKED_TRANSLUCENT, new Matrix4f(), 0, 0x80FF0000, 0, 0L, 1, null);
+            tesrGroups.beginPass(new Matrix4f(), 0, 0, 0);
+            tesrGroups.queue(SCOPE, capturedQuad(0.5), opaqueLayer, opaque, new Matrix4f().translation(0f, 0f, 0.5f), 0, COLOR_ABGR, 0, 0L, 2, null);
+            withBatcherFields(renderer, () -> withBatcherFields(ModelPartBatcher.INSTANCE, () -> {
+                GLSMBlend.enableBlend();
+                ImmediateDrawOrder.flush();
+                final int[] pixel = FfpFixture.readPixel(400, 300);
+                assertTrue(pixel[0] > 50 && pixel[2] > 50, "the near translucent part must blend over the far opaque one, got " + pixel[0] + "," + pixel[1] + "," + pixel[2]);
+            }, "activeSource", source, "activeGroups", groups, "active", true, "mode", ModelPartBatcher.Mode.BLOCK_ENTITIES, "shadow", false),
+                "bufferSource", tesrSource, "activePass", 0);
+        } finally {
+            retained[0] = oldGroups;
+            tesrSource.discard();
+            tesrGroups.clear();
+            GLSMBlend.disableBlend();
+        }
     }
 
     static Stream<Arguments> nonOpaqueMaterials() {

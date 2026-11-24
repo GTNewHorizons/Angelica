@@ -168,6 +168,33 @@ public class GLSM_StateSet_GLTest {
     }
 
     @Test
+    void blockEntityPassRestoresColorFogAndShadeModelOnTopOfBatchButNotStencil() {
+        GLSMCurrentAttribs.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        GLSMFog.disableFog();
+        GLSMFog.glFogf(GL11.GL_FOG_END, 64.0f);
+        GLSMRasterizer.glShadeModel(GL11.GL_SMOOTH);
+        GLSMDepthStencilAlpha.glDepthMask(true);
+        GLSMEnable.glDisable(GL11.GL_STENCIL_TEST);
+
+        final int d = GLSMAttribStack.pushState(StateSet.BLOCK_ENTITY_PASS);
+        GLSMCurrentAttribs.glColor4f(0.2f, 0.4f, 0.6f, 0.8f);
+        GLSMFog.enableFog();
+        GLSMFog.glFogf(GL11.GL_FOG_END, 8.0f);
+        GLSMRasterizer.glShadeModel(GL11.GL_FLAT);
+        GLSMDepthStencilAlpha.glDepthMask(false);
+        GLSMEnable.glEnable(GL11.GL_STENCIL_TEST);
+        GLSMAttribStack.popStateTo(d);
+
+        assertEquals(1.0f, GLSMCurrentAttribs.getColor().getRed(), "cache color red");
+        assertEquals(1.0f, GLSMCurrentAttribs.getColor().getAlpha(), "cache color alpha");
+        assertFalse(GLSMFog.getFogMode().isEnabled(), "fog enable restored by BLOCK_ENTITY_PASS pop");
+        assertEquals(64.0f, GLSMFog.getFogState().getEnd(), "cache fog end");
+        assertEquals(GL11.GL_SMOOTH, GLSMRasterizer.getShadeModelState().getValue(), "cache shade model");
+        assertTrue(GLSMDepthStencilAlpha.getDepthState().isEnabled(), "depth mask restored, as in BATCH");
+        verifyIsEnabled(GL11.GL_STENCIL_TEST, true, "Stencil test - not a BLOCK_ENTITY_PASS member, must stay toggled");
+    }
+
+    @Test
     void masksRestoresDepthMaskAndColorMaskButNotDepthTestEnable() {
         GLSMDepthStencilAlpha.glDepthMask(true);
         GLSMDepthStencilAlpha.glDepthFunc(GL11.GL_LEQUAL);

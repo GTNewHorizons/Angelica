@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
 import com.gtnewhorizons.angelica.api.tesr.TesrShader;
 import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
+import com.gtnewhorizons.angelica.glsm.DepthEcho;
 import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
 import com.gtnewhorizons.angelica.glsm.GLSMBlend;
 import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
@@ -82,6 +83,9 @@ public final class TesrBatchRenderer {
     private RetainedTesrGroups pendingDeferredHook;
 
     private final Matrix4f modelView = new Matrix4f();
+    private final Matrix4f passBase = new Matrix4f();
+    private double passCamX, passCamY, passCamZ;
+    private InstancedTemplateRenderer passInstanced;
     private final Matrix4f identity = new Matrix4f();
     private final Vector3f scratchVec = new Vector3f();
 
@@ -112,7 +116,12 @@ public final class TesrBatchRenderer {
         bufferSource.capturePassLighting();
         BatchDrawDefaults.capturePassFramebuffer();
         final DeferredWorldRenderingPipeline deferred = deferredPipeline();
-        retained[passKey].beginPass(baseMV, camX, camY, camZ, instancedCapable() ? instancedRenderer : null, deferred);
+        passBase.set(baseMV);
+        passCamX = camX;
+        passCamY = camY;
+        passCamZ = camZ;
+        passInstanced = instancedCapable() ? instancedRenderer : null;
+        retained[passKey].beginPass(baseMV, camX, camY, camZ, passInstanced, deferred);
         if (passKey == PASS_MAIN_0) {
             instancedRenderer.releaseRetired();
             final long now = System.currentTimeMillis();
@@ -194,6 +203,7 @@ public final class TesrBatchRenderer {
     }
 
     public void queue(TemplateBuffer template, ResourceLocation texture, TesrMaterial material) {
+        if (DepthEcho.replaying() && cannotBlend(material)) return;
         modelView.set(GLSMMatrices.getModelViewMatrix());
         final int packedLight = currentPackedLight(material);
         final int colorABGR = resolveColor(material);
@@ -214,6 +224,13 @@ public final class TesrBatchRenderer {
         } else {
             drawImmediate(template, texture, material, packedLight, colorABGR);
         }
+    }
+
+    private static boolean cannotBlend(TesrMaterial material) {
+        if (material == TesrMaterial.CURRENT_STATE) return false;
+        final TesrMaterial.Transparency transparency = material.transparency();
+        return transparency == TesrMaterial.Transparency.OPAQUE || transparency == TesrMaterial.Transparency.GLINT || material.special().isGlint()
+            || material.isDepthEqual() || material.isDepthOnly();
     }
 
     private static Matrix4f captureTextureMatrix() {
@@ -399,6 +416,37 @@ public final class TesrBatchRenderer {
         pendingDeferredHook = null;
         bufferSource.endBatch(hook);
         BatchingFontRenderer.flushDeferredText();
+    }
+
+    void drawOpaque() {
+        if (activePass >= 0) bufferSource.endBatchWithType(TransparencyType.OPAQUE, retained[activePass]);
+    }
+
+    boolean beginPeel() {
+        if (activePass < 0) return false;
+        if (!bufferSource.hasPendingLayers()) return false;
+        bufferSource.openDrawState();
+        return true;
+    }
+
+    void drawPeeled(boolean replay) {
+        retained[activePass].setPeelReplay(!replay, replay);
+        bufferSource.drawPending(retained[activePass]);
+    }
+
+    void endPeel() {
+        if (activePass < 0) return;
+        retained[activePass].setPeelReplay(false, false);
+        bufferSource.discard();
+    }
+
+    void flushAndContinue() {
+        if (activePass < 0) return;
+        final RetainedTesrGroups hook = retained[activePass];
+        bufferSource.endBatchWithType(TransparencyType.OPAQUE, hook);
+        bufferSource.endBatch(hook);
+        BatchingFontRenderer.flushDeferredText();
+        hook.continuePass(passBase, passCamX, passCamY, passCamZ, passInstanced, null);
     }
 
     private void flushNow() {
@@ -613,6 +661,7 @@ public final class TesrBatchRenderer {
             try {
                 layer.startDrawing();
                 layerStarted = true;
+                BatchStateGuard.beforeDraw();
                 immediateMesh.upload(format, template.drawMode, immediateScratch, vertexCount);
                 immediateMesh.render();
             } catch (Throwable t) {

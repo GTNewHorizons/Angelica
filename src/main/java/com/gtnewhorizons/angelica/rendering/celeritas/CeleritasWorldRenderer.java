@@ -1,19 +1,19 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.List;
 
 import com.gtnewhorizons.angelica.compat.bop.FogBiomeCache;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
+import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
 import net.minecraft.entity.Entity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.AxisAlignedBB;
+import net.minecraftforge.client.ForgeHooksClient;
 import net.minecraftforge.client.MinecraftForgeClient;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -37,15 +37,22 @@ import org.embeddedt.embeddium.impl.render.viewport.frustum.SimpleFrustum;
 import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL13;
 
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.cubicchunks.CubicChunksAPI;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightWorldRenderer;
+import com.gtnewhorizons.angelica.glsm.DepthEcho;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
 import com.gtnewhorizons.angelica.glsm.GLSMCurrentAttribs;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
 import com.gtnewhorizons.angelica.glsm.GLSMMatrices;
 import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
+import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.mixins.interfaces.ITileEntityBoundingBoxCache;
@@ -58,6 +65,8 @@ import com.gtnewhorizons.angelica.rendering.culling.GpuCulling;
 import com.gtnewhorizons.angelica.render.WeatherRenderer;
 import com.gtnewhorizons.angelica.rendering.culling.GpuTerrainCuller;
 import com.gtnewhorizons.angelica.rendering.tesr.AngelicaTesrMeshCache;
+import com.gtnewhorizons.angelica.rendering.tesr.GlowReplayExclusions;
+import com.gtnewhorizons.angelica.rendering.tesr.ImmediateDrawOrder;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.gtnewhorizons.angelica.rendering.tesr.PendingTesrDraws;
 import com.gtnewhorizons.angelica.rendering.tesr.SectionBuiltBlockEntity;
@@ -66,6 +75,12 @@ import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHold
 import com.gtnewhorizons.angelica.rendering.tesr.TesrAttribution;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrLifecycle;
+import com.gtnewhorizons.angelica.rendering.tesr.TesrProviderDispatch;
+import com.gtnewhorizons.angelica.rendering.tesr.TranslucentPeel;
+import com.gtnewhorizons.angelica.rendering.translucency.TranslucencyLayers;
+import com.gtnewhorizons.angelica.rendering.translucency.TranslucentLayer;
+import net.coderbot.iris.Iris;
+import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.ShadowRenderer;
 
 public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, AngelicaRenderSectionManager, BlockRenderLayer, TileEntity, CeleritasWorldRenderer.TileEntityRenderContext> implements IDynamicLightWorldRenderer {
@@ -75,6 +90,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
     private static final Tracy.ZoneId Z_TESR_DISPATCH = Tracy.zoneId("tesrDispatch", Tracy.COLOR_CLIENT);
     private static final Tracy.ZoneId Z_TESR_MODEL_PARTS = Tracy.zoneId("tesrModelParts", Tracy.COLOR_CLIENT);
     private static final Tracy.ZoneId Z_TESR_RENDER_TE = Tracy.zoneId("tesrRenderTE", Tracy.COLOR_CLIENT);
+    private static final long P_BLOCK_ENTITIES_RENDERED = Tracy.plotHandle("blockEntitiesRendered");
 
     private final Minecraft mc;
     private static CeleritasWorldRenderer instance;
@@ -94,10 +110,13 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
 
     private final ObjectArrayList<TileEntity> frameTEs = new ObjectArrayList<>();
     private final ObjectArrayList<TileEntity> frameOverride = new ObjectArrayList<>();
+    private final ObjectArrayList<TileEntity> glowReplay = new ObjectArrayList<>();
 
-    // For sorting transparent TESRs
-    private final TileEntityOrderer tileEntityOrderer = new TileEntityOrderer();
-    private final ArrayList<TileEntity> sortedTileEntities = new ArrayList<>();
+    private final TileEntityDepthOrder depthOrder = new TileEntityDepthOrder();
+    private final Matrix4f savedTextureMatrix = new Matrix4f();
+    private PassOne passOne = PassOne.NONE;
+
+    private enum PassOne { NONE, PENDING, DRAWN_EARLY }
 
     private CeleritasWorldRenderer(Minecraft mc) {
         // Private constructor for singleton
@@ -172,7 +191,6 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
         DynamicLights.setActiveRenderer(null);
         this.frameTEs.clear();
         this.frameOverride.clear();
-        this.sortedTileEntities.clear();
         ShadowRenderer.visibleTileEntities.clear();
         ShadowRenderer.globalTileEntities.clear();
         TesrLifecycle.reset();
@@ -385,6 +403,15 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
         return camera;
     }
 
+    public boolean hasVisibleLayer(BlockRenderLayer renderLayer) {
+        final Collection<TerrainRenderPass> passes = this.renderSectionManager.getRenderPassConfiguration().vanillaRenderStages().get(renderLayer);
+        if (passes == null) return false;
+        for (final TerrainRenderPass pass : passes) {
+            if (this.renderSectionManager.getRenderLists().hasPass(pass)) return true;
+        }
+        return false;
+    }
+
     @Override
     public void drawChunkLayer(BlockRenderLayer renderLayer, double x, double y, double z) {
         if (DEBUG_WIREFRAME_MODE) {
@@ -408,6 +435,116 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
         GLSMCurrentAttribs.glColor4f(1, 1, 1, 1);
     }
 
+    public void renderBlockEntitiesBeforeTranslucent(float partialTicks) {
+        if (passOne != PassOne.PENDING) return;
+        passOne = PassOne.DRAWN_EARLY;
+        glowReplay.clear();
+        if (!anyRendersInPassOne()) return;
+        final Minecraft mc = Minecraft.getMinecraft();
+        final boolean layered = TranslucencyLayers.INSTANCE.active();
+        final int previousPass = MinecraftForgeClient.getRenderPass();
+        final int depth = GLSMAttribStack.pushState(StateSet.BLOCK_ENTITY_PASS);
+        savedTextureMatrix.set(GLSMTextures.getTextures().getTextureUnitMatrix(0));
+        GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+        GLSMMatrices.glPushMatrix();
+        try {
+            GLSMDepthStencilAlpha.glDepthMask(true);
+            GLSMDepthStencilAlpha.enableAlphaTest();
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+            GLSMTextures.enableTexture();
+            GLSMCurrentAttribs.glColor4f(1f, 1f, 1f, 1f);
+            // A layer reads its color as premultiplied, which a blend-disabled draw does not write (TranslucencyLayers).
+            if (layered) {
+                GLSMBlend.enableBlend();
+                GLSMBlend.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            } else if (mc.gameSettings.fancyGraphics) {
+                GLSMBlend.disableBlend();
+            }
+            if (mc.gameSettings.fancyGraphics) GLSMRasterizer.glShadeModel(GL11.GL_FLAT);
+            RenderHelper.enableStandardItemLighting();
+            mc.entityRenderer.enableLightmap(partialTicks);
+            ForgeHooksClient.setRenderPass(1);
+            if (layered) TranslucencyLayers.INSTANCE.begin(TranslucentLayer.BLOCK_ENTITIES);
+            try {
+                renderBlockEntitiesInPhase(partialTicks);
+                if (layered) replayGlowDepth(partialTicks);
+            } finally {
+                if (layered) TranslucencyLayers.INSTANCE.end();
+            }
+        } finally {
+            ForgeHooksClient.setRenderPass(previousPass);
+            GLSMMatrices.glMatrixMode(GL11.GL_MODELVIEW);
+            GLSMMatrices.glPopMatrix();
+            GLSMMatrices.setTextureMatrix(0, savedTextureMatrix);
+            GLSMAttribStack.popStateTo(depth);
+        }
+    }
+
+    private void replayGlowDepth(float partialTicks) {
+        if (glowReplay.isEmpty()) return;
+        try {
+            if (!TranslucencyLayers.INSTANCE.beginGlowReplay()) return;
+            try {
+                for (int i = 0; i < glowReplay.size(); i++) {
+                    replayTE(glowReplay.get(i), partialTicks);
+                }
+            } finally {
+                TranslucencyLayers.INSTANCE.endGlowReplay();
+            }
+        } finally {
+            glowReplay.clear();
+        }
+    }
+
+    /// Calls the renderer directly, since a depth-only replay must not feed the dispatcher's lighting or
+    /// batch-eligibility tracking.
+    private static void replayTE(TileEntity tileEntity, float partialTicks) {
+        final TileEntitySpecialRenderer renderer = TileEntityRendererDispatcher.instance.getSpecialRenderer(tileEntity);
+        if (renderer == null) return;
+        final double x = tileEntity.xCoord - TileEntityRendererDispatcher.staticPlayerX;
+        final double y = tileEntity.yCoord - TileEntityRendererDispatcher.staticPlayerY;
+        final double z = tileEntity.zCoord - TileEntityRendererDispatcher.staticPlayerZ;
+        final int depth = GLSMAttribStack.pushState(StateSet.BLEND);
+        GLSMCurrentAttribs.glColor4f(1f, 1f, 1f, 1f);
+        GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
+        TesrBatchRenderer.INSTANCE.beginScope();
+        try {
+            if (AngelicaConfig.enableTESRProviderDispatch && TesrProviderDispatch.tryRender(renderer, tileEntity, x, y, z)) return;
+            renderer.renderTileEntityAt(tileEntity, x, y, z, partialTicks);
+        } catch (RuntimeException e) {
+            if (!tileEntity.isInvalid()) throw e;
+        } finally {
+            TesrBatchRenderer.INSTANCE.endScope();
+            GLSMAttribStack.popStateTo(depth);
+        }
+    }
+
+    private boolean anyRendersInPassOne() {
+        for (int i = 0; i < frameOverride.size(); i++) {
+            if (frameOverride.get(i).shouldRenderInPass(1)) return true;
+        }
+        return false;
+    }
+
+    public boolean takeLatePassOne() {
+        final boolean late = passOne != PassOne.DRAWN_EARLY;
+        passOne = PassOne.NONE;
+        return late;
+    }
+
+    public void renderBlockEntitiesInPhase(float partialTicks) {
+        if (Iris.enabled) {
+            GbufferPrograms.beginBlockEntities();
+            GbufferPrograms.setBlockEntityDefaults();
+        }
+        try {
+            final int rendered = renderBlockEntities(partialTicks);
+            if (Tracy.ENABLED) Tracy.plotInt(P_BLOCK_ENTITIES_RENDERED, rendered);
+        } finally {
+            if (Iris.enabled) GbufferPrograms.endBlockEntities();
+        }
+    }
+
     public int renderBlockEntities(float partialTicks) {
         AngelicaTesrMeshCache.INSTANCE.tick();
         final int pass = MinecraftForgeClient.getRenderPass();
@@ -420,66 +557,70 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             TileEntityRendererDispatcher.staticPlayerZ);
         ModelPartBatcher.INSTANCE.begin(ModelPartBatcher.Mode.BLOCK_ENTITIES);
         PendingTesrDraws.beginPass();
+        ImmediateDrawOrder.beginPass();
+        TranslucentPeel.beginPass();
         int count = 0;
-        if (pass == 0) {
-            teRenderContext.set(partialTicks, pass);
-            final Viewport viewport = this.currentViewport;
-            this.teTransform = viewport != null ? viewport.getTransform() : null;
-            this.teFrustum = viewport != null && ClientProxy.options().performance.sectionGatedTesrCulling && viewport.getFrustum() instanceof SimpleFrustum simpleFrustum ? simpleFrustum.getFrustumIntersection() : null;
-            this.teCullEpoch++;
-            this.teCamX = TileEntityRendererDispatcher.staticPlayerX;
-            this.teCamY = TileEntityRendererDispatcher.staticPlayerY;
-            this.teCamZ = TileEntityRendererDispatcher.staticPlayerZ;
-            frameTEs.clear();
-            frameOverride.clear();
-            if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_COLLECT);
-            try {
-                super.renderBlockEntities(teRenderContext);
-            } finally {
-                if (Tracy.ENABLED) Tracy.endZone();
-            }
-            this.teFrustum = null;
-            this.teTransform = null;
-            if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_DISPATCH);
-            try {
-                for (int i = 0; i < frameTEs.size(); i++) {
-                    final TileEntity te = frameTEs.get(i);
-                    if (!(te instanceof OverridesShouldRenderInPass)) {
-                        dispatchTE(te, partialTicks);
-                        count++;
-                        continue;
+        try {
+            if (pass == 0) {
+                teRenderContext.set(partialTicks, pass);
+                final Viewport viewport = this.currentViewport;
+                this.teTransform = viewport != null ? viewport.getTransform() : null;
+                this.teFrustum = viewport != null && ClientProxy.options().performance.sectionGatedTesrCulling && viewport.getFrustum() instanceof SimpleFrustum simpleFrustum ? simpleFrustum.getFrustumIntersection() : null;
+                this.teCullEpoch++;
+                this.teCamX = TileEntityRendererDispatcher.staticPlayerX;
+                this.teCamY = TileEntityRendererDispatcher.staticPlayerY;
+                this.teCamZ = TileEntityRendererDispatcher.staticPlayerZ;
+                frameTEs.clear();
+                frameOverride.clear();
+                if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_COLLECT);
+                try {
+                    super.renderBlockEntities(teRenderContext);
+                } finally {
+                    if (Tracy.ENABLED) Tracy.endZone();
+                }
+                this.teFrustum = null;
+                this.teTransform = null;
+                if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_DISPATCH);
+                try {
+                    if (ClientProxy.options().performance.translucencyMode.sorts()) {
+                        depthOrder.sortBackToFront(frameTEs, teCamX, teCamY, teCamZ);
                     }
-                    frameOverride.add(te);
-                    if (te.shouldRenderInPass(0)) {
-                        dispatchTE(te, partialTicks);
-                        count++;
+                    for (int i = 0; i < frameTEs.size(); i++) {
+                        final TileEntity te = frameTEs.get(i);
+                        if (!(te instanceof OverridesShouldRenderInPass)) {
+                            dispatchTE(te, partialTicks);
+                            count++;
+                            continue;
+                        }
+                        frameOverride.add(te);
+                        if (te.shouldRenderInPass(0)) {
+                            dispatchTE(te, partialTicks);
+                            count++;
+                        }
                     }
+                } finally {
+                    if (Tracy.ENABLED) Tracy.endZone();
                 }
-            } finally {
-                if (Tracy.ENABLED) Tracy.endZone();
-            }
-        } else {
-            if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_DISPATCH);
-            try {
-                sortedTileEntities.clear();
-                for (int i = 0; i < frameOverride.size(); i++) {
-                    final TileEntity te = frameOverride.get(i);
-                    if (te.shouldRenderInPass(pass)) {
-                        sortedTileEntities.add(te);
+                passOne = PassOne.PENDING;
+            } else {
+                if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_DISPATCH);
+                try {
+                    for (int i = 0; i < frameOverride.size(); i++) {
+                        final TileEntity te = frameOverride.get(i);
+                        if (te.shouldRenderInPass(pass)) {
+                            dispatchTE(te, partialTicks);
+                            count++;
+                        }
                     }
+                } finally {
+                    if (Tracy.ENABLED) Tracy.endZone();
                 }
-                if (sortedTileEntities.size() > 1 && ClientProxy.options().performance.translucencySorting) {
-                    sortedTileEntities.sort(tileEntityOrderer.setLastCameraState(lastCameraState));
-                }
-                for (int i = 0; i < sortedTileEntities.size(); i++) {
-                    dispatchTE(sortedTileEntities.get(i), partialTicks);
-                }
-                count = sortedTileEntities.size();
-            } finally {
-                if (Tracy.ENABLED) Tracy.endZone();
             }
+        } finally {
+            ImmediateDrawOrder.endPass();
         }
         PendingTesrDraws.endPass();
+        TranslucentPeel.flush();
         if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_MODEL_PARTS);
         try {
             ModelPartBatcher.INSTANCE.flush();
@@ -618,14 +759,17 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             }
         }
         PendingTesrDraws.beforeTileEntity(tileEntity);
+        TranslucentPeel.beforeBlockEntity();
         try {
             final long start = Tracy.ENABLED ? System.nanoTime() : 0L;
             final boolean attribute = Tracy.ENABLED && TesrAttribution.currentRenderable == null;
             if (attribute) TesrAttribution.currentRenderable = tileEntity.getClass();
             if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_RENDER_TE);
+            if (DepthEcho.armed() && !GlowReplayExclusions.excludes(tileEntity)) DepthEcho.beginTracking();
             try {
                 TileEntityRendererDispatcher.instance.renderTileEntity(tileEntity, partialTicks);
             } finally {
+                if (DepthEcho.endTracking()) glowReplay.add(tileEntity);
                 if (Tracy.ENABLED) Tracy.endZone();
                 if (attribute) TesrAttribution.currentRenderable = null;
                 if (Tracy.ENABLED) RenderClassTimings.TESR.add(teLabelClass(tileEntity), System.nanoTime() - start);
@@ -671,29 +815,6 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             this.partialTicks = partialTicks;
             this.pass = pass;
             return this;
-        }
-    }
-
-    private static class TileEntityOrderer implements Comparator<TileEntity> {
-        public CameraState lastCameraState;
-
-        public TileEntityOrderer() {
-            super();
-        }
-
-        public TileEntityOrderer setLastCameraState(CameraState lastCameraState) {
-            this.lastCameraState = lastCameraState;
-            return this;
-        }
-
-        @Override
-        public int compare(TileEntity te1, TileEntity te2) {
-            final double x = this.lastCameraState.x();
-            final double y = this.lastCameraState.y();
-            final double z = this.lastCameraState.z();
-            final double d1 = te1.getDistanceFrom(x, y, z);
-            final double d2 = te2.getDistanceFrom(x, y, z);
-            return Double.compare(d2, d1);
         }
     }
 }

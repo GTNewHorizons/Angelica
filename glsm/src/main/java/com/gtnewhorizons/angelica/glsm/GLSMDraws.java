@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.glsm.DisplayListManager.RecordMode;
 import com.gtnewhorizons.angelica.glsm.backend.GLDebugMessageListener;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
+import com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard;
 import com.gtnewhorizons.angelica.glsm.recording.CommandRecorder;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
 import com.gtnewhorizons.angelica.glsm.recording.ImmediateModeRecorder;
@@ -76,6 +77,7 @@ public final class GLSMDraws {
             ImmediateModeRecorder.begin(mode);
             return;
         }
+        BatchStateGuard.beforeDraw();
         ImmediateModeRecorder.beginLive(mode);
     }
 
@@ -141,6 +143,7 @@ public final class GLSMDraws {
     }
 
     public static void glDrawElements(int mode, ByteBuffer indices) {
+        if (DepthEcho.skipsCall()) return;
         rejectExitCapture();
         drawCalls++;
         CommandRecorder savedRecorder = null;
@@ -174,6 +177,7 @@ public final class GLSMDraws {
     }
 
     public static void glDrawElements(int mode, IntBuffer indices) {
+        if (DepthEcho.skipsCall()) return;
         rejectExitCapture();
         drawCalls++;
         CommandRecorder savedRecorder = null;
@@ -207,6 +211,7 @@ public final class GLSMDraws {
     }
 
     public static void glDrawElements(int mode, ShortBuffer indices) {
+        if (DepthEcho.skipsCall()) return;
         rejectExitCapture();
         drawCalls++;
         CommandRecorder savedRecorder = null;
@@ -240,6 +245,7 @@ public final class GLSMDraws {
     }
 
     public static void glDrawElements(int mode, int count, int type, ByteBuffer indices) {
+        if (DepthEcho.skipsCall()) return;
         rejectExitCapture();
         drawCalls++;
         CommandRecorder savedRecorder = null;
@@ -273,6 +279,7 @@ public final class GLSMDraws {
     }
 
     public static void glDrawElements(int mode, int indices_count, int type, long indices_buffer_offset) {
+        if (DepthEcho.skipsCall()) return;
         rejectExitCapture();
         final GLContextState glCtx = ctx();
         drawCalls++;
@@ -329,12 +336,14 @@ public final class GLSMDraws {
     }
 
     public static void glDrawElementsBaseVertex(int mode, int count, int type, long indices, int basevertex) {
+        if (DepthEcho.skipsCall()) return;
         rejectExitCapture();
         drawCalls++;
         RENDER_BACKEND.drawElementsBaseVertex(mode, count, type, indices, basevertex);
     }
 
     public static void glDrawElementsInstanced(int mode, int count, int type, long indices, int primcount) {
+        if (DepthEcho.skipsCall()) return;
         rejectExitCapture();
         drawCalls++;
         final GLContextState glCtx = ctx();
@@ -353,6 +362,7 @@ public final class GLSMDraws {
     }
 
     public static void glDrawArraysInstanced(int mode, int first, int count, int primcount) {
+        if (DepthEcho.skipsCall()) return;
         rejectExitCapture();
         drawCalls++;
         final GLContextState glCtx = ctx();
@@ -377,6 +387,7 @@ public final class GLSMDraws {
     }
 
     public static void glDrawRangeElements(int mode, int start, int end, int count, int type, long indices) {
+        if (DepthEcho.skipsCall()) return;
         rejectExitCapture();
         final GLContextState glCtx = ctx();
         final boolean locked = acquireDrawLock();
@@ -393,11 +404,13 @@ public final class GLSMDraws {
     }
 
     public static void glDrawRangeElementsBaseVertex(int mode, int start, int end, int count, int type, long indices, int baseVertex) {
+        if (DepthEcho.skipsCall()) return;
         rejectExitCapture();
         RENDER_BACKEND.drawRangeElementsBaseVertex(mode, start, end, count, type, indices, baseVertex);
     }
 
     public static void glMultiDrawArrays(int mode, IntBuffer firsts, IntBuffer counts) {
+        if (DepthEcho.skipsCall()) return;
         rejectExitCapture();
         final GLContextState glCtx = ctx();
         final boolean locked = acquireDrawLock();
@@ -423,6 +436,7 @@ public final class GLSMDraws {
     }
 
     public static void glDrawArrays(int mode, int first, int count) {
+        if (DepthEcho.skipsCall()) return;
         rejectExitCapture();
         drawCalls++;
         CommandRecorder savedRecorder = null;
@@ -521,6 +535,7 @@ public final class GLSMDraws {
 
     public static void glCallList(int list) {
         rejectExitCapture();
+        if (!DisplayListManager.isRecording()) BatchStateGuard.beforeDraw();
         if (!GLDebug.isActive()) {
             DisplayListManager.glCallList(list);
             return;
