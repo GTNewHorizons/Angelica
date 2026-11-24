@@ -2,7 +2,16 @@ package com.gtnewhorizons.angelica.blur;
 
 import com.gtnewhorizons.angelica.client.rendering.GlUniformFloat2v;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLSMAttribStack;
+import com.gtnewhorizons.angelica.glsm.GLSMBlend;
+import com.gtnewhorizons.angelica.glsm.GLSMDepthStencilAlpha;
+import com.gtnewhorizons.angelica.glsm.GLSMDraws;
+import com.gtnewhorizons.angelica.glsm.GLSMFramebuffer;
+import com.gtnewhorizons.angelica.glsm.GLSMPrograms;
+import com.gtnewhorizons.angelica.glsm.GLSMQueries;
+import com.gtnewhorizons.angelica.glsm.GLSMRasterizer;
+import com.gtnewhorizons.angelica.glsm.GLSMTextures;
+import com.gtnewhorizons.angelica.glsm.GLSMVertexInput;
 import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.render.PanoramaRenderer;
 import net.minecraft.client.Minecraft;
@@ -53,23 +62,23 @@ public class MenuBlur {
         final Framebuffer mainFramebuffer = mc.getFramebuffer();
         if (blurProgram == null) init();
 
-        final int previousProgram = GLStateManager.getActiveProgram();
-        final int previousVao = GLStateManager.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
+        final int previousProgram = GLSMPrograms.getActiveProgram();
+        final int previousVao = GLSMQueries.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
         final int previousFilter = mainFramebuffer.framebufferFilter;
-        final int stateDepth = GLStateManager.pushState(allState);
+        final int stateDepth = GLSMAttribStack.pushState(allState);
         try {
             ensureBlurTargets(mainFramebuffer.framebufferWidth, mainFramebuffer.framebufferHeight);
 
-            GLStateManager.disableBlend();
-            GLStateManager.disableDepthTest();
-            GLStateManager.glDepthMask(false);
-            GLStateManager.glColorMask(true, true, true, true);
-            GLStateManager.disableCull();
-            GLStateManager.disableScissorTest();
-            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+            GLSMBlend.disableBlend();
+            GLSMDepthStencilAlpha.disableDepthTest();
+            GLSMDepthStencilAlpha.glDepthMask(false);
+            GLSMBlend.glColorMask(true, true, true, true);
+            GLSMRasterizer.disableCull();
+            GLSMRasterizer.disableScissorTest();
+            GLSMTextures.glActiveTexture(GL13.GL_TEXTURE0);
 
             blurProgram.bind();
-            GLStateManager.glBindVertexArray(emptyVao);
+            GLSMVertexInput.glBindVertexArray(emptyVao);
             final BlurUniforms uniforms = blurProgram.getInterface();
             // Each half resolution pixel covers two screen pixels, so half the radius gives the same strength
             uniforms.radius.setFloat(radius * 0.5F);
@@ -77,28 +86,28 @@ public class MenuBlur {
             // Horizontal pass, shrinking the screen to half size. Linear filtering makes every
             // half size pixel average the four screen pixels it covers instead of picking one.
             mainFramebuffer.setFramebufferFilter(GL11.GL_LINEAR);
-            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, horizontalFbo);
-            GLStateManager.glViewport(0, 0, halfWidth, halfHeight);
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, mainFramebuffer.framebufferTexture);
+            GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, horizontalFbo);
+            GLSMRasterizer.glViewport(0, 0, halfWidth, halfHeight);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, mainFramebuffer.framebufferTexture);
             uniforms.direction.set(1.0F / halfWidth, 0.0F);
-            GLStateManager.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
+            GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
 
             // Vertical pass, still at half size
-            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, verticalFbo);
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, horizontalTexture);
+            GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, verticalFbo);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, horizontalTexture);
             uniforms.direction.set(0.0F, 1.0F / halfHeight);
-            GLStateManager.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
+            GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
 
             // Stretch the result back over the screen. A radius of 0 makes the blur shader a plain copy.
             mainFramebuffer.bindFramebuffer(true);
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, verticalTexture);
+            GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, verticalTexture);
             uniforms.radius.setFloat(0.0F);
-            GLStateManager.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
+            GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
         } finally {
             mainFramebuffer.setFramebufferFilter(previousFilter);
-            GLStateManager.glBindVertexArray(previousVao);
-            GLStateManager.glUseProgram(previousProgram);
-            GLStateManager.popStateTo(stateDepth);
+            GLSMVertexInput.glBindVertexArray(previousVao);
+            GLSMPrograms.glUseProgram(previousProgram);
+            GLSMAttribStack.popStateTo(stateDepth);
             mainFramebuffer.bindFramebuffer(true);
         }
     }
@@ -137,17 +146,17 @@ public class MenuBlur {
     private static void init() {
         blurProgram = PanoramaRenderer.loadProgram("angelica:menu_blur", "angelica:panorama_blur", "angelica:panorama_blur", BlurUniforms::new);
         allState = StateSet.forMask(GL11.GL_ALL_ATTRIB_BITS);
-        emptyVao = GLStateManager.glGenVertexArrays();
+        emptyVao = GLSMVertexInput.glGenVertexArrays();
     }
 
     private static void ensureBlurTargets(int width, int height) {
         if (horizontalFbo != 0 && width == sourceWidth && height == sourceHeight) return;
 
         if (horizontalFbo != 0) {
-            GLStateManager.glDeleteFramebuffers(horizontalFbo);
-            GLStateManager.glDeleteFramebuffers(verticalFbo);
-            GLStateManager.glDeleteTextures(horizontalTexture);
-            GLStateManager.glDeleteTextures(verticalTexture);
+            GLSMFramebuffer.glDeleteFramebuffers(horizontalFbo);
+            GLSMFramebuffer.glDeleteFramebuffers(verticalFbo);
+            GLSMTextures.glDeleteTextures(horizontalTexture);
+            GLSMTextures.glDeleteTextures(verticalTexture);
         }
         sourceWidth = width;
         sourceHeight = height;
@@ -161,22 +170,22 @@ public class MenuBlur {
     }
 
     private static int createTexture(int width, int height) {
-        final int texture = GLStateManager.glGenTextures();
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, width, height, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        final int texture = GLSMTextures.glGenTextures();
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        GLSMTextures.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, width, height, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
+        GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
+        GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, 0);
         return texture;
     }
 
     private static int createFramebuffer(int colorTexture) {
-        final int fbo = GLStateManager.glGenFramebuffers();
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
-        GLStateManager.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, colorTexture, 0);
-        final int status = GLStateManager.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER);
+        final int fbo = GLSMFramebuffer.glGenFramebuffers();
+        GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
+        GLSMFramebuffer.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, colorTexture, 0);
+        final int status = GLSMFramebuffer.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER);
         if (status != GL30.GL_FRAMEBUFFER_COMPLETE) {
             throw new RuntimeException("Menu blur FBO incomplete: 0x" + Integer.toHexString(status));
         }
