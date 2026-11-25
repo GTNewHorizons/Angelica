@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
+import com.gtnewhorizons.angelica.glsm.CoverageDiscard;
+import com.gtnewhorizons.angelica.glsm.DepthPeel;
 import org.lwjgl.opengl.GL11;
 import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
 
@@ -24,6 +26,8 @@ public final class FragmentShaderGenerator {
             sb.append("#define GLINT_ALPHA_FUNC ").append(key.alphaTestEnabled() ? key.alphaTestFunc() : 7).append('\n');
             sb.append("#define GLINT_OVERLAY ").append(key.overlayInstanced() ? 2 : key.overlayEnabled() ? 1 : 0).append('\n');
             sb.append("#define GLINT_LIGHTMAP ").append(key.nrEnabledUnits() > 1 && key.unitEnabled(1) ? 1 : 0).append('\n');
+            if (key.depthPeel()) sb.append("#define DEPTH_PEEL 1\n");
+            if (key.coverageDiscard()) sb.append("#define COVERAGE_DISCARD 1\n");
             sb.append(ShaderLoader.getShaderSource("angelica:combined_glint.frag.glsl"));
             return sb.toString();
         }
@@ -43,6 +47,8 @@ public final class FragmentShaderGenerator {
         emitSpecularAdd(sb, key);
         emitAlphaTest(sb, key);
         emitFog(sb, key);
+        if (key.depthPeel()) sb.append("  peelTest();\n");
+        if (key.coverageDiscard()) sb.append("  coverageTest(color);\n");
         sb.append("  fragColor = color;\n");
         sb.append("}\n");
 
@@ -89,6 +95,8 @@ public final class FragmentShaderGenerator {
                 sb.append("uniform sampler2D u_Sampler").append(i).append(";\n");
             }
         }
+        if (key.depthPeel()) sb.append(DepthPeel.GLSL);
+        if (key.coverageDiscard()) sb.append(CoverageDiscard.GLSL);
         sb.append(FFPUniformBlock.GLSL_DECL);
         sb.append('\n');
     }

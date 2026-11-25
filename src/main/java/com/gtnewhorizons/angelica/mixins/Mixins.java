@@ -301,6 +301,15 @@ public enum Mixins implements IMixins {
         )
     ),
 
+    ANGELICA_GLOW_DEPTH_REPLAY(new MixinBuilder("Drop particles and sounds a block entity renderer starts while Fancy translucency replays it into the glow depth")
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> AngelicaConfig.enableIris)
+        .addClientMixins(
+            "angelica.tesr.MixinEffectRenderer_GlowDepthReplay",
+            "angelica.tesr.MixinSoundHandler_GlowDepthReplay"
+        )
+    ),
+
     ANGELICA_TESR_PROVIDER_DISPATCH(new MixinBuilder("Route TesrMeshProvider renderers through the batched mesh cache, and observe renderers that mix model parts with their own draws")
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableTESRProviderDispatch || AngelicaConfig.enableEntityBatching)
@@ -551,6 +560,8 @@ public enum Mixins implements IMixins {
             , "shaders.MixinEntityRenderer"
             , "shaders.MixinGuiIngameForge"
             , "shaders.MixinFramebuffer"
+            , "angelica.rendering.MixinEntityRenderer_TranslucencyLayers"
+            , "angelica.rendering.MixinFramebuffer_TranslucencyLayers"
             , "shaders.MixinItem"
             , "shaders.MixinItemRenderer_ItemId"
             , "shaders.MixinLocale"
