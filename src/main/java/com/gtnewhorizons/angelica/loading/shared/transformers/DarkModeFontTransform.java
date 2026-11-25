@@ -284,6 +284,10 @@ public class DarkModeFontTransform {
             new MethodInfo("gregtech.api.recipe.RecipeMapFrontend drawNEIOverlayText(Ljava/lang/String;Lcodechicken/nei/PositionedStack;IFZLcom/gtnewhorizons/modularui/api/math/Alignment;)V"),
             new MethodInfo("net.minecraft.client.gui.FontRenderer func_85187_a(Ljava/lang/String;IIIZ)I # drawString")
         ),
+        RecolorTarget.excludeMethodCall(
+            new MethodInfo("gregtech.nei.GTNEIDefaultHandler$FixedPositionedStack draw(II)V"),
+            new MethodInfo("net.minecraft.client.gui.FontRenderer func_85187_a(Ljava/lang/String;IIIZ)I # drawString")
+        ),
             // GT NEI Ore Plugin
         RecolorTarget.excludeMethodCall(
             new MethodInfo("gtneioreplugin.plugin.renderer.ItemDimensionDisplayRenderer renderItem(Lnet/minecraftforge/client/IItemRenderer$ItemRenderType;Lnet/minecraft/item/ItemStack;[Ljava/lang/Object;)V"),
