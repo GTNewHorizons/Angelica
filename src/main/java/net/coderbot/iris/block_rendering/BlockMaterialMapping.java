@@ -22,6 +22,7 @@ import net.minecraft.util.ResourceLocation;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.UnaryOperator;
 
 public class BlockMaterialMapping {
 
@@ -33,6 +34,24 @@ public class BlockMaterialMapping {
 	public static final int DOUBLE_PLANT_TOP_BIT = 0x8;
 
 	public static final int WILDCARD_META_KEY = 1 << 30;
+
+	// alias -> target; alias blocks inherit the target's shader IDs and render layer
+	private static final Map<Block, Block> BLOCK_ALIASES = new Reference2ReferenceOpenHashMap<>();
+
+	/**
+	 * Makes {@code alias} resolve to the same shader material IDs and render layer as {@code target}, unless the
+	 * shaderpack maps {@code alias} itself. Takes effect on the next shaderpack load.
+	 */
+	public static void registerAlias(Block alias, Block target) {
+		BLOCK_ALIASES.put(alias, target);
+	}
+
+	private static <V> void applyAliases(Map<Block, V> map, UnaryOperator<V> copy) {
+		BLOCK_ALIASES.forEach((alias, target) -> {
+			final V value = map.get(target);
+			if (value != null && !map.containsKey(alias)) map.put(alias, copy.apply(value));
+		});
+	}
 
 	/**
 	 * Creates the standard block meta ID map, the TileEntity NBT-conditional map, and registers
@@ -51,6 +70,12 @@ public class BlockMaterialMapping {
 					addBlockMetas(entry, blockMatches, tileEntityMap, intId, skipFlattening, snowyBlocks);
 				}
 			}
+		});
+
+		applyAliases(blockMatches, metaMap -> {
+			final Int2IntMap copy = new Int2IntOpenHashMap(metaMap);
+			copy.defaultReturnValue(-1);
+			return copy;
 		});
 
 		BlockRenderingSettings.INSTANCE.setHasSnowyEntries(!snowyBlocks.isEmpty());
@@ -77,6 +102,8 @@ public class BlockMaterialMapping {
 			final BlockRenderLayer layer = convertBlockToRenderLayer(blockType);
 			if (layer != null) blockTypeIds.put(block, layer);
 		});
+
+		applyAliases(blockTypeIds, UnaryOperator.identity());
 
 		return blockTypeIds;
 	}
