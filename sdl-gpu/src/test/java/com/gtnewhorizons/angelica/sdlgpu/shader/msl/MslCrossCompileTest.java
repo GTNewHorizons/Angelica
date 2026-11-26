@@ -291,6 +291,55 @@ class MslCrossCompileTest {
         assertUniqueBufferSlots(msl);
     }
 
+    private static final String POSITION_HEAD = """
+        #version 460 core
+        layout(std140) uniform Mats { mat4 proj; mat4 view; mat4 viewInv; mat4 mv; vec4 ab; };
+        in vec3 a_Position;
+        out float vOut;
+        """;
+
+    static Stream<Arguments> positionVertexShapes() {
+        return Stream.of(
+            Arguments.of("chain through a temporary", "proj|view|viewInv|mv", POSITION_HEAD + """
+                void main() {
+                    vec4 position = viewInv * (mv * vec4(a_Position, 1.0));
+                    vOut = ab.x * ab.y;
+                    gl_Position = proj * (view * position);
+                }
+                """),
+            Arguments.of("declared invariant", "proj|view", POSITION_HEAD + """
+                invariant gl_Position;
+                void main() {
+                    vOut = ab.x * ab.y;
+                    gl_Position = proj * (view * vec4(a_Position, 1.0));
+                }
+                """),
+            Arguments.of("already precise", "proj|view", POSITION_HEAD + """
+                precise gl_Position;
+                void main() {
+                    vOut = ab.x * ab.y;
+                    gl_Position = proj * (view * vec4(a_Position, 1.0));
+                }
+                """),
+            Arguments.of("helper writes gl_Position", "proj|view", POSITION_HEAD + """
+                void place(vec4 p) { gl_Position = proj * (view * p); }
+                void main() {
+                    vOut = ab.x * ab.y;
+                    place(viewInv * (mv * vec4(a_Position, 1.0)));
+                }
+                """));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("positionVertexShapes")
+    void positionMathIsContractionFreeAndOtherMathIsNot(String name, String exactMatrices, String glsl) {
+        final String transformed = ShaderManager.applyPrewarmTransformsFull(glsl, GL20.GL_VERTEX_SHADER, null, null).source();
+        final String msl = crossCompile(transformed, Shaderc.shaderc_vertex_shader, GL20.GL_VERTEX_SHADER, false).code();
+        assertTrue(msl.contains("spvFMulMatrixVector") && msl.contains("[[clang::optnone]]"), "gl_Position math must go through the optnone fma helpers:\n" + msl);
+        assertFalse(Pattern.compile("\\.(" + exactMatrices + ") \\*").matcher(msl).find(), "a plain multiply by " + exactMatrices + " is left on the gl_Position chain:\n" + msl);
+        assertTrue(Pattern.compile("\\.ab\\.x \\* \\w+\\.ab\\.y").matcher(msl).find(), "math not feeding gl_Position must stay contractible:\n" + msl);
+    }
+
     private static void assertUniqueBufferSlots(String msl) {
         final Set<Integer> seen = new HashSet<>();
         int from = 0;

@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu.shader;
 
+import com.gtnewhorizons.angelica.sdlgpu.GpuTestPrograms;
 import com.gtnewhorizons.angelica.sdlgpu.RealDeviceExtension;
 import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 import com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig;
@@ -10,7 +11,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
-import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.sdl.SDL_GPUColorTargetDescription;
 import org.lwjgl.sdl.SDL_GPUColorTargetInfo;
@@ -25,7 +25,6 @@ import org.lwjgl.system.MemoryUtil;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -95,18 +94,8 @@ class FragmentStorageTextureReadGpuTest {
     }
 
     private int linkProgram(int samplerCount) {
-        final int vs = sm.createShader(GL20.GL_VERTEX_SHADER);
-        sm.shaderSource(vs, GlsmSdlHeadlessRig.FULLSCREEN_VERTEX);
-        sm.compileShader(vs);
-        final int fs = sm.createShader(GL20.GL_FRAGMENT_SHADER);
-        sm.shaderSource(fs, fragment(samplerCount));
-        sm.compileShader(fs);
-        final int prog = sm.createProgram();
-        sm.attachShader(prog, vs);
-        sm.attachShader(prog, fs);
-        sm.linkProgram(prog);
+        final int prog = GpuTestPrograms.link(sm, GlsmSdlHeadlessRig.FULLSCREEN_VERTEX, fragment(samplerCount));
         final ShaderManager.ProgramObject po = sm.getProgram(prog);
-        assertTrue(po != null && po.linked, "link failed: " + (po == null ? "no program" : po.infoLog));
         assertEquals(samplerCount, po.fragmentResources.numSamplers(), "production sampler count");
         assertEquals(1, po.fragmentResources.numStorageTextures(), "production storage texture count");
         return prog;
@@ -131,13 +120,6 @@ class FragmentStorageTextureReadGpuTest {
         final ShaderManager.ProgramObject po = sm.getProgram(linkProgram(samplerCount));
         System.out.println("[GpuReadTest] S=" + samplerCount
             + " VS=" + po.vertexResources + " FS=" + po.fragmentResources);
-
-        final ShaderManager.ResourceCounts vr = po.vertexResources;
-        po.sdlVertexShader = sm.createSDLShader(po.vertexSpirv, SDL_GPU_SHADERSTAGE_VERTEX, vr.numSamplers(), vr.numUBOs(), vr.numStorageBuffers(), vr.numStorageTextures());
-        final ShaderManager.ResourceCounts fr = po.fragmentResources;
-        po.sdlFragmentShader = sm.createSDLShader(po.fragmentSpirv, SDL_GPU_SHADERSTAGE_FRAGMENT, fr.numSamplers(), fr.numUBOs(), fr.numStorageBuffers(), fr.numStorageTextures());
-        assertTrue(po.sdlVertexShader != 0, "SDL vertex shader creation failed");
-        assertTrue(po.sdlFragmentShader != 0, "SDL fragment shader creation failed");
 
         final long pipeline;
         try (MemoryStack stack = MemoryStack.stackPush()) {
@@ -195,7 +177,7 @@ class FragmentStorageTextureReadGpuTest {
             final long cb = SDL_AcquireGPUCommandBuffer(rig.device.getDevice());
             assertTrue(cb != 0, "no readback command buffer");
             rig.resourceManager.downloadFromTexture(cb, targetHandle, 0, 0, TARGET, TARGET, 0, pixels);
-            final Path png = dumpPng(pixels, samplerCount);
+            final Path png = GpuTestPrograms.dumpPng(pixels, TARGET, TARGET, "storage_read_s" + samplerCount);
             // SDL's Y-flip means the readback may be row-inverted vs gl_FragCoord; either orientation
             // is a fixed convention, not this bug - accept whichever matches.
             final int direct = countMismatches(pixels, false, null);
@@ -227,22 +209,6 @@ class FragmentStorageTextureReadGpuTest {
             }
         }
         return mismatches;
-    }
-
-    private static Path dumpPng(ByteBuffer rgba, int samplerCount) throws IOException {
-        final Path out = Path.of("build", "test-artifacts");
-        Files.createDirectories(out);
-        final java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(TARGET, TARGET, java.awt.image.BufferedImage.TYPE_INT_RGB);
-        for (int y = 0; y < TARGET; y++) {
-            for (int x = 0; x < TARGET; x++) {
-                final int i = (y * TARGET + x) * 4;
-                img.setRGB(x, y, ((rgba.get(i) & 0xFF) << 16) | ((rgba.get(i + 1) & 0xFF) << 8) | (rgba.get(i + 2) & 0xFF));
-            }
-        }
-        final Path file = out.resolve("storage_read_s" + samplerCount + ".png").toAbsolutePath();
-        javax.imageio.ImageIO.write(img, "png", file.toFile());
-        System.out.println("[GpuReadTest] wrote " + file);
-        return file;
     }
 
     @ParameterizedTest(name = "{0} samplers")

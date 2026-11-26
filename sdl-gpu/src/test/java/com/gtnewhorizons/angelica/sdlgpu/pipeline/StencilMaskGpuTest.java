@@ -1,16 +1,14 @@
 package com.gtnewhorizons.angelica.sdlgpu.pipeline;
 
+import com.gtnewhorizons.angelica.sdlgpu.GpuTestPrograms;
 import com.gtnewhorizons.angelica.sdlgpu.RealDeviceExtension;
 import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
-import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.lwjgl.opengl.GL20;
-import org.lwjgl.sdl.SDLError;
 import org.lwjgl.sdl.SDL_GPUColorTargetInfo;
 import org.lwjgl.sdl.SDL_GPUDepthStencilTargetInfo;
 import org.lwjgl.system.MemoryStack;
@@ -49,13 +47,7 @@ class StencilMaskGpuTest {
         "}",
         "");
 
-    private static final String FILL_FRAGMENT = String.join("\n",
-        "#version 460 core",
-        "layout(location = 0) out vec4 fragColor;",
-        "void main() {",
-        "    fragColor = vec4(1.0, 0.0, 0.0, 1.0);",
-        "}",
-        "");
+    private static final String FILL_FRAGMENT = GpuTestPrograms.solidFragment("1.0, 0.0, 0.0");
 
     @BeforeAll
     static void setUp() throws Exception {
@@ -77,55 +69,21 @@ class StencilMaskGpuTest {
     }
 
     private static long createPipeline(String fragmentSource, boolean writesMask) {
-        final int vs = sm.createShader(GL20.GL_VERTEX_SHADER);
-        sm.shaderSource(vs, GlsmSdlHeadlessRig.FULLSCREEN_VERTEX);
-        sm.compileShader(vs);
-        final int fs = sm.createShader(GL20.GL_FRAGMENT_SHADER);
-        sm.shaderSource(fs, fragmentSource);
-        sm.compileShader(fs);
-        final int prog = sm.createProgram();
-        sm.attachShader(prog, vs);
-        sm.attachShader(prog, fs);
-        sm.linkProgram(prog);
-        final ShaderManager.ProgramObject po = sm.getProgram(prog);
-        assertTrue(po != null && po.linked, "link failed: " + (po == null ? "no program" : po.infoLog));
-
-        po.sdlVertexShader = sm.createSDLShader(po.vertexSpirv, SDL_GPU_SHADERSTAGE_VERTEX, po.vertexResources.numSamplers(), po.vertexResources.numUBOs(), po.vertexResources.numStorageBuffers(), po.vertexResources.numStorageTextures());
-        po.sdlFragmentShader = sm.createSDLShader(po.fragmentSpirv, SDL_GPU_SHADERSTAGE_FRAGMENT, po.fragmentResources.numSamplers(), po.fragmentResources.numUBOs(), po.fragmentResources.numStorageBuffers(), po.fragmentResources.numStorageTextures());
-        assertTrue(po.sdlVertexShader != 0 && po.sdlFragmentShader != 0, "SDL shader creation failed");
-
-        final ContextState cs = new ContextState();
-        final PipelineCache cache = cs.pipeline;
-        cache.vertexShader = po.sdlVertexShader;
-        cache.fragmentShader = po.sdlFragmentShader;
-        cache.programId = prog;
-        cache.maxFragOutputLocation = po.maxFragOutputLocation;
-        cache.shaderInputMask = po.vertexInputMask;
-        cache.shaderInputVecSize = po.vertexInputVecSize;
-        cache.shaderInputBaseType = po.vertexInputBaseType;
-        cache.shaderInputName = po.vertexInputName;
-        cache.setColorTargetFormats(new int[]{ colorFormat });
-        cache.setDrawBuffers(new int[]{ 0 });
-        cache.hasDepthTarget = true;
-        cache.depthTargetFormat = depthFormat;
-        cache.depthTestEnabled = false;
-        cache.depthWriteEnabled = false;
-        cache.stencilTestEnabled = true;
-        cache.stencilCompareMask = 0xFF;
-        cache.stencilWriteMask = writesMask ? 0xFF : 0x00;
+        final int prog = GpuTestPrograms.link(sm, GlsmSdlHeadlessRig.FULLSCREEN_VERTEX, fragmentSource);
         final int compareOp = writesMask ? SDL_GPU_COMPAREOP_ALWAYS : SDL_GPU_COMPAREOP_EQUAL;
         final int passOp = writesMask ? SDL_GPU_STENCILOP_REPLACE : SDL_GPU_STENCILOP_KEEP;
-        cache.stencilFrontCompareOp = compareOp;
-        cache.stencilBackCompareOp = compareOp;
-        cache.stencilFrontPassOp = passOp;
-        cache.stencilBackPassOp = passOp;
-        cache.markShaderDirty();
-        cache.markOutputDirty();
-
-        assertTrue(cache.effectiveStencilTestEnabled(), "stencil must survive the depth-format gate");
-        final long pipeline = cache.getOrCreatePipeline(store, cs);
-        assertTrue(pipeline != 0, "pipeline creation failed: " + SDLError.SDL_GetError());
-        return pipeline;
+        return GpuTestPrograms.pipeline(store, sm, prog, colorFormat, depthFormat, cache -> {
+            cache.depthTestEnabled = false;
+            cache.depthWriteEnabled = false;
+            cache.stencilTestEnabled = true;
+            cache.stencilCompareMask = 0xFF;
+            cache.stencilWriteMask = writesMask ? 0xFF : 0x00;
+            cache.stencilFrontCompareOp = compareOp;
+            cache.stencilBackCompareOp = compareOp;
+            cache.stencilFrontPassOp = passOp;
+            cache.stencilBackPassOp = passOp;
+            assertTrue(cache.effectiveStencilTestEnabled(), "stencil must survive the depth-format gate");
+        });
     }
 
     private static void render(int secondPassStencilLoad) {
