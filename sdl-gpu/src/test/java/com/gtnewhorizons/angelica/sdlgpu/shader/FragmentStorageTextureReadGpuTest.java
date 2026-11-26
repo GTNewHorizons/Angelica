@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.sdlgpu.GpuTestPrograms;
 import com.gtnewhorizons.angelica.sdlgpu.RealDeviceExtension;
 import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 import com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -47,6 +48,11 @@ class FragmentStorageTextureReadGpuTest {
         sm = new ShaderManager(rig.device);
     }
 
+    @AfterAll
+    static void tearDown() {
+        if (sm != null) sm.shutdown();
+    }
+
     private static String fragment(int samplerCount) {
         final StringBuilder sb = new StringBuilder();
         sb.append("#version 460 core\n");
@@ -68,8 +74,7 @@ class FragmentStorageTextureReadGpuTest {
         return (x == y) ? 255 - z * 16 : z * 32 + x * 2 + y;
     }
 
-    private int createVoxelTexture() {
-        final int glId = 9001;
+    private int createVoxelTexture(int glId) {
         final long handle = rig.resourceManager.createTexture(glId, GL12.GL_TEXTURE_3D, GL30.GL_R16UI, VOL, VOL, VOL, 1);
         assertTrue(handle != 0, "voxel texture creation failed");
         final ByteBuffer data = MemoryUtil.memAlloc(VOL * VOL * VOL * 2);
@@ -102,7 +107,7 @@ class FragmentStorageTextureReadGpuTest {
     }
 
     private void runCase(int samplerCount) throws IOException {
-        final int voxelGlId = createVoxelTexture();
+        final int voxelGlId = createVoxelTexture(9000 + samplerCount);
         final long voxelHandle = rig.resourceManager.getTextureHandle(voxelGlId);
 
         final int targetGlId = 9100 + samplerCount;
@@ -171,6 +176,7 @@ class FragmentStorageTextureReadGpuTest {
             assertTrue(SDL_SubmitGPUCommandBuffer(cb), "draw submit failed");
             SDL_WaitForGPUIdle(rig.device.getDevice());
         }
+        SDL_ReleaseGPUGraphicsPipeline(rig.device.getDevice(), pipeline);
 
         final ByteBuffer pixels = MemoryUtil.memAlloc(TARGET * TARGET * 4);
         try {

@@ -3,7 +3,6 @@ package com.gtnewhorizons.angelica.sdlgpu.resource;
 import com.gtnewhorizons.angelica.sdlgpu.RealDeviceExtension;
 import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 import com.gtnewhorizons.angelica.sdlgpu.device.Device;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -28,11 +27,6 @@ class BufferSizeGpuExactnessTest {
         final SdlTestRig rig = RealDeviceExtension.rig();
         device = rig.device;
         resourceManager = rig.resourceManager;
-    }
-
-    @AfterAll
-    static void tearDown() {
-        if (resourceManager != null) resourceManager.shutdown();
     }
 
     @ParameterizedTest(name = "{0}")

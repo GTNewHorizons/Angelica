@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.sdlgpu.RealDeviceExtension;
 import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 import com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -66,6 +67,12 @@ class StencilMaskGpuTest {
 
         maskPipeline = createPipeline(MASK_FRAGMENT, true);
         fillPipeline = createPipeline(FILL_FRAGMENT, false);
+    }
+
+    @AfterAll
+    static void tearDown() {
+        if (store != null) store.shutdown();
+        if (sm != null) sm.shutdown();
     }
 
     private static long createPipeline(String fragmentSource, boolean writesMask) {
