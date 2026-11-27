@@ -418,6 +418,11 @@ public class DarkModeFontTransform {
             new MethodInfo("de.eydamos.guiadvanced.form.Button func_146112_a(Lnet/minecraft/client/Minecraft;II)V # drawButton"),
             new MethodInfo("de.eydamos.guiadvanced.form.Button func_73732_a(Lnet/minecraft/client/gui/FontRenderer;Ljava/lang/String;III)V # drawCenteredString")
         ),
+            // ServerUtilities
+        RecolorTarget.includeButtonMethodCall(
+            new MethodInfo("serverutils.lib.gui.SimpleTextButton draw(Lserverutils/lib/gui/Theme;IIII)V"),
+            new MethodInfo("serverutils.lib.gui.Theme drawString(Ljava/lang/String;IILserverutils/lib/icon/Color4I;I)I")
+        ),
     //endregion
     };
 
