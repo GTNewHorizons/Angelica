@@ -265,6 +265,15 @@ public class DarkModeFontTransform {
             new MethodInfo("chylex.hee.gui.GuiTransportBeacon func_73863_a(IIF)V # drawScreen"),
             new MethodInfo("net.minecraft.client.gui.FontRenderer func_78276_b(Ljava/lang/String;III)I # drawString")
         ),
+            // NotEnoughItems
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("codechicken.nei.recipe.RecipeTooltipLineHandler draw(II)V"),
+            new MethodInfo("codechicken.lib.gui.GuiDraw drawStringC(Ljava/lang/String;III)V")
+        ),
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("codechicken.nei.recipe.widget.RecipeWidget draw(II)V"),
+            new MethodInfo("codechicken.nei.recipe.IRecipeHandler drawForeground(I)V")
+        ),
     //endregion
     //region Exclude Methods
             // Applied Energistics 2
