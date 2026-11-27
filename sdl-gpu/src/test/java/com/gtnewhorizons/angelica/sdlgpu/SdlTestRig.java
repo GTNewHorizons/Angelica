@@ -84,7 +84,7 @@ public final class SdlTestRig {
         }
     }
 
-    private static long realSdlDevice;
+    private static SdlTestRig realRig;
 
     private static final int SHADER_FORMATS = SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_MSL | SDL_GPU_SHADERFORMAT_DXBC | SDL_GPU_SHADERFORMAT_DXIL;
 
@@ -95,19 +95,19 @@ public final class SdlTestRig {
 
     public static SdlTestRig acquireRealDevice() {
         initSdlVideo();
-        realSdlDevice = SDL_CreateGPUDevice(SHADER_FORMATS, true, (CharSequence) null);
-        assertTrue(realSdlDevice != 0, "No SDL GPU device: " + SDLError.SDL_GetError());
+        final long handle = SDL_CreateGPUDevice(SHADER_FORMATS, true, (CharSequence) null);
+        assertTrue(handle != 0, "No SDL GPU device: " + SDLError.SDL_GetError());
 
-        final SdlTestRig rig = new SdlTestRig(realSdlDevice);
-        rig.frameManager.setResourceManager(rig.resourceManager);
-        return rig;
+        realRig = new SdlTestRig(handle);
+        realRig.frameManager.setResourceManager(realRig.resourceManager);
+        return realRig;
     }
 
     public static void releaseRealDevice() {
-        if (realSdlDevice != 0) {
-            SDL_WaitForGPUIdle(realSdlDevice);
-            SDL_DestroyGPUDevice(realSdlDevice);
-            realSdlDevice = 0;
-        }
+        if (realRig == null) return;
+        SDL_WaitForGPUIdle(realRig.sdlHandle);
+        realRig.resourceManager.shutdown();
+        SDL_DestroyGPUDevice(realRig.sdlHandle);
+        realRig = null;
     }
 }
