@@ -89,6 +89,8 @@ public class MenuBlur {
             GLSMFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, horizontalFbo);
             GLSMRasterizer.glViewport(0, 0, halfWidth, halfHeight);
             GLSMTextures.glBindTexture(GL11.GL_TEXTURE_2D, mainFramebuffer.framebufferTexture);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
+            GLSMTextures.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
             uniforms.direction.set(1.0F / halfWidth, 0.0F);
             GLSMDraws.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
 
