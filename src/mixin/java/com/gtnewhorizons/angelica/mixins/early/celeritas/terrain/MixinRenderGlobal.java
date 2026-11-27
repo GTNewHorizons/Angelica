@@ -15,6 +15,7 @@ import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.gtnewhorizons.angelica.rendering.celeritas.BlockRenderLayer;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasSetup;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
+import com.gtnewhorizons.angelica.rendering.celeritas.HiddenFluidTops;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
 import com.gtnewhorizons.angelica.rendering.translucency.TranslucencyLayers;
@@ -261,6 +262,12 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
     @Overwrite
     public void markBlocksForUpdate(int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {
         this.celeritas$renderer.scheduleRebuildForBlockArea(minX, minY, minZ, maxX, maxY, maxZ, false);
+    }
+
+    @Redirect(method = "markBlockForUpdate", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderGlobal;markBlocksForUpdate(IIIIII)V"))
+    private void celeritas$scheduleBlockChangeRebuild(RenderGlobal self, int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {
+        final int extraMargin = ClientProxy.options().performance.useHiddenFluidCulling ? HiddenFluidTops.SEARCH_RADIUS - 1 : 0;
+        this.celeritas$renderer.scheduleRebuildForBlockArea(minX - extraMargin, minY, minZ - extraMargin, maxX + extraMargin, maxY, maxZ + extraMargin, false);
     }
 
     @Unique
