@@ -265,6 +265,15 @@ public class DarkModeFontTransform {
             new MethodInfo("chylex.hee.gui.GuiTransportBeacon func_73863_a(IIF)V # drawScreen"),
             new MethodInfo("net.minecraft.client.gui.FontRenderer func_78276_b(Ljava/lang/String;III)I # drawString")
         ),
+            // NotEnoughItems
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("codechicken.nei.recipe.RecipeTooltipLineHandler draw(II)V"),
+            new MethodInfo("codechicken.lib.gui.GuiDraw drawStringC(Ljava/lang/String;III)V")
+        ),
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("codechicken.nei.recipe.widget.RecipeWidget draw(II)V"),
+            new MethodInfo("codechicken.nei.recipe.IRecipeHandler drawForeground(I)V")
+        ),
     //endregion
     //region Exclude Methods
             // Applied Energistics 2
@@ -282,6 +291,10 @@ public class DarkModeFontTransform {
         ),
         RecolorTarget.excludeMethodCall(
             new MethodInfo("gregtech.api.recipe.RecipeMapFrontend drawNEIOverlayText(Ljava/lang/String;Lcodechicken/nei/PositionedStack;IFZLcom/gtnewhorizons/modularui/api/math/Alignment;)V"),
+            new MethodInfo("net.minecraft.client.gui.FontRenderer func_85187_a(Ljava/lang/String;IIIZ)I # drawString")
+        ),
+        RecolorTarget.excludeMethodCall(
+            new MethodInfo("gregtech.nei.GTNEIDefaultHandler$FixedPositionedStack draw(II)V"),
             new MethodInfo("net.minecraft.client.gui.FontRenderer func_85187_a(Ljava/lang/String;IIIZ)I # drawString")
         ),
             // GT NEI Ore Plugin
@@ -404,6 +417,11 @@ public class DarkModeFontTransform {
         RecolorTarget.includeButtonMethodCall(
             new MethodInfo("de.eydamos.guiadvanced.form.Button func_146112_a(Lnet/minecraft/client/Minecraft;II)V # drawButton"),
             new MethodInfo("de.eydamos.guiadvanced.form.Button func_73732_a(Lnet/minecraft/client/gui/FontRenderer;Ljava/lang/String;III)V # drawCenteredString")
+        ),
+            // ServerUtilities
+        RecolorTarget.includeButtonMethodCall(
+            new MethodInfo("serverutils.lib.gui.SimpleTextButton draw(Lserverutils/lib/gui/Theme;IIII)V"),
+            new MethodInfo("serverutils.lib.gui.Theme drawString(Ljava/lang/String;IILserverutils/lib/icon/Color4I;I)I")
         ),
     //endregion
     };
