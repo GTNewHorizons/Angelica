@@ -3,7 +3,9 @@ package com.prupe.mcpatcher.ctm;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
+import java.util.BitSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -17,6 +19,8 @@ import net.minecraft.client.resources.IResourcePack;
 import net.minecraft.util.IIcon;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.IBlockAccess;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 
 import com.prupe.mcpatcher.MCLogger;
 import com.prupe.mcpatcher.MCPatcherUtils;
@@ -41,6 +45,8 @@ public class CTMUtils {
         private final List<TileOverride> all = new ArrayList<>();
         private final Map<Block, List<BlockStateMatcher>> block = new IdentityHashMap<>();
         private final Map<String, List<TileOverride>> tile = new HashMap<>();
+        private final Map<Block, BitSet> passes = new IdentityHashMap();
+        private final Map<Block, Int2ObjectMap<List<BlockStateMatcher>>> layeredCompacts = new IdentityHashMap<>();
 
         public List<TileOverride> getAll() {
             return all;
@@ -53,19 +59,29 @@ public class CTMUtils {
         public Map<String, List<TileOverride>> getTile() {
             return tile;
         }
+        public BitSet getBlockPasses(Block block) {
+            return passes.get(block);
+        }
+        public Int2ObjectMap<List<BlockStateMatcher>> getCompactLayers(Block block) {
+            return layeredCompacts.get(block);
+        }
     }
 
     private static Overrides overrides = new Overrides();
     private static Overrides newOverrides = null;
     private static TileLoader tileLoader;
 
+    public static Int2ObjectMap<List<BlockStateMatcher>> getCompactLayers(Block block) {
+        return overrides.getCompactLayers(block);
+    }
+
     @Desugar
-    public record CTMCompactContext(TileOverrideImpl.CTMCompact compact, RenderBlockState renderBlockState) {}
+    public record CTMCompactContext(TileOverrideImpl.CTMCompact[] compacts, RenderBlockState renderBlockState) {}
 
     private static final ThreadLocal<CTMCompactContext> CURRENT_COMPACT = new ThreadLocal<>();
 
-    public static void setCurrentCompact(TileOverrideImpl.CTMCompact compact, RenderBlockState renderBlockState) {
-        CURRENT_COMPACT.set(new CTMCompactContext(compact, renderBlockState.copy()));
+    public static void setCurrentCompact(TileOverrideImpl.CTMCompact[] compacts, RenderBlockState renderBlockState) {
+        CURRENT_COMPACT.set(new CTMCompactContext(compacts, renderBlockState.copy()));
     }
 
     public static CTMCompactContext getCurrentCompact() {
@@ -166,11 +182,29 @@ public class CTMUtils {
                     for (TileOverride override : newOverrides.all) {
                         override.registerIcons();
                     }
+                    Set<Block> solidBlocks = new HashSet<>();
+                    Set<Block> duplicates = new HashSet<>();
                     for (Map.Entry<Block, List<BlockStateMatcher>> entry : newOverrides.block.entrySet()) {
                         for (BlockStateMatcher matcher : entry.getValue()) {
                             TileOverride override = (TileOverride) matcher.getData();
                             if (override.getRenderPass() >= 0) {
                                 RenderPassAPI.instance.setRenderPassForBlock(entry.getKey(), override.getRenderPass());
+                                BitSet bits = newOverrides.passes.computeIfAbsent(entry.getKey(), k -> new BitSet());
+                                if (override.getRenderPass() == 0) {
+                                    bits.set(0);
+                                } else {
+                                    bits.set(1);
+                                }
+                            }
+                            if (matcher.getData() instanceof TileOverrideImpl.CTMCompact compact) {
+                                newOverrides.layeredCompacts.computeIfAbsent(entry.getKey(), k -> new Int2ObjectOpenHashMap<>())
+                                    .computeIfAbsent(compact.getRenderLayer(), k -> new ArrayList<>())
+                                    .add(matcher);
+                                if (compact.getRenderPass()==0 || compact.getRenderPass() == -1) {
+                                    if (!solidBlocks.add(entry.getKey())) {
+                                        duplicates.add(entry.getKey());
+                                    }
+                                }
                             }
                         }
                     }
@@ -180,6 +214,9 @@ public class CTMUtils {
                             TileOverride o2 = (TileOverride) m2.getData();
                             return o1.compareTo(o2);
                         });
+                    }
+                    for (Block each : duplicates) {
+                        logger.warning("Block %s has multiple solid layers.  Convention is lowest weight/filename wins", each);
                     }
                     for (List<TileOverride> overrides : newOverrides.tile.values()) {
                         Collections.sort(overrides);
@@ -290,6 +327,21 @@ public class CTMUtils {
 
     public static IIcon getBlockIcon(IIcon icon, Block block, int face) {
         return getBlockIcon(icon, block, face, 0);
+    }
+
+    public static boolean bBlockNeedsPass(Block block, int pass) {
+        long stamp = lock.tryOptimisticRead();
+        BitSet passes = overrides.getBlockPasses(block);
+        if (!lock.validate(stamp)) {
+            stamp = lock.readLock();
+            try {
+                passes = overrides.getBlockPasses(block);
+            } finally {
+                lock.unlockRead(stamp);
+            }
+        }
+        return passes != null && passes.get(pass);
+
     }
 
     public static void reset() {

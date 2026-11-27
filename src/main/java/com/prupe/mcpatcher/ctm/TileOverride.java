@@ -2,6 +2,7 @@ package com.prupe.mcpatcher.ctm;
 
 import static com.prupe.mcpatcher.ctm.RenderBlockState.CONNECT_BY_BLOCK;
 import static com.prupe.mcpatcher.ctm.RenderBlockState.CONNECT_BY_LIST;
+import static com.prupe.mcpatcher.ctm.RenderBlockState.CONNECT_BY_RLIST;
 import static com.prupe.mcpatcher.ctm.RenderBlockState.CONNECT_BY_MATERIAL;
 import static com.prupe.mcpatcher.ctm.RenderBlockState.CONNECT_BY_TILE;
 import static com.prupe.mcpatcher.ctm.RenderBlockState.NORMALS;
@@ -40,6 +41,7 @@ public abstract class TileOverride implements Comparable<TileOverride> {
     private final String baseFilename;
     protected final TileLoader tileLoader;
     protected final int renderPass;
+    private final int renderLayer;
     private final int weight;
     private boolean lostScope;
     private final int registrationOrder = nextRegistrationOrder++;
@@ -52,6 +54,7 @@ public abstract class TileOverride implements Comparable<TileOverride> {
     private final boolean innerSeams;
     private final BitSet biomes;
     private final BitSet height;
+    private final boolean disabled;
 
     protected final List<ResourceLocation> tileNames = new ArrayList<>();
     protected IIcon[] icons;
@@ -139,6 +142,8 @@ public abstract class TileOverride implements Comparable<TileOverride> {
             .replaceFirst("\\.properties$", "");
         this.tileLoader = tileLoader;
 
+
+        disabled = properties.getString("disabled", "false").equals("true");
         String renderPassStr = properties.getString("renderPass", "");
         renderPass = RenderPassAPI.instance.parseRenderPass(renderPassStr);
         if (renderPassStr.matches("\\d+") && renderPass >= 0 && renderPass <= RenderPassAPI.MAX_EXTRA_RENDER_PASS) {
@@ -175,6 +180,14 @@ public abstract class TileOverride implements Comparable<TileOverride> {
             case "block" -> connectType = CONNECT_BY_BLOCK;
             case "tile" -> connectType = CONNECT_BY_TILE;
             case "material" -> connectType = CONNECT_BY_MATERIAL;
+            case "rlist" -> {
+                if (connectBlocks.isEmpty()) {
+                    properties.error("connect=rlist requires a non-empty connectBlocks= list");
+                    connectType = CONNECT_BY_BLOCK;
+                } else {
+                    connectType = CONNECT_BY_RLIST;
+                }
+            }
             case "list" -> {
                 if (connectBlocks.isEmpty()) {
                     properties.error("connect=list requires a non-empty connectBlocks= list");
@@ -209,6 +222,7 @@ public abstract class TileOverride implements Comparable<TileOverride> {
                 RenderPassAPI.instance.getRenderPassName(renderPass));
         }
 
+        renderLayer = properties.getInt("renderLayer", 0);
         weight = properties.getInt("weight", 0);
     }
 
@@ -361,12 +375,24 @@ public abstract class TileOverride implements Comparable<TileOverride> {
     }
 
     final public boolean isDisabled() {
-        return !properties.valid();
+        return !properties.valid() || disabled;
     }
 
     final public List<BlockStateMatcher> getMatchingBlocks() {
         return matchBlocks;
     }
+
+    final public List<BlockStateMatcher> getConnectingBlocks() {
+        return connectBlocks;
+    }
+    final protected boolean getInnerSeams() {
+        return innerSeams;
+    }
+    
+    final boolean connectsByReverseList() {
+        return connectType == CONNECT_BY_RLIST;
+    }
+
 
     final public Set<String> getMatchingTiles() {
         if (MCPatcherUtils.isNullOrEmpty(matchTiles)) {
@@ -377,7 +403,16 @@ public abstract class TileOverride implements Comparable<TileOverride> {
     }
 
     final public int getRenderPass() {
-        return renderPass;
+        //Angelica only supports two passes, although -1 is valid from RenderPassAPI.
+        return renderPass < 0 ? renderPass : (renderPass == 0 ? 0 : 1);
+    }
+
+    final public boolean canRenderInPass(int worldPass, int blockPass) {
+        return getRenderPass() < 0 ? worldPass == blockPass : getRenderPass() == worldPass; 
+    }
+
+    final public int getRenderLayer() {
+        return renderLayer;
     }
 
     final public int getWeight() {
@@ -455,6 +490,16 @@ public abstract class TileOverride implements Comparable<TileOverride> {
             case CONNECT_BY_TILE -> renderBlockState.shouldConnectByTile(neighbor, icon, x, y, z);
             case CONNECT_BY_BLOCK -> renderBlockState.shouldConnectByBlock(neighbor, x, y, z);
             case CONNECT_BY_MATERIAL -> block.blockMaterial == neighbor.blockMaterial;
+            case CONNECT_BY_RLIST -> {
+                boolean matched = false;
+                for (BlockStateMatcher matcher : matchBlocks) {
+                    if (matcher.match(blockAccess, x, y, z)) {
+                        matched = true;
+                        break;
+                    }
+                }
+                yield matched;
+            }
             case CONNECT_BY_LIST -> {
                 boolean matched = false;
                 for (BlockStateMatcher matcher : connectBlocks) {
@@ -472,6 +517,9 @@ public abstract class TileOverride implements Comparable<TileOverride> {
     public final IIcon getTileWorld(RenderBlockState renderBlockState, IIcon origIcon) {
         if (icons == null) {
             properties.error("no images loaded, disabling");
+            return null;
+        }
+        if (disabled == true) {
             return null;
         }
         IBlockAccess blockAccess = renderBlockState.getBlockAccess();

@@ -8,8 +8,12 @@ import java.util.Set;
 
 import net.minecraft.block.Block;
 import net.minecraft.util.IIcon;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectSortedMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectAVLTreeMap;
 
 import com.prupe.mcpatcher.mal.block.BlockStateMatcher;
+import com.gtnewhorizons.angelica.rendering.celeritas.threading.RenderPassHelper;
 
 import jss.notfine.config.MCPatcherForgeConfig;
 
@@ -117,24 +121,76 @@ abstract public class TileOverrideIterator implements Iterator<TileOverride> {
         lastMatchedOverride = null;
         skipOverrides.clear();
 
-        pass: for (int pass = 0; pass < MCPatcherForgeConfig.ConnectedTextures.maxRecursion; pass++) {
+        passLoop: for (int pass = 0; pass < MCPatcherForgeConfig.ConnectedTextures.maxRecursion; pass++) {
             while (hasNext()) {
                 TileOverride override = next();
+                int worldRenderPass = RenderPassHelper.getWorldRenderPass();
+                int blockPass = renderBlockState.getBlock().getRenderBlockPass();
+                if(!override.canRenderInPass(worldRenderPass, blockPass)) {
+                    continue;
+                }
                 IIcon newIcon = getTile(override, renderBlockState, origIcon);
                 if (newIcon != null) {
                     if (override instanceof TileOverrideImpl.CTMCompact compact) {
-                        CTMUtils.setCurrentCompact(compact, renderBlockState);
+                            if (worldRenderPass == 0) {
+                                CTMUtils.setCurrentCompact(new TileOverrideImpl.CTMCompact[] {compact}, renderBlockState);
+                            }  else {
+                            CTMUtils.setCurrentCompact(
+                                collectCompactLayers(compact, renderBlockState, origIcon, worldRenderPass),
+                                renderBlockState);
+                            }
                     }
                     lastMatchedOverride = override;
                     skipOverrides.add(override);
                     currentIcon = newIcon;
                     resetForNextPass();
-                    continue pass;
+                    continue passLoop;
                 }
             }
             break;
         }
         return lastMatchedOverride;
+    }
+    private TileOverrideImpl.CTMCompact[] collectCompactLayers(TileOverrideImpl.CTMCompact primary,
+        RenderBlockState renderBlockState, IIcon origIcon, int worldRenderPass) {
+        Int2ObjectSortedMap<TileOverrideImpl.CTMCompact> layers = new Int2ObjectAVLTreeMap<>();
+        layers.putIfAbsent(primary.getRenderLayer(), primary);
+        Block baseBlock = renderBlockState.getBlock();
+        BlockStateMatcher primaryFilter = renderBlockState.getFilter();
+        Int2ObjectMap<List<BlockStateMatcher>> layeredCandidates = CTMUtils.getCompactLayers(baseBlock);
+        if(layeredCandidates==null) {
+            return new TileOverrideImpl.CTMCompact[] {primary};
+        }
+
+        try {
+            LayerLoop: for (Map.Entry<Integer, List<BlockStateMatcher>> entry: layeredCandidates.int2ObjectEntrySet()) {
+                if(layers.containsKey(entry.getKey())) {
+                    continue;
+                }
+                for (BlockStateMatcher candidate : entry.getValue()) {
+                    TileOverrideImpl.CTMCompact candidateOverride = (TileOverrideImpl.CTMCompact) candidate.getData();
+                    if (candidateOverride.isDisabled()) {
+                        continue;
+                    }
+                    if (!candidateOverride.canRenderInPass(worldRenderPass, baseBlock.getRenderBlockPass())) {
+                        continue;
+                    }
+                    if (!renderBlockState.match(candidate)) {
+                        continue;
+                    }
+                    renderBlockState.setFilter(candidate);
+                    if (getTile(candidateOverride, renderBlockState, origIcon) != null) {
+                        layers.putIfAbsent(candidateOverride.getRenderLayer(), candidateOverride);
+                        continue LayerLoop;
+                    }
+                }
+            }
+        } finally {
+            renderBlockState.setFilter(primaryFilter);
+        }
+
+        //layers.sort(Comparator.comparingInt(TileOverrideImpl.CTMCompact::getRenderLayer));
+        return layers.values().toArray(new TileOverrideImpl.CTMCompact[0]);
     }
 
     public IIcon getIcon() {
