@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
+import com.gtnewhorizons.angelica.api.terrain.TerrainRendering;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.experimental.surround.Surround;
@@ -55,6 +56,8 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
         SystemTimeUniforms.TIMER.beginFrame(System.nanoTime());
 
         Program.unbind();
+        // Close any terrain draw a mod left open last frame
+        TerrainRendering.resetForFrame();
 
         mc.mcProfiler.startSection("iris_prepare_pipeline");
         final WorldRenderingPipeline pipeline = Iris.getPipelineManager().preparePipeline(Iris.getCurrentDimensionName());

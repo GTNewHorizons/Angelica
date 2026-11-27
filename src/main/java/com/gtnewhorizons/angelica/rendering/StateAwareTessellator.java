@@ -15,6 +15,15 @@ public interface StateAwareTessellator {
     void angelica$setAppliedAo(boolean flag);
     void angelica$setNoDirectionalShading(boolean flag);
 
+    /// The state the next vertex gets. False for tessellators that don't track it.
+    default boolean angelica$isAppliedAo() {
+        return false;
+    }
+
+    default boolean angelica$isNoDirectionalShading() {
+        return false;
+    }
+
     /// Sets whether we're doing terrain meshing as part of celeritas -- collects additional information.
     ///
     /// Enables per-vertex AO state collection into [#angelica$getVertexStates()].
