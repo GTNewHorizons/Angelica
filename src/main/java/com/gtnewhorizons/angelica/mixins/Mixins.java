@@ -505,6 +505,8 @@ public enum Mixins implements IMixins {
             , "celeritas.biome_blending.MixinBlockLiquid"
             , "celeritas.biome_blending.MixinWorld"
             , "celeritas.biome_blending.MixinRenderBlocks"
+            , "celeritas.terrain.MixinRenderBlocks_HiddenFluidTops"
+            , "celeritas.terrain.MixinRenderBlockFluid_HiddenFluidTops"
             , "celeritas.threading.MixinForgeHooksClient"
             , "celeritas.threading.MixinChunkJobTyped"
             , "celeritas.terrain.MixinChunk"

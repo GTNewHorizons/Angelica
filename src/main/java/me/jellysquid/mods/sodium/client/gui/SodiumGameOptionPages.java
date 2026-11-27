@@ -586,6 +586,17 @@ public class SodiumGameOptionPages {
                 .build());
 
         groups.add(OptionGroup.createBuilder()
+                .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
+                        .setName(I18n.format("sodium.options.use_hidden_fluid_culling.name"))
+                        .setTooltip(I18n.format("sodium.options.use_hidden_fluid_culling.tooltip"))
+                        .setControl(TickBoxControl::new)
+                        .setImpact(OptionImpact.LOW)
+                        .setBinding((opts, value) -> opts.performance.useHiddenFluidCulling = value, opts -> opts.performance.useHiddenFluidCulling)
+                        .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
+                        .build())
+                .build());
+
+        groups.add(OptionGroup.createBuilder()
                 .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
                         .setName(I18n.format("options.angelica.parallelAtlasDecode"))
                         .setTooltip(I18n.format("options.angelica.parallelAtlasDecode.tooltip"))

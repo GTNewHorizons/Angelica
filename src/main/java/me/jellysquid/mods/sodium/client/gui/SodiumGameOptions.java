@@ -254,6 +254,7 @@ public class SodiumGameOptions {
         public boolean sectionGatedTesrCulling = true;
         public boolean useFogOcclusion = true;
         public boolean useBlockFaceCulling = true;
+        public boolean useHiddenFluidCulling = true;
         public boolean useCompactVertexFormat = true;
         public TranslucencyMode translucencyMode = TranslucencyMode.FAST;
         public Boolean translucencySorting;
