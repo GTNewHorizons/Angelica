@@ -402,10 +402,6 @@ sodium.options.use_render_pass_optimization.tooltip=Analyzes sprite transparency
 
 options.angelica.aggressiveChunkLoading=Aggressive Chunk Loading
 options.angelica.aggressiveChunkLoading.tooltip=Renders chunks immediately when loaded, even if neighbors aren't ready yet. Improves perceived loading speed at render distance edges. Chunks rebuild automatically when neighbors load. Useful for low render distance servers.
-options.angelica.disablef3=Disable F3 Additions
-options.angelica.disablef3.tooltip=Disables Angelica's additions to the F3 debug screen.
-options.angelica.verbosef3=Verbose F3
-options.angelica.verbosef3.tooltip=Shows developer counters (fixed-function shaders, streaming, TESR batching, GPU transfer) on the F3 screen. Toggle in game with F3+V.
 options.angelica.menuBlur=Menu Blur
 options.angelica.menuBlur.tooltip=Blurs the world behind open menus like the inventory or the pause menu. Chat is never blurred. Excluded menus and background colors can be changed in the Angelica config.
 options.angelica.menuBlurRadius=Menu Blur Strength
